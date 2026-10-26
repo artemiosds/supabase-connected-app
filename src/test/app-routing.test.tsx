@@ -30,8 +30,8 @@ describe("App routing", () => {
     for (const path of ["/painel", "/organizacoes", "/usuarios", "/configuracoes"]) {
       const matches = router.matchRoutes(path);
       const ids = matches.map((m) => m.routeId);
-      expect(ids, `rota ${path}`).toContain("_authenticated");
-      expect(ids, `rota ${path}`).toContain(`_authenticated${path.replace("/", "/")}`);
+      expect(ids, `rota ${path}`).toContain("/_authenticated");
+      expect(ids, `rota ${path}`).toContain(`/_authenticated${path}`);
     }
   });
 });
