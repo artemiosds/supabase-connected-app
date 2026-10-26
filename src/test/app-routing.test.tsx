@@ -14,4 +14,24 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
+
+  it("has the public auth routes", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    for (const path of ["/entrar", "/cadastro", "/recuperar-senha", "/redefinir-senha"]) {
+      const matches = router.matchRoutes(path);
+      expect(matches.at(-1)?.routeId, `rota ${path}`).not.toBe(rootRouteId);
+    }
+  });
+
+  it("has the authenticated pages under the _authenticated layout", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    for (const path of ["/painel", "/organizacoes", "/usuarios", "/configuracoes"]) {
+      const matches = router.matchRoutes(path);
+      const ids = matches.map((m) => m.routeId);
+      expect(ids, `rota ${path}`).toContain("_authenticated");
+      expect(ids, `rota ${path}`).toContain(`_authenticated${path.replace("/", "/")}`);
+    }
+  });
 });
