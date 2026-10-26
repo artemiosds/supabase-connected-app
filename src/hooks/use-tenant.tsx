@@ -45,7 +45,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         .select("tenant:tenants(id, name, slug, status)")
         .eq("status", "ativo");
       if (error) throw error;
-      const lista = ((data ?? []) as { tenant: Tenant | null }[])
+      const lista = ((data ?? []) as unknown as { tenant: Tenant | null }[])
         .map((linha) => linha.tenant)
         .filter((t): t is Tenant => t !== null);
       setTenants(lista);
