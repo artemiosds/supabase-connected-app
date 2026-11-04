@@ -334,7 +334,7 @@ function Documentos() {
           <form onSubmit={salvarModelo} className="space-y-4">
             <div className="space-y-2"><Label>Nome do modelo *</Label><Input required minLength={2} maxLength={180} value={tituloModelo} onChange={(e) => setTituloModelo(e.target.value)}/></div>
             <div className="space-y-2"><Label>Descrição</Label><Input maxLength={1000} value={descricaoModelo} onChange={(e) => setDescricaoModelo(e.target.value)}/></div>
-            <div className="space-y-2"><Label>Texto do modelo *</Label><Textarea required rows={12} maxLength={50000} value={conteudoModelo} onChange={(e) => setConteudoModelo(e.target.value)} placeholder="Use {"{{fornecedor}}"}, {"{{cnpj}}"}, {"{{secretaria}}"}, {"{{municipio}}"}, {"{{data}}"} e {"{{usuario}}"} como campos automáticos."/></div>
+            <div className="space-y-2"><Label>Texto do modelo *</Label><Textarea required rows={12} maxLength={50000} value={conteudoModelo} onChange={(e) => setConteudoModelo(e.target.value)} placeholder={'Use {{fornecedor}}, {{cnpj}}, {{secretaria}}, {{municipio}}, {{data}} e {{usuario}} como campos automáticos.'}/></div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>Cancelar</Button><Button type="submit" disabled={salvandoModelo}>{salvandoModelo ? <Loader2 className="h-4 w-4 animate-spin"/> : <Plus className="h-4 w-4"/>} Salvar modelo</Button></DialogFooter>
           </form>
         </DialogContent>
