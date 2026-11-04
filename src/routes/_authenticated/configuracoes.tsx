@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
+import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,7 +91,7 @@ function Configuracoes() {
     } else {
       setPodeEditarSecretaria(caps.data?.[0]?.can_edit ?? false);
       setDadosSecretaria({
-        cnpj: tenant.data?.cnpj ?? "",
+        cnpj: tenant.data?.cnpj ? formatarCnpj(tenant.data.cnpj) : "",
         contact_email: tenant.data?.contact_email ?? "",
         contact_phone: tenant.data?.contact_phone ?? "",
         street: tenant.data?.street ?? "",
@@ -120,13 +121,17 @@ function Configuracoes() {
   async function aoSalvarSecretaria(e: FormEvent) {
     e.preventDefault();
     if (!selecionado || !podeEditarSecretaria) return;
+    if (dadosSecretaria.cnpj.trim() && !validarCnpj(dadosSecretaria.cnpj)) {
+      toast.error("Informe um CNPJ válido da Secretaria.");
+      return;
+    }
     if (dadosSecretaria.state && !/^[A-Za-z]{2}$/.test(dadosSecretaria.state)) {
       toast.error("Informe a UF com duas letras.");
       return;
     }
     setSalvandoSecretaria(true);
     const { error } = await db.from("tenants").update({
-      cnpj: dadosSecretaria.cnpj.trim() || null,
+      cnpj: dadosSecretaria.cnpj.trim() ? normalizarCnpj(dadosSecretaria.cnpj) : null,
       contact_email: dadosSecretaria.contact_email.trim() || null,
       contact_phone: dadosSecretaria.contact_phone.trim() || null,
       street: dadosSecretaria.street.trim() || null,
@@ -177,7 +182,7 @@ function Configuracoes() {
           ) : (
             <form onSubmit={aoSalvarSecretaria} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2"><Label htmlFor="tenant-cnpj">CNPJ</Label><Input id="tenant-cnpj" maxLength={20} disabled={!podeEditarSecretaria} value={dadosSecretaria.cnpj} onChange={(e) => atualizarSecretaria("cnpj",e.target.value)} placeholder="00.000.000/0000-00"/></div>
+                <div className="space-y-2"><Label htmlFor="tenant-cnpj">CNPJ</Label><Input id="tenant-cnpj" maxLength={20} disabled={!podeEditarSecretaria} value={dadosSecretaria.cnpj} onChange={(e) => atualizarSecretaria("cnpj",formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00"/></div>
                 <div className="space-y-2"><Label htmlFor="tenant-email">E-mail institucional</Label><Input id="tenant-email" type="email" maxLength={254} disabled={!podeEditarSecretaria} value={dadosSecretaria.contact_email} onChange={(e) => atualizarSecretaria("contact_email",e.target.value)}/></div>
                 <div className="space-y-2"><Label htmlFor="tenant-phone">Telefone</Label><Input id="tenant-phone" maxLength={40} disabled={!podeEditarSecretaria} value={dadosSecretaria.contact_phone} onChange={(e) => atualizarSecretaria("contact_phone",e.target.value)}/></div>
                 <div className="space-y-2"><Label htmlFor="tenant-state">UF</Label><Input id="tenant-state" maxLength={2} disabled={!podeEditarSecretaria} value={dadosSecretaria.state} onChange={(e) => atualizarSecretaria("state",e.target.value.toUpperCase())}/></div>
