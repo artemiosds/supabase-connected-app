@@ -242,6 +242,35 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          id: string; tenant_id: string; cnpj: string; legal_name: string; trade_name: string | null;
+          category: string; status: string; contact_name: string | null; contact_phone: string | null;
+          contact_email: string | null; website: string | null; postal_code: string | null;
+          street: string | null; street_number: string | null; complement: string | null;
+          neighborhood: string | null; city: string | null; state: string | null; notes: string | null;
+          created_by: string; updated_by: string; created_at: string; updated_at: string;
+        }
+        Insert: {
+          id?: string; tenant_id: string; cnpj: string; legal_name: string; trade_name?: string | null;
+          category?: string; status?: string; contact_name?: string | null; contact_phone?: string | null;
+          contact_email?: string | null; website?: string | null; postal_code?: string | null;
+          street?: string | null; street_number?: string | null; complement?: string | null;
+          neighborhood?: string | null; city?: string | null; state?: string | null; notes?: string | null;
+          created_by?: string; updated_by?: string; created_at?: string; updated_at?: string;
+        }
+        Update: {
+          id?: string; tenant_id?: string; cnpj?: string; legal_name?: string; trade_name?: string | null;
+          category?: string; status?: string; contact_name?: string | null; contact_phone?: string | null;
+          contact_email?: string | null; website?: string | null; postal_code?: string | null;
+          street?: string | null; street_number?: string | null; complement?: string | null;
+          neighborhood?: string | null; city?: string | null; state?: string | null; notes?: string | null;
+          created_by?: string; updated_by?: string; created_at?: string; updated_at?: string;
+        }
+        Relationships: [
+          { foreignKeyName: "suppliers_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] }
+        ]
+      }
       tenant_roles: {
         Row: {
           created_at: string
@@ -318,6 +347,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_supplier_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: { can_view: boolean; can_create: boolean; can_update: boolean; can_deactivate: boolean }[]
+      }
       create_tenant_with_admin: {
         Args: { p_admin_user_id: string; p_name: string; p_slug: string }
         Returns: Json
