@@ -16,6 +16,10 @@ export const Route = createFileRoute("/_authenticated/painel")({
 
 type Indicadores = { suppliers: number | null; documents: number | null; expired: number | null; expiring: number | null; members: number | null; generated: number | null };
 
+function dataLocalISO(data: Date): string {
+  return new Date(data.getTime() - data.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+}
+
 function Painel() {
   const { session } = useAuth();
   const { selecionado, loading: carregandoTenant, bancoPendente, erro: erroTenant } = useTenant();
@@ -29,8 +33,11 @@ function Painel() {
       return;
     }
     setLoading(true); setErro(null);
-    const hoje = new Date().toISOString().slice(0,10);
-    const limite = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+    const agora = new Date();
+    const dataLimite = new Date(agora);
+    dataLimite.setDate(dataLimite.getDate() + 30);
+    const hoje = dataLocalISO(agora);
+    const limite = dataLocalISO(dataLimite);
     const [s, d, expired, expiring, m, g] = await Promise.all([
       db.from("suppliers").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id),
       db.from("supplier_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active"),
