@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loader2, Plus, RefreshCw, Search, ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
+import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ type Candidate = { user_id: string; full_name: string };
 
 function Usuarios() {
   const { selecionado } = useTenant();
+  const { session } = useAuth();
   const [membros, setMembros] = useState<Membro[]>([]);
   const [papeis, setPapeis] = useState<TenantRole[]>([]);
   const [capacidades, setCapacidades] = useState<Capabilities>({
@@ -75,7 +77,7 @@ function Usuarios() {
         can_view: false, can_create: false, can_edit: false, can_assign_role: false, can_suspend: false,
       };
       setCapacidades(allowed);
-      setMembros(allowed.can_view ? (membershipResult.data as unknown as Membro[] ?? []) : []);
+      setMembros(allowed.can_view ? ((membershipResult.data ?? []) as unknown as Membro[]) : []);
       setPapeis(roleResult.data ?? []);
       setPapelId((current) => roleResult.data?.some((role) => role.id === current) ? current : (roleResult.data?.find((role) => role.slug === "admin")?.id ?? roleResult.data?.[0]?.id ?? ""));
     } catch (e) {
@@ -174,7 +176,7 @@ function Usuarios() {
                   <TableCell><p className="font-medium">{m.profiles?.full_name ?? "Usuário"}</p><p className="text-xs text-muted-foreground">ID: {m.user_id.slice(0,8)}</p></TableCell>
                   <TableCell><div className="flex flex-wrap gap-1">{(m.membership_roles ?? []).map((mr, i) => <Badge key={i} variant="secondary">{mr.tenant_roles?.name ?? "—"}</Badge>)}</div></TableCell>
                   <TableCell><Badge variant={m.status === "active" ? "secondary" : "outline"}>{m.status === "active" ? "Ativo" : m.status === "suspended" ? "Suspenso" : m.status === "invited" ? "Convidado" : "Inativo"}</Badge></TableCell>
-                  <TableCell className="text-right">{capacidades.can_suspend && <Button size="sm" variant="outline" onClick={() => void alternarStatus(m)}>{m.status === "active" ? <><UserX className="h-4 w-4"/> Suspender</> : <><UserCheck className="h-4 w-4"/> Reativar</>}</Button>}</TableCell>
+                  <TableCell className="text-right">{capacidades.can_suspend && (m.user_id === session?.user.id ? <span className="text-xs text-muted-foreground">Sua conta</span> : <Button size="sm" variant="outline" onClick={() => void alternarStatus(m)}>{m.status === "active" ? <><UserX className="h-4 w-4"/> Suspender</> : <><UserCheck className="h-4 w-4"/> Reativar</>}</Button>)}</TableCell>
                 </TableRow>)}
               </TableBody>
             </Table>
