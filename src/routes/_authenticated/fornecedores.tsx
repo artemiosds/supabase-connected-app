@@ -114,6 +114,7 @@ function Fornecedores() {
   });
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "active" | "inactive">("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState<"todas" | Categoria>("todas");
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -185,9 +186,10 @@ function Fornecedores() {
         (fornecedor.trade_name ?? "").toLocaleLowerCase("pt-BR").includes(termo) ||
         fornecedor.cnpj.includes(cnpjTermo);
       const correspondeStatus = filtroStatus === "todos" || fornecedor.status === filtroStatus;
-      return correspondeBusca && correspondeStatus;
+      const correspondeCategoria = filtroCategoria === "todas" || fornecedor.category === filtroCategoria;
+      return correspondeBusca && correspondeStatus && correspondeCategoria;
     });
-  }, [fornecedores, busca, filtroStatus]);
+  }, [fornecedores, busca, filtroStatus, filtroCategoria]);
 
   function abrirNovo() {
     setEditando(null);
@@ -356,7 +358,7 @@ function Fornecedores() {
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Total encontrado</p>
+              <p className="text-sm text-muted-foreground">Exibidos</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">{lista.length}</p>
             </div>
             <div className="rounded-lg border bg-card p-4">
@@ -389,6 +391,17 @@ function Fornecedores() {
               <option value="todos">Todas as situações</option>
               <option value="active">Ativos</option>
               <option value="inactive">Inativos</option>
+            </select>
+            <select
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value as typeof filtroCategoria)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              aria-label="Filtrar por categoria"
+            >
+              <option value="todas">Todas as categorias</option>
+              {CATEGORIAS.map((categoria) => (
+                <option key={categoria.value} value={categoria.value}>{categoria.label}</option>
+              ))}
             </select>
           </div>
 
