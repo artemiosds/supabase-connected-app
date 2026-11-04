@@ -145,7 +145,7 @@ function Documentos() {
     try {
       const parsed = new URL(url);
       if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname)) return null;
-      const match = parsed.pathname.match(/\\/d\\/([^/]+)/);
+      const match = parsed.pathname.match(/\/d\/([^/]+)/);
       return match?.[1] ?? parsed.searchParams.get("id");
     } catch {
       return null;
@@ -154,7 +154,7 @@ function Documentos() {
 
   async function importarModelo(file?: File) {
     if (!file) return;
-    if (!/\\.(txt|md)$/i.test(file.name)) {
+    if (!/\.(txt|md)$/i.test(file.name)) {
       toast.error("Importe um modelo em arquivo .txt ou .md. Arquivos Word precisam ser copiados para o campo de texto.");
       return;
     }
@@ -165,7 +165,7 @@ function Documentos() {
     try {
       const text = await file.text();
       setConteudoModelo(text);
-      if (!tituloModelo.trim()) setTituloModelo(file.name.replace(/\\.(txt|md)$/i, "").slice(0,180));
+      if (!tituloModelo.trim()) setTituloModelo(file.name.replace(/\.(txt|md)$/i, "").slice(0,180));
       toast.success("Texto do modelo importado.");
     } catch {
       toast.error("Não foi possível ler o arquivo. Copie e cole o conteúdo no campo de texto.");
