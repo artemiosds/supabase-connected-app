@@ -145,7 +145,7 @@ function Organizacoes() {
         setErroAdministradores(
           perfisResult.error?.message ??
             adminsGlobaisResult.error?.message ??
-            "Nao foi possivel carregar os usuarios cadastrados.",
+            "Não foi possível carregar os usuários cadastrados.",
         );
       } else {
         const idsAdministradoresGlobais = new Set(
@@ -166,7 +166,7 @@ function Organizacoes() {
     void carregarAdministradores().catch((error: unknown) => {
       if (!ativo) return;
       setErroAdministradores(
-        error instanceof Error ? error.message : "Nao foi possivel carregar os usuarios.",
+        error instanceof Error ? error.message : "Não foi possível carregar os usuários.",
       );
       setAdministradores([]);
       setAdminUserId("");
@@ -183,7 +183,7 @@ function Organizacoes() {
     setErroCriacao(null);
 
     if (!adminUserId) {
-      setErroCriacao("Selecione um usuario cadastrado para administrar esta organizacao.");
+      setErroCriacao("Selecione um usuário cadastrado para administrar esta organização.");
       return;
     }
 
@@ -198,7 +198,7 @@ function Organizacoes() {
       if (error) {
         if (bancoNaoConfigurado(error.message)) {
           setErroCriacao(
-            "A estrutura da Fase 1 ainda nao foi implantada. A migracao precisa ser aprovada antes de criar organizacoes.",
+            "A estrutura da Fase 1 ainda não foi implantada. A migração precisa ser aprovada antes de criar organizações.",
           );
         } else {
           setErroCriacao(error.message);
@@ -206,7 +206,7 @@ function Organizacoes() {
         return;
       }
 
-      toast.success("Organizacao criada com sucesso.");
+      toast.success("Organização criada com sucesso.");
       setAberto(false);
       setNome("");
       setSlug("");
@@ -214,7 +214,7 @@ function Organizacoes() {
       recarregar();
     } catch (error) {
       setErroCriacao(
-        error instanceof Error ? error.message : "Nao foi possivel criar a organizacao.",
+        error instanceof Error ? error.message : "Não foi possível criar a organização.",
       );
     } finally {
       setCriando(false);
@@ -285,8 +285,8 @@ function Organizacoes() {
                       <SelectValue
                         placeholder={
                           carregandoAdministradores
-                            ? "Carregando usuarios..."
-                            : "Selecione um usuario cadastrado"
+                            ? "Carregando usuários..."
+                            : "Selecione um usuário cadastrado"
                         }
                       />
                     </SelectTrigger>
@@ -378,8 +378,8 @@ function Organizacoes() {
                 <TableRow>
                   <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
                     {isPlatformAdmin
-                      ? "Nenhuma organizacao ainda. Crie a primeira para comecar."
-                      : "Voce ainda nao possui uma organizacao vinculada."}
+                      ? "Nenhuma organização ainda. Crie a primeira para começar."
+                      : "Você ainda não possui uma organização vinculada."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -404,7 +404,7 @@ function Organizacoes() {
                             ? "Suspensa"
                             : t.status === "closed"
                               ? "Encerrada"
-                              : "Situacao desconhecida"}
+                              : "Situação desconhecida"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
