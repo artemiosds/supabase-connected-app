@@ -151,12 +151,7 @@ function SeletorOrganizacao() {
 
   if (tenants.length === 0) {
     return (
-      <span className="text-sm text-muted-foreground">
-        Nenhuma organização —{" "}
-        <Link to="/organizacoes" className="text-primary underline-offset-4 hover:underline">
-          criar
-        </Link>
-      </span>
+      <span className="text-sm text-muted-foreground">Nenhuma organização vinculada</span>
     );
   }
 
