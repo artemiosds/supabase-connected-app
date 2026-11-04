@@ -672,6 +672,14 @@ export type Database = {
         }[]
       }
       is_valid_cnpj: { Args: { p_cnpj: string }; Returns: boolean }
+      list_tenant_admin_candidates: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       normalize_cnpj: { Args: { p_cnpj: string }; Returns: string }
     }
     Enums: {
