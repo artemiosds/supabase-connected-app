@@ -654,6 +654,13 @@ export type Database = {
           can_view: boolean
         }[]
       }
+      get_tenant_settings_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          can_edit: boolean
+          can_view: boolean
+        }[]
+      }
       get_tenant_user_capabilities: {
         Args: { p_tenant_id: string }
         Returns: {
