@@ -15,3 +15,12 @@
 - Supabase Security Advisor reports `public.rls_auto_enable()` as `SECURITY DEFINER` and executable by `anon` and `authenticated`. It is attached to the DDL event trigger `ensure_rls`. Do not remove the event trigger blindly; review and revoke direct API execution while preserving its internal event-trigger operation.
 - No performance advisor findings were returned during this review.
 - No database SQL, migration, RLS policy, trigger, or privilege was changed in this review.
+
+
+## Security follow-up (2026-11-04)
+
+- The database Security Advisor still reports direct `EXECUTE` grants on `public.rls_auto_enable()` for `anon` and `authenticated`. It is owned by `postgres` and attached to the enabled `ensure_rls` DDL event trigger.
+- A minimal migration script was added at `supabase/migrations/20261104020000_restrict_rls_auto_enable_execute.sql`. It revokes direct API execution and performs an in-transaction disposable-table test to prove automatic RLS remains enabled. The database deployment action was blocked by the execution security controls; **this migration is committed but NOT applied**. Current DB ACLs remain unchanged and the migration history remains empty.
+- The Phase 1 candidate SQL was tightened for data minimization: `profiles` stores only `full_name` in this phase (no CPF/phone columns), and changes to `platform_admins` produce global audit events with `tenant_id = NULL`. These changes are in the updated review package, not installed in SMS2.
+- No Phase 1 tenant tables, policies, profile triggers, roles, or bootstrap records were installed.
+- SQL parser/runtime validation remains pending: this environment did not have PostgreSQL/`psql` available, and external package installation for a parser was unavailable.
