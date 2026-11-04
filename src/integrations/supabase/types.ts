@@ -681,6 +681,10 @@ export type Database = {
         }[]
       }
       normalize_cnpj: { Args: { p_cnpj: string }; Returns: string }
+      set_tenant_member_role: {
+        Args: { p_membership_id: string; p_role_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       membership_status: "active" | "inactive" | "suspended" | "invited"
