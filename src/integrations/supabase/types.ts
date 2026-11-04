@@ -55,6 +55,132 @@ export type Database = {
           },
         ]
       }
+      document_templates: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_documents: {
+        Row: {
+          content_snapshot: string
+          created_at: string
+          created_by: string
+          id: string
+          signature_statement: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_email: string | null
+          signed_name: string | null
+          status: string
+          supplier_id: string | null
+          template_id: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          content_snapshot: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          signature_statement?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_email?: string | null
+          signed_name?: string | null
+          status?: string
+          supplier_id?: string | null
+          template_id?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          content_snapshot?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          signature_statement?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_email?: string | null
+          signed_name?: string | null
+          status?: string
+          supplier_id?: string | null
+          template_id?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       membership_roles: {
         Row: {
           created_at: string
@@ -167,6 +293,164 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_documents: {
+        Row: {
+          created_at: string
+          created_by: string
+          document_type: string
+          drive_file_id: string | null
+          expires_at: string | null
+          external_url: string | null
+          id: string
+          issue_date: string | null
+          notes: string | null
+          status: string
+          storage_provider: string
+          supplier_id: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          drive_file_id?: string | null
+          expires_at?: string | null
+          external_url?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          status?: string
+          storage_provider?: string
+          supplier_id: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          drive_file_id?: string | null
+          expires_at?: string | null
+          external_url?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          status?: string
+          storage_provider?: string
+          supplier_id?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          category: string
+          city: string | null
+          cnpj: string
+          complement: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          id: string
+          legal_name: string
+          neighborhood: string | null
+          notes: string | null
+          postal_code: string | null
+          state: string | null
+          status: string
+          street: string | null
+          street_number: string | null
+          tenant_id: string
+          trade_name: string | null
+          updated_at: string
+          updated_by: string
+          website: string | null
+        }
+        Insert: {
+          category?: string
+          city?: string | null
+          cnpj: string
+          complement?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          legal_name: string
+          neighborhood?: string | null
+          notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          tenant_id: string
+          trade_name?: string | null
+          updated_at?: string
+          updated_by?: string
+          website?: string | null
+        }
+        Update: {
+          category?: string
+          city?: string | null
+          cnpj?: string
+          complement?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          legal_name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          tenant_id?: string
+          trade_name?: string | null
+          updated_at?: string
+          updated_by?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_memberships: {
         Row: {
           created_at: string
@@ -242,35 +526,6 @@ export type Database = {
           },
         ]
       }
-      suppliers: {
-        Row: {
-          id: string; tenant_id: string; cnpj: string; legal_name: string; trade_name: string | null;
-          category: string; status: string; contact_name: string | null; contact_phone: string | null;
-          contact_email: string | null; website: string | null; postal_code: string | null;
-          street: string | null; street_number: string | null; complement: string | null;
-          neighborhood: string | null; city: string | null; state: string | null; notes: string | null;
-          created_by: string; updated_by: string; created_at: string; updated_at: string;
-        }
-        Insert: {
-          id?: string; tenant_id: string; cnpj: string; legal_name: string; trade_name?: string | null;
-          category?: string; status?: string; contact_name?: string | null; contact_phone?: string | null;
-          contact_email?: string | null; website?: string | null; postal_code?: string | null;
-          street?: string | null; street_number?: string | null; complement?: string | null;
-          neighborhood?: string | null; city?: string | null; state?: string | null; notes?: string | null;
-          created_by?: string; updated_by?: string; created_at?: string; updated_at?: string;
-        }
-        Update: {
-          id?: string; tenant_id?: string; cnpj?: string; legal_name?: string; trade_name?: string | null;
-          category?: string; status?: string; contact_name?: string | null; contact_phone?: string | null;
-          contact_email?: string | null; website?: string | null; postal_code?: string | null;
-          street?: string | null; street_number?: string | null; complement?: string | null;
-          neighborhood?: string | null; city?: string | null; state?: string | null; notes?: string | null;
-          created_by?: string; updated_by?: string; created_at?: string; updated_at?: string;
-        }
-        Relationships: [
-          { foreignKeyName: "suppliers_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] }
-        ]
-      }
       tenant_roles: {
         Row: {
           created_at: string
@@ -314,30 +569,48 @@ export type Database = {
       }
       tenants: {
         Row: {
+          cnpj: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           created_by: string
           id: string
+          municipality: string | null
           name: string
           slug: string
+          state: string | null
           status: Database["public"]["Enums"]["tenant_status"]
+          street: string | null
           updated_at: string
         }
         Insert: {
+          cnpj?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by: string
           id?: string
+          municipality?: string | null
           name: string
           slug: string
+          state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
+          street?: string | null
           updated_at?: string
         }
         Update: {
+          cnpj?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string
           id?: string
+          municipality?: string | null
           name?: string
           slug?: string
+          state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
+          street?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -347,14 +620,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_supplier_capabilities: {
-        Args: { p_tenant_id: string }
-        Returns: { can_view: boolean; can_create: boolean; can_update: boolean; can_deactivate: boolean }[]
+      add_tenant_member: {
+        Args: { p_role_id: string; p_tenant_id: string; p_user_id: string }
+        Returns: string
       }
       create_tenant_with_admin: {
         Args: { p_admin_user_id: string; p_name: string; p_slug: string }
         Returns: Json
       }
+      find_tenant_user_by_email: {
+        Args: { p_email: string; p_tenant_id: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
+      get_document_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          can_create: boolean
+          can_manage_templates: boolean
+          can_sign: boolean
+          can_update: boolean
+          can_view: boolean
+        }[]
+      }
+      get_supplier_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          can_create: boolean
+          can_deactivate: boolean
+          can_update: boolean
+          can_view: boolean
+        }[]
+      }
+      get_tenant_user_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          can_assign_role: boolean
+          can_create: boolean
+          can_edit: boolean
+          can_suspend: boolean
+          can_view: boolean
+        }[]
+      }
+      is_valid_cnpj: { Args: { p_cnpj: string }; Returns: boolean }
+      normalize_cnpj: { Args: { p_cnpj: string }; Returns: string }
     }
     Enums: {
       membership_status: "active" | "inactive" | "suspended" | "invited"
