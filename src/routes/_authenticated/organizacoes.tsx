@@ -83,6 +83,7 @@ function Organizacoes() {
   const [erroAdministradores, setErroAdministradores] = useState<string | null>(null);
   const [verificandoPermissao, setVerificandoPermissao] = useState(true);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [erroPermissao, setErroPermissao] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
   const [erroCriacao, setErroCriacao] = useState<string | null>(null);
 
@@ -99,6 +100,7 @@ function Organizacoes() {
       }
 
       setVerificandoPermissao(true);
+      setErroPermissao(null);
       const { data, error } = await db
         .from("platform_admins")
         .select("user_id")
@@ -107,6 +109,7 @@ function Organizacoes() {
         .maybeSingle();
 
       if (!ativo) return;
+      if (error) setErroPermissao(error.message);
       setIsPlatformAdmin(!error && data?.user_id === session.user.id);
       setVerificandoPermissao(false);
     }
@@ -114,6 +117,7 @@ function Organizacoes() {
     void verificarPermissao().catch(() => {
       if (!ativo) return;
       setIsPlatformAdmin(false);
+      setErroPermissao(error instanceof Error ? error.message : "Não foi possível verificar a permissão global.");
       setVerificandoPermissao(false);
     });
 
@@ -127,7 +131,12 @@ function Organizacoes() {
     let ativo = true;
 
     async function carregarAdministradores() {
-      if (!aberto || !isPlatformAdmin) return;
+      if (!isPlatformAdmin) {
+        setAdministradores([]);
+        setAdminUserId("");
+        setCarregandoAdministradores(false);
+        return;
+      }
 
       setCarregandoAdministradores(true);
       setErroAdministradores(null);
@@ -176,7 +185,7 @@ function Organizacoes() {
     return () => {
       ativo = false;
     };
-  }, [aberto, isPlatformAdmin]);
+  }, [isPlatformAdmin]);
 
   async function aoCriar(e: FormEvent) {
     e.preventDefault();
@@ -242,8 +251,7 @@ function Organizacoes() {
               <DialogHeader>
                 <DialogTitle>Nova organizacao</DialogTitle>
                 <DialogDescription>
-                  Escolha um usuario ja cadastrado para ser o administrador municipal. O
-                  superadministrador global nao sera incluido como membro desta organizacao.
+                  Escolha uma segunda conta já cadastrada para ser o administrador municipal. A conta global não será membro desta Secretaria.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={aoCriar} className="space-y-4">
@@ -305,8 +313,7 @@ function Organizacoes() {
                     !carregandoAdministradores &&
                     !erroAdministradores && (
                       <p className="text-xs text-muted-foreground">
-                        Nenhum usuario disponivel. Cadastre o futuro administrador e abra esta tela
-                        novamente.
+                        Nenhum usuário municipal disponível. Crie outra conta pela tela pública de cadastro, em uma janela anônima ou outro navegador, confirme o e-mail e atualize esta página.
                       </p>
                     )}
                 </div>
@@ -339,6 +346,31 @@ function Organizacoes() {
           </Dialog>
         )}
       </div>
+
+      {!verificandoPermissao && !isPlatformAdmin && (
+        <Alert variant="destructive">
+          <AlertTitle>Esta conta não está reconhecida como administradora global</AlertTitle>
+          <AlertDescription>
+            {erroPermissao
+              ? `Não foi possível consultar sua permissão no banco: ${erroPermissao}`
+              : `O login atual (${session?.user.email ?? "sem e-mail"}) não possui a autorização de administrador global no Supabase SMS2. Saia da aplicação e entre com a conta global cadastrada.`}
+            O acesso ao editor do Lovable não substitui o usuário de acesso da aplicação.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isPlatformAdmin && !carregandoAdministradores && administradores.length === 0 && (
+        <Alert>
+          <AlertTitle>Falta cadastrar o primeiro administrador municipal</AlertTitle>
+          <AlertDescription>
+            Sua conta global está reconhecida. No momento não existe outra conta de usuário para
+            receber a administração da Secretaria. Abra uma janela anônima ou outro navegador,
+            acesse a tela de cadastro público, crie uma segunda conta com outro e-mail, confirme
+            esse e-mail e depois volte aqui e atualize a página. A conta global não pode ser
+            selecionada como administrador municipal.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {bancoPendente && (
         <Alert variant="destructive">
