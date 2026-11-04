@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
 type Membro = {
   id: string;
   status: string;
-  profiles?: { display_name: string } | null;
+  profiles?: { full_name: string } | null;
   membership_roles?: { tenant_roles?: { name: string } }[];
 };
 
@@ -58,7 +58,7 @@ function Usuarios() {
     try {
       const { data, error } = await db
         .from("tenant_memberships")
-        .select("id, status, profiles(display_name), membership_roles(tenant_roles(name))")
+        .select("id, status, profiles(full_name), membership_roles(tenant_roles(name))")
         .eq("tenant_id", selecionado.id);
       if (error) throw error;
       setMembros((data ?? []) as unknown as Membro[]);
@@ -139,7 +139,7 @@ function Usuarios() {
               membros.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="font-medium text-foreground">
-                    {m.profiles?.display_name || "—"}
+                    {m.profiles?.full_name || "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -152,14 +152,20 @@ function Usuarios() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={m.status === "ativo" ? "secondary" : "outline"}
+                      variant={m.status === "active" ? "secondary" : "outline"}
                       className={
-                        m.status === "ativo"
+                        m.status === "active"
                           ? ""
                           : "border-muted-foreground/40 text-muted-foreground"
                       }
                     >
-                      {m.status === "ativo" ? "Ativo" : m.status === "suspenso" ? "Suspenso" : "Revogado"}
+                      {m.status === "active"
+                        ? "Ativo"
+                        : m.status === "suspended"
+                          ? "Suspenso"
+                          : m.status === "invited"
+                            ? "Convidado"
+                            : "Inativo"}
                     </Badge>
                   </TableCell>
                 </TableRow>
