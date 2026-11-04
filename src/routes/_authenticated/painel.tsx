@@ -14,30 +14,40 @@ export const Route = createFileRoute("/_authenticated/painel")({
   component: Painel,
 });
 
-type Indicadores = { suppliers: number | null; documents: number | null; expiring: number | null; members: number | null; generated: number | null };
+type Indicadores = { suppliers: number | null; documents: number | null; expired: number | null; expiring: number | null; members: number | null; generated: number | null };
 
 function Painel() {
   const { session } = useAuth();
   const { selecionado, loading: carregandoTenant, bancoPendente, erro: erroTenant } = useTenant();
-  const [indicadores, setIndicadores] = useState<Indicadores>({ suppliers: null, documents: null, expiring: null, members: null, generated: null });
+  const [indicadores, setIndicadores] = useState<Indicadores>({ suppliers: null, documents: null, expired: null, expiring: null, members: null, generated: null });
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
-      setIndicadores({ suppliers: null, documents: null, expiring: null, members: null, generated: null });
+      setIndicadores({ suppliers: null, documents: null, expired: null, expiring: null, members: null, generated: null });
       return;
     }
     setLoading(true); setErro(null);
-    const [s, d, e, m, g] = await Promise.all([
+    const hoje = new Date().toISOString().slice(0,10);
+    const limite = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+    const [s, d, expired, expiring, m, g] = await Promise.all([
       db.from("suppliers").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id),
       db.from("supplier_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active"),
-      db.from("supplier_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active").not("expires_at","is",null).lte("expires_at", new Date(Date.now()+30*86400000).toISOString().slice(0,10)),
+      db.from("supplier_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active").not("expires_at","is",null).lt("expires_at", hoje),
+      db.from("supplier_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active").not("expires_at","is",null).gte("expires_at", hoje).lte("expires_at", limite),
       db.from("tenant_memberships").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id).eq("status","active"),
       db.from("generated_documents").select("id", { count: "exact", head: true }).eq("tenant_id", selecionado.id),
     ]);
-    const failures = [s,d,e,m,g].filter((x) => x.error).map((x) => x.error?.message ?? "");
-    setIndicadores({ suppliers: s.error ? null : s.count ?? 0, documents: d.error ? null : d.count ?? 0, expiring: e.error ? null : e.count ?? 0, members: m.error ? null : m.count ?? 0, generated: g.error ? null : g.count ?? 0 });
+    const failures = [s,d,expired,expiring,m,g].filter((x) => x.error).map((x) => x.error?.message ?? "");
+    setIndicadores({
+      suppliers: s.error ? null : s.count ?? 0,
+      documents: d.error ? null : d.count ?? 0,
+      expired: expired.error ? null : expired.count ?? 0,
+      expiring: expiring.error ? null : expiring.count ?? 0,
+      members: m.error ? null : m.count ?? 0,
+      generated: g.error ? null : g.count ?? 0
+    });
     if (failures.length) setErro("Alguns indicadores não puderam ser consultados com as permissões deste perfil.");
     setLoading(false);
   }, [selecionado?.id]);
@@ -56,9 +66,10 @@ function Painel() {
       ) : (
         <>
           {erro && <Alert><AlertTitle>Indicadores parciais</AlertTitle><AlertDescription>{erro}</AlertDescription></Alert>}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Fornecedores</CardTitle><Truck className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><p className="text-2xl font-semibold">{loading ? "…" : indicadores.suppliers ?? "—"}</p><Link to="/fornecedores" className="text-xs text-primary hover:underline">Abrir cadastro</Link></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Documentos ativos</CardTitle><FileText className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><p className="text-2xl font-semibold">{loading ? "…" : indicadores.documents ?? "—"}</p><Link to="/documentos" className="text-xs text-primary hover:underline">Ver documentos</Link></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Documentos vencidos</CardTitle><AlertTriangle className="h-4 w-4 text-destructive"/></CardHeader><CardContent><p className="text-2xl font-semibold text-destructive">{loading ? "…" : indicadores.expired ?? "—"}</p><Link to="/documentos" className="text-xs text-primary hover:underline">Regularizar</Link></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Vencem em 30 dias</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><p className="text-2xl font-semibold">{loading ? "…" : indicadores.expiring ?? "—"}</p><Link to="/documentos" className="text-xs text-primary hover:underline">Ver prazos</Link></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Usuários ativos</CardTitle><Users className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><p className="text-2xl font-semibold">{loading ? "…" : indicadores.members ?? "—"}</p><Link to="/usuarios" className="text-xs text-primary hover:underline">Gerenciar acessos</Link></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Documentos gerados</CardTitle><Clock className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><p className="text-2xl font-semibold">{loading ? "…" : indicadores.generated ?? "—"}</p><Link to="/documentos" className="text-xs text-primary hover:underline">Abrir histórico</Link></CardContent></Card>
