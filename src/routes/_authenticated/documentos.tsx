@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { AlertCircle, CalendarClock, CheckCircle2, ExternalLink, FilePlus2, FileText, Loader2, Pencil, Plus, Printer, ShieldCheck, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, FilePlus2, FileText, Loader2, Pencil, Plus, Printer, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
@@ -289,7 +289,7 @@ function Documentos() {
             </TabsContent>
             <TabsContent value="modelos" className="mt-4">
               <div className="grid gap-3 md:grid-cols-2">
-                {modelos.map((m) => <Card key={m.id}><CardHeader><CardTitle className="text-base">{m.title}</CardTitle>{m.description && <p className="text-sm text-muted-foreground">{m.description}</p>}</CardHeader><CardContent><p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">{m.content}</p><p className="mt-3 text-xs text-muted-foreground">Campos: {{fornecedor}}, {{nome_fantasia}}, {{cnpj}}, {{secretaria}}, {{municipio}}, {{data}}, {{usuario}}</p></CardContent></Card>)}
+                {modelos.map((m) => <Card key={m.id}><CardHeader><CardTitle className="text-base">{m.title}</CardTitle>{m.description && <p className="text-sm text-muted-foreground">{m.description}</p>}</CardHeader><CardContent><p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">{m.content}</p><p className="mt-3 text-xs text-muted-foreground">Campos: {"{{fornecedor}}"}, {"{{nome_fantasia}}"}, {"{{cnpj}}"}, {"{{secretaria}}"}, {"{{municipio}}"}, {"{{data}}"}, {"{{usuario}}"}</p></CardContent></Card>)}
                 {modelos.length === 0 && <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um texto-base.</div>}
               </div>
             </TabsContent>
@@ -334,7 +334,7 @@ function Documentos() {
           <form onSubmit={salvarModelo} className="space-y-4">
             <div className="space-y-2"><Label>Nome do modelo *</Label><Input required minLength={2} maxLength={180} value={tituloModelo} onChange={(e) => setTituloModelo(e.target.value)}/></div>
             <div className="space-y-2"><Label>Descrição</Label><Input maxLength={1000} value={descricaoModelo} onChange={(e) => setDescricaoModelo(e.target.value)}/></div>
-            <div className="space-y-2"><Label>Texto do modelo *</Label><Textarea required rows={12} maxLength={50000} value={conteudoModelo} onChange={(e) => setConteudoModelo(e.target.value)} placeholder="Use {{fornecedor}}, {{cnpj}}, {{secretaria}}, {{municipio}}, {{data}} e {{usuario}} como campos automáticos."/></div>
+            <div className="space-y-2"><Label>Texto do modelo *</Label><Textarea required rows={12} maxLength={50000} value={conteudoModelo} onChange={(e) => setConteudoModelo(e.target.value)} placeholder="Use {"{{fornecedor}}"}, {"{{cnpj}}"}, {"{{secretaria}}"}, {"{{municipio}}"}, {"{{data}}"} e {"{{usuario}}"} como campos automáticos."/></div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>Cancelar</Button><Button type="submit" disabled={salvandoModelo}>{salvandoModelo ? <Loader2 className="h-4 w-4 animate-spin"/> : <Plus className="h-4 w-4"/>} Salvar modelo</Button></DialogFooter>
           </form>
         </DialogContent>
