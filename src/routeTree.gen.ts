@@ -147,6 +147,8 @@ export interface FileRouteTypes {
     | '/painel'
     | '/usuarios'
     | '/fornecedores'
+    | '/documentos'
+    | '/historico'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -158,6 +160,8 @@ export interface FileRouteTypes {
     | '/organizacoes'
     | '/painel'
     | '/usuarios'
+    | '/documentos'
+    | '/historico'
   id:
     | '__root__'
     | '/'
@@ -171,6 +175,8 @@ export interface FileRouteTypes {
     | '/_authenticated/painel'
     | '/_authenticated/usuarios'
     | '/_authenticated/fornecedores'
+    | '/_authenticated/documentos'
+    | '/_authenticated/historico'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
