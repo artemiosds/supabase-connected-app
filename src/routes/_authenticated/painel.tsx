@@ -18,7 +18,7 @@ type Indicadores = { suppliers: number | null; documents: number | null; expirin
 
 function Painel() {
   const { session } = useAuth();
-  const { tenants, selecionado, loading: carregandoTenant, bancoPendente, erro: erroTenant } = useTenant();
+  const { selecionado, loading: carregandoTenant, bancoPendente, erro: erroTenant } = useTenant();
   const [indicadores, setIndicadores] = useState<Indicadores>({ suppliers: null, documents: null, expiring: null, members: null, generated: null });
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
