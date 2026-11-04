@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Loader2, Plus, RefreshCw, Search, ShieldCheck, UserCheck, UserX } from "lucide-react";
+import { Loader2, Pencil, Plus, RefreshCw, Search, ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,7 +24,7 @@ type Membership = Tables<"tenant_memberships">;
 type TenantRole = Tables<"tenant_roles">;
 type Membro = Membership & {
   profiles?: { full_name: string } | null;
-  membership_roles?: { tenant_roles?: { name: string; slug: string } | null }[];
+  membership_roles?: { role_id: string; tenant_roles?: { name: string; slug: string } | null }[];
 };
 type Capabilities = {
   can_view: boolean;
@@ -46,6 +46,9 @@ function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [dialogoAberto, setDialogoAberto] = useState(false);
+  const [membroEmEdicao, setMembroEmEdicao] = useState<Membro | null>(null);
+  const [novoPapelId, setNovoPapelId] = useState("");
+  const [salvandoPapel, setSalvandoPapel] = useState(false);
   const [email, setEmail] = useState("");
   const [candidato, setCandidato] = useState<Candidate | null>(null);
   const [papelId, setPapelId] = useState("");
@@ -65,7 +68,7 @@ function Usuarios() {
       const [cap, membershipResult, roleResult] = await Promise.all([
         db.rpc("get_tenant_user_capabilities", { p_tenant_id: selecionado.id }),
         db.from("tenant_memberships")
-          .select("id,tenant_id,user_id,status,created_at,updated_at,profiles(full_name),membership_roles(tenant_roles(name,slug))")
+          .select("id,tenant_id,user_id,status,created_at,updated_at,profiles(full_name),membership_roles(role_id,tenant_roles(name,slug))")
           .eq("tenant_id", selecionado.id)
           .order("created_at", { ascending: false }),
         db.from("tenant_roles").select("*").eq("tenant_id", selecionado.id).order("name"),
@@ -131,6 +134,34 @@ function Usuarios() {
     } finally { setVinculando(false); }
   }
 
+  function abrirEdicaoPapel(membro: Membro) {
+    const roleId = membro.membership_roles?.[0]?.role_id ?? "";
+    setMembroEmEdicao(membro);
+    setNovoPapelId(roleId);
+    setErro(null);
+  }
+
+  async function salvarPapel() {
+    if (!membroEmEdicao || !novoPapelId || !selecionado || salvandoPapel) return;
+    setSalvandoPapel(true);
+    setErro(null);
+    try {
+      const { error: roleError } = await db.rpc("set_tenant_member_role", {
+        p_membership_id: membroEmEdicao.id,
+        p_role_id: novoPapelId,
+      });
+      if (roleError) throw roleError;
+      toast.success("Papel do usuário atualizado.");
+      setMembroEmEdicao(null);
+      setNovoPapelId("");
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSalvandoPapel(false);
+    }
+  }
+
   async function alternarStatus(membro: Membro) {
     if (!selecionado || !capacidades.can_suspend) return;
     const novoStatus = membro.status === "active" ? "suspended" : "active";
@@ -176,7 +207,22 @@ function Usuarios() {
                   <TableCell><p className="font-medium">{m.profiles?.full_name ?? "Usuário"}</p><p className="text-xs text-muted-foreground">ID: {m.user_id.slice(0,8)}</p></TableCell>
                   <TableCell><div className="flex flex-wrap gap-1">{(m.membership_roles ?? []).map((mr, i) => <Badge key={i} variant="secondary">{mr.tenant_roles?.name ?? "—"}</Badge>)}</div></TableCell>
                   <TableCell><Badge variant={m.status === "active" ? "secondary" : "outline"}>{m.status === "active" ? "Ativo" : m.status === "suspended" ? "Suspenso" : m.status === "invited" ? "Convidado" : "Inativo"}</Badge></TableCell>
-                  <TableCell className="text-right">{capacidades.can_suspend && (m.user_id === session?.user.id ? <span className="text-xs text-muted-foreground">Sua conta</span> : <Button size="sm" variant="outline" onClick={() => void alternarStatus(m)}>{m.status === "active" ? <><UserX className="h-4 w-4"/> Suspender</> : <><UserCheck className="h-4 w-4"/> Reativar</>}</Button>)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {capacidades.can_assign_role && m.user_id !== session?.user.id && (
+                        <Button size="sm" variant="outline" onClick={() => abrirEdicaoPapel(m)} aria-label={`Alterar papel de ${m.profiles?.full_name ?? "usuário"}`}>
+                          <Pencil className="h-3.5 w-3.5"/> Papel
+                        </Button>
+                      )}
+                      {m.user_id === session?.user.id ? (
+                        <span className="px-2 text-xs text-muted-foreground">Sua conta</span>
+                      ) : capacidades.can_suspend ? (
+                        <Button size="sm" variant="outline" onClick={() => void alternarStatus(m)}>
+                          {m.status === "active" ? <><UserX className="h-4 w-4"/> Suspender</> : <><UserCheck className="h-4 w-4"/> Reativar</>}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TableCell>
                 </TableRow>)}
               </TableBody>
             </Table>
@@ -200,6 +246,41 @@ function Usuarios() {
             <div className="space-y-2"><Label>Papel na Secretaria</Label><Select value={papelId} onValueChange={setPapelId}><SelectTrigger><SelectValue placeholder="Selecione o papel"/></SelectTrigger><SelectContent>{papeis.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setDialogoAberto(false)} disabled={vinculando}>Cancelar</Button><Button onClick={() => void vincularConta()} disabled={!candidato || !papelId || vinculando}>{vinculando ? <Loader2 className="h-4 w-4 animate-spin"/> : <UserCheck className="h-4 w-4"/>} Confirmar vínculo</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!membroEmEdicao} onOpenChange={(open) => {
+        if (!open && !salvandoPapel) { setMembroEmEdicao(null); setNovoPapelId(""); }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar papel do usuário</DialogTitle>
+            <DialogDescription>
+              {membroEmEdicao?.profiles?.full_name ?? "Usuário"} · {selecionado.nome}.
+              A alteração será registrada no histórico da Secretaria.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Novo papel</Label>
+            <Select value={novoPapelId} onValueChange={setNovoPapelId}>
+              <SelectTrigger><SelectValue placeholder="Selecione o papel"/></SelectTrigger>
+              <SelectContent>
+                {papeis.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              A Secretaria precisa manter pelo menos um administrador ativo. O banco impede rebaixar o último administrador.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setMembroEmEdicao(null); setNovoPapelId(""); }} disabled={salvandoPapel}>Cancelar</Button>
+            <Button onClick={() => void salvarPapel()} disabled={!novoPapelId || !membroEmEdicao || novoPapelId === membroEmEdicao.membership_roles?.[0]?.role_id || salvandoPapel}>
+              {salvandoPapel ? <Loader2 className="h-4 w-4 animate-spin"/> : <Pencil className="h-4 w-4"/>}
+              Salvar papel
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
