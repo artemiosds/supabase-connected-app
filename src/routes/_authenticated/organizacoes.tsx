@@ -114,7 +114,7 @@ function Organizacoes() {
       setVerificandoPermissao(false);
     }
 
-    void verificarPermissao().catch(() => {
+    void verificarPermissao().catch((error: unknown) => {
       if (!ativo) return;
       setIsPlatformAdmin(false);
       setErroPermissao(error instanceof Error ? error.message : "Não foi possível verificar a permissão global.");
@@ -356,6 +356,7 @@ function Organizacoes() {
               : `O login atual (${session?.user.email ?? "sem e-mail"}) não possui a autorização de administrador global no Supabase SMS2. Saia da aplicação e entre com a conta global cadastrada.`}
             O acesso ao editor do Lovable não substitui o usuário de acesso da aplicação.
           </AlertDescription>
+          <div className="mt-3"><Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>Verificar novamente</Button></div>
         </Alert>
       )}
 
@@ -369,6 +370,7 @@ function Organizacoes() {
             esse e-mail e depois volte aqui e atualize a página. A conta global não pode ser
             selecionada como administrador municipal.
           </AlertDescription>
+          <div className="mt-3"><Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>Atualizar lista de usuários</Button></div>
         </Alert>
       )}
 
