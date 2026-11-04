@@ -160,6 +160,7 @@ export interface FileRouteTypes {
     | '/organizacoes'
     | '/painel'
     | '/usuarios'
+    | '/fornecedores'
     | '/documentos'
     | '/historico'
   id:
