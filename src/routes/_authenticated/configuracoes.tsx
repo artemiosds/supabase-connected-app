@@ -46,11 +46,11 @@ function Configuracoes() {
       try {
         const { data, error } = await db
           .from("profiles")
-          .select("display_name")
+          .select("full_name")
           .eq("id", session.user.id)
           .maybeSingle();
         if (error) throw error;
-        if (ativo && data?.display_name) setNome(data.display_name);
+        if (ativo && data?.full_name) setNome(data.full_name);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (ativo && bancoNaoConfigurado(msg)) {
@@ -72,7 +72,7 @@ function Configuracoes() {
     setSalvando(true);
     const { error } = await db
       .from("profiles")
-      .update({ display_name: nome.trim() })
+      .update({ full_name: nome.trim() })
       .eq("id", session!.user.id);
     setSalvando(false);
     if (error) {
@@ -112,6 +112,9 @@ function Configuracoes() {
               <Label htmlFor="nome-perfil">Nome de exibição</Label>
               <Input
                 id="nome-perfil"
+                required
+                minLength={1}
+                maxLength={160}
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Como seu nome aparece na plataforma"
