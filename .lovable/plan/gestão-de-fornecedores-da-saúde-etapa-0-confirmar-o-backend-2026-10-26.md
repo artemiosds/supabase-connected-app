@@ -1,28 +1,29 @@
-# Gestão de Fornecedores da Saúde — Etapa 0: confirmar o backend (Fase 1 bloqueada)
+# Gestão de Fornecedores da Saúde — Etapa 0 concluída (registro atualizado em 2026-11-04)
 
-## Diagnóstico (somente leitura, já feito)
-- **Nenhum projeto Supabase está conectado a este projeto Lovable.** O status informado pela plataforma é "no_supabase".
-- Não há arquivos de integração com o Supabase, nem endereço do projeto configurado, nem biblioteca do Supabase instalada.
-- O projeto é o modelo inicial em branco. Nenhuma tabela, política RLS ou migração foi criada.
-- O fato de sua conta Supabase estar autenticada **não** significa que um projeto foi escolhido para este app. Não há nenhum projeto selecionado.
-- Também não é possível ver o banco do projeto dedicado daqui: o diagnóstico de tabelas, autenticação, RLS e funções só pode ser feito depois que ele for conectado.
+## Conexões confirmadas
+- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`.
+- Projeto Supabase conectado: `SMS2` (`rwbbznqtocunzrpcvjvk`), ativo e saudável, região `sa-east-1`.
+- Banco: PostgreSQL 17.11.
+- Projeto Lovable: `0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798`. O preview acompanha o commit da branch `main`; Lovable é usado apenas para visualização.
 
-## Opções (nada será criado ou alterado sem sua escolha)
-1. **Conectar o seu projeto Supabase dedicado (sua "Opção 1")**: em Configurações do projeto → Integrações → Supabase, você escolhe o projeto dedicado "Gestão de Fornecedores da Saúde". Por segurança, quem seleciona o projeto é você, não eu. Confira o nome antes de confirmar para não ligar o banco de outro sistema.
-2. **Lovable Cloud** (backend gerenciado criado automaticamente): neste momento está desativado para o seu usuário. Além disso, contraria a decisão de usar o projeto existente. Fica listado só como referência.
+## Diagnóstico somente leitura
+- Nenhuma tabela foi encontrada nos schemas `public` e `app_auth`; o histórico de migrações do projeto está vazio.
+- Foi identificada a função `public.rls_auto_enable()` (`SECURITY DEFINER`) ligada ao event trigger `ensure_rls`. O Supabase Security Advisor alerta que `anon` e `authenticated` possuem `EXECUTE` nessa função. É necessário revisar a exposição direta sem desativar o mecanismo interno de RLS.
+- O projeto já contém frontend de autenticação, painel, organizações, usuários e configurações; não é um projeto em branco.
 
-## Depois que o projeto dedicado estiver conectado
-1. Confirmo o nome e o estado da conexão, sem mostrar chaves.
-2. Faço o diagnóstico somente leitura: tabelas existentes, usuários e configurações de login, políticas RLS, funções, triggers e storage.
-3. Apresento um plano técnico separado da Fase 1, que só será executado com sua aprovação explícita. Ele trará:
-   - Estrutura: organizações (tenants), perfis, vínculos usuário↔organização com papel, tabela de papéis separada, administrador global separado dos administradores das organizações, log de auditoria.
-   - SQL completo das migrações e das políticas RLS, com funções de segurança e verificações também no servidor.
-   - Testes de isolamento: um usuário da organização A tentando ler ou alterar dados da organização B, acesso sem login e tentativa de se promover a administrador.
-   - Limites do plano gratuito do Supabase (projeto pausa por inatividade, limites de banco, storage e e-mails de autenticação), sem nenhum serviço pago.
+## Fase 1 — escopo mantido
+- Fundação multitenant: perfis, tenants, associações, catálogo de permissões, papéis por tenant, superadministrador global, RLS e auditoria.
+- A criação de tenants é exclusiva de superadministrador global e seleciona um usuário já cadastrado para ser administrador municipal. O superadministrador global não é transformado em membro de cada tenant.
+- Fornecedores, documentos, PDFs, assinaturas, Google Drive, cobrança e VPS permanecem fora do escopo atual.
 
-## Fora do escopo agora
-Fornecedores, documentos, PDFs, assinaturas, Google Drive, cobrança e VPS. Nada disso será tratado como pronto.
+## Estado de implantação
+- A migração da Fase 1 NÃO foi executada. O banco SMS2 permanece sem tabelas de aplicação e sem migrações da Fase 1.
+- Nenhuma alteração de schema, RLS, trigger, função ou privilégio foi realizada no Supabase nesta revisão.
+- A proposta SQL precisa de validação em PostgreSQL isolado, revisão final e autorização explícita antes de qualquer implantação.
+- Após aprovação e implantação: regenerar os tipos TypeScript, remover o alias temporário em `src/lib/db.ts` e executar testes funcionais de isolamento entre dois tenants.
 
-## Detalhes técnicos
-- Verificações feitas: ausência de `src/integrations/supabase`, da pasta `supabase/`, de `SUPABASE_URL` e de `@supabase/*` no package.json. `LOVABLE_BROWSER_AUTH_STATUS=no_supabase`.
-- Aprovar este plano autoriza apenas os itens 1 e 2 de leitura acima. Nenhuma migração será executada.
+## Regras permanentes
+- Fonte oficial do código: GitHub, branch `main`.
+- Alterações de aplicação são feitas no repositório; Lovable é somente preview.
+- Nenhuma migração ou alteração no banco sem autorização explícita.
+- Preservar o frontend existente e implementar somente o escopo autorizado.
