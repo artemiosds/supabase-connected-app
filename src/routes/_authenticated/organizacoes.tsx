@@ -68,6 +68,7 @@ function gerarSlug(nome: string): string {
 type PerfilAdministrador = {
   id: string;
   full_name: string;
+  email: string;
 };
 
 function Organizacoes() {
@@ -141,28 +142,20 @@ function Organizacoes() {
       setCarregandoAdministradores(true);
       setErroAdministradores(null);
 
-      const [perfisResult, adminsGlobaisResult] = await Promise.all([
-        db.from("profiles").select("id, full_name").order("full_name", { ascending: true }),
-        db.from("platform_admins").select("user_id"),
-      ]);
+      const { data, error: candidatesError } = await db.rpc("list_tenant_admin_candidates");
 
       if (!ativo) return;
 
-      if (perfisResult.error || adminsGlobaisResult.error) {
+      if (candidatesError) {
         setAdministradores([]);
         setAdminUserId("");
-        setErroAdministradores(
-          perfisResult.error?.message ??
-            adminsGlobaisResult.error?.message ??
-            "Não foi possível carregar os usuários cadastrados.",
-        );
+        setErroAdministradores(candidatesError.message);
       } else {
-        const idsAdministradoresGlobais = new Set(
-          (adminsGlobaisResult.data ?? []).map((admin) => admin.user_id),
-        );
-        const disponiveis = (perfisResult.data ?? []).filter(
-          (perfil) => !idsAdministradoresGlobais.has(perfil.id),
-        );
+        const disponiveis = (data ?? []).map((perfil) => ({
+          id: perfil.user_id,
+          full_name: perfil.full_name,
+          email: perfil.email ?? "",
+        }));
         setAdministradores(disponiveis);
         setAdminUserId((atual) =>
           disponiveis.some((perfil) => perfil.id === atual) ? atual : (disponiveis[0]?.id ?? ""),
@@ -301,7 +294,7 @@ function Organizacoes() {
                     <SelectContent>
                       {administradores.map((perfil) => (
                         <SelectItem key={perfil.id} value={perfil.id}>
-                          {perfil.full_name} · {perfil.id.slice(0, 8)}
+                          {perfil.full_name} · {perfil.email}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -313,7 +306,7 @@ function Organizacoes() {
                     !carregandoAdministradores &&
                     !erroAdministradores && (
                       <p className="text-xs text-muted-foreground">
-                        Nenhum usuário municipal disponível. Crie outra conta pela tela pública de cadastro, em uma janela anônima ou outro navegador, confirme o e-mail e atualize esta página.
+                        Nenhuma conta municipal confirmada disponível. Crie outra conta pela tela pública de cadastro, confirme o e-mail e atualize esta página.
                       </p>
                     )}
                 </div>
