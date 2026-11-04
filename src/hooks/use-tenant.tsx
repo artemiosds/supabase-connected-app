@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { db, bancoNaoConfigurado } from "@/lib/db";
+import { useAuth } from "@/hooks/use-auth";
 
 export type Tenant = {
   id: string;
@@ -37,6 +38,7 @@ const TenantContext = createContext<TenantContextValue | null>(null);
 const CHAVE_ORG = "gfs:organizacao-id";
 
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,29 +46,64 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [bancoPendente, setBancoPendente] = useState(false);
 
   const carregar = useCallback(async () => {
+    if (!session?.user.id) {
+      setTenants([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setErro(null);
     setBancoPendente(false);
+
     try {
-      const { data, error } = await db
-        .from("tenant_memberships")
-        .select("tenant:tenants(id, name, slug, status)")
-        .eq("status", "active");
-      if (error) throw error;
-      const registros = (data ?? []) as unknown as { tenant: TenantRow | null }[];
-      const lista = registros
-        .map(({ tenant }) =>
-          tenant
-            ? {
-                id: tenant.id,
-                nome: tenant.name,
-                slug: tenant.slug,
-                status: tenant.status,
-              }
-            : null,
-        )
-        .filter((t): t is Tenant => t !== null);
-      setTenants(lista);
+      // O superadministrador global nao e membro municipal. Sua visao vem de tenants;
+      // usuarios comuns continuam vendo apenas organizacoes dos seus vinculos ativos.
+      const adminResult = await db
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", session.user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (adminResult.error) throw adminResult.error;
+
+      if (adminResult.data) {
+        const { data, error } = await db
+          .from("tenants")
+          .select("id, name, slug, status")
+          .order("name", { ascending: true });
+        if (error) throw error;
+
+        const lista = ((data ?? []) as TenantRow[]).map((tenant) => ({
+          id: tenant.id,
+          nome: tenant.name,
+          slug: tenant.slug,
+          status: tenant.status,
+        }));
+        setTenants(lista);
+      } else {
+        const { data, error } = await db
+          .from("tenant_memberships")
+          .select("tenant:tenants(id, name, slug, status)")
+          .eq("status", "active");
+        if (error) throw error;
+
+        const registros = (data ?? []) as unknown as { tenant: TenantRow | null }[];
+        const lista = registros
+          .map(({ tenant }) =>
+            tenant
+              ? {
+                  id: tenant.id,
+                  nome: tenant.name,
+                  slug: tenant.slug,
+                  status: tenant.status,
+                }
+              : null,
+          )
+          .filter((t): t is Tenant => t !== null);
+        setTenants(lista);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setTenants([]);
@@ -78,7 +115,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session?.user.id]);
 
   useEffect(() => {
     carregar();
