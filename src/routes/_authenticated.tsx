@@ -14,6 +14,7 @@ import {
   LogOut,
   Settings,
   Users,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { TenantProvider, useTenant } from "@/hooks/use-tenant";
@@ -31,6 +32,7 @@ const itensMenu = [
   { para: "/painel", rotulo: "Painel", icone: LayoutDashboard },
   { para: "/organizacoes", rotulo: "Organizações", icone: Building2 },
   { para: "/usuarios", rotulo: "Usuários", icone: Users },
+  { para: "/fornecedores", rotulo: "Fornecedores", icone: Truck },
   { para: "/configuracoes", rotulo: "Configurações", icone: Settings },
 ] as const;
 
