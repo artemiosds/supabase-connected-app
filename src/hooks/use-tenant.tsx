@@ -15,6 +15,13 @@ export type Tenant = {
   status: string;
 };
 
+type TenantRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+};
+
 type TenantContextValue = {
   tenants: Tenant[];
   selecionado: Tenant | null;
@@ -39,18 +46,30 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
+    setBancoPendente(false);
     try {
       const { data, error } = await db
         .from("tenant_memberships")
         .select("tenant:tenants(id, name, slug, status)")
-        .eq("status", "ativo");
+        .eq("status", "active");
       if (error) throw error;
-      const lista = ((data ?? []) as unknown as { tenant: Tenant | null }[])
-        .map((linha) => linha.tenant)
+      const registros = (data ?? []) as unknown as { tenant: TenantRow | null }[];
+      const lista = registros
+        .map(({ tenant }) =>
+          tenant
+            ? {
+                id: tenant.id,
+                nome: tenant.name,
+                slug: tenant.slug,
+                status: tenant.status,
+              }
+            : null,
+        )
         .filter((t): t is Tenant => t !== null);
       setTenants(lista);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      setTenants([]);
       if (bancoNaoConfigurado(msg)) {
         setBancoPendente(true);
       } else {
