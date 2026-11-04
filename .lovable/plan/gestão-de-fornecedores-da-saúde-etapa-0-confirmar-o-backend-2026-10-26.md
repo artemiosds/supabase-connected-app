@@ -1,29 +1,37 @@
-# Gestão de Fornecedores da Saúde — Etapa 0 concluída (registro atualizado em 2026-11-04)
+# Gestão de Fornecedores da Saúde — Fase 1 aplicada (registro atualizado em 2026-11-04)
 
 ## Conexões confirmadas
 - Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`.
-- Projeto Supabase conectado: `SMS2` (`rwbbznqtocunzrpcvjvk`), ativo e saudável, região `sa-east-1`.
-- Banco: PostgreSQL 17.11.
-- Projeto Lovable: `0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798`. O preview acompanha o commit da branch `main`; Lovable é usado apenas para visualização.
+- Supabase: `SMS2` (`rwbbznqtocunzrpcvjvk`), PostgreSQL 17.11.
+- Lovable: `0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798`, somente preview.
+- O código oficial está no GitHub; alterações visuais ou funcionais devem ser feitas no repositório.
 
-## Diagnóstico somente leitura
-- Nenhuma tabela foi encontrada nos schemas `public` e `app_auth`; o histórico de migrações do projeto está vazio.
-- Foi identificada a função `public.rls_auto_enable()` (`SECURITY DEFINER`) ligada ao event trigger `ensure_rls`. O Supabase Security Advisor alerta que `anon` e `authenticated` possuem `EXECUTE` nessa função. É necessário revisar a exposição direta sem desativar o mecanismo interno de RLS.
-- O projeto já contém frontend de autenticação, painel, organizações, usuários e configurações; não é um projeto em branco.
+## Fase 1 — banco aplicado
+Quatro migrações foram aplicadas e aparecem no histórico do Supabase:
+- `20261104131949_restrict_rls_auto_enable_execute`
+- `20261104132106_phase1_multitenant_foundation`
+- `20261104132238_phase1_rls_rpc_and_indexes_hardening`
+- `20261104132351_phase1_provisioning_rpc_auth_lookup_fix`
 
-## Fase 1 — escopo mantido
-- Fundação multitenant: perfis, tenants, associações, catálogo de permissões, papéis por tenant, superadministrador global, RLS e auditoria.
-- A criação de tenants é exclusiva de superadministrador global e seleciona um usuário já cadastrado para ser administrador municipal. O superadministrador global não é transformado em membro de cada tenant.
-- Fornecedores, documentos, PDFs, assinaturas, Google Drive, cobrança e VPS permanecem fora do escopo atual.
+As nove tabelas da fundação multitenant foram criadas com RLS: profiles, tenants, tenant_memberships, permissions, tenant_roles, tenant_role_permissions, membership_roles, platform_admins e audit_events.
 
-## Estado de implantação
-- A migração da Fase 1 NÃO foi executada. O banco SMS2 permanece sem tabelas de aplicação e sem migrações da Fase 1.
-- Nenhuma alteração de schema, RLS, trigger, função ou privilégio foi realizada no Supabase nesta revisão.
-- A proposta SQL precisa de validação em PostgreSQL isolado, revisão final e autorização explícita antes de qualquer implantação.
-- Após aprovação e implantação: regenerar os tipos TypeScript, remover o alias temporário em `src/lib/db.ts` e executar testes funcionais de isolamento entre dois tenants.
+A integridade entre papel, membro e organização é protegida por FKs compostas. A criação de perfis a partir de auth.users foi testada. A RPC de criação de organização é SECURITY INVOKER e só pode ser chamada por authenticated; a própria função valida superadministrador global e o RLS autoriza as operações necessárias.
 
-## Regras permanentes
-- Fonte oficial do código: GitHub, branch `main`.
-- Alterações de aplicação são feitas no repositório; Lovable é somente preview.
-- Nenhuma migração ou alteração no banco sem autorização explícita.
-- Preservar o frontend existente e implementar somente o escopo autorizado.
+## Testes concluídos
+- Cadastro Auth → criação automática de perfil, incluindo fallback sem metadados de nome.
+- Provisionamento de duas secretarias por superadministrador global.
+- Um administrador municipal não consegue ver as organizações, membros e perfis da outra secretaria.
+- FK composta rejeita vínculo cruzado de papel entre tenants.
+- Administrador municipal não cria papel nativo nem altera permissões do papel admin.
+- Administrador municipal não consegue chamar a RPC de provisionamento.
+- Os testes foram executados em transação e revertidos; nenhum usuário ou tenant fictício permaneceu no banco.
+- Security Advisor sem findings. Restam apenas indicadores INFO de índices sem uso, esperado antes de existir carga real.
+
+## Bootstrap inicial ainda pendente
+No momento não há usuários Auth nem superadministradores globais. A pessoa autorizada deve primeiro criar sua própria conta em `/cadastro`. Depois, o bootstrap controlado está documentado em `supabase/operations/bootstrap_first_platform_admin.sql`. Não há promoção automática em cadastro público.
+
+## Verificação manual necessária
+Confirmar no Supabase Dashboard → Project Settings → API → Exposed schemas que `app_auth` não está listado. A configuração da lista de schemas expostos é da API e precisa de confirmação no painel.
+
+## Fora do escopo
+Fornecedores, documentos, PDFs, assinatura eletrônica, Google Drive, cobrança e VPS permanecem para fases posteriores.
