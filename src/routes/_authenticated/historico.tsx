@@ -15,6 +15,12 @@ export const Route = createFileRoute("/_authenticated/historico")({
 
 type Evento = Tables<"audit_events">;
 
+function camposAlterados(details: unknown): string[] {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+  const fields = (details as { changed_fields?: unknown }).changed_fields;
+  return Array.isArray(fields) ? fields.map(String) : [];
+}
+
 function rotuloEntidade(value: string) {
   const labels: Record<string,string> = {
     suppliers: "Fornecedor",
@@ -58,7 +64,17 @@ function Historico() {
         {loading ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>
         : erro ? <Alert variant="destructive"><AlertTitle>Não foi possível consultar o histórico</AlertTitle><AlertDescription>{erro.includes("permission") || erro.includes("policy") ? "Seu perfil não possui permissão de auditoria nesta Secretaria." : erro}</AlertDescription></Alert>
         : eventos.length === 0 ? <div className="py-10 text-center text-sm text-muted-foreground">Ainda não há eventos registrados.</div>
-        : <div className="divide-y">{eventos.map((e) => <div key={e.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="font-medium">{rotuloEntidade(e.entity)} <span className="font-normal text-muted-foreground">· {e.action === "INSERT" ? "criado" : e.action === "UPDATE" ? "alterado" : e.action.toLowerCase()}</span></p><p className="text-xs text-muted-foreground">Registro: {e.entity_id ?? "—"} · Ator: {e.actor_id ?? "Sistema"}</p>{Array.isArray(e.details?.changed_fields) && <p className="mt-1 text-xs text-muted-foreground">Campos: {(e.details.changed_fields as unknown[]).map(String).join(", ")}</p>}</div><p className="shrink-0 text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString("pt-BR")}</p></div>)}</div>}
+        : <div className="divide-y">{eventos.map((e) => {
+          const fields = camposAlterados(e.details);
+          return <div key={e.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-medium">{rotuloEntidade(e.entity)} <span className="font-normal text-muted-foreground">· {e.action === "INSERT" ? "criado" : e.action === "UPDATE" ? "alterado" : e.action.toLowerCase()}</span></p>
+              <p className="text-xs text-muted-foreground">Registro: {e.entity_id ?? "—"} · Ator: {e.actor_id ?? "Sistema"}</p>
+              {fields.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Campos: {fields.join(", ")}</p>}
+            </div>
+            <p className="shrink-0 text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString("pt-BR")}</p>
+          </div>;
+        })}</div>}
       </CardContent></Card>
       <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5"/> A consulta respeita a permissão de auditoria e o isolamento da Secretaria no banco de dados.</p>
     </div>
