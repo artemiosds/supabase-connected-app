@@ -99,6 +99,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/organizacoes': typeof AuthenticatedOrganizacoesRoute
   '/painel': typeof AuthenticatedPainelRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
