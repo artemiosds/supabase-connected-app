@@ -8,6 +8,8 @@ import {
 import { useEffect } from "react";
 import {
   Building2,
+  FileText,
+  History,
   HeartPulse,
   LayoutDashboard,
   Loader2,
@@ -33,6 +35,8 @@ const itensMenu = [
   { para: "/organizacoes", rotulo: "Organizações", icone: Building2 },
   { para: "/usuarios", rotulo: "Usuários", icone: Users },
   { para: "/fornecedores", rotulo: "Fornecedores", icone: Truck },
+  { para: "/documentos", rotulo: "Documentos e vencimentos", icone: FileText },
+  { para: "/historico", rotulo: "Histórico e auditoria", icone: History },
   { para: "/configuracoes", rotulo: "Configurações", icone: Settings },
 ] as const;
 
