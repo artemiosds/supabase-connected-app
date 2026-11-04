@@ -64,6 +64,7 @@ function Documentos() {
     can_view: false, can_create: false, can_update: false, can_sign: false, can_manage_templates: false,
   });
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [municipioSecretaria, setMunicipioSecretaria] = useState("");
   const [documentos, setDocumentos] = useState<DocumentoFornecedor[]>([]);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [gerados, setGerados] = useState<DocumentoGerado[]>([]);
@@ -99,24 +100,26 @@ function Documentos() {
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
       setCapacidades({ can_view: false, can_create: false, can_update: false, can_sign: false, can_manage_templates: false });
-      setFornecedores([]); setDocumentos([]); setModelos([]); setGerados([]); setLoading(false);
+      setFornecedores([]); setDocumentos([]); setModelos([]); setGerados([]); setMunicipioSecretaria(""); setLoading(false);
       return;
     }
     setLoading(true); setErro(null);
     try {
-      const [cap, suppliers, supplierDocs, templates, generated] = await Promise.all([
+      const [cap, suppliers, supplierDocs, templates, generated, tenantData] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         db.from("suppliers").select("id,legal_name,trade_name,cnpj").eq("tenant_id", selecionado.id).order("legal_name").limit(500),
         db.from("supplier_documents").select("*").eq("tenant_id", selecionado.id).eq("status", "active").order("expires_at", { ascending: true, nullsFirst: false }).limit(500),
         db.from("document_templates").select("*").eq("tenant_id", selecionado.id).eq("is_active", true).order("title"),
         db.from("generated_documents").select("*").eq("tenant_id", selecionado.id).order("created_at", { ascending: false }).limit(200),
+        db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
       ]);
-      for (const result of [cap, suppliers, supplierDocs, templates, generated]) if (result.error) throw result.error;
+      for (const result of [cap, suppliers, supplierDocs, templates, generated, tenantData]) if (result.error) throw result.error;
       setCapacidades(cap.data?.[0] ?? { can_view: false, can_create: false, can_update: false, can_sign: false, can_manage_templates: false });
       setFornecedores(suppliers.data ?? []);
       setDocumentos(supplierDocs.data ?? []);
       setModelos(templates.data ?? []);
       setGerados(generated.data ?? []);
+      setMunicipioSecretaria(tenantData.data?.municipality ?? "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]); setModelos([]); setGerados([]);
@@ -138,6 +141,37 @@ function Documentos() {
     setEmissao(d.issue_date ?? ""); setVencimento(d.expires_at ?? ""); setLinkDocumento(d.external_url ?? "");
     setObservacaoDocumento(d.notes ?? ""); setDialogDocumento(true);
   }
+  function extrairDriveFileId(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname)) return null;
+      const match = parsed.pathname.match(/\\/d\\/([^/]+)/);
+      return match?.[1] ?? parsed.searchParams.get("id");
+    } catch {
+      return null;
+    }
+  }
+
+  async function importarModelo(file?: File) {
+    if (!file) return;
+    if (!/\\.(txt|md)$/i.test(file.name)) {
+      toast.error("Importe um modelo em arquivo .txt ou .md. Arquivos Word precisam ser copiados para o campo de texto.");
+      return;
+    }
+    if (file.size > 50000) {
+      toast.error("O modelo ultrapassa o limite de 50 KB.");
+      return;
+    }
+    try {
+      const text = await file.text();
+      setConteudoModelo(text);
+      if (!tituloModelo.trim()) setTituloModelo(file.name.replace(/\\.(txt|md)$/i, "").slice(0,180));
+      toast.success("Texto do modelo importado.");
+    } catch {
+      toast.error("Não foi possível ler o arquivo. Copie e cole o conteúdo no campo de texto.");
+    }
+  }
+
   async function salvarDocumento(e: FormEvent) {
     e.preventDefault();
     if (!selecionado || !fornecedorId) return;
@@ -146,7 +180,9 @@ function Documentos() {
     const payload = {
       tenant_id: selecionado.id, supplier_id: fornecedorId, title: tituloDocumento.trim(),
       document_type: tipoDocumento, issue_date: emissao || null, expires_at: vencimento || null,
-      external_url: linkDocumento.trim() || null, storage_provider: "external_link",
+      external_url: linkDocumento.trim() || null,
+      storage_provider: extrairDriveFileId(linkDocumento.trim()) ? "google_drive" : "external_link",
+      drive_file_id: extrairDriveFileId(linkDocumento.trim()),
       notes: observacaoDocumento.trim() || null, status: "active",
     };
     const result = documentoEditando
@@ -192,7 +228,7 @@ function Documentos() {
       nome_fantasia: f?.trade_name ?? "",
       cnpj: f?.cnpj ?? "",
       secretaria: selecionado?.nome ?? "",
-      municipio: "",
+      municipio: municipioSecretaria,
       data: new Intl.DateTimeFormat("pt-BR").format(new Date()),
       usuario: session?.user.email ?? "",
     };
@@ -315,7 +351,7 @@ function Documentos() {
           <DialogHeader><DialogTitle>{documentoEditando ? "Editar documento de fornecedor" : "Registrar documento de fornecedor"}</DialogTitle><DialogDescription>Informe o documento, as datas e um link para o arquivo armazenado externamente.</DialogDescription></DialogHeader>
           <form onSubmit={salvarDocumento} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2"><Label>Fornecedor *</Label><Select value={fornecedorId} onValueChange={setFornecedorId}><SelectTrigger><SelectValue placeholder="Selecione o fornecedor"/></SelectTrigger><SelectContent>{fornecedores.map((f) => <SelectItem key={f.id} value={f.id}>{f.legal_name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2 sm:col-span-2"><Label>Fornecedor *</Label><Select value={fornecedorId} onValueChange={setFornecedorId} disabled={!!documentoEditando}><SelectTrigger><SelectValue placeholder="Selecione o fornecedor"/></SelectTrigger><SelectContent>{fornecedores.map((f) => <SelectItem key={f.id} value={f.id}>{f.legal_name}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2 sm:col-span-2"><Label>Título *</Label><Input required minLength={2} maxLength={180} value={tituloDocumento} onChange={(e) => setTituloDocumento(e.target.value)} placeholder="Ex.: Certidão de regularidade fiscal"/></div>
               <div className="space-y-2"><Label>Tipo</Label><Select value={tipoDocumento} onValueChange={setTipoDocumento}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{TIPOS.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Data de emissão</Label><Input type="date" value={emissao} onChange={(e) => setEmissao(e.target.value)}/></div>
@@ -334,6 +370,7 @@ function Documentos() {
           <form onSubmit={salvarModelo} className="space-y-4">
             <div className="space-y-2"><Label>Nome do modelo *</Label><Input required minLength={2} maxLength={180} value={tituloModelo} onChange={(e) => setTituloModelo(e.target.value)}/></div>
             <div className="space-y-2"><Label>Descrição</Label><Input maxLength={1000} value={descricaoModelo} onChange={(e) => setDescricaoModelo(e.target.value)}/></div>
+            <div className="space-y-2"><Label htmlFor="arquivo-modelo">Importar arquivo de texto (.txt ou .md)</Label><Input id="arquivo-modelo" type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(e) => void importarModelo(e.target.files?.[0])}/><p className="text-xs text-muted-foreground">Também é possível copiar e colar o conteúdo de um modelo Word no campo abaixo.</p></div>
             <div className="space-y-2"><Label>Texto do modelo *</Label><Textarea required rows={12} maxLength={50000} value={conteudoModelo} onChange={(e) => setConteudoModelo(e.target.value)} placeholder={'Use {{fornecedor}}, {{cnpj}}, {{secretaria}}, {{municipio}}, {{data}} e {{usuario}} como campos automáticos.'}/></div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>Cancelar</Button><Button type="submit" disabled={salvandoModelo}>{salvandoModelo ? <Loader2 className="h-4 w-4 animate-spin"/> : <Plus className="h-4 w-4"/>} Salvar modelo</Button></DialogFooter>
           </form>
