@@ -1,26 +1,54 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-- [x] Etapa 0: verify Supabase connection (read-only) — connected project: SMS2 (`rwbbznqtocunzrpcvjvk`), active/healthy
-- [x] Connect dedicated Supabase project — done: user connected `SMS2` (ref rwbbznqtocunzrpcvjvk)
-- [x] Read-only diagnosis — PostgreSQL 17.11; no application tables in public, no Phase 1 migration history. Existing public event-trigger function `rls_auto_enable()` / event trigger `ensure_rls` were found and must be reviewed.
-- [x] Phase 1 frontend foundation — auth, dashboard, organizations, users and settings are implemented. Code was aligned to `active` membership/tenant states and `profiles.full_name`; global superadmins can list all tenants without becoming tenant members, and organization creation selects a pre-registered local administrator.
-- [ ] Phase 1 database foundation (tenants, memberships, roles, permissions, audit) — NOT EXECUTED. Candidate SQL still requires isolated PostgreSQL validation and explicit approval before touching SMS2.
-- [ ] Post-migration wiring: regenerate `src/integrations/supabase/types.ts`, remove temporary alias in `src/lib/db.ts`, and verify organization creation/membership flows end-to-end.
-- [ ] Phase 1 isolation tests — run cross-tenant probes in a disposable PostgreSQL environment before production deployment.
-- [ ] Bootstrap first platform superadmin — controlled one-time SQL after migration approval; never a public signup rule.
+## Estado da plataforma — Fase 1
 
+- Projeto Supabase existente: **SMS2** (`rwbbznqtocunzrpcvjvk`), região `sa-east-1`, PostgreSQL 17.11.
+- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`.
+- Lovable: somente preview, sincronizado com o commit do GitHub.
 
-## Read-only security findings (2026-11-04 UTC)
+### Fundação multitenant no banco
 
-- Supabase Security Advisor reports `public.rls_auto_enable()` as `SECURITY DEFINER` and executable by `anon` and `authenticated`. It is attached to the DDL event trigger `ensure_rls`. Do not remove the event trigger blindly; review and revoke direct API execution while preserving its internal event-trigger operation.
-- No performance advisor findings were returned during this review.
-- No database SQL, migration, RLS policy, trigger, or privilege was changed in this review.
+<badge>Aplicada no SMS2</badge>
 
+Migrações registradas no Supabase:
+1. `20261104131949_restrict_rls_auto_enable_execute` — revogou execução direta da função interna `public.rls_auto_enable()` para as roles da API, preservando o event trigger `ensure_rls`.
+2. `20261104132106_phase1_multitenant_foundation` — criou perfis, tenants, vínculos, papéis, permissões, superadministradores e auditoria; aplicou RLS e chaves estrangeiras compostas.
+3. `20261104132238_phase1_rls_rpc_and_indexes_hardening` — converteu a RPC de provisionamento para SECURITY INVOKER, explicitou a política de criação de tenants, separou políticas de leitura/escrita e adicionou índices das FKs.
+4. `20261104132351_phase1_provisioning_rpc_auth_lookup_fix` — removeu consulta direta a `auth.users` da RPC; a validação usa `profiles`, cuja FK garante a relação com Auth.
 
-## Security follow-up (2026-11-04)
+### Verificações concluídas
 
-- The database Security Advisor still reports direct `EXECUTE` grants on `public.rls_auto_enable()` for `anon` and `authenticated`. It is owned by `postgres` and attached to the enabled `ensure_rls` DDL event trigger.
-- A minimal migration script was added at `supabase/migrations/20261104020000_restrict_rls_auto_enable_execute.sql`. It revokes direct API execution and performs an in-transaction disposable-table test to prove automatic RLS remains enabled. The database deployment action was blocked by the execution security controls; **this migration is committed but NOT applied**. Current DB ACLs remain unchanged and the migration history remains empty.
-- The Phase 1 candidate SQL was tightened for data minimization: `profiles` stores only `full_name` in this phase (no CPF/phone columns), and changes to `platform_admins` produce global audit events with `tenant_id = NULL`. These changes are in the updated review package, not installed in SMS2.
-- No Phase 1 tenant tables, policies, profile triggers, roles, or bootstrap records were installed.
-- SQL parser/runtime validation remains pending: this environment did not have PostgreSQL/`psql` available, and external package installation for a parser was unavailable.
+- Nove tabelas da Fase 1 existem e estão com RLS habilitado.
+- O catálogo contém nove permissões.
+- As FKs compostas vinculam o papel e o membro ao mesmo tenant.
+- O trigger `auth.users → profiles` foi testado com metadados preenchidos e sem nome; fallback de nome funcionou.
+- Testes transacionais criaram duas secretarias descartáveis, verificaram isolamento entre A e B, tentativa de papel cruzado, proteção de papéis nativos, proteção das permissões do papel admin e recusa de provisionamento por administrador municipal.
+- Os testes terminaram com ROLLBACK. Verificação posterior confirmou zero usuários, perfis, tenants, vínculos, superadministradores e eventos de auditoria persistidos.
+- Security Advisor: sem findings.
+- Performance Advisor: apenas avisos INFO de índices ainda não utilizados, esperado porque o banco ainda não tem carga operacional. Não há mais avisos de FKs sem índice nem políticas permissivas duplicadas.
+
+### Bootstrap inicial — pendente de conta real
+
+- No momento da implantação, `auth.users`, `profiles` e `platform_admins` estão vazios.
+- O primeiro superadministrador NÃO foi criado: é necessário que a pessoa autorizada crie sua conta pela tela `/cadastro` e confirme o e-mail.
+- Depois disso, executar uma única vez `supabase/operations/bootstrap_first_platform_admin.sql`, substituindo pelo e-mail exato da conta criada. O script falha se não encontrar exatamente uma conta/perfil ou se já existir qualquer registro em `platform_admins`.
+- Não existe promoção automática para superadministrador no cadastro público.
+
+### Verificação manual do PostgREST
+
+- `app_auth` foi criado como schema interno e não recebeu grants para `anon`.
+- Confirme no Dashboard do Supabase, em **Project Settings → API → Exposed schemas**, que `app_auth` NÃO está listado. A configuração de schemas expostos pertence à API e não é comprovada apenas pelo SQL da migração.
+- Consultas somente-leitura: `supabase/operations/phase1_post_deploy_verification.sql`.
+
+## Frontend e preview
+
+- Tipos TypeScript foram regenerados a partir do banco instalado em `src/integrations/supabase/types.ts`.
+- `src/lib/db.ts` usa agora o cliente Supabase tipado, sem o alias genérico temporário.
+- Compatibilidade alinhada: `active`/ `suspended`, `profiles.full_name`, parâmetros da RPC, seleção de administrador municipal e visão global do superadmin.
+- GitHub `main` é a fonte oficial; Lovable é somente preview.
+
+## Próximas fases
+
+- Depois do bootstrap, entrar como superadministrador e criar a primeira Secretaria usando a tela Organizações.
+- Em seguida, validar o fluxo no preview e convidar/registrar o administrador municipal.
+- Fornecedores, documentos, PDFs, assinaturas, Google Drive, cobrança e VPS continuam fora da Fase 1.
