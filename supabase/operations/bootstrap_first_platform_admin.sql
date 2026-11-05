@@ -1,4 +1,5 @@
--- BOOTSTRAP INICIAL DO SUPERADMINISTRADOR GLOBAL
+-- BOOTSTRAP INICIAL DO SUPERADMINISTRADOR GLOBAL — SOMENTE INSTALAÇÃO NOVA
+-- SMS2 JÁ POSSUI ADMINISTRADOR GLOBAL ATIVO E CONFIRMADO. NÃO EXECUTAR NESTE AMBIENTE.
 -- Executar uma única vez no SQL Editor do Supabase SMS2, somente depois que
 -- a pessoa autorizada criar e confirmar sua própria conta pela tela /cadastro.
 -- Substitua apenas o e-mail abaixo. Nunca inclua senha, JWT ou service_role.
