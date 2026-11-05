@@ -217,8 +217,7 @@ function Documentos() {
         ),
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
       ]);
-      for (const result of [cap, tenantData])
-        if (result.error) throw result.error;
+      for (const result of [cap, tenantData]) if (result.error) throw result.error;
       setCapacidades(
         cap.data?.[0] ?? {
           can_view: false,
