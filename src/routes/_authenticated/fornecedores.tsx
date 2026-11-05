@@ -151,14 +151,21 @@ function Fornecedores() {
         return;
       }
 
-      const { data, error: erroFornecedores } = await db
-        .from("suppliers")
-        .select("*")
-        .eq("tenant_id", selecionado.id)
-        .order("legal_name", { ascending: true })
-        .limit(200);
-      if (erroFornecedores) throw erroFornecedores;
-      setFornecedores(data ?? []);
+      const todosFornecedores: Fornecedor[] = [];
+      const tamanhoPagina = 500;
+      for (let inicio = 0; ; inicio += tamanhoPagina) {
+        const { data, error: erroFornecedores } = await db
+          .from("suppliers")
+          .select("*")
+          .eq("tenant_id", selecionado.id)
+          .order("legal_name", { ascending: true })
+          .range(inicio, inicio + tamanhoPagina - 1);
+        if (erroFornecedores) throw erroFornecedores;
+        const pagina = data ?? [];
+        todosFornecedores.push(...pagina);
+        if (pagina.length < tamanhoPagina) break;
+      }
+      setFornecedores(todosFornecedores);
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setFornecedores([]);
@@ -442,7 +449,7 @@ function Fornecedores() {
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">A listagem exibe até 200 fornecedores por vez. O acesso aos dados é validado no banco de dados por Secretaria e permissão.</p>
+          <p className="text-xs text-muted-foreground">Os fornecedores são consultados em páginas sucessivas para não ocultar registros após um limite fixo. O acesso aos dados é validado no banco por Secretaria e permissão.</p>
         </>
       )}
 
