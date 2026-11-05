@@ -29,7 +29,10 @@ export function validarCnpj(valor: string): boolean {
 }
 
 export function formatarCnpj(valor: string): string {
-  const cnpj = valor.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
+  const cnpj = valor
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 14);
   if (cnpj.length <= 2) return cnpj;
   if (cnpj.length <= 5) return `${cnpj.slice(0, 2)}.${cnpj.slice(2)}`;
   if (cnpj.length <= 8) return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5)}`;

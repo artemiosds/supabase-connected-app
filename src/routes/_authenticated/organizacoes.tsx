@@ -118,7 +118,9 @@ function Organizacoes() {
     void verificarPermissao().catch((error: unknown) => {
       if (!ativo) return;
       setIsPlatformAdmin(false);
-      setErroPermissao(error instanceof Error ? error.message : "Não foi possível verificar a permissão global.");
+      setErroPermissao(
+        error instanceof Error ? error.message : "Não foi possível verificar a permissão global.",
+      );
       setVerificandoPermissao(false);
     });
 
@@ -244,7 +246,8 @@ function Organizacoes() {
               <DialogHeader>
                 <DialogTitle>Nova organizacao</DialogTitle>
                 <DialogDescription>
-                  Escolha uma segunda conta já cadastrada para ser o administrador municipal. A conta global não será membro desta Secretaria.
+                  Escolha uma segunda conta já cadastrada para ser o administrador municipal. A
+                  conta global não será membro desta Secretaria.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={aoCriar} className="space-y-4">
@@ -306,7 +309,8 @@ function Organizacoes() {
                     !carregandoAdministradores &&
                     !erroAdministradores && (
                       <p className="text-xs text-muted-foreground">
-                        Nenhuma conta municipal confirmada disponível. Crie outra conta pela tela pública de cadastro, confirme o e-mail e atualize esta página.
+                        Nenhuma conta municipal confirmada disponível. Crie outra conta pela tela
+                        pública de cadastro, confirme o e-mail e atualize esta página.
                       </p>
                     )}
                 </div>
@@ -324,10 +328,7 @@ function Organizacoes() {
                   <Button
                     type="submit"
                     disabled={
-                      criando ||
-                      carregandoAdministradores ||
-                      !adminUserId ||
-                      !!erroAdministradores
+                      criando || carregandoAdministradores || !adminUserId || !!erroAdministradores
                     }
                   >
                     {criando && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
@@ -349,7 +350,16 @@ function Organizacoes() {
               : `O login atual (${session?.user.email ?? "sem e-mail"}) não possui a autorização de administrador global no Supabase SMS2. Saia da aplicação e entre com a conta global cadastrada.`}
             O acesso ao editor do Lovable não substitui o usuário de acesso da aplicação.
           </AlertDescription>
-          <div className="mt-3"><Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>Verificar novamente</Button></div>
+          <div className="mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              Verificar novamente
+            </Button>
+          </div>
         </Alert>
       )}
 
@@ -363,7 +373,16 @@ function Organizacoes() {
             esse e-mail e depois volte aqui e atualize a página. A conta global não pode ser
             selecionada como administrador municipal.
           </AlertDescription>
-          <div className="mt-3"><Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>Atualizar lista de usuários</Button></div>
+          <div className="mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              Atualizar lista de usuários
+            </Button>
+          </div>
         </Alert>
       )}
 
@@ -398,12 +417,18 @@ function Organizacoes() {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-10 text-center">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
+                    <Loader2
+                      className="mx-auto h-5 w-5 animate-spin text-muted-foreground"
+                      aria-hidden
+                    />
                   </TableCell>
                 </TableRow>
               ) : tenants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     {isPlatformAdmin
                       ? "Nenhuma organização ainda. Crie a primeira para começar."
                       : "Você ainda não possui uma organização vinculada."}

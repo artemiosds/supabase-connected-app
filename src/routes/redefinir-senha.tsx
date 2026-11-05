@@ -100,7 +100,10 @@ function RedefinirSenha() {
           />
         </div>
         {erro && (
-          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {erro}
           </p>
         )}

@@ -63,8 +63,8 @@ function Cadastro() {
         <div className="flex items-start gap-3 rounded-md bg-primary/10 p-3 text-sm">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
           <p className="text-foreground">
-            Confirme seu cadastro acessando o link enviado a <strong>{email}</strong>. Depois,
-            faça login normalmente.
+            Confirme seu cadastro acessando o link enviado a <strong>{email}</strong>. Depois, faça
+            login normalmente.
           </p>
         </div>
         <Button asChild variant="outline" className="mt-4 w-full">
@@ -113,7 +113,10 @@ function Cadastro() {
           <p className="text-xs text-muted-foreground">Mínimo de 6 caracteres.</p>
         </div>
         {erro && (
-          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {erro}
           </p>
         )}
