@@ -9,27 +9,31 @@ import { routeTree } from "@/routeTree.gen";
 describe("App routing", () => {
   it("matches a page for / instead of falling back to not found", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-
     const matches = router.matchRoutes("/");
-
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
   it("has the public auth routes", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-
     for (const path of ["/entrar", "/cadastro", "/recuperar-senha", "/redefinir-senha"]) {
       const matches = router.matchRoutes(path);
       expect(matches.at(-1)?.routeId, `rota ${path}`).not.toBe(rootRouteId);
     }
   });
 
-  it("has the authenticated pages under the _authenticated layout", () => {
+  it("has every authenticated business module under the authenticated layout", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-
-    for (const path of ["/painel", "/organizacoes", "/usuarios", "/configuracoes"]) {
+    for (const path of [
+      "/painel",
+      "/organizacoes",
+      "/fornecedores",
+      "/documentos",
+      "/usuarios",
+      "/historico",
+      "/configuracoes",
+    ]) {
       const matches = router.matchRoutes(path);
-      const ids = matches.map((m) => m.routeId);
+      const ids = matches.map((match) => match.routeId);
       expect(ids, `rota ${path}`).toContain("/_authenticated");
       expect(ids, `rota ${path}`).toContain(`/_authenticated${path}`);
     }
