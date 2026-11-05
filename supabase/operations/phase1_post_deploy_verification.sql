@@ -1,7 +1,7 @@
--- VERIFICACAO SOMENTE-LEITURA DA FASE 1 — SMS2
+-- VERIFICACAO SOMENTE-LEITURA DA FUNDAÇÃO MULTITENANT E DAS FASES 1/2 — SMS2
 -- Não altera dados nem schema.
 
--- 1) Nove tabelas e estado RLS.
+-- 1) Tabelas da fundação, fornecedores, documentos e estado RLS.
 SELECT c.relname AS table_name,
        c.relrowsecurity AS rls_enabled,
        c.relforcerowsecurity AS rls_forced
@@ -10,7 +10,8 @@ JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public'
   AND c.relname IN (
     'profiles','tenants','tenant_memberships','permissions','tenant_roles',
-    'tenant_role_permissions','membership_roles','platform_admins','audit_events'
+    'tenant_role_permissions','membership_roles','platform_admins','audit_events',
+    'suppliers','supplier_documents','document_templates','generated_documents'
   )
 ORDER BY c.relname;
 
