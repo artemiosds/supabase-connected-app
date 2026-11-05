@@ -11,11 +11,12 @@ export function validarCnpj(valor: string): boolean {
   if (/^(.)\1{13}$/.test(cnpj)) return false;
 
   const calcularDigito = (base: string, pesos: number[]): number => {
-    const soma = [...base].reduce(
-      (total, caractere, indice) =>
-        total + (caractere.charCodeAt(0) - 48) * pesos[indice],
-      0,
-    );
+    if (base.length !== pesos.length) return Number.NaN;
+    const soma = [...base].reduce((total, caractere, indice) => {
+      const peso = pesos[indice];
+      if (peso === undefined) return Number.NaN;
+      return total + (caractere.charCodeAt(0) - 48) * peso;
+    }, 0);
     const resto = soma % 11;
     return resto < 2 ? 0 : 11 - resto;
   };
