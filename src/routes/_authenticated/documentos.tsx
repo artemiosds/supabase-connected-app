@@ -57,6 +57,24 @@ function situacaoVencimento(data: string | null): { label: string; variant: "des
   return { label: "Em dia", variant: "outline" };
 }
 
+async function carregarTodasAsPaginas<T>(
+  consultar: (inicio: number, fim: number) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<T[]> {
+  const registros: T[] = [];
+  const tamanhoPagina = 500;
+
+  for (let inicio = 0; ; inicio += tamanhoPagina) {
+    const { data, error } = await consultar(inicio, inicio + tamanhoPagina - 1);
+    if (error) throw error;
+    const pagina = data ?? [];
+    registros.push(...pagina);
+    if (pagina.length < tamanhoPagina) return registros;
+  }
+}
+
 function Documentos() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
@@ -107,10 +125,19 @@ function Documentos() {
     try {
       const [cap, suppliers, supplierDocs, templates, generated, tenantData] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
-        db.from("suppliers").select("id,legal_name,trade_name,cnpj").eq("tenant_id", selecionado.id).order("legal_name").limit(500),
-        db.from("supplier_documents").select("*").eq("tenant_id", selecionado.id).eq("status", "active").order("expires_at", { ascending: true, nullsFirst: false }).limit(500),
-        db.from("document_templates").select("*").eq("tenant_id", selecionado.id).eq("is_active", true).order("title"),
-        db.from("generated_documents").select("*").eq("tenant_id", selecionado.id).order("created_at", { ascending: false }).limit(200),
+        carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
+          db.from("suppliers").select("id,legal_name,trade_name,cnpj")
+            .eq("tenant_id", selecionado.id).order("legal_name").range(inicio, fim)),
+        carregarTodasAsPaginas<DocumentoFornecedor>((inicio, fim) =>
+          db.from("supplier_documents").select("*")
+            .eq("tenant_id", selecionado.id).eq("status", "active")
+            .order("expires_at", { ascending: true, nullsFirst: false }).range(inicio, fim)),
+        carregarTodasAsPaginas<Modelo>((inicio, fim) =>
+          db.from("document_templates").select("*")
+            .eq("tenant_id", selecionado.id).eq("is_active", true).order("title").range(inicio, fim)),
+        carregarTodasAsPaginas<DocumentoGerado>((inicio, fim) =>
+          db.from("generated_documents").select("*")
+            .eq("tenant_id", selecionado.id).order("created_at", { ascending: false }).range(inicio, fim)),
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
       ]);
       for (const result of [cap, suppliers, supplierDocs, templates, generated, tenantData]) if (result.error) throw result.error;
@@ -321,7 +348,7 @@ function Documentos() {
                   </table>
                 </div>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">Os avisos de vencimento são calculados pelo prazo informado. O arquivo permanece no endereço externo informado; o Drive ainda precisa ser conectado para sincronização automática.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Os avisos de vencimento são calculados pelo prazo informado. As listas consultam todas as páginas disponíveis; os arquivos permanecem no endereço externo informado até a integração OAuth e sincronização automática com o Drive.</p>
             </TabsContent>
             <TabsContent value="modelos" className="mt-4">
               <div className="grid gap-3 md:grid-cols-2">
