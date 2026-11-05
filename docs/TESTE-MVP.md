@@ -4,6 +4,8 @@ Este roteiro é para testar o sistema com contas e registros de teste reais, sem
 
 ## 1. Preparar os usuários
 
+O SMS2 já possui um administrador global ativo e confirmado. **Não execute novamente** `supabase/operations/bootstrap_first_platform_admin.sql`; esse script é reservado a uma instalação nova, sem administrador global.
+
 1. Acesse `/cadastro` em uma janela anônima e crie uma segunda conta com um e-mail que você controla.
 2. Confirme o e-mail pelo link recebido.
 3. Volte à conta de administrador global e abra **Organizações**.
@@ -42,6 +44,13 @@ Este roteiro é para testar o sistema com contas e registros de teste reais, sem
 2. Cadastre fornecedores e documentos em ambas.
 3. Entre em cada conta e confira que somente os registros da própria Secretaria aparecem.
 4. Tente usar IDs de registros da outra Secretaria em operações diretas; o banco deve negar a leitura e a alteração.
+
+## 6. Conferir painel, configurações e histórico
+
+1. Confira os indicadores do painel com os registros de teste.
+2. Atualize dados institucionais da Secretaria e verifique CNPJ, e-mail, telefone, endereço, município e UF.
+3. Consulte o histórico e verifique os eventos de criação, edição, arquivamento, alteração de papel e assinatura.
+4. Confirme que um usuário sem a permissão correspondente não consegue executar a operação, mesmo tentando chamar a API diretamente.
 
 ## Limites conhecidos desta versão
 
