@@ -217,7 +217,7 @@ function Documentos() {
         ),
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
       ]);
-      for (const result of [cap, suppliers, supplierDocs, templates, generated, tenantData])
+      for (const result of [cap, tenantData])
         if (result.error) throw result.error;
       setCapacidades(
         cap.data?.[0] ?? {
@@ -228,10 +228,10 @@ function Documentos() {
           can_manage_templates: false,
         },
       );
-      setFornecedores(suppliers.data ?? []);
-      setDocumentos(supplierDocs.data ?? []);
-      setModelos(templates.data ?? []);
-      setGerados(generated.data ?? []);
+      setFornecedores(suppliers);
+      setDocumentos(supplierDocs);
+      setModelos(templates);
+      setGerados(generated);
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
