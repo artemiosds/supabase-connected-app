@@ -57,8 +57,8 @@ function RecuperarSenha() {
           <div className="flex items-start gap-3 rounded-md bg-primary/10 p-3 text-sm">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
             <p className="text-foreground">
-              Se existir uma conta para <strong>{email}</strong>, você receberá um e-mail com o
-              link para definir uma nova senha.
+              Se existir uma conta para <strong>{email}</strong>, você receberá um e-mail com o link
+              para definir uma nova senha.
             </p>
           </div>
           <Button asChild variant="outline" className="w-full">

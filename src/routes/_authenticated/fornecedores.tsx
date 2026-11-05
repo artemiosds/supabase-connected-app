@@ -32,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/fornecedores")({
   head: () => ({
     meta: [
       { title: "Fornecedores — Gestão de Fornecedores da Saúde" },
-      { name: "description", content: "Cadastro e consulta de fornecedores da Secretaria selecionada." },
+      {
+        name: "description",
+        content: "Cadastro e consulta de fornecedores da Secretaria selecionada.",
+      },
     ],
   }),
   component: Fornecedores,
@@ -125,7 +128,12 @@ function Fornecedores() {
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
       setFornecedores([]);
-      setCapacidades({ can_view: false, can_create: false, can_update: false, can_deactivate: false });
+      setCapacidades({
+        can_view: false,
+        can_create: false,
+        can_update: false,
+        can_deactivate: false,
+      });
       setLoading(false);
       return;
     }
@@ -170,7 +178,9 @@ function Fornecedores() {
       const mensagem = e instanceof Error ? e.message : String(e);
       setFornecedores([]);
       if (bancoNaoConfigurado(mensagem)) {
-        setErro("A estrutura de fornecedores ainda não está disponível. Atualize a página em instantes.");
+        setErro(
+          "A estrutura de fornecedores ainda não está disponível. Atualize a página em instantes.",
+        );
       } else {
         setErro(mensagem);
       }
@@ -193,7 +203,8 @@ function Fornecedores() {
         (fornecedor.trade_name ?? "").toLocaleLowerCase("pt-BR").includes(termo) ||
         fornecedor.cnpj.includes(cnpjTermo);
       const correspondeStatus = filtroStatus === "todos" || fornecedor.status === filtroStatus;
-      const correspondeCategoria = filtroCategoria === "todas" || fornecedor.category === filtroCategoria;
+      const correspondeCategoria =
+        filtroCategoria === "todas" || fornecedor.category === filtroCategoria;
       return correspondeBusca && correspondeStatus && correspondeCategoria;
     });
   }, [fornecedores, busca, filtroStatus, filtroCategoria]);
@@ -276,7 +287,11 @@ function Fornecedores() {
     setSalvando(true);
     try {
       const resultado = editando
-        ? await db.from("suppliers").update(payload).eq("id", editando.id).eq("tenant_id", selecionado.id)
+        ? await db
+            .from("suppliers")
+            .update(payload)
+            .eq("id", editando.id)
+            .eq("tenant_id", selecionado.id)
         : await db.from("suppliers").insert(payload);
       if (resultado.error) throw resultado.error;
       toast.success(editando ? "Fornecedor atualizado." : "Fornecedor cadastrado.");
@@ -286,9 +301,11 @@ function Fornecedores() {
       await carregar();
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
-      setErro(mensagem.includes("suppliers_tenant_cnpj_unique")
-        ? "Já existe um fornecedor com este CNPJ nesta Secretaria."
-        : mensagem);
+      setErro(
+        mensagem.includes("suppliers_tenant_cnpj_unique")
+          ? "Já existe um fornecedor com este CNPJ nesta Secretaria."
+          : mensagem,
+      );
     } finally {
       setSalvando(false);
     }
@@ -314,7 +331,9 @@ function Fornecedores() {
     return (
       <Alert variant="destructive">
         <AlertTitle>Estrutura inicial pendente</AlertTitle>
-        <AlertDescription>O cadastro de fornecedores depende da estrutura multitenant da plataforma.</AlertDescription>
+        <AlertDescription>
+          O cadastro de fornecedores depende da estrutura multitenant da plataforma.
+        </AlertDescription>
       </Alert>
     );
   }
@@ -333,7 +352,8 @@ function Fornecedores() {
           {selecionado && (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" aria-hidden />
-              Dados vinculados a <strong className="font-medium text-foreground">{selecionado.nome}</strong>
+              Dados vinculados a{" "}
+              <strong className="font-medium text-foreground">{selecionado.nome}</strong>
             </p>
           )}
         </div>
@@ -348,7 +368,10 @@ function Fornecedores() {
       {!selecionado ? (
         <Alert>
           <AlertTitle>Selecione uma Secretaria</AlertTitle>
-          <AlertDescription>Escolha uma Secretaria no seletor superior para consultar os fornecedores vinculados a ela.</AlertDescription>
+          <AlertDescription>
+            Escolha uma Secretaria no seletor superior para consultar os fornecedores vinculados a
+            ela.
+          </AlertDescription>
         </Alert>
       ) : erro ? (
         <Alert variant="destructive">
@@ -359,7 +382,10 @@ function Fornecedores() {
         <Alert>
           <ShieldCheck className="h-4 w-4" aria-hidden />
           <AlertTitle>Acesso não autorizado</AlertTitle>
-          <AlertDescription>Seu usuário não possui permissão para consultar fornecedores desta Secretaria. Solicite acesso ao administrador local.</AlertDescription>
+          <AlertDescription>
+            Seu usuário não possui permissão para consultar fornecedores desta Secretaria. Solicite
+            acesso ao administrador local.
+          </AlertDescription>
         </Alert>
       ) : (
         <>
@@ -370,17 +396,24 @@ function Fornecedores() {
             </div>
             <div className="rounded-lg border bg-card p-4">
               <p className="text-sm text-muted-foreground">Ativos</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{fornecedores.filter((f) => f.status === "active").length}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {fornecedores.filter((f) => f.status === "active").length}
+              </p>
             </div>
             <div className="rounded-lg border bg-card p-4">
               <p className="text-sm text-muted-foreground">Inativos</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{fornecedores.filter((f) => f.status === "inactive").length}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {fornecedores.filter((f) => f.status === "inactive").length}
+              </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
               <Input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
@@ -407,7 +440,9 @@ function Fornecedores() {
             >
               <option value="todas">Todas as categorias</option>
               {CATEGORIAS.map((categoria) => (
-                <option key={categoria.value} value={categoria.value}>{categoria.label}</option>
+                <option key={categoria.value} value={categoria.value}>
+                  {categoria.label}
+                </option>
               ))}
             </select>
           </div>
@@ -425,35 +460,91 @@ function Fornecedores() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" aria-hidden /></TableCell></TableRow>
-                ) : lista.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm text-muted-foreground">Nenhum fornecedor encontrado. {capacidades.can_create ? "Cadastre o primeiro fornecedor desta Secretaria." : ""}</TableCell></TableRow>
-                ) : lista.map((fornecedor) => (
-                  <TableRow key={fornecedor.id}>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{fornecedor.legal_name}</p>
-                      {fornecedor.trade_name && <p className="text-xs text-muted-foreground">{fornecedor.trade_name}</p>}
-                      <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatarCnpj(fornecedor.cnpj)}</p>
-                    </TableCell>
-                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">{formatarCnpj(fornecedor.cnpj)}</TableCell>
-                    <TableCell className="hidden text-sm sm:table-cell">{CATEGORIAS.find((c) => c.value === fornecedor.category)?.label ?? "Outros"}</TableCell>
-                    <TableCell><Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>{fornecedor.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        {capacidades.can_update && <Button size="icon" variant="ghost" onClick={() => abrirEdicao(fornecedor)} aria-label={`Editar ${fornecedor.legal_name}`}><Pencil className="h-4 w-4" aria-hidden /></Button>}
-                        {capacidades.can_deactivate && <Button size="sm" variant="outline" onClick={() => void alternarStatus(fornecedor)}>{fornecedor.status === "active" ? "Inativar" : "Reativar"}</Button>}
-                      </div>
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center">
+                      <Loader2
+                        className="mx-auto h-5 w-5 animate-spin text-muted-foreground"
+                        aria-hidden
+                      />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : lista.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-12 text-center text-sm text-muted-foreground"
+                    >
+                      Nenhum fornecedor encontrado.{" "}
+                      {capacidades.can_create
+                        ? "Cadastre o primeiro fornecedor desta Secretaria."
+                        : ""}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  lista.map((fornecedor) => (
+                    <TableRow key={fornecedor.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{fornecedor.legal_name}</p>
+                        {fornecedor.trade_name && (
+                          <p className="text-xs text-muted-foreground">{fornecedor.trade_name}</p>
+                        )}
+                        <p className="mt-1 text-xs text-muted-foreground md:hidden">
+                          {formatarCnpj(fornecedor.cnpj)}
+                        </p>
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {formatarCnpj(fornecedor.cnpj)}
+                      </TableCell>
+                      <TableCell className="hidden text-sm sm:table-cell">
+                        {CATEGORIAS.find((c) => c.value === fornecedor.category)?.label ?? "Outros"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>
+                          {fornecedor.status === "active" ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          {capacidades.can_update && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => abrirEdicao(fornecedor)}
+                              aria-label={`Editar ${fornecedor.legal_name}`}
+                            >
+                              <Pencil className="h-4 w-4" aria-hidden />
+                            </Button>
+                          )}
+                          {capacidades.can_deactivate && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void alternarStatus(fornecedor)}
+                            >
+                              {fornecedor.status === "active" ? "Inativar" : "Reativar"}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground">Os fornecedores são consultados em páginas sucessivas para não ocultar registros após um limite fixo. O acesso aos dados é validado no banco por Secretaria e permissão.</p>
+          <p className="text-xs text-muted-foreground">
+            Os fornecedores são consultados em páginas sucessivas para não ocultar registros após um
+            limite fixo. O acesso aos dados é validado no banco por Secretaria e permissão.
+          </p>
         </>
       )}
 
-      <Dialog open={aberto} onOpenChange={(valor) => { if (!salvando) setAberto(valor); }}>
+      <Dialog
+        open={aberto}
+        onOpenChange={(valor) => {
+          if (!salvando) setAberto(valor);
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editando ? "Editar fornecedor" : "Cadastrar fornecedor"}</DialogTitle>
@@ -465,75 +556,181 @@ function Fornecedores() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-cnpj">CNPJ *</Label>
-                <Input id="fornecedor-cnpj" required value={formulario.cnpj} onChange={(e) => atualizarCampo("cnpj", formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" autoComplete="off" />
-                <p className="text-xs text-muted-foreground">Aceita CNPJ numérico e alfanumérico.</p>
+                <Input
+                  id="fornecedor-cnpj"
+                  required
+                  value={formulario.cnpj}
+                  onChange={(e) => atualizarCampo("cnpj", formatarCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Aceita CNPJ numérico e alfanumérico.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-categoria">Categoria *</Label>
-                <select id="fornecedor-categoria" value={formulario.category} onChange={(e) => atualizarCampo("category", e.target.value as Categoria)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  {CATEGORIAS.map((categoria) => <option key={categoria.value} value={categoria.value}>{categoria.label}</option>)}
+                <select
+                  id="fornecedor-categoria"
+                  value={formulario.category}
+                  onChange={(e) => atualizarCampo("category", e.target.value as Categoria)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {CATEGORIAS.map((categoria) => (
+                    <option key={categoria.value} value={categoria.value}>
+                      {categoria.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-razao">Razão social *</Label>
-                <Input id="fornecedor-razao" required minLength={2} maxLength={200} value={formulario.legal_name} onChange={(e) => atualizarCampo("legal_name", e.target.value)} />
+                <Input
+                  id="fornecedor-razao"
+                  required
+                  minLength={2}
+                  maxLength={200}
+                  value={formulario.legal_name}
+                  onChange={(e) => atualizarCampo("legal_name", e.target.value)}
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-fantasia">Nome fantasia</Label>
-                <Input id="fornecedor-fantasia" maxLength={160} value={formulario.trade_name} onChange={(e) => atualizarCampo("trade_name", e.target.value)} />
+                <Input
+                  id="fornecedor-fantasia"
+                  maxLength={160}
+                  value={formulario.trade_name}
+                  onChange={(e) => atualizarCampo("trade_name", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-responsavel">Pessoa de contato</Label>
-                <Input id="fornecedor-responsavel" maxLength={160} value={formulario.contact_name} onChange={(e) => atualizarCampo("contact_name", e.target.value)} />
+                <Input
+                  id="fornecedor-responsavel"
+                  maxLength={160}
+                  value={formulario.contact_name}
+                  onChange={(e) => atualizarCampo("contact_name", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-telefone">Telefone</Label>
-                <Input id="fornecedor-telefone" maxLength={40} value={formulario.contact_phone} onChange={(e) => atualizarCampo("contact_phone", e.target.value)} />
+                <Input
+                  id="fornecedor-telefone"
+                  maxLength={40}
+                  value={formulario.contact_phone}
+                  onChange={(e) => atualizarCampo("contact_phone", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-email">E-mail</Label>
-                <Input id="fornecedor-email" type="email" maxLength={254} value={formulario.contact_email} onChange={(e) => atualizarCampo("contact_email", e.target.value)} />
+                <Input
+                  id="fornecedor-email"
+                  type="email"
+                  maxLength={254}
+                  value={formulario.contact_email}
+                  onChange={(e) => atualizarCampo("contact_email", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-site">Site</Label>
-                <Input id="fornecedor-site" type="url" value={formulario.website} onChange={(e) => atualizarCampo("website", e.target.value)} placeholder="https://" />
+                <Input
+                  id="fornecedor-site"
+                  type="url"
+                  value={formulario.website}
+                  onChange={(e) => atualizarCampo("website", e.target.value)}
+                  placeholder="https://"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-cep">CEP</Label>
-                <Input id="fornecedor-cep" maxLength={12} value={formulario.postal_code} onChange={(e) => atualizarCampo("postal_code", e.target.value)} />
+                <Input
+                  id="fornecedor-cep"
+                  maxLength={12}
+                  value={formulario.postal_code}
+                  onChange={(e) => atualizarCampo("postal_code", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-uf">UF</Label>
-                <Input id="fornecedor-uf" maxLength={2} value={formulario.state} onChange={(e) => atualizarCampo("state", e.target.value.toUpperCase())} />
+                <Input
+                  id="fornecedor-uf"
+                  maxLength={2}
+                  value={formulario.state}
+                  onChange={(e) => atualizarCampo("state", e.target.value.toUpperCase())}
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-logradouro">Logradouro</Label>
-                <Input id="fornecedor-logradouro" maxLength={200} value={formulario.street} onChange={(e) => atualizarCampo("street", e.target.value)} />
+                <Input
+                  id="fornecedor-logradouro"
+                  maxLength={200}
+                  value={formulario.street}
+                  onChange={(e) => atualizarCampo("street", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-numero">Número</Label>
-                <Input id="fornecedor-numero" maxLength={30} value={formulario.street_number} onChange={(e) => atualizarCampo("street_number", e.target.value)} />
+                <Input
+                  id="fornecedor-numero"
+                  maxLength={30}
+                  value={formulario.street_number}
+                  onChange={(e) => atualizarCampo("street_number", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-complemento">Complemento</Label>
-                <Input id="fornecedor-complemento" maxLength={100} value={formulario.complement} onChange={(e) => atualizarCampo("complement", e.target.value)} />
+                <Input
+                  id="fornecedor-complemento"
+                  maxLength={100}
+                  value={formulario.complement}
+                  onChange={(e) => atualizarCampo("complement", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-bairro">Bairro</Label>
-                <Input id="fornecedor-bairro" maxLength={120} value={formulario.neighborhood} onChange={(e) => atualizarCampo("neighborhood", e.target.value)} />
+                <Input
+                  id="fornecedor-bairro"
+                  maxLength={120}
+                  value={formulario.neighborhood}
+                  onChange={(e) => atualizarCampo("neighborhood", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-cidade">Município</Label>
-                <Input id="fornecedor-cidade" maxLength={120} value={formulario.city} onChange={(e) => atualizarCampo("city", e.target.value)} />
+                <Input
+                  id="fornecedor-cidade"
+                  maxLength={120}
+                  value={formulario.city}
+                  onChange={(e) => atualizarCampo("city", e.target.value)}
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-observacoes">Observações internas</Label>
-                <textarea id="fornecedor-observacoes" maxLength={2000} rows={3} value={formulario.notes} onChange={(e) => atualizarCampo("notes", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                <textarea
+                  id="fornecedor-observacoes"
+                  maxLength={2000}
+                  rows={3}
+                  value={formulario.notes}
+                  onChange={(e) => atualizarCampo("notes", e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
               </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setAberto(false)} disabled={salvando}><X className="h-4 w-4" aria-hidden /> Cancelar</Button>
-              <Button type="submit" disabled={salvando || (editando ? !capacidades.can_update : !capacidades.can_create)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAberto(false)}
+                disabled={salvando}
+              >
+                <X className="h-4 w-4" aria-hidden /> Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  salvando || (editando ? !capacidades.can_update : !capacidades.can_create)
+                }
+              >
                 {salvando && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
                 {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Cadastrar fornecedor"}
               </Button>

@@ -1,10 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   Building2,
@@ -77,7 +71,10 @@ function LayoutAutenticado() {
           </div>
           <MenuLateral />
           <div className="border-t p-3">
-            <p className="truncate px-2 text-sm font-medium text-foreground" title={session.user.email ?? undefined}>
+            <p
+              className="truncate px-2 text-sm font-medium text-foreground"
+              title={session.user.email ?? undefined}
+            >
               {session.user.email}
             </p>
             <Button
@@ -156,9 +153,7 @@ function SeletorOrganizacao() {
   }
 
   if (tenants.length === 0) {
-    return (
-      <span className="text-sm text-muted-foreground">Nenhuma organização vinculada</span>
-    );
+    return <span className="text-sm text-muted-foreground">Nenhuma organização vinculada</span>;
   }
 
   return (

@@ -22,7 +22,7 @@ function camposAlterados(details: unknown): string[] {
 }
 
 function rotuloEntidade(value: string) {
-  const labels: Record<string,string> = {
+  const labels: Record<string, string> = {
     suppliers: "Fornecedor",
     supplier_documents: "Documento de fornecedor",
     document_templates: "Modelo de documento",
@@ -42,41 +42,116 @@ function Historico() {
   useEffect(() => {
     let ativo = true;
     async function carregar() {
-      if (!selecionado?.id) { setEventos([]); setLoading(false); return; }
-      setLoading(true); setErro(null);
-      const { data, error } = await db.from("audit_events")
-        .select("*").eq("tenant_id", selecionado.id)
-        .order("created_at", { ascending: false }).limit(200);
+      if (!selecionado?.id) {
+        setEventos([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setErro(null);
+      const { data, error } = await db
+        .from("audit_events")
+        .select("*")
+        .eq("tenant_id", selecionado.id)
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (!ativo) return;
-      if (error) { setErro(error.message); setEventos([]); }
-      else setEventos(data ?? []);
+      if (error) {
+        setErro(error.message);
+        setEventos([]);
+      } else setEventos(data ?? []);
       setLoading(false);
     }
     void carregar();
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, [selecionado?.id]);
 
-  if (!selecionado) return <Alert><AlertTitle>Selecione uma Secretaria</AlertTitle><AlertDescription>O histórico é isolado por Secretaria.</AlertDescription></Alert>;
+  if (!selecionado)
+    return (
+      <Alert>
+        <AlertTitle>Selecione uma Secretaria</AlertTitle>
+        <AlertDescription>O histórico é isolado por Secretaria.</AlertDescription>
+      </Alert>
+    );
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-semibold tracking-tight">Histórico e auditoria</h1><p className="mt-1 text-sm text-muted-foreground">Registros de alterações e operações de {selecionado.nome}.</p></div>
-      <Card><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4"/> Atividade recente <Badge variant="secondary">{eventos.length}</Badge></CardTitle></CardHeader><CardContent>
-        {loading ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div>
-        : erro ? <Alert variant="destructive"><AlertTitle>Não foi possível consultar o histórico</AlertTitle><AlertDescription>{erro.includes("permission") || erro.includes("policy") ? "Seu perfil não possui permissão de auditoria nesta Secretaria." : erro}</AlertDescription></Alert>
-        : eventos.length === 0 ? <div className="py-10 text-center text-sm text-muted-foreground">Ainda não há eventos registrados.</div>
-        : <div className="divide-y">{eventos.map((e) => {
-          const fields = camposAlterados(e.details);
-          return <div key={e.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-medium">{rotuloEntidade(e.entity)} <span className="font-normal text-muted-foreground">· {e.action === "INSERT" ? "criado" : e.action === "UPDATE" ? "alterado" : e.action.toLowerCase()}</span></p>
-              <p className="text-xs text-muted-foreground">Registro: {e.entity_id ?? "—"} · Ator: {e.actor_id ?? "Sistema"}</p>
-              {fields.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Campos: {fields.join(", ")}</p>}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Histórico e auditoria</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Registros de alterações e operações de {selecionado.nome}.
+        </p>
+      </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4" /> Atividade recente{" "}
+            <Badge variant="secondary">{eventos.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-            <p className="shrink-0 text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString("pt-BR")}</p>
-          </div>;
-        })}</div>}
-      </CardContent></Card>
-      <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5"/> A consulta respeita a permissão de auditoria e o isolamento da Secretaria no banco de dados.</p>
+          ) : erro ? (
+            <Alert variant="destructive">
+              <AlertTitle>Não foi possível consultar o histórico</AlertTitle>
+              <AlertDescription>
+                {erro.includes("permission") || erro.includes("policy")
+                  ? "Seu perfil não possui permissão de auditoria nesta Secretaria."
+                  : erro}
+              </AlertDescription>
+            </Alert>
+          ) : eventos.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              Ainda não há eventos registrados.
+            </div>
+          ) : (
+            <div className="divide-y">
+              {eventos.map((e) => {
+                const fields = camposAlterados(e.details);
+                return (
+                  <div
+                    key={e.id}
+                    className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {rotuloEntidade(e.entity)}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          ·{" "}
+                          {e.action === "INSERT"
+                            ? "criado"
+                            : e.action === "UPDATE"
+                              ? "alterado"
+                              : e.action.toLowerCase()}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Registro: {e.entity_id ?? "—"} · Ator: {e.actor_id ?? "Sistema"}
+                      </p>
+                      {fields.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Campos: {fields.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <p className="shrink-0 text-xs text-muted-foreground">
+                      {new Date(e.created_at).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5" /> A consulta respeita a permissão de auditoria e o
+        isolamento da Secretaria no banco de dados.
+      </p>
     </div>
   );
 }

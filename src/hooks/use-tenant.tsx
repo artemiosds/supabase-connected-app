@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -140,8 +133,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const selecionado =
-    tenants.find((t) => t.id === selecionadoId) ?? tenants[0] ?? null;
+  const selecionado = tenants.find((t) => t.id === selecionadoId) ?? tenants[0] ?? null;
 
   const recarregar = useCallback(() => {
     void carregar();
