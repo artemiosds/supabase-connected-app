@@ -13,7 +13,7 @@
 
 - GitHub `main` is the authoritative application source. Lovable is the connected editor/preview surface; avoid out-of-band changes that desynchronize the repository.
 - Supabase SMS2 is the managed database. Every future schema change must be a new timestamped migration under `supabase/migrations`. Never rewrite an already-applied migration.
-- The 22 migration versions in SMS2 were reconciled against 22 SQL files in this repository on 2026-11-04. Reconcile again before every schema release.
+- The 23 migration versions in SMS2 were reconciled against 23 SQL files in this repository on 2026-11-04 (Fortaleza local time). The final migration validates all six institutional-data CHECK constraints. Reconcile again before every schema release.
 - Tenant isolation is enforced in PostgreSQL through RLS, composite foreign keys and server-side permission helpers. Never rely on client-side filters, hidden controls or user-editable JWT metadata for authorization.
 - All 13 application tables in the exposed `public` schema currently have RLS enabled. `suppliers`, `supplier_documents`, `document_templates` and `generated_documents` also use FORCE ROW LEVEL SECURITY.
 - Privileged authorization helpers belong in the non-exposed `app_auth` schema, use `SECURITY DEFINER` only where needed, set a fixed empty `search_path`, and validate the current authenticated identity. Do not grant `anon` access. Verify in Supabase Project Settings → API → Exposed schemas that `app_auth` is not exposed.
