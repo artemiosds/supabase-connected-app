@@ -7,7 +7,7 @@ Atualizado em **04/11/2026**, com conferência do GitHub `main` e do Supabase SM
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 22 aplicadas no Supabase e 22 arquivos correspondentes no repositório. A reconciliação encontrou 22/22 versões correspondentes, sem migration aplicada ausente e sem migration versionada pendente.
+- **Migrations:** 23 aplicadas no Supabase e 23 arquivos correspondentes no repositório. A reconciliação encontrou 23/23 versões correspondentes, sem migration aplicada ausente e sem migration versionada pendente. A última é `20261105024856_phase1_validate_tenant_constraints`, que validou formalmente as seis CHECK constraints institucionais.
 - **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo e confirmado; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos e 0 documentos gerados. Há 1 evento de auditoria preexistente. Os testes anteriores usaram transações revertidas e não deixaram dados fictícios.
 
 ## FASE 1 — Fundação multitenant e segurança
@@ -68,8 +68,9 @@ Inclui:
 
 ## Qualidade e liberação
 
-- Há testes unitários para CNPJ e testes de roteamento; a cobertura dos fluxos completos da aplicação ainda precisa ser ampliada.
-- O workflow de CI foi corrigido para usar Bun e o lockfile oficial `bun.lock`. É obrigatório confirmar o próximo run completo: instalação, testes, TypeScript, build e lint.
+- CI do commit `f26b1b02f80e3da8e5ba39331b67f75d7d9fb4ad` passou integralmente no GitHub Actions: instalação congelada do Bun, 9 testes unitários, TypeScript, build de produção e lint. Execução: [GitHub Actions #50](https://github.com/artemiosds/supabase-connected-app/actions/runs/41957688389).
+- Foram adicionadas verificações de rotas para todas as telas autenticadas e um teste do exemplo alfanumérico de CNPJ `00.000.000/E08G-12`.
+- O workflow de CI usa Bun e o lockfile oficial `bun.lock`; o último run completo passou em todas as etapas.
 - O roteiro de homologação está em `docs/TESTE-MVP.md`.
 - Security Advisor: WARN por proteção contra senhas vazadas desativada.
 - Performance Advisor: índices INFO ainda sem uso, esperado porque não há carga operacional; não remover índices só por essa observação.
