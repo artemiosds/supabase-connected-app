@@ -5,7 +5,12 @@ function gerarDigitos(base: string): string {
   const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
   const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
   const digito = (texto: string, pesos: number[]) => {
-    const soma = [...texto].reduce((total, c, i) => total + (c.charCodeAt(0) - 48) * pesos[i], 0);
+    if (texto.length !== pesos.length) throw new Error("Quantidade de pesos inválida.");
+    const soma = [...texto].reduce((total, c, i) => {
+      const peso = pesos[i];
+      if (peso === undefined) throw new Error("Peso ausente para o caractere.");
+      return total + (c.charCodeAt(0) - 48) * peso;
+    }, 0);
     const resto = soma % 11;
     return String(resto < 2 ? 0 : 11 - resto);
   };
