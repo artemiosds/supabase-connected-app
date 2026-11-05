@@ -5,14 +5,24 @@
 > that are already pushed — as it rewrites history on Lovable's side and the
 > user will likely lose their project history.
 >
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
+> Commits pushed to the connected branch sync back to Lovable and appear in
+> the editor. Keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-## Architecture rules
+## Engineering rules
 
-- Multitenant isolation lives in Postgres RLS and security-definer functions, never in UI filters or role claims sent by the browser. (Why: the spec requires cross-tenant safety at the database level.)
-- `src/lib/db.ts` temporarily casts the generated Supabase client to a loosely typed `SupabaseClient` because the Phase 1 migration has not been applied yet; after the migration runs and `types.ts` regenerates, queries must switch to the typed client and the alias removed.
-- Roles/permissions model: `platform_admins` (global superadmins) is a separate table from per-tenant roles in `tenant_roles`/`membership_roles`; tenant admins can never grant global rights. (Why: privilege-escalation protection required by the spec.)
-- Audit writes go through a security-definer function (`log_audit_event`); regular users cannot insert/update/delete `audit_events` directly.
-- Until the Phase 1 migration is approved and executed, do not run destructive SQL or invent demo tables in the connected project (ref rwbbznqtocunzrpcvjvk); it was verified empty before any changes.
+- GitHub `main` is the authoritative application source. Lovable is the connected editor/preview surface; avoid out-of-band changes that desynchronize the repository.
+- Supabase SMS2 is the managed database. Every future schema change must be a new timestamped migration under `supabase/migrations`. Never rewrite an already-applied migration.
+- The 22 migration versions in SMS2 were reconciled against 22 SQL files in this repository on 2026-11-04. Reconcile again before every schema release.
+- Tenant isolation is enforced in PostgreSQL through RLS, composite foreign keys and server-side permission helpers. Never rely on client-side filters, hidden controls or user-editable JWT metadata for authorization.
+- All 13 application tables in the exposed `public` schema currently have RLS enabled. `suppliers`, `supplier_documents`, `document_templates` and `generated_documents` also use FORCE ROW LEVEL SECURITY.
+- Privileged authorization helpers belong in the non-exposed `app_auth` schema, use `SECURITY DEFINER` only where needed, set a fixed empty `search_path`, and validate the current authenticated identity. Do not grant `anon` access. Verify in Supabase Project Settings → API → Exposed schemas that `app_auth` is not exposed.
+- `platform_admins` is separate from municipal tenant roles. Tenant administrators must never grant global platform privileges. Global platform administrators do not automatically receive operational access to tenant supplier/document records.
+- Audit events are written by database triggers. Do not add direct client insert/update/delete permissions for `audit_events`. Record changed-field names, not sensitive document contents.
+- Use generated database types from `src/integrations/supabase/types.ts`; keep `src/lib/db.ts` typed.
+- Prefer archive/status semantics over physical deletion. Preserve audit history and signed-document immutability.
+- Tests against SMS2 that create fixtures must run in transactions and end with ROLLBACK. Never leave fictitious users, tenants, suppliers or documents in the shared project.
+- The official package lockfile is `bun.lock`. CI and development instructions must use Bun and frozen-lockfile installation.
+- Let the TanStack router plugin regenerate `src/routeTree.gen.ts`; do not manually rewrite generated metadata.
+- Never expose `service_role`, secret keys, passwords, JWTs or other privileged credentials in browser code or committed files.
+- State external integration limits honestly: Drive links are recognized but OAuth/upload/sync are not configured; PDFs currently use browser printing; current signing is simple electronic signing, not ICP-Brasil qualified signing; expiry indicators do not yet send scheduled e-mail/WhatsApp alerts.
