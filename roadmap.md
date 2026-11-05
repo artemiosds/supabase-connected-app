@@ -1,54 +1,76 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-## Estado da plataforma — Fase 1
+Atualizado em **04/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
 
-- Projeto Supabase existente: **SMS2** (`rwbbznqtocunzrpcvjvk`), região `sa-east-1`, PostgreSQL 17.11.
-- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`.
-- Lovable: somente preview, sincronizado com o commit do GitHub.
+## Estado real verificado
 
-### Fundação multitenant no banco
+- **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
+- **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
+- **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
+- **Migrations:** 22 aplicadas no Supabase e 22 arquivos correspondentes no repositório. A reconciliação encontrou 22/22 versões correspondentes, sem migration aplicada ausente e sem migration versionada pendente.
+- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo e confirmado; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos e 0 documentos gerados. Há 1 evento de auditoria preexistente. Os testes anteriores usaram transações revertidas e não deixaram dados fictícios.
 
-<badge>Aplicada no SMS2</badge>
+## FASE 1 — Fundação multitenant e segurança
 
-Migrações registradas no Supabase:
-1. `20261104131949_restrict_rls_auto_enable_execute` — revogou execução direta da função interna `public.rls_auto_enable()` para as roles da API, preservando o event trigger `ensure_rls`.
-2. `20261104132106_phase1_multitenant_foundation` — criou perfis, tenants, vínculos, papéis, permissões, superadministradores e auditoria; aplicou RLS e chaves estrangeiras compostas.
-3. `20261104132238_phase1_rls_rpc_and_indexes_hardening` — converteu a RPC de provisionamento para SECURITY INVOKER, explicitou a política de criação de tenants, separou políticas de leitura/escrita e adicionou índices das FKs.
-4. `20261104132351_phase1_provisioning_rpc_auth_lookup_fix` — removeu consulta direta a `auth.users` da RPC; a validação usa `profiles`, cuja FK garante a relação com Auth.
+<badge color="success">Estrutura implementada</badge> **Homologação operacional ainda pendente.**
 
-### Verificações concluídas
+Inclui:
+- Perfis ligados ao Supabase Auth.
+- Secretarias (tenants), status e identificador amigável.
+- Administração global separada dos papéis municipais.
+- Membros por Secretaria, papéis, permissões e vínculos compostos para impedir associação de papel de outro tenant.
+- Provisionamento de Secretaria com administrador municipal confirmado.
+- Políticas RLS, proteção de identidade, bloqueio de exclusão física de Secretaria, auditoria e funções internas de autorização.
+- Dados institucionais: CNPJ, e-mail, telefone, endereço, município e UF.
+- Validação de CNPJ numérico e alfanumérico no banco e no frontend.
 
-- Nove tabelas da Fase 1 existem e estão com RLS habilitado.
-- O catálogo contém nove permissões.
-- As FKs compostas vinculam o papel e o membro ao mesmo tenant.
-- O trigger `auth.users → profiles` foi testado com metadados preenchidos e sem nome; fallback de nome funcionou.
-- Testes transacionais criaram duas secretarias descartáveis, verificaram isolamento entre A e B, tentativa de papel cruzado, proteção de papéis nativos, proteção das permissões do papel admin e recusa de provisionamento por administrador municipal.
-- Os testes terminaram com ROLLBACK. Verificação posterior confirmou zero usuários, perfis, tenants, vínculos, superadministradores e eventos de auditoria persistidos.
-- Security Advisor: sem findings.
-- Performance Advisor: apenas avisos INFO de índices ainda não utilizados, esperado porque o banco ainda não tem carga operacional. Não há mais avisos de FKs sem índice nem políticas permissivas duplicadas.
+### Evidências da Fase 1
+- Todas as 13 tabelas de aplicação no schema `public` estão com RLS habilitado.
+- As quatro tabelas operacionais usam também FORCE ROW LEVEL SECURITY.
+- Schema interno `app_auth`: `anon` não possui USAGE; as funções privilegiadas têm caminho de busca fixado.
+- As 22 migrations estão sincronizadas entre o Supabase e o GitHub.
+- Já existe um superadministrador global ativo, com usuário Auth confirmado. **Não execute o bootstrap inicial novamente neste SMS2.** O script em `supabase/operations/bootstrap_first_platform_admin.sql` serve apenas para instalação nova, sem nenhum administrador global.
+- Testes SQL transacionais anteriores validaram criação de Secretaria, papéis padrão, proteção de papéis/permissões administrativas e isolamento entre duas Secretarias. As transações foram revertidas.
+- A consulta atual confirmou que não há tenants ou dados operacionais fictícios persistidos.
 
-### Bootstrap inicial — pendente de conta real
+### Pendências de configuração/homologação da Fase 1
+1. No Supabase Dashboard, confirme em **Project Settings → API → Exposed schemas** que `app_auth` não está listado. A lista de schemas expostos é uma configuração da API e não pode ser comprovada só pela consulta SQL.
+2. Habilite a proteção contra senhas vazadas em **Auth → Settings / Password Security**. O Security Advisor ainda aponta `auth_leaked_password_protection` como WARN.
+3. Homologue o fluxo real com uma conta municipal confirmada e duas Secretarias de teste. Não use dados pessoais reais na primeira rodada.
 
-- No momento da implantação, `auth.users`, `profiles` e `platform_admins` estão vazios.
-- O primeiro superadministrador NÃO foi criado: é necessário que a pessoa autorizada crie sua conta pela tela `/cadastro` e confirme o e-mail.
-- Depois disso, executar uma única vez `supabase/operations/bootstrap_first_platform_admin.sql`, substituindo pelo e-mail exato da conta criada. O script falha se não encontrar exatamente uma conta/perfil ou se já existir qualquer registro em `platform_admins`.
-- Não existe promoção automática para superadministrador no cadastro público.
+## FASE 2 — Fornecedores, documentos e operação
 
-### Verificação manual do PostgREST
+<badge color="success">Estrutura principal implementada</badge> **Homologação completa da interface e comportamento em escala ainda pendente.**
 
-- `app_auth` foi criado como schema interno e não recebeu grants para `anon`.
-- Confirme no Dashboard do Supabase, em **Project Settings → API → Exposed schemas**, que `app_auth` NÃO está listado. A configuração de schemas expostos pertence à API e não é comprovada apenas pelo SQL da migração.
-- Consultas somente-leitura: `supabase/operations/phase1_post_deploy_verification.sql`.
+### Fase 2.1 — Fornecedores
+- Cadastro com CNPJ, razão social, nome fantasia, categoria, contatos e endereço.
+- Validação de CNPJ numérico/alfanumérico e unicidade por Secretaria.
+- Pesquisa, filtros de categoria e situação, edição e inativação/reativação sem exclusão física.
+- Permissões separadas para visualizar, cadastrar, editar e inativar.
+- Auditoria automática das alterações e RLS por `tenant_id`.
 
-## Frontend e preview
+### Fase 2.2 — Documentos e gestão
+- Documentos ligados ao fornecedor, tipo, datas de emissão/vencimento, observação e URL externa.
+- Indicadores visuais de documentos vencidos e próximos do vencimento.
+- Modelos por Secretaria, substituição de campos e geração de documentos com snapshot do conteúdo.
+- Registro de assinatura eletrônica simples associado ao usuário autenticado e proteção de imutabilidade após assinar.
+- Usuários municipais: localizar conta confirmada, vincular, atribuir/alterar papel, suspender e reativar, com proteções contra auto-suspensão e suspensão do último administrador.
+- Painel, configurações institucionais e histórico de auditoria.
+- RLS forçado nas tabelas operacionais de documentos, templates e documentos gerados.
 
-- Tipos TypeScript foram regenerados a partir do banco instalado em `src/integrations/supabase/types.ts`.
-- `src/lib/db.ts` usa agora o cliente Supabase tipado, sem o alias genérico temporário.
-- Compatibilidade alinhada: `active`/ `suspended`, `profiles.full_name`, parâmetros da RPC, seleção de administrador municipal e visão global do superadmin.
-- GitHub `main` é a fonte oficial; Lovable é somente preview.
+### Limites conhecidos — não marcar como implementados
+- **Google Drive:** o sistema reconhece links e extrai o ID do arquivo; OAuth, autorização de pastas, upload e sincronização automática ainda não foram configurados.
+- **PDF:** a versão atual usa a impressão do navegador; não há geração PDF no servidor nem armazenamento persistente da via assinada.
+- **Assinatura:** é eletrônica simples e associada à sessão; não é assinatura qualificada ICP-Brasil nem integração com provedor de assinatura.
+- **Alertas:** painel e listagem exibem vencimentos; envio agendado por e-mail/WhatsApp requer provedor e agendador.
+- **Convites:** o administrador vincula contas previamente cadastradas e confirmadas; convite automático por e-mail não está integrado.
+- **Importação de modelos:** arquivos `.txt` e `.md`; DOC/DOCX precisam ser copiados e colados, pois não existe importador Word nativo.
 
-## Próximas fases
+## Qualidade e liberação
 
-- Depois do bootstrap, entrar como superadministrador e criar a primeira Secretaria usando a tela Organizações.
-- Em seguida, validar o fluxo no preview e convidar/registrar o administrador municipal.
-- Fornecedores, documentos, PDFs, assinaturas, Google Drive, cobrança e VPS continuam fora da Fase 1.
+- Há testes unitários para CNPJ e testes de roteamento; a cobertura dos fluxos completos da aplicação ainda precisa ser ampliada.
+- O workflow de CI foi corrigido para usar Bun e o lockfile oficial `bun.lock`. É obrigatório confirmar o próximo run completo: instalação, testes, TypeScript, build e lint.
+- O roteiro de homologação está em `docs/TESTE-MVP.md`.
+- Security Advisor: WARN por proteção contra senhas vazadas desativada.
+- Performance Advisor: índices INFO ainda sem uso, esperado porque não há carga operacional; não remover índices só por essa observação.
+- **Fase 3** deve ser estabilização/homologação autenticada, teste de escala, correção dos defeitos observados e preparação para produção. Evitar novas migrations se não houver necessidade comprovada.
