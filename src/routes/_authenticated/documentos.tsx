@@ -143,6 +143,13 @@ function Documentos() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("vencimentos");
+  const moduloModelosAtivo = selecionado?.enabled_modules["modelos"] === true;
+
+  useEffect(() => {
+    if (!moduloModelosAtivo && (aba === "modelos" || aba === "biblioteca")) {
+      setAba("vencimentos");
+    }
+  }, [moduloModelosAtivo, aba]);
 
   const [dialogDocumento, setDialogDocumento] = useState(false);
   const [salvandoDocumento, setSalvandoDocumento] = useState(false);
@@ -641,14 +648,6 @@ function Documentos() {
         </AlertDescription>
       </Alert>
     );
-
-  const moduloModelosAtivo = selecionado.enabled_modules["modelos"] === true;
-
-  useEffect(() => {
-    if (!moduloModelosAtivo && (aba === "modelos" || aba === "biblioteca")) {
-      setAba("vencimentos");
-    }
-  }, [moduloModelosAtivo, aba]);
 
   return (
     <div className="space-y-6">
