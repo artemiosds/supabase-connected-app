@@ -24,15 +24,23 @@ export function SinoAlertas() {
       .eq("status", "vigente")
       .lte("end_date", limite)
       .order("end_date")
-      .then(({ data, error }: { data: { id: string; number: string; end_date: string }[] | null; error: unknown }) => {
-        if (!ativo || error) return;
-        setAvisos(
-          (data ?? []).map((c) => {
-            const dias = diasAte(c.end_date);
-            return { id: c.id, number: c.number, dias, nivel: nivelAlerta(dias) };
-          }),
-        );
-      });
+      .then(
+        ({
+          data,
+          error,
+        }: {
+          data: { id: string; number: string; end_date: string }[] | null;
+          error: unknown;
+        }) => {
+          if (!ativo || error) return;
+          setAvisos(
+            (data ?? []).map((c) => {
+              const dias = diasAte(c.end_date);
+              return { id: c.id, number: c.number, dias, nivel: nivelAlerta(dias) };
+            }),
+          );
+        },
+      );
     return () => {
       ativo = false;
     };

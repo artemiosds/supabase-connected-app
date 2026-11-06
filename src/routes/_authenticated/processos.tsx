@@ -133,7 +133,9 @@ function Processos() {
 
   const progresso = (id: string) => {
     const lista = itens.filter((x) => x.process_id === id);
-    return lista.length ? Math.round((lista.filter((x) => x.is_done).length / lista.length) * 100) : 0;
+    return lista.length
+      ? Math.round((lista.filter((x) => x.is_done).length / lista.length) * 100)
+      : 0;
   };
 
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
@@ -222,8 +224,8 @@ function Processos() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Aguardando ativação no banco de dados</AlertTitle>
           <AlertDescription>
-            A esteira está pronta, mas a estrutura de processos ainda não foi aprovada e aplicada
-            no Supabase SMS2.
+            A esteira está pronta, mas a estrutura de processos ainda não foi aprovada e aplicada no
+            Supabase SMS2.
           </AlertDescription>
         </Alert>
       )}
@@ -299,9 +301,7 @@ function Processos() {
               </div>
               <div className="space-y-4">
                 {ETAPAS.map((e) => {
-                  const lista = itens.filter(
-                    (i) => i.process_id === aberto.id && i.stage === e.id,
-                  );
+                  const lista = itens.filter((i) => i.process_id === aberto.id && i.stage === e.id);
                   return (
                     <div key={e.id}>
                       <p
