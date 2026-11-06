@@ -6,7 +6,6 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   CircleDollarSign,
   Clock3,
   FileClock,
@@ -79,7 +78,7 @@ const MODULES = [
   { key: "contratos", label: "Contratos e vencimentos", description: "Gestão de contratos, fiscais e prazos." },
   { key: "documentos", label: "Documentos", description: "Documentos gerados e gestão documental." },
   { key: "modelos", label: "Modelos oficiais", description: "DFD, ETP, Termo de Referência e modelos." },
-  { key: "ged", label: "GED avançado", description: "Anexos e arquivos gerenciados." },
+  { key: "ged", label: "GED avançado (preparado)", description: "Chave comercial registrada; upload e armazenamento de anexos serão conectados na etapa de GED." },
   { key: "auditoria", label: "Auditoria e relatórios", description: "Histórico, trilhas e relatórios." },
 ] as const;
 
@@ -150,7 +149,8 @@ function slugify(value: string): string {
 function dateInput(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function dateIso(value: string): string | null {
@@ -401,7 +401,10 @@ function AdminMaster() {
 
   async function atualizarStatus(tenant: MasterTenant, status: CommercialStatus) {
     try {
-      await updateTenant(tenant.id, { commercial_status: status });
+      await updateTenant(tenant.id, {
+        commercial_status: status,
+        ...(status === "active" ? { status: "active" as const } : {}),
+      });
       toast.success(`Status de ${tenant.name} atualizado para ${STATUS_LABELS[status]}.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível atualizar o status.");
