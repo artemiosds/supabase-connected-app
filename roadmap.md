@@ -83,7 +83,7 @@ Inclui:
 
 ## FASE 4 — Biblioteca de modelos e geração por processo (06/11/2026)
 
-<badge color="success">Banco atualizado e código versionado</badge> **Homologação funcional com uma Secretaria real ainda pendente.**
+**Status:** banco atualizado e código versionado; homologação funcional com uma Secretaria real ainda pendente.
 
 ### Implementado no SMS2
 - Catálogo global com cinco modelos-base orientativos: DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
