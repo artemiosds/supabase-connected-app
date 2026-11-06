@@ -1,8 +1,10 @@
--- PENDENTE DE APROVAÇÃO — NÃO APLICADO NO SUPABASE SMS2.
--- Fase 3: Contratos, aditivos e esteira de processos de contratação.
--- Ao aprovar, aplicar como NOVA migration timestamped (não editar migrations já aplicadas).
--- Reutiliza as permissões documents:view / documents:create / documents:update de cada Secretaria.
--- Não remove nada; adiciona apenas tabelas novas e um índice único em suppliers(tenant_id,id).
+-- OBSOLETO — NÃO EXECUTAR.
+-- Este rascunho foi substituído pelo estado real já existente no SMS2.
+-- As tabelas procurement_processes, process_items, contracts e contract_amendments já existem
+-- no projeto, com RLS habilitado/FORCE RLS e políticas comerciais aplicadas.
+-- O DDL de criação não está reconciliado no histórico de migrations. É necessário preparar
+-- uma migration BASELINE idempotente para instalações novas, após comparar o schema real.
+-- NÃO aplicar este arquivo ao SMS2: contém CREATE TABLE sem IF NOT EXISTS e causará conflito.
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_suppliers_tenant_id_id ON public.suppliers(tenant_id, id);
 
