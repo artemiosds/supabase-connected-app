@@ -55,6 +55,150 @@ export type Database = {
           },
         ]
       }
+      contract_amendments: {
+        Row: {
+          contract_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          new_end_date: string | null
+          notes: string | null
+          number: string
+          signed_at: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+          value_change: number
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          new_end_date?: string | null
+          notes?: string | null
+          number: string
+          signed_at?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+          value_change?: number
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          new_end_date?: string | null
+          notes?: string | null
+          number?: string
+          signed_at?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+          value_change?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_amendment_contract"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          inspector_name: string | null
+          manager_name: string | null
+          modality: string
+          notes: string | null
+          number: string
+          object: string
+          ordinance: string | null
+          process_id: string | null
+          start_date: string
+          status: string
+          supplier_id: string | null
+          tenant_id: string
+          total_value: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          inspector_name?: string | null
+          manager_name?: string | null
+          modality?: string
+          notes?: string | null
+          number: string
+          object: string
+          ordinance?: string | null
+          process_id?: string | null
+          start_date: string
+          status?: string
+          supplier_id?: string | null
+          tenant_id: string
+          total_value?: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          inspector_name?: string | null
+          manager_name?: string | null
+          modality?: string
+          notes?: string | null
+          number?: string
+          object?: string
+          ordinance?: string | null
+          process_id?: string | null
+          start_date?: string
+          status?: string
+          supplier_id?: string | null
+          tenant_id?: string
+          total_value?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_contract_process"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "fk_contract_supplier"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           content: string
@@ -271,6 +415,127 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      process_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          document_url: string | null
+          id: string
+          is_done: boolean
+          process_id: string
+          sort_order: number
+          stage: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          document_url?: string | null
+          id?: string
+          is_done?: boolean
+          process_id: string
+          sort_order?: number
+          stage: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          document_url?: string | null
+          id?: string
+          is_done?: boolean
+          process_id?: string
+          sort_order?: number
+          stage?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_item_process"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      procurement_processes: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          estimated_value: number | null
+          id: string
+          modality: string
+          number: string
+          priority: string
+          requesting_unit: string | null
+          responsible_name: string | null
+          stage: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          estimated_value?: number | null
+          id?: string
+          modality?: string
+          number: string
+          priority?: string
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          stage?: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_value?: number | null
+          id?: string
+          modality?: string
+          number?: string
+          priority?: string
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          stage?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_processes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -569,48 +834,90 @@ export type Database = {
       }
       tenants: {
         Row: {
+          billing_contact: string | null
+          billing_day: number
+          billing_email: string | null
           cnpj: string | null
+          commercial_notes: string | null
+          commercial_status: string
           contact_email: string | null
           contact_phone: string | null
           created_at: string
           created_by: string
+          enabled_modules: Json
+          ibge_code: string | null
           id: string
+          manager_name: string | null
+          max_users: number
+          monthly_fee: number
           municipality: string | null
           name: string
+          plan_tier: string
           slug: string
           state: string | null
           status: Database["public"]["Enums"]["tenant_status"]
           street: string | null
+          trade_name: string | null
+          trial_ends_at: string | null
+          trial_starts_at: string | null
           updated_at: string
         }
         Insert: {
+          billing_contact?: string | null
+          billing_day?: number
+          billing_email?: string | null
           cnpj?: string | null
+          commercial_notes?: string | null
+          commercial_status?: string
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by: string
+          enabled_modules?: Json
+          ibge_code?: string | null
           id?: string
+          manager_name?: string | null
+          max_users?: number
+          monthly_fee?: number
           municipality?: string | null
           name: string
+          plan_tier?: string
           slug: string
           state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
           street?: string | null
+          trade_name?: string | null
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
           updated_at?: string
         }
         Update: {
+          billing_contact?: string | null
+          billing_day?: number
+          billing_email?: string | null
           cnpj?: string | null
+          commercial_notes?: string | null
+          commercial_status?: string
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by?: string
+          enabled_modules?: Json
+          ibge_code?: string | null
           id?: string
+          manager_name?: string | null
+          max_users?: number
+          monthly_fee?: number
           municipality?: string | null
           name?: string
+          plan_tier?: string
           slug?: string
           state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
           street?: string | null
+          trade_name?: string | null
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -626,6 +933,15 @@ export type Database = {
       }
       create_tenant_with_admin: {
         Args: { p_admin_user_id: string; p_name: string; p_slug: string }
+        Returns: Json
+      }
+      create_tenant_with_admin_commercial: {
+        Args: {
+          p_admin_user_id: string
+          p_details: Json
+          p_name: string
+          p_slug: string
+        }
         Returns: Json
       }
       find_tenant_user_by_email: {
@@ -645,6 +961,7 @@ export type Database = {
           can_view: boolean
         }[]
       }
+      get_platform_master_metrics: { Args: never; Returns: Json }
       get_supplier_capabilities: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -679,6 +996,10 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      log_platform_admin_access_attempt: {
+        Args: { p_route: string }
+        Returns: undefined
       }
       normalize_cnpj: { Args: { p_cnpj: string }; Returns: string }
       set_tenant_member_role: {
