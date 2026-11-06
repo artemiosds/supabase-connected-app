@@ -9,6 +9,7 @@ export type Tenant = {
   status: string;
   commercial_status: string;
   plan_tier: string;
+  monthly_fee: number;
   trial_starts_at: string | null;
   trial_ends_at: string | null;
   enabled_modules: Record<string, boolean>;
@@ -21,6 +22,7 @@ type TenantRow = {
   status: string;
   commercial_status: string;
   plan_tier: string;
+  monthly_fee: number;
   trial_starts_at: string | null;
   trial_ends_at: string | null;
   enabled_modules: unknown;
@@ -51,6 +53,7 @@ function mapTenant(row: TenantRow): Tenant {
     status: row.status,
     commercial_status: row.commercial_status,
     plan_tier: row.plan_tier,
+    monthly_fee: Number((row as TenantRow & { monthly_fee?: number }).monthly_fee ?? 0),
     trial_starts_at: row.trial_starts_at,
     trial_ends_at: row.trial_ends_at,
     enabled_modules: enabledModules,
@@ -88,7 +91,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (adminResult.error) throw adminResult.error;
 
       const tenantSelect =
-        "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules";
+        "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules, monthly_fee";
 
       if (adminResult.data) {
         const { data, error } = await db
