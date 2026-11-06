@@ -63,7 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const Route = createFileRoute("/admin-master")({
+export const Route = createFileRoute("/admin-master" as never)({
   head: () => ({
     meta: [
       { title: "Painel Master — Gestão de Fornecedores da Saúde" },
