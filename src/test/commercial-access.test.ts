@@ -22,9 +22,15 @@ describe("commercial access rules", () => {
   });
 
   it("blocks billing, suspended and cancelled tenants", () => {
-    expect(getTenantAccessState({ ...activeTenant, commercial_status: "blocked_billing" })).toBe("billing_blocked");
-    expect(getTenantAccessState({ ...activeTenant, commercial_status: "suspended" })).toBe("commercial_suspended");
-    expect(getTenantAccessState({ ...activeTenant, commercial_status: "cancelled" })).toBe("cancelled");
+    expect(getTenantAccessState({ ...activeTenant, commercial_status: "blocked_billing" })).toBe(
+      "billing_blocked",
+    );
+    expect(getTenantAccessState({ ...activeTenant, commercial_status: "suspended" })).toBe(
+      "commercial_suspended",
+    );
+    expect(getTenantAccessState({ ...activeTenant, commercial_status: "cancelled" })).toBe(
+      "cancelled",
+    );
   });
 
   it("distinguishes trial not started, valid and expired", () => {
@@ -34,7 +40,9 @@ describe("commercial access rules", () => {
       trial_starts_at: "2026-11-07T00:00:00.000Z",
       trial_ends_at: "2026-11-14T00:00:00.000Z",
     };
-    expect(getTenantAccessState(trial, new Date("2026-11-06T12:00:00.000Z"))).toBe("trial_not_started");
+    expect(getTenantAccessState(trial, new Date("2026-11-06T12:00:00.000Z"))).toBe(
+      "trial_not_started",
+    );
     expect(getTenantAccessState(trial, new Date("2026-11-10T12:00:00.000Z"))).toBe("allowed");
     expect(getTenantAccessState(trial, new Date("2026-11-14T00:00:00.000Z"))).toBe("trial_expired");
   });
@@ -46,16 +54,22 @@ describe("commercial access rules", () => {
   });
 
   it("counts MRR only for active institutional and commercial tenants", () => {
-    expect(calculateEstimatedMrr([
-      activeTenant,
-      { ...activeTenant, monthly_fee: 900, commercial_status: "trial" },
-      { ...activeTenant, monthly_fee: 600, status: "suspended" },
-      { ...activeTenant, monthly_fee: -10 },
-    ])).toBe(2500);
+    expect(
+      calculateEstimatedMrr([
+        activeTenant,
+        { ...activeTenant, monthly_fee: 900, commercial_status: "trial" },
+        { ...activeTenant, monthly_fee: 600, status: "suspended" },
+        { ...activeTenant, monthly_fee: -10 },
+      ]),
+    ).toBe(2500);
   });
 
   it("rounds remaining trial days up and never returns a negative count", () => {
-    expect(getTrialDaysRemaining("2026-11-07T00:00:00.000Z", new Date("2026-11-06T12:00:00.000Z"))).toBe(1);
-    expect(getTrialDaysRemaining("2026-11-05T00:00:00.000Z", new Date("2026-11-06T12:00:00.000Z"))).toBe(0);
+    expect(
+      getTrialDaysRemaining("2026-11-07T00:00:00.000Z", new Date("2026-11-06T12:00:00.000Z")),
+    ).toBe(1);
+    expect(
+      getTrialDaysRemaining("2026-11-05T00:00:00.000Z", new Date("2026-11-06T12:00:00.000Z")),
+    ).toBe(0);
   });
 });

@@ -177,10 +177,7 @@ export function usePlatformAdmin() {
 
   const updateTenant = useCallback(
     async (tenantId: string, values: Partial<MasterTenant>) => {
-      const { error: updateError } = await db
-        .from("tenants")
-        .update(values)
-        .eq("id", tenantId);
+      const { error: updateError } = await db.from("tenants").update(values).eq("id", tenantId);
       if (updateError) throw updateError;
       await load();
     },

@@ -43,7 +43,9 @@ const CHAVE_ORG = "gfs:organizacao-id";
 
 function mapTenant(row: TenantRow): Tenant {
   const enabledModules =
-    row.enabled_modules && typeof row.enabled_modules === "object" && !Array.isArray(row.enabled_modules)
+    row.enabled_modules &&
+    typeof row.enabled_modules === "object" &&
+    !Array.isArray(row.enabled_modules)
       ? (row.enabled_modules as Record<string, boolean>)
       : {};
   return {
@@ -152,7 +154,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [carregar]);
 
   return (
-    <TenantContext.Provider value={{ tenants, selecionado, selecionar, loading, erro, bancoPendente, recarregar }}>
+    <TenantContext.Provider
+      value={{ tenants, selecionado, selecionar, loading, erro, bancoPendente, recarregar }}
+    >
       {children}
     </TenantContext.Provider>
   );
