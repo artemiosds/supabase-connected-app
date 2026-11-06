@@ -11,7 +11,10 @@ import {
   Settings,
   Users,
   Truck,
+  ScrollText,
+  Workflow,
 } from "lucide-react";
+import { SinoAlertas } from "@/components/sino-alertas";
 import { useAuth } from "@/hooks/use-auth";
 import { TenantProvider, useTenant } from "@/hooks/use-tenant";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,8 @@ const itensMenu = [
   { para: "/painel", rotulo: "Painel", icone: LayoutDashboard },
   { para: "/organizacoes", rotulo: "Organizações", icone: Building2 },
   { para: "/usuarios", rotulo: "Usuários", icone: Users },
+  { para: "/processos", rotulo: "Processos de contratação", icone: Workflow },
+  { para: "/contratos", rotulo: "Contratos e vencimentos", icone: ScrollText },
   { para: "/fornecedores", rotulo: "Fornecedores", icone: Truck },
   { para: "/documentos", rotulo: "Documentos e vencimentos", icone: FileText },
   { para: "/historico", rotulo: "Histórico e auditoria", icone: History },
@@ -91,6 +96,9 @@ function LayoutAutenticado() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-14 items-center justify-between gap-4 border-b bg-card px-4 md:px-6">
             <SeletorOrganizacao />
+            <div className="ml-auto">
+              <SinoAlertas />
+            </div>
             <Button
               variant="ghost"
               size="sm"
