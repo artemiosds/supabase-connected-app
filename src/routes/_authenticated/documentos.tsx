@@ -218,15 +218,18 @@ function Documentos() {
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
       ]);
       for (const result of [cap, tenantData]) if (result.error) throw result.error;
-      setCapacidades(
-        cap.data?.[0] ?? {
-          can_view: false,
-          can_create: false,
-          can_update: false,
-          can_sign: false,
-          can_manage_templates: false,
-        },
-      );
+      const documentCapabilities = cap.data?.[0] ?? {
+        can_view: false,
+        can_create: false,
+        can_update: false,
+        can_sign: false,
+        can_manage_templates: false,
+      };
+      setCapacidades({
+        ...documentCapabilities,
+        can_manage_templates:
+          documentCapabilities.can_manage_templates && selecionado.enabled_modules.modelos === true,
+      });
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
       setModelos(templates);
