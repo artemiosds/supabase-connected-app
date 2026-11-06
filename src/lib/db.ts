@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 // O cliente usa os tipos gerados diretamente do schema atual do Supabase SMS2.
 export const db = supabase;
 
-// Tabelas da Fase 3 (contratos/processos) ainda não existem nos tipos gerados enquanto a
-// migration pendente não for aprovada. Este cliente sem tipagem é usado só nessas telas.
+// Estruturas de processos e contratos já existem no SMS2. O gerador de tipos ainda não
+// representa todas as relações auxiliares usadas nas telas (por exemplo, itens do processo).
+// Este cast legado evita tipos falsos; novas integrações devem preferir o cliente db tipado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const dbFase3 = supabase as unknown as { from: (t: string) => any };
 
