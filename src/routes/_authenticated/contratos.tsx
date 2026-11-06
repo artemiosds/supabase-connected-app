@@ -68,8 +68,8 @@ type Contrato = {
 const corAlerta: Record<NivelAlerta, string> = {
   vencido: "bg-destructive text-destructive-foreground",
   "30": "bg-destructive/15 text-destructive border-destructive/30",
-  "60": "bg-warning/20 text-foreground border-warning/40",
-  "90": "bg-warning/10 text-foreground border-warning/30",
+  "60": "bg-accent text-accent-foreground border-accent",
+  "90": "bg-secondary text-secondary-foreground",
   "120": "bg-primary/10 text-primary border-primary/30",
   ok: "bg-muted text-muted-foreground",
 };

@@ -85,7 +85,7 @@ type Item = {
 
 const corPrioridade: Record<string, string> = {
   urgente: "bg-destructive/15 text-destructive",
-  alta: "bg-warning/20 text-foreground",
+  alta: "bg-accent text-accent-foreground",
   normal: "bg-muted text-muted-foreground",
   baixa: "bg-muted text-muted-foreground",
 };
