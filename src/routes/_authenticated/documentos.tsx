@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Json, Tables } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({ meta: [{ title: "Documentos e vencimentos — Gestão de Fornecedores da Saúde" }] }),
@@ -50,6 +50,12 @@ export const Route = createFileRoute("/_authenticated/documentos")({
 type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj">;
 type DocumentoFornecedor = Tables<"supplier_documents">;
 type Modelo = Tables<"document_templates">;
+type ModeloCatalogo = Tables<"document_template_catalog">;
+type ProcessoContratacao = Pick<
+  Tables<"procurement_processes">,
+  "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
+>;
+type CampoComplementar = { key: string; label: string; required?: boolean };
 type DocumentoGerado = Tables<"generated_documents">;
 type Capacidades = {
   can_view: boolean;
@@ -129,6 +135,8 @@ function Documentos() {
   const [municipioSecretaria, setMunicipioSecretaria] = useState("");
   const [documentos, setDocumentos] = useState<DocumentoFornecedor[]>([]);
   const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [catalogo, setCatalogo] = useState<ModeloCatalogo[]>([]);
+  const [processos, setProcessos] = useState<ProcessoContratacao[]>([]);
   const [gerados, setGerados] = useState<DocumentoGerado[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -153,6 +161,9 @@ function Documentos() {
 
   const [dialogGerar, setDialogGerar] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("");
+  const [processoGeracao, setProcessoGeracao] = useState("");
+  const [camposComplementares, setCamposComplementares] = useState<Record<string, string>>({});
+  const [instalandoModelo, setInstalandoModelo] = useState<string | null>(null);
   const [fornecedorGeracao, setFornecedorGeracao] = useState("nenhum");
   const [tituloGerado, setTituloGerado] = useState("");
   const [conteudoGerado, setConteudoGerado] = useState("");
@@ -171,6 +182,8 @@ function Documentos() {
       setFornecedores([]);
       setDocumentos([]);
       setModelos([]);
+      setCatalogo([]);
+      setProcessos([]);
       setGerados([]);
       setMunicipioSecretaria("");
       setLoading(false);
@@ -179,7 +192,7 @@ function Documentos() {
     setLoading(true);
     setErro(null);
     try {
-      const [cap, suppliers, supplierDocs, templates, generated, tenantData] = await Promise.all([
+      const [cap, suppliers, supplierDocs, templates, generated, tenantData, catalogTemplates, processRecords] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
           db
@@ -216,6 +229,25 @@ function Documentos() {
             .range(inicio, fim),
         ),
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
+        carregarTodasAsPaginas<ModeloCatalogo>((inicio, fim) =>
+          db
+            .from("document_template_catalog")
+            .select("*")
+            .eq("is_active", true)
+            .order("template_type")
+            .range(inicio, fim),
+        ),
+        selecionado.enabled_modules["processos"] === true
+          ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
+              db
+                .from("procurement_processes")
+                .select("id,number,title,stage,status,requesting_unit,responsible_name")
+                .eq("tenant_id", selecionado.id)
+                .neq("status", "arquivado")
+                .order("created_at", { ascending: false })
+                .range(inicio, fim),
+            )
+          : Promise.resolve([] as ProcessoContratacao[]),
       ]);
       for (const result of [cap, tenantData]) if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
@@ -234,6 +266,8 @@ function Documentos() {
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
       setModelos(templates);
+      setCatalogo(catalogTemplates);
+      setProcessos(processRecords);
       setGerados(generated);
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
     } catch (e) {
@@ -395,6 +429,8 @@ function Documentos() {
 
   function iniciarGeracao() {
     setModeloSelecionado("");
+    setProcessoGeracao("");
+    setCamposComplementares({});
     setFornecedorGeracao("nenhum");
     setTituloGerado("");
     setConteudoGerado("");
@@ -402,6 +438,7 @@ function Documentos() {
   }
   function selecionarModelo(id: string) {
     setModeloSelecionado(id);
+    setCamposComplementares({});
     const modelo = modelos.find((m) => m.id === id);
     if (modelo) {
       setTituloGerado(modelo.title);
@@ -428,25 +465,66 @@ function Documentos() {
     e.preventDefault();
     if (!selecionado) return;
     setSalvandoGerado(true);
-    const snapshot = preencherModelo();
-    const { error: insertError } = await db.from("generated_documents").insert({
-      tenant_id: selecionado.id,
-      supplier_id: fornecedorGeracao === "nenhum" ? null : fornecedorGeracao,
-      template_id: modeloSelecionado || null,
-      title: tituloGerado.trim(),
-      content_snapshot: snapshot,
-      status: "draft",
-    });
-    setSalvandoGerado(false);
-    if (insertError) {
-      toast.error(insertError.message);
-      return;
+    if (processoGeracao) {
+      if (!modeloSelecionado) {
+        setSalvandoGerado(false);
+        toast.error("Selecione um modelo instalado nesta Secretaria.");
+        return;
+      }
+      const { error: rpcError } = await db.rpc("generate_document_from_process", {
+        p_process_id: processoGeracao,
+        p_template_id: modeloSelecionado,
+        p_overrides: camposComplementares as Json,
+      });
+      setSalvandoGerado(false);
+      if (rpcError) {
+        toast.error(rpcError.message);
+        return;
+      }
+      toast.success("Documento vinculado ao processo e salvo como rascunho.");
+    } else {
+      const snapshot = preencherModelo();
+      const { error: insertError } = await db.from("generated_documents").insert({
+        tenant_id: selecionado.id,
+        supplier_id: fornecedorGeracao === "nenhum" ? null : fornecedorGeracao,
+        template_id: modeloSelecionado || null,
+        title: tituloGerado.trim(),
+        content_snapshot: snapshot,
+        status: "draft",
+      });
+      setSalvandoGerado(false);
+      if (insertError) {
+        toast.error(insertError.message);
+        return;
+      }
+      toast.success("Documento gerado como rascunho.");
     }
-    toast.success("Documento gerado como rascunho.");
     setDialogGerar(false);
     setAba("gerados");
     await carregar();
   }
+
+  async function instalarModeloBase(m: ModeloCatalogo) {
+    if (!selecionado || !capacidades.can_manage_templates) return;
+    setInstalandoModelo(m.id);
+    const { error: installError } = await db.rpc("install_document_template", {
+      p_tenant_id: selecionado.id,
+      p_catalog_template_id: m.id,
+    });
+    setInstalandoModelo(null);
+    if (installError) {
+      toast.error(installError.message);
+      return;
+    }
+    toast.success("Modelo-base instalado. Agora ele pertence a esta Secretaria e pode ser editado.");
+    await carregar();
+  }
+
+  const modeloDoGerador = modelos.find((m) => m.id === modeloSelecionado);
+  const camposDoModelo = (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? [];
+  const modelosInstalados = new Set(
+    modelos.filter((m) => m.catalog_template_id && m.is_active).map((m) => m.catalog_template_id as string),
+  );
 
   async function assinarDocumento(d: DocumentoGerado) {
     if (!selecionado || !capacidades.can_sign) return;
@@ -576,6 +654,9 @@ function Documentos() {
               <TabsTrigger value="vencimentos">Vencimentos</TabsTrigger>
               <TabsTrigger value="modelos">Modelos ({modelos.length})</TabsTrigger>
               <TabsTrigger value="gerados">Gerados ({gerados.length})</TabsTrigger>
+              {capacidades.can_manage_templates && (
+                <TabsTrigger value="biblioteca">Biblioteca-base ({catalogo.length})</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="vencimentos" className="mt-4">
               <div className="overflow-hidden rounded-lg border bg-card">
@@ -683,9 +764,13 @@ function Documentos() {
                       <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
                         {m.content}
                       </p>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Campos: {"{{fornecedor}}"}, {"{{nome_fantasia}}"}, {"{{cnpj}}"},{" "}
-                        {"{{secretaria}}"}, {"{{municipio}}"}, {"{{data}}"}, {"{{usuario}}"}
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline">Versão {m.version}</Badge>
+                        <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
+                        {m.legal_basis && <span>{m.legal_basis}</span>}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Campos automáticos: processo, objeto, Secretaria, município, unidade, responsável, prioridade e prazo quando cadastrados.
                       </p>
                     </CardContent>
                   </Card>
@@ -698,6 +783,58 @@ function Documentos() {
                 )}
               </div>
             </TabsContent>
+            {capacidades.can_manage_templates && (
+              <TabsContent value="biblioteca" className="mt-4">
+                <div className="mb-3 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  Modelos-base orientativos da plataforma. A instalação cria uma cópia independente nesta Secretaria.
+                  Revise e adapte o conteúdo à regulamentação municipal e ao objeto antes de utilizar.
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {catalogo.map((m) => {
+                    const instalado = modelosInstalados.has(m.id);
+                    return (
+                      <Card key={m.id}>
+                        <CardHeader className="pb-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <CardTitle className="text-base">{m.title}</CardTitle>
+                            <Badge variant="outline">v{m.version}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{m.description}</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-xs text-muted-foreground">
+                            **Base legal:** {m.legal_basis}
+                          </p>
+                          <a
+                            href={m.source_reference.split(" | ")[0]}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-primary underline underline-offset-4"
+                          >
+                            Consultar referência normativa
+                          </a>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">{m.template_code}</span>
+                            {instalado ? (
+                              <Badge variant="secondary">Já instalado</Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => void instalarModeloBase(m)}
+                                disabled={instalandoModelo !== null}
+                              >
+                                {instalandoModelo === m.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Instalar nesta Secretaria
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            )}
             <TabsContent value="gerados" className="mt-4">
               <div className="overflow-hidden rounded-lg border bg-card">
                 <div className="overflow-x-auto">
@@ -975,6 +1112,31 @@ function Documentos() {
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
+              {selecionado.enabled_modules["processos"] === true && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Vincular a processo de contratação (opcional)</Label>
+                  <Select
+                    value={processoGeracao || "sem_vinculo"}
+                    onValueChange={(value) => {
+                      setProcessoGeracao(value === "sem_vinculo" ? "" : value);
+                      setCamposComplementares({});
+                      if (value !== "sem_vinculo") setFornecedorGeracao("nenhum");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Documento avulso ou selecione um processo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem_vinculo">Documento avulso (sem processo)</SelectItem>
+                      {processos.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.number} — {p.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Modelo</Label>
                 <Select value={modeloSelecionado} onValueChange={selecionarModelo}>
@@ -990,9 +1152,10 @@ function Documentos() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Fornecedor</Label>
-                <Select value={fornecedorGeracao} onValueChange={setFornecedorGeracao}>
+              {!processoGeracao && (
+                <div className="space-y-2">
+                  <Label>Fornecedor</Label>
+                  <Select value={fornecedorGeracao} onValueChange={setFornecedorGeracao}>
                   <SelectTrigger>
                     <SelectValue placeholder="Vincular fornecedor" />
                   </SelectTrigger>
@@ -1004,20 +1167,62 @@ function Documentos() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Título do documento *</Label>
+                  </Select>
+                </div>
+              )}
+              {!processoGeracao && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Título do documento *</Label>
                 <Input
                   required
                   minLength={2}
                   maxLength={180}
                   value={tituloGerado}
                   onChange={(e) => setTituloGerado(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Conteúdo do documento *</Label>
+                  />
+                </div>
+              )}
+              {processoGeracao && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Dados complementares do documento</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Os dados já cadastrados no processo serão preenchidos automaticamente. Complete os campos abaixo;
+                    qualquer informação ausente ficará marcada no rascunho para revisão.
+                  </p>
+                  {camposDoModelo.length === 0 ? (
+                    <Alert>
+                      <AlertDescription>
+                        Selecione um modelo-base instalado que contenha os campos de preenchimento.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {camposDoModelo.map((campo) => (
+                        <div key={campo.key} className="space-y-1.5">
+                          <Label>
+                            {campo.label || campo.key}{campo.required ? " *" : ""}
+                          </Label>
+                          <Textarea
+                            rows={2}
+                            maxLength={12000}
+                            required={campo.required === true}
+                            value={camposComplementares[campo.key] ?? ""}
+                            onChange={(event) =>
+                              setCamposComplementares((current) => ({
+                                ...current,
+                                [campo.key]: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!processoGeracao && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Conteúdo do documento *</Label>
                 <Textarea
                   required
                   rows={14}
@@ -1028,8 +1233,9 @@ function Documentos() {
                 <p className="text-xs text-muted-foreground">
                   Campos automáticos são substituídos na geração: fornecedor, nome_fantasia, cnpj,
                   secretaria, municipio, data e usuario.
-                </p>
-              </div>
+                  </p>
+                </div>
+              )}
               <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground sm:col-span-2">
                 <AlertCircle className="mr-1 inline h-3.5 w-3.5" /> A assinatura disponível nesta
                 fase é uma assinatura eletrônica simples vinculada à sessão autenticada. Não
@@ -1042,7 +1248,12 @@ function Documentos() {
               </Button>
               <Button
                 type="submit"
-                disabled={salvandoGerado || !tituloGerado.trim() || !conteudoGerado.trim()}
+                disabled={
+                  salvandoGerado ||
+                  (processoGeracao
+                    ? !modeloSelecionado || camposDoModelo.some((campo) => campo.required && !camposComplementares[campo.key]?.trim())
+                    : !tituloGerado.trim() || !conteudoGerado.trim())
+                }
               >
                 {salvandoGerado ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
