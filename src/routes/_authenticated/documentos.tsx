@@ -642,6 +642,14 @@ function Documentos() {
       </Alert>
     );
 
+  const moduloModelosAtivo = selecionado.enabled_modules["modelos"] === true;
+
+  useEffect(() => {
+    if (!moduloModelosAtivo && (aba === "modelos" || aba === "biblioteca")) {
+      setAba("vencimentos");
+    }
+  }, [moduloModelosAtivo, aba]);
+
   return (
     <div className="space-y-6">
       <div className="print:hidden flex flex-wrap items-start justify-between gap-3">
@@ -652,7 +660,7 @@ function Documentos() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {capacidades.can_manage_templates && (
+          {moduloModelosAtivo && capacidades.can_manage_templates && (
             <Button variant="outline" onClick={iniciarNovoModelo}>
               <Plus className="h-4 w-4" /> Novo modelo
             </Button>
@@ -714,9 +722,11 @@ function Documentos() {
           <Tabs value={aba} onValueChange={setAba} className="print:hidden">
             <TabsList>
               <TabsTrigger value="vencimentos">Vencimentos</TabsTrigger>
-              <TabsTrigger value="modelos">Modelos ({modelos.length})</TabsTrigger>
+              {moduloModelosAtivo && (
+                <TabsTrigger value="modelos">Modelos ({modelos.length})</TabsTrigger>
+              )}
               <TabsTrigger value="gerados">Gerados ({gerados.length})</TabsTrigger>
-              {capacidades.can_manage_templates && (
+              {moduloModelosAtivo && capacidades.can_manage_templates && (
                 <TabsTrigger value="biblioteca">Biblioteca-base ({catalogo.length})</TabsTrigger>
               )}
             </TabsList>
@@ -812,6 +822,7 @@ function Documentos() {
                 até a integração OAuth e sincronização automática com o Drive.
               </p>
             </TabsContent>
+            {moduloModelosAtivo && (
             <TabsContent value="modelos" className="mt-4">
               <div className="grid gap-3 md:grid-cols-2">
                 {modelos.map((m) => (
@@ -855,7 +866,8 @@ function Documentos() {
                 )}
               </div>
             </TabsContent>
-            {capacidades.can_manage_templates && (
+            )}
+            {moduloModelosAtivo && capacidades.can_manage_templates && (
               <TabsContent value="biblioteca" className="mt-4">
                 <div className="mb-3 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
                   Modelos-base orientativos da plataforma. A instalação cria uma cópia independente nesta Secretaria.
