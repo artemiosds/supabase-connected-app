@@ -43,7 +43,7 @@ export function etapaAnterior(atual: EtapaId): EtapaId | null {
 export type NivelAlerta = "vencido" | "30" | "60" | "90" | "120" | "ok";
 
 export function diasAte(dataFim: string, hoje: Date = new Date()): number {
-  const [a, m, d] = dataFim.split("-").map(Number);
+  const [a = 0, m = 1, d = 1] = dataFim.split("-").map(Number);
   const fim = Date.UTC(a, m - 1, d);
   const base = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   return Math.round((fim - base) / 86_400_000);

@@ -144,7 +144,10 @@ function Processos() {
       .from("procurement_processes")
       .update({ stage: destino, updated_by: userId })
       .eq("id", p.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`Processo movido para ${ETAPAS.find((e) => e.id === destino)?.nome}.`);
     void carregar();
   }
@@ -154,7 +157,10 @@ function Processos() {
       .from("process_items")
       .update({ is_done: !item.is_done, updated_by: userId })
       .eq("id", item.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setItens((s) => s.map((x) => (x.id === item.id ? { ...x, is_done: !x.is_done } : x)));
   }
 
@@ -163,7 +169,10 @@ function Processos() {
       .from("procurement_processes")
       .update({ status: "concluido", updated_by: userId })
       .eq("id", p.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Processo concluído.");
     setAbertoId(null);
     void carregar();
@@ -396,7 +405,8 @@ function NovoProcesso(props: {
       .single();
     if (error) {
       setSalvando(false);
-      return toast.error(error.message);
+      toast.error(error.message);
+      return;
     }
     // Checklist automático com os documentos de cada etapa.
     const itens = ETAPAS.flatMap((etapa) =>
