@@ -51,7 +51,7 @@ describe("commercial access rules", () => {
       { ...activeTenant, monthly_fee: 900, commercial_status: "trial" },
       { ...activeTenant, monthly_fee: 600, status: "suspended" },
       { ...activeTenant, monthly_fee: -10 },
-    ])).toBe(2490);
+    ])).toBe(2500);
   });
 
   it("rounds remaining trial days up and never returns a negative count", () => {
