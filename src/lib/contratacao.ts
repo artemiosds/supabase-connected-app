@@ -31,12 +31,12 @@ export const MODALIDADES: Record<string, string> = {
 
 export function proximaEtapa(atual: EtapaId): EtapaId | null {
   const i = ETAPAS.findIndex((e) => e.id === atual);
-  return i >= 0 && i < ETAPAS.length - 1 ? ETAPAS[i + 1].id : null;
+  return i >= 0 && i < ETAPAS.length - 1 ? ETAPAS[i + 1]!.id : null;
 }
 
 export function etapaAnterior(atual: EtapaId): EtapaId | null {
   const i = ETAPAS.findIndex((e) => e.id === atual);
-  return i > 0 ? ETAPAS[i - 1].id : null;
+  return i > 0 ? ETAPAS[i - 1]!.id : null;
 }
 
 /** Régua de alertas de vencimento: 120, 90, 60 e 30 dias. */
