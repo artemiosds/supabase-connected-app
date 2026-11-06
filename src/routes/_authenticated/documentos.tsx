@@ -274,6 +274,8 @@ function Documentos() {
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
       setModelos([]);
+      setCatalogo([]);
+      setProcessos([]);
       setGerados([]);
     } finally {
       setLoading(false);
@@ -860,8 +862,10 @@ function Documentos() {
                             <td className="p-3">
                               <p className="font-medium">{d.title}</p>
                               <p className="text-xs text-muted-foreground">
-                                {fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
-                                  "Sem fornecedor vinculado"}
+                                {d.process_id
+                                  ? "Processo de contratação vinculado"
+                                  : fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
+                                    "Sem fornecedor vinculado"}
                               </p>
                             </td>
                             <td className="p-3">
@@ -1271,6 +1275,11 @@ function Documentos() {
           <div className="mx-auto max-w-4xl">
             <p className="mb-8 text-center text-sm">{selecionado.nome}</p>
             <h1 className="mb-8 text-center text-2xl font-bold">{documentoImpressao.title}</h1>
+            {documentoImpressao.process_id && (
+              <p className="mb-5 text-center text-sm">
+                Documento vinculado ao processo de contratação.
+              </p>
+            )}
             <div className="whitespace-pre-wrap text-sm leading-7">
               {documentoImpressao.content_snapshot}
             </div>
