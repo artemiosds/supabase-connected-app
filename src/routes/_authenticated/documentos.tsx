@@ -57,7 +57,7 @@ type ProcessoContratacao = Pick<
   Tables<"procurement_processes">,
   "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
 >;
-type CampoComplementar = { key: string; label: string; required?: boolean };
+type CampoComplementar = { key: string; label: string; required?: boolean; source?: string };
 type DocumentoGerado = Tables<"generated_documents">;
 type Capacidades = {
   can_view: boolean;
@@ -581,7 +581,9 @@ function Documentos() {
   }
 
   const modeloDoGerador = modelos.find((m) => m.id === modeloSelecionado);
-  const camposDoModelo = (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? [];
+  const camposDoModelo = (
+    (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
+  ).filter((campo) => !campo.source?.startsWith("process."));
   const modelosInstalados = new Set(
     modelos.filter((m) => m.catalog_template_id && m.is_active).map((m) => m.catalog_template_id as string),
   );
@@ -1329,8 +1331,9 @@ function Documentos() {
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Dados complementares do documento</Label>
                   <p className="text-xs text-muted-foreground">
-                    Os dados já cadastrados no processo serão preenchidos automaticamente. Complete os campos abaixo;
-                    qualquer informação ausente ficará marcada no rascunho para revisão.
+                    Os campos com origem nos dados do processo serão preenchidos automaticamente. Complete apenas
+                    os campos técnicos e administrativos abaixo; dados ausentes no cadastro ficam identificados
+                    no rascunho para conferência.
                   </p>
                   {camposDoModelo.length === 0 ? (
                     <Alert>
