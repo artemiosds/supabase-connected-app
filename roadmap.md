@@ -75,3 +75,8 @@ Inclui:
 - Security Advisor: WARN por proteção contra senhas vazadas desativada.
 - Performance Advisor: índices INFO ainda sem uso, esperado porque não há carga operacional; não remover índices só por essa observação.
 - **Fase 3** deve ser estabilização/homologação autenticada, teste de escala, correção dos defeitos observados e preparação para produção. Evitar novas migrations se não houver necessidade comprovada.
+
+## FASE 3 — Contratos e Processos de Contratação (06/11/2026)
+- [x] Telas: Processos (quadro por etapas DFD→ETP→TR→Pesquisa→Parecer→Conclusão, checklist automático) e Contratos (aditivos, régua 120/90/60/30 dias, sino de alertas).
+- [ ] **Bloqueado — aprovação do usuário:** aplicar `supabase/operations/pending_phase3_contracts_and_processes.sql` como nova migration no SMS2 (ferramenta de migração desativada pela preferência de aprovação).
+- [ ] Envio automático de e-mail/WhatsApp (ainda não existe; hoje os alertas aparecem só dentro do sistema).
