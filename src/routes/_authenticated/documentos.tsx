@@ -278,7 +278,7 @@ function Documentos() {
     } finally {
       setLoading(false);
     }
-  }, [selecionado?.id]);
+  }, [selecionado?.id, selecionado?.enabled_modules]);
 
   useEffect(() => {
     void carregar();
@@ -803,7 +803,7 @@ function Documentos() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <p className="text-xs text-muted-foreground">
-                            **Base legal:** {m.legal_basis}
+                            <strong>Base legal:</strong> {m.legal_basis}
                           </p>
                           <a
                             href={m.source_reference.split(" | ")[0]}
@@ -1106,8 +1106,8 @@ function Documentos() {
           <DialogHeader>
             <DialogTitle>Gerar documento</DialogTitle>
             <DialogDescription>
-              Crie um rascunho com base em um modelo salvo e nos dados do fornecedor. O texto final
-              fica registrado como fotografia do documento.
+              Gere um rascunho avulso ou vinculado a um processo. O conteúdo e os dados de origem
+              ficam registrados como fotografia do documento.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
@@ -1156,29 +1156,29 @@ function Documentos() {
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
                   <Select value={fornecedorGeracao} onValueChange={setFornecedorGeracao}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Vincular fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nenhum">Sem fornecedor</SelectItem>
-                    {fornecedores.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.legal_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vincular fornecedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Sem fornecedor</SelectItem>
+                      {fornecedores.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.legal_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
               )}
               {!processoGeracao && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Título do documento *</Label>
-                <Input
-                  required
-                  minLength={2}
-                  maxLength={180}
-                  value={tituloGerado}
-                  onChange={(e) => setTituloGerado(e.target.value)}
+                  <Input
+                    required
+                    minLength={2}
+                    maxLength={180}
+                    value={tituloGerado}
+                    onChange={(e) => setTituloGerado(e.target.value)}
                   />
                 </div>
               )}
@@ -1223,16 +1223,15 @@ function Documentos() {
               {!processoGeracao && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Conteúdo do documento *</Label>
-                <Textarea
-                  required
-                  rows={14}
-                  maxLength={100000}
-                  value={conteudoGerado}
-                  onChange={(e) => setConteudoGerado(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Campos automáticos são substituídos na geração: fornecedor, nome_fantasia, cnpj,
-                  secretaria, municipio, data e usuario.
+                  <Textarea
+                    required
+                    rows={14}
+                    maxLength={100000}
+                    value={conteudoGerado}
+                    onChange={(e) => setConteudoGerado(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Campos automáticos: fornecedor, nome_fantasia, cnpj, secretaria, municipio, data e usuario.
                   </p>
                 </div>
               )}
