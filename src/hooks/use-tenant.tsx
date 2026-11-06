@@ -7,6 +7,11 @@ export type Tenant = {
   nome: string;
   slug: string;
   status: string;
+  commercial_status: string;
+  plan_tier: string;
+  trial_starts_at: string | null;
+  trial_ends_at: string | null;
+  enabled_modules: Record<string, boolean>;
 };
 
 type TenantRow = {
@@ -14,6 +19,11 @@ type TenantRow = {
   name: string;
   slug: string;
   status: string;
+  commercial_status: string;
+  plan_tier: string;
+  trial_starts_at: string | null;
+  trial_ends_at: string | null;
+  enabled_modules: unknown;
 };
 
 type TenantContextValue = {
@@ -27,8 +37,25 @@ type TenantContextValue = {
 };
 
 const TenantContext = createContext<TenantContextValue | null>(null);
-
 const CHAVE_ORG = "gfs:organizacao-id";
+
+function mapTenant(row: TenantRow): Tenant {
+  const enabledModules =
+    row.enabled_modules && typeof row.enabled_modules === "object" && !Array.isArray(row.enabled_modules)
+      ? (row.enabled_modules as Record<string, boolean>)
+      : {};
+  return {
+    id: row.id,
+    nome: row.name,
+    slug: row.slug,
+    status: row.status,
+    commercial_status: row.commercial_status,
+    plan_tier: row.plan_tier,
+    trial_starts_at: row.trial_starts_at,
+    trial_ends_at: row.trial_ends_at,
+    enabled_modules: enabledModules,
+  };
+}
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
@@ -50,8 +77,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setBancoPendente(false);
 
     try {
-      // O superadministrador global nao e membro municipal. Sua visao vem de tenants;
-      // usuarios comuns continuam vendo apenas organizacoes dos seus vinculos ativos.
+      // O administrador global não é membro municipal; sua lista vem de tenants.
       const adminResult = await db
         .from("platform_admins")
         .select("user_id")
@@ -61,61 +87,44 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       if (adminResult.error) throw adminResult.error;
 
+      const tenantSelect =
+        "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules";
+
       if (adminResult.data) {
         const { data, error } = await db
           .from("tenants")
-          .select("id, name, slug, status")
+          .select(tenantSelect)
           .order("name", { ascending: true });
         if (error) throw error;
-
-        const lista = ((data ?? []) as TenantRow[]).map((tenant) => ({
-          id: tenant.id,
-          nome: tenant.name,
-          slug: tenant.slug,
-          status: tenant.status,
-        }));
-        setTenants(lista);
+        setTenants(((data ?? []) as TenantRow[]).map(mapTenant));
       } else {
         const { data, error } = await db
           .from("tenant_memberships")
-          .select("tenant:tenants(id, name, slug, status)")
+          .select(`tenant:tenants(${tenantSelect})`)
           .eq("status", "active");
         if (error) throw error;
 
         const registros = (data ?? []) as unknown as { tenant: TenantRow | null }[];
-        const lista = registros
-          .map(({ tenant }) =>
-            tenant
-              ? {
-                  id: tenant.id,
-                  nome: tenant.name,
-                  slug: tenant.slug,
-                  status: tenant.status,
-                }
-              : null,
-          )
-          .filter((t): t is Tenant => t !== null);
-        setTenants(lista);
+        setTenants(
+          registros
+            .map(({ tenant }) => (tenant ? mapTenant(tenant) : null))
+            .filter((tenant): tenant is Tenant => tenant !== null),
+        );
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
       setTenants([]);
-      if (bancoNaoConfigurado(msg)) {
-        setBancoPendente(true);
-      } else {
-        setErro(msg);
-      }
+      if (bancoNaoConfigurado(message)) setBancoPendente(true);
+      else setErro(message);
     } finally {
       setLoading(false);
     }
   }, [session?.user.id]);
 
   useEffect(() => {
-    carregar();
+    void carregar();
   }, [carregar]);
 
-  // O histórico do navegador é lido depois da hidratação para evitar
-  // divergência entre servidor e cliente.
   useEffect(() => {
     try {
       setSelecionadoId(window.localStorage.getItem(CHAVE_ORG));
@@ -129,27 +138,25 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     try {
       window.localStorage.setItem(CHAVE_ORG, id);
     } catch {
-      // sem storage disponível: seleção vale só para a sessão atual
+      // A seleção permanece apenas em memória quando o storage não estiver disponível.
     }
   }, []);
 
-  const selecionado = tenants.find((t) => t.id === selecionadoId) ?? tenants[0] ?? null;
+  const selecionado = tenants.find((tenant) => tenant.id === selecionadoId) ?? tenants[0] ?? null;
 
   const recarregar = useCallback(() => {
     void carregar();
   }, [carregar]);
 
   return (
-    <TenantContext.Provider
-      value={{ tenants, selecionado, selecionar, loading, erro, bancoPendente, recarregar }}
-    >
+    <TenantContext.Provider value={{ tenants, selecionado, selecionar, loading, erro, bancoPendente, recarregar }}>
       {children}
     </TenantContext.Provider>
   );
 }
 
 export function useTenant(): TenantContextValue {
-  const ctx = useContext(TenantContext);
-  if (!ctx) throw new Error("useTenant deve ser usado dentro de TenantProvider");
-  return ctx;
+  const context = useContext(TenantContext);
+  if (!context) throw new Error("useTenant deve ser usado dentro de TenantProvider");
+  return context;
 }
