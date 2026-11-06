@@ -37,11 +37,11 @@ jobs:
       - name: Run unit tests
         run: bun run test
 
-      - name: Type check
-        run: bunx tsc --noEmit
-
       - name: Build production bundle
         run: bun run build
+
+      - name: Type check
+        run: bunx tsc --noEmit
 
       - name: Lint
         run: bun run lint
