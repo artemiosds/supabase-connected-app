@@ -29,7 +29,20 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 4. Gere um documento, revise o texto final, imprima ou salve como PDF pelo navegador.
 5. Registre a assinatura eletrônica simples com uma conta autenticada e verifique a imutabilidade do conteúdo assinado.
 
-## 4. Validar usuários e permissões
+## 4. Validar modelos e geração por processo
+
+1. Ative os módulos Processos, Documentos e Modelos na Secretaria de teste.
+2. Com o perfil que possui gestão de modelos, abra a Biblioteca-base e instale DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
+3. Edite uma cópia instalada, informe um resumo da alteração e salve. Confira que a versão aumenta e que a anterior aparece no Histórico, sem possibilidade de edição.
+4. Cadastre um processo de teste com número, objeto, justificativa, unidade requisitante e responsável.
+5. Gere DFD, ETP, Mapa de Análise de Riscos e TR a partir do processo. Preencha os campos obrigatórios e confirme que o rascunho registra o processo e o conteúdo original.
+6. Tente gerar deixando um campo obrigatório vazio; a operação deve ser bloqueada também pelo banco.
+7. Com uma segunda Secretaria, confirme que não é possível instalar/consultar modelos privados da primeira nem vincular documentos a processos de outro tenant.
+8. Imprima/salve o documento como PDF pelo navegador e confirme que a assinatura disponível é simples, não ICP-Brasil.
+
+**Atenção:** a Matriz Contratual de Alocação de Riscos é separada do Mapa de Análise de Riscos e só deve ser utilizada após avaliação de sua cabibilidade/necessidade no caso concreto.
+
+## 5. Validar usuários e permissões
 
 1. Crie mais duas contas municipais em janelas anônimas e confirme seus e-mails.
 2. Na Secretaria de teste, vincule uma delas como Operador e outra como Consulta.
@@ -38,14 +51,14 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 5. Como Administrador local, altere o papel de um membro e suspenda/reative um vínculo.
 6. Verifique que o sistema impede suspender a própria conta e remover o último Administrador ativo.
 
-## 5. Validar separação entre Secretarias
+## 6. Validar separação entre Secretarias
 
 1. Crie uma segunda Secretaria de teste com outra conta municipal.
 2. Cadastre fornecedores e documentos em ambas.
 3. Entre em cada conta e confira que somente os registros da própria Secretaria aparecem.
 4. Tente usar IDs de registros da outra Secretaria em operações diretas; o banco deve negar a leitura e a alteração.
 
-## 6. Conferir painel, configurações e histórico
+## 7. Conferir painel, configurações e histórico
 
 1. Confira os indicadores do painel com os registros de teste.
 2. Atualize dados institucionais da Secretaria e verifique CNPJ, e-mail, telefone, endereço, município e UF.
