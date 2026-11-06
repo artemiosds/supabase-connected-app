@@ -148,7 +148,7 @@ function MenuLateral() {
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
       {isPlatformAdmin && (
         <Link
-          to={"/admin-master" as never}
+          to="/admin-master"
           className={cn(
             "mb-3 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10",
             pathname.startsWith("/admin-master") && "bg-primary/10",
