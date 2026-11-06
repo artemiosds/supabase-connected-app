@@ -6,6 +6,7 @@ import {
   ExternalLink,
   FilePlus2,
   FileText,
+  History,
   Loader2,
   Pencil,
   Plus,
@@ -51,6 +52,7 @@ type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" |
 type DocumentoFornecedor = Tables<"supplier_documents">;
 type Modelo = Tables<"document_templates">;
 type ModeloCatalogo = Tables<"document_template_catalog">;
+type VersaoModelo = Tables<"document_template_versions">;
 type ProcessoContratacao = Pick<
   Tables<"procurement_processes">,
   "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
@@ -154,10 +156,16 @@ function Documentos() {
   const [observacaoDocumento, setObservacaoDocumento] = useState("");
 
   const [dialogModelo, setDialogModelo] = useState(false);
+  const [modeloEditando, setModeloEditando] = useState<Modelo | null>(null);
   const [tituloModelo, setTituloModelo] = useState("");
   const [descricaoModelo, setDescricaoModelo] = useState("");
   const [conteudoModelo, setConteudoModelo] = useState("");
+  const [resumoModelo, setResumoModelo] = useState("");
   const [salvandoModelo, setSalvandoModelo] = useState(false);
+  const [dialogHistoricoModelo, setDialogHistoricoModelo] = useState(false);
+  const [modeloHistorico, setModeloHistorico] = useState<Modelo | null>(null);
+  const [versoesModelo, setVersoesModelo] = useState<VersaoModelo[]>([]);
+  const [carregandoVersoes, setCarregandoVersoes] = useState(false);
 
   const [dialogGerar, setDialogGerar] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("");
@@ -406,26 +414,76 @@ function Documentos() {
     await carregar();
   }
 
+  function iniciarNovoModelo() {
+    setModeloEditando(null);
+    setTituloModelo("");
+    setDescricaoModelo("");
+    setConteudoModelo("");
+    setResumoModelo("");
+    setDialogModelo(true);
+  }
+
+  function iniciarEdicaoModelo(modelo: Modelo) {
+    setModeloEditando(modelo);
+    setTituloModelo(modelo.title);
+    setDescricaoModelo(modelo.description ?? "");
+    setConteudoModelo(modelo.content);
+    setResumoModelo("");
+    setDialogModelo(true);
+  }
+
+  async function abrirHistoricoModelo(modelo: Modelo) {
+    if (!selecionado) return;
+    setModeloHistorico(modelo);
+    setVersoesModelo([]);
+    setDialogHistoricoModelo(true);
+    setCarregandoVersoes(true);
+    const { data, error: historyError } = await db
+      .from("document_template_versions")
+      .select("*")
+      .eq("tenant_id", selecionado.id)
+      .eq("template_id", modelo.id)
+      .order("version", { ascending: false });
+    setCarregandoVersoes(false);
+    if (historyError) {
+      toast.error(historyError.message);
+      return;
+    }
+    setVersoesModelo(data ?? []);
+  }
+
   async function salvarModelo(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
     setSalvandoModelo(true);
-    const { error: insertError } = await db.from("document_templates").insert({
-      tenant_id: selecionado.id,
+    const payload = {
       title: tituloModelo.trim(),
       description: descricaoModelo.trim() || null,
       content: conteudoModelo.trim(),
-    });
+      change_summary: resumoModelo.trim() || (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
+    };
+    const result = modeloEditando
+      ? await db
+          .from("document_templates")
+          .update(payload)
+          .eq("id", modeloEditando.id)
+          .eq("tenant_id", selecionado.id)
+      : await db.from("document_templates").insert({
+          tenant_id: selecionado.id,
+          ...payload,
+        });
     setSalvandoModelo(false);
-    if (insertError) {
-      toast.error(insertError.message);
+    if (result.error) {
+      toast.error(result.error.message);
       return;
     }
-    toast.success("Modelo salvo nesta Secretaria.");
+    toast.success(modeloEditando ? "Modelo atualizado. Uma nova versão foi registrada." : "Modelo salvo nesta Secretaria.");
     setDialogModelo(false);
+    setModeloEditando(null);
     setTituloModelo("");
     setDescricaoModelo("");
     setConteudoModelo("");
+    setResumoModelo("");
     await carregar();
   }
 
@@ -593,7 +651,7 @@ function Documentos() {
         </div>
         <div className="flex flex-wrap gap-2">
           {capacidades.can_manage_templates && (
-            <Button variant="outline" onClick={() => setDialogModelo(true)}>
+            <Button variant="outline" onClick={iniciarNovoModelo}>
               <Plus className="h-4 w-4" /> Novo modelo
             </Button>
           )}
@@ -766,7 +824,7 @@ function Documentos() {
                       <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
                         {m.content}
                       </p>
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="outline">Versão {m.version}</Badge>
                         <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
                         {m.legal_basis && <span>{m.legal_basis}</span>}
@@ -774,6 +832,16 @@ function Documentos() {
                       <p className="mt-2 text-xs text-muted-foreground">
                         Campos automáticos: processo, objeto, Secretaria, município, unidade, responsável, prioridade e prazo quando cadastrados.
                       </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => void abrirHistoricoModelo(m)}>
+                          <History className="h-4 w-4" /> Histórico
+                        </Button>
+                        {capacidades.can_manage_templates && (
+                          <Button size="sm" variant="outline" onClick={() => iniciarEdicaoModelo(m)}>
+                            <Pencil className="h-4 w-4" /> Editar modelo
+                          </Button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -1040,13 +1108,17 @@ function Documentos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={dialogModelo} onOpenChange={setDialogModelo}>
+      <Dialog open={dialogModelo} onOpenChange={(open) => {
+        setDialogModelo(open);
+        if (!open) setModeloEditando(null);
+      }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Novo modelo de documento</DialogTitle>
+            <DialogTitle>{modeloEditando ? "Editar modelo de documento" : "Novo modelo de documento"}</DialogTitle>
             <DialogDescription>
-              Cole o conteúdo do modelo que será usado para gerar documentos. A versão original fica
-              salva nesta Secretaria.
+              {modeloEditando
+                ? "A alteração cria uma nova versão e preserva as versões anteriores e os documentos já gerados."
+                : "Cole ou importe o conteúdo do modelo que será usado para gerar documentos. A versão original fica salva nesta Secretaria."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={salvarModelo} className="space-y-4">
@@ -1068,6 +1140,17 @@ function Documentos() {
                 onChange={(e) => setDescricaoModelo(e.target.value)}
               />
             </div>
+            {modeloEditando && (
+              <div className="space-y-2">
+                <Label>Resumo da alteração</Label>
+                <Input
+                  maxLength={500}
+                  value={resumoModelo}
+                  onChange={(e) => setResumoModelo(e.target.value)}
+                  placeholder="Ex.: Adequação ao regulamento municipal e ao objeto."
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="arquivo-modelo">Importar arquivo de texto (.txt ou .md)</Label>
               <Input
@@ -1103,10 +1186,59 @@ function Documentos() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}{" "}
-                Salvar modelo
+                {modeloEditando ? "Salvar nova versão" : "Salvar modelo"}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogHistoricoModelo} onOpenChange={setDialogHistoricoModelo}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Histórico de versões</DialogTitle>
+            <DialogDescription>
+              {modeloHistorico?.title ?? "Modelo"} — as versões anteriores são somente para consulta.
+            </DialogDescription>
+          </DialogHeader>
+          {carregandoVersoes ? (
+            <div className="flex h-28 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : versoesModelo.length === 0 ? (
+            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
+              Nenhuma versão histórica encontrada para este modelo.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {versoesModelo.map((versao) => (
+                <Card key={versao.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="text-base">Versão {versao.version}</CardTitle>
+                      <Badge variant="outline">{new Date(versao.created_at).toLocaleString("pt-BR")}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {versao.change_summary || "Versão arquivada automaticamente."}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <details>
+                      <summary className="cursor-pointer text-sm font-medium">Consultar conteúdo desta versão</summary>
+                      <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-5">
+                        {versao.content}
+                      </pre>
+                    </details>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogHistoricoModelo(false)}>
+              Fechar histórico
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
