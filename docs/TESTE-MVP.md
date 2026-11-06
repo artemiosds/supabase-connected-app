@@ -40,7 +40,7 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 7. Com uma segunda Secretaria, confirme que não é possível instalar/consultar modelos privados da primeira nem vincular documentos a processos de outro tenant.
 8. Imprima/salve o documento como PDF pelo navegador e confirme que a assinatura disponível é simples, não ICP-Brasil.
 
-**Atenção:** a Matriz Contratual de Alocação de Riscos é separada do Mapa de Análise de Riscos e só deve ser utilizada após avaliação de sua cabimento/necessidade no caso concreto.
+**Atenção:** a Matriz Contratual de Alocação de Riscos é separada do Mapa de Análise de Riscos e só deve ser utilizada após avaliação do cabimento e da necessidade no caso concreto.
 
 ## 5. Validar usuários e permissões
 
