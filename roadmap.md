@@ -1,14 +1,14 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-Atualizado em **04/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
+Atualizado em **06/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
 
 ## Estado real verificado
 
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 23 aplicadas no Supabase e 23 arquivos correspondentes no repositório. A reconciliação encontrou 23/23 versões correspondentes, sem migration aplicada ausente e sem migration versionada pendente. A última é `20261105024856_phase1_validate_tenant_constraints`, que validou formalmente as seis CHECK constraints institucionais.
-- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo e confirmado; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos e 0 documentos gerados. Há 1 evento de auditoria preexistente. Os testes anteriores usaram transações revertidas e não deixaram dados fictícios.
+- **Migrations:** 30 versões registradas no histórico do SMS2. As duas últimas são `20261106204304_phase4_document_templates_and_process_links` e `20261106205404_phase4_1_validate_required_document_fields`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
+- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos instalados por Secretaria, 0 processos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo global. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
 
@@ -78,5 +78,49 @@ Inclui:
 
 ## FASE 3 — Contratos e Processos de Contratação (06/11/2026)
 - [x] Telas: Processos (quadro por etapas DFD→ETP→TR→Pesquisa→Parecer→Conclusão, checklist automático) e Contratos (aditivos, régua 120/90/60/30 dias, sino de alertas).
-- [ ] **Bloqueado — aprovação do usuário:** aplicar `supabase/operations/pending_phase3_contracts_and_processes.sql` como nova migration no SMS2 (ferramenta de migração desativada pela preferência de aprovação).
+- [x] As tabelas `procurement_processes`, `process_items`, `contracts` e `contract_amendments` existem no SMS2, com RLS habilitado e FORCE ROW LEVEL SECURITY, oito políticas por tabela e políticas comerciais por módulo.
 - [ ] Envio automático de e-mail/WhatsApp (ainda não existe; hoje os alertas aparecem só dentro do sistema).
+
+## FASE 4 — Biblioteca de modelos e geração por processo (06/11/2026)
+
+<badge color="success">Banco atualizado e código versionado</badge> **Homologação funcional com uma Secretaria real ainda pendente.**
+
+### Implementado no SMS2
+- Catálogo global com cinco modelos-base orientativos: DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
+- Modelos do catálogo são copiados para o tenant; cada Secretaria edita sua própria cópia sem alterar o catálogo global.
+- Versionamento automático dos modelos por Secretaria e tabela histórica somente leitura.
+- Documentos gerados podem guardar process_id, tipo, versão do modelo, snapshot do processo e snapshot dos campos usados.
+- Chave estrangeira composta (process_id, tenant_id) impede vincular documento a processo de outra Secretaria.
+- RPCs install_document_template e generate_document_from_process são SECURITY INVOKER, autorizadas apenas para sessão autenticada e protegidas por permissões/módulos.
+- Validação de campos obrigatórios também no banco; não depende apenas da tela.
+- Tela Documentos: biblioteca-base, instalação por Secretaria, edição de modelos, histórico e geração de rascunho vinculado a processo. O fluxo antigo de documento avulso foi preservado.
+- Tipos Supabase regenerados e sincronizados com o repositório.
+
+### Limites desta Fase 4
+- Modelos são referências orientativas, não minutas homologadas por cada município. Exigem conferência jurídica e adaptação ao regulamento local.
+- A Matriz Contratual de Alocação de Riscos é diferente do Mapa de Análise de Riscos; a matriz contratual não é automaticamente obrigatória em toda contratação.
+- A tela usa impressão do navegador para salvar PDF; não há ainda PDF gerado/armazenado no servidor.
+- Não foi possível fazer teste ponta a ponta com processo real porque ainda não existe tenant, membro municipal ou processo cadastrado.
+
+### Próxima homologação funcional
+1. Criar Secretaria de teste e administrador municipal confirmado.
+2. Habilitar módulos processos, documentos e modelos; atribuir permissões de gestão de modelos e criação de documentos.
+3. Instalar os cinco modelos, alterar uma cópia, conferir o histórico e gerar DFD → ETP → Mapa de Riscos → TR a partir de um processo.
+4. Testar isolamento com duas Secretarias e papéis diferentes, incluindo tentativa de acesso por ID de outro tenant.
+5. Conferir impressão/PDF, assinatura simples e trilha de auditoria.
+
+## FASE 5 — O que falta para o SaaS estar pronto para clientes
+
+1. **Onboarding real de tenant:** criar fluxo completo de cadastro, validação institucional, convite do administrador municipal e primeira configuração de módulos/permissões.
+2. **Reconciliação das migrations:** versionar corretamente o DDL de processos/contratos já presente no SMS2, sem reaplicar o script antigo.
+3. **GED privado:** buckets privados no Supabase Storage, políticas por tenant, upload/download seguro, limite de tamanho/tipo, versões, retenção e backup.
+4. **Convites por e-mail:** convite e ativação de usuário sem depender de o usuário já ter criado e confirmado a própria conta.
+5. **Cobrança real:** provedor de pagamento, planos/assinaturas, faturas, webhooks, inadimplência, tentativas de cobrança, cancelamento e conciliação. Hoje existem somente os metadados comerciais.
+6. **Dados estruturados de compras:** itens/itens de fornecimento, unidade, quantidade, preço unitário, pesquisa de preços, dotação e memória de cálculo; hoje o checklist de processo não substitui esses dados estruturados.
+7. **Assinatura e documentos finais:** avaliar provedor de assinatura adequado ao nível jurídico exigido; a atual é simples e não ICP-Brasil. Implementar PDF server-side e armazenamento/versionamento da via final se exigido.
+8. **Alertas operacionais:** e-mail/WhatsApp e agendamento de alertas de vencimento, com logs, retentativas e preferências.
+9. **LGPD e operação:** termos de uso, política de privacidade, contrato de tratamento de dados, retenção/eliminação, plano de incidentes, backups testados, monitoramento, suporte e SLA.
+10. **Produção:** domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada.
+11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
+
+**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. O CI executado antes desta Fase 4 não comprova a qualidade dos commits novos; a validação desta etapa precisa ser repetida no GitHub Actions e em preview autenticado antes de produção.
