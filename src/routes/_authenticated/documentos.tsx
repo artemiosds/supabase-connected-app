@@ -792,6 +792,11 @@ function Documentos() {
                   Revise e adapte o conteúdo à regulamentação municipal e ao objeto antes de utilizar.
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
+                  {catalogo.length === 0 && (
+                    <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">
+                      Nenhum modelo-base está disponível para instalação.
+                    </div>
+                  )}
                   {catalogo.map((m) => {
                     const instalado = modelosInstalados.has(m.id);
                     return (
@@ -1116,7 +1121,9 @@ function Documentos() {
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              {selecionado.enabled_modules["processos"] === true && (
+              {selecionado.enabled_modules["processos"] === true &&
+                selecionado.enabled_modules["documentos"] === true &&
+                selecionado.enabled_modules["modelos"] === true && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Vincular a processo de contratação (opcional)</Label>
                   <Select
