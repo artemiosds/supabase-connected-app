@@ -228,7 +228,7 @@ function Documentos() {
       setCapacidades({
         ...documentCapabilities,
         can_manage_templates:
-          documentCapabilities.can_manage_templates && selecionado.enabled_modules.modelos === true,
+          documentCapabilities.can_manage_templates && selecionado.enabled_modules["modelos"] === true,
       });
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
