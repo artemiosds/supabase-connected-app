@@ -14,7 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { dbFase3, bancoNaoConfigurado } from "@/lib/db";
+import { db, dbFase3, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -620,41 +620,16 @@ function DadosEstruturados(props: {
   }
 
   async function selecionarCotacao(quote: CotacaoCompra) {
-    const item = items.find((entry) => entry.id === quote.procurement_item_id);
-    if (!item) return;
-    setSaving(true);
-    const clear = await dbFase3
-      .from("procurement_price_quotes")
-      .update({ selected_for_estimate: false, updated_by: props.userId })
-      .eq("tenant_id", props.tenantId)
-      .eq("procurement_item_id", item.id)
-      .eq("is_active", true);
-    if (clear.error) {
-      setSaving(false);
-      toast.error(clear.error.message);
+    const { error } = await db.rpc("select_procurement_price_quote", {
+      p_tenant_id: props.tenantId,
+      p_item_id: quote.procurement_item_id,
+      p_quote_id: quote.id,
+    });
+    if (error) {
+      toast.error(error.message);
       return;
     }
-    const selected = await dbFase3
-      .from("procurement_price_quotes")
-      .update({ selected_for_estimate: true, updated_by: props.userId })
-      .eq("id", quote.id)
-      .eq("tenant_id", props.tenantId);
-    if (selected.error) {
-      setSaving(false);
-      toast.error(selected.error.message);
-      return;
-    }
-    const updateItem = await dbFase3
-      .from("procurement_items")
-      .update({ estimated_unit_price: quote.unit_price, updated_by: props.userId })
-      .eq("id", item.id)
-      .eq("tenant_id", props.tenantId);
-    setSaving(false);
-    if (updateItem.error) {
-      toast.error(`Cotação selecionada, mas o valor do item não foi atualizado: ${updateItem.error.message}`);
-    } else {
-      toast.success("Cotação selecionada como referência; preço estimado do item atualizado.");
-    }
+    toast.success("Cotação selecionada como referência e preço estimado atualizado.");
     await carregarDados();
   }
 
