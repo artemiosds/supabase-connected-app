@@ -137,4 +137,4 @@ Inclui:
 10. **Produção:** domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada.
 11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
 
-**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. A rotina de formatação executou testes, build, TypeScript e lint com sucesso no commit de código formatado; o workflow principal e a validação visual autenticada ainda precisam ser confirmados no commit mais recente.
+**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. O GitHub Actions principal passou no commit `af63fbf18a67ae1902764ed7f30c04ec31bd1561`: testes, build de produção, TypeScript e lint. A validação visual autenticada e a homologação com Secretaria real ainda estão pendentes.
