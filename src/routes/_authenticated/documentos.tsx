@@ -73,9 +73,7 @@ const TIPOS_ARQUIVO_PRIVADO: Record<string, string> = {
   png: "image/png",
 };
 
-async function validarArquivoPrivado(
-  file: File,
-): Promise<{ mimeType: string; extension: string }> {
+async function validarArquivoPrivado(file: File): Promise<{ mimeType: string; extension: string }> {
   if (file.size < 1 || file.size > LIMITE_ARQUIVO_PRIVADO) {
     throw new Error("O arquivo precisa ter entre 1 byte e 20 MB.");
   }
@@ -97,8 +95,7 @@ async function validarArquivoPrivado(
   const validSignature =
     (extension === "pdf" && new TextDecoder().decode(signature.slice(0, 5)) === "%PDF-") ||
     ((extension === "jpg" || extension === "jpeg") && startsWith([0xff, 0xd8, 0xff])) ||
-    (extension === "png" &&
-      startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
+    (extension === "png" && startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
     ((extension === "doc" || extension === "xls") &&
       startsWith([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) ||
     ((extension === "docx" || extension === "xlsx") &&
@@ -1333,7 +1330,8 @@ function Documentos() {
                   />
                   {arquivoDocumento && (
                     <p className="text-xs text-muted-foreground">
-                      Selecionado: {arquivoDocumento.name} · {(arquivoDocumento.size / (1024 * 1024)).toFixed(2)} MB
+                      Selecionado: {arquivoDocumento.name} ·{" "}
+                      {(arquivoDocumento.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
@@ -1345,8 +1343,8 @@ function Documentos() {
               {documentoEditando?.storage_provider === "supabase_storage" && (
                 <Alert className="sm:col-span-2">
                   <AlertDescription>
-                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O conteúdo é imutável.
-                    Para substituir, cadastre um novo documento e arquive este registro.
+                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O conteúdo é
+                    imutável. Para substituir, cadastre um novo documento e arquive este registro.
                   </AlertDescription>
                 </Alert>
               )}
