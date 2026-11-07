@@ -29,7 +29,17 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 4. Gere um documento, revise o texto final, imprima ou salve como PDF pelo navegador.
 5. Registre a assinatura eletrônica simples com uma conta autenticada e verifique a imutabilidade do conteúdo assinado.
 
-## 4. Validar modelos e geração por processo
+## 4. Validar GED privado de documentos
+
+1. Ative os módulos Fornecedores e Documentos na Secretaria de teste e atribua as permissões de consulta/criação documental.
+2. Cadastre um fornecedor e registre um documento anexando um PDF menor que 20 MB.
+3. Abra o arquivo pela ação de download; a aplicação deve usar URL assinada temporária, não URL pública.
+4. Repita com DOC/DOCX, XLS/XLSX, JPG e PNG. Tente anexar arquivo acima de 20 MB, executável renomeado e conteúdo incompatível com a extensão; a interface deve recusar.
+5. Acesse o fornecedor com conta de outra Secretaria e confirme que o arquivo não fica visível nem acessível.
+6. Arquive o documento e confirme que um novo link assinado não pode ser gerado. O objeto permanece preservado no Storage para retenção/histórico.
+7. Tente editar o registro para substituir o arquivo; o sistema deve exigir novo documento, preservando o original.
+8. Teste um documento externo e um link do Drive para confirmar que a compatibilidade anterior foi preservada.
+## 5. Validar modelos e geração por processo
 
 1. Ative os módulos Processos, Documentos e Modelos na Secretaria de teste.
 2. Com o perfil que possui gestão de modelos, abra a Biblioteca-base e instale DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
@@ -42,7 +52,7 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 
 **Atenção:** a Matriz Contratual de Alocação de Riscos é separada do Mapa de Análise de Riscos e só deve ser utilizada após avaliação do cabimento e da necessidade no caso concreto.
 
-## 5. Validar usuários e permissões
+## 6. Validar usuários e permissões
 
 1. Crie mais duas contas municipais em janelas anônimas e confirme seus e-mails.
 2. Na Secretaria de teste, vincule uma delas como Operador e outra como Consulta.
@@ -51,14 +61,14 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 5. Como Administrador local, altere o papel de um membro e suspenda/reative um vínculo.
 6. Verifique que o sistema impede suspender a própria conta e remover o último Administrador ativo.
 
-## 6. Validar separação entre Secretarias
+## 7. Validar separação entre Secretarias
 
 1. Crie uma segunda Secretaria de teste com outra conta municipal.
 2. Cadastre fornecedores e documentos em ambas.
 3. Entre em cada conta e confira que somente os registros da própria Secretaria aparecem.
 4. Tente usar IDs de registros da outra Secretaria em operações diretas; o banco deve negar a leitura e a alteração.
 
-## 7. Conferir painel, configurações e histórico
+## 8. Conferir painel, configurações e histórico
 
 1. Confira os indicadores do painel com os registros de teste.
 2. Atualize dados institucionais da Secretaria e verifique CNPJ, e-mail, telefone, endereço, município e UF.
@@ -67,7 +77,7 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 
 ## Limites conhecidos desta versão
 
-- Arquivos de documentos são referenciados por URL externa. O reconhecimento de um link do Google Drive guarda o ID do arquivo, mas a autorização OAuth e a sincronização automática com pastas do Drive ainda precisam ser configuradas.
+- Documentos de fornecedores podem usar arquivo privado no Supabase Storage ou link externo/Drive. OAuth e sincronização automática com o Drive ainda precisam ser configurados.
 - A geração de PDF utiliza a função de impressão do navegador.
 - A assinatura disponível é eletrônica simples, vinculada à conta autenticada; não é certificado ICP-Brasil nem assinatura qualificada.
 - Alertas de vencimento são exibidos no painel e na listagem; envio automático de e-mail/WhatsApp ainda precisa de um provedor e configuração.
