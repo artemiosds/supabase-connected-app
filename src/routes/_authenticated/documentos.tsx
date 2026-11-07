@@ -116,7 +116,8 @@ async function validarArquivoPrivado(
 function nomeSeguroArquivo(name: string): string {
   return name
     .normalize("NFC")
-    .replace(/[\\/\u0000-\u001f\u007f]/g, "_")
+    .replace(/[\\/]/g, "_")
+    .replace(/\p{Cc}/gu, "_")
     .trim()
     .slice(0, 255);
 }
