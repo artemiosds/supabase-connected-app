@@ -207,7 +207,16 @@ function Documentos() {
     setLoading(true);
     setErro(null);
     try {
-      const [cap, suppliers, supplierDocs, templates, generated, tenantData, catalogTemplates, processRecords] = await Promise.all([
+      const [
+        cap,
+        suppliers,
+        supplierDocs,
+        templates,
+        generated,
+        tenantData,
+        catalogTemplates,
+        processRecords,
+      ] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
           db
@@ -467,7 +476,9 @@ function Documentos() {
       title: tituloModelo.trim(),
       description: descricaoModelo.trim() || null,
       content: conteudoModelo.trim(),
-      change_summary: resumoModelo.trim() || (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
+      change_summary:
+        resumoModelo.trim() ||
+        (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
     };
     const result = modeloEditando
       ? await db
@@ -484,7 +495,11 @@ function Documentos() {
       toast.error(result.error.message);
       return;
     }
-    toast.success(modeloEditando ? "Modelo atualizado. Uma nova versão foi registrada." : "Modelo salvo nesta Secretaria.");
+    toast.success(
+      modeloEditando
+        ? "Modelo atualizado. Uma nova versão foi registrada."
+        : "Modelo salvo nesta Secretaria.",
+    );
     setDialogModelo(false);
     setModeloEditando(null);
     setTituloModelo("");
@@ -583,7 +598,9 @@ function Documentos() {
       toast.error(installError.message);
       return;
     }
-    toast.success("Modelo-base instalado. Agora ele pertence a esta Secretaria e pode ser editado.");
+    toast.success(
+      "Modelo-base instalado. Agora ele pertence a esta Secretaria e pode ser editado.",
+    );
     await carregar();
   }
 
@@ -592,7 +609,9 @@ function Documentos() {
     (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
   ).filter((campo) => !campo.source?.startsWith("process."));
   const modelosInstalados = new Set(
-    modelos.filter((m) => m.catalog_template_id && m.is_active).map((m) => m.catalog_template_id as string),
+    modelos
+      .filter((m) => m.catalog_template_id && m.is_active)
+      .map((m) => m.catalog_template_id as string),
   );
 
   async function assinarDocumento(d: DocumentoGerado) {
@@ -822,55 +841,65 @@ function Documentos() {
               </p>
             </TabsContent>
             {moduloModelosAtivo && (
-            <TabsContent value="modelos" className="mt-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                {modelos.map((m) => (
-                  <Card key={m.id}>
-                    <CardHeader>
-                      <CardTitle className="text-base">{m.title}</CardTitle>
-                      {m.description && (
-                        <p className="text-sm text-muted-foreground">{m.description}</p>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
-                        {m.content}
-                      </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline">Versão {m.version}</Badge>
-                        <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
-                        {m.legal_basis && <span>{m.legal_basis}</span>}
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Campos automáticos: processo, objeto, Secretaria, município, unidade, responsável, prioridade e prazo quando cadastrados.
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button size="sm" variant="outline" onClick={() => void abrirHistoricoModelo(m)}>
-                          <History className="h-4 w-4" /> Histórico
-                        </Button>
-                        {capacidades.can_manage_templates && (
-                          <Button size="sm" variant="outline" onClick={() => iniciarEdicaoModelo(m)}>
-                            <Pencil className="h-4 w-4" /> Editar modelo
-                          </Button>
+              <TabsContent value="modelos" className="mt-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {modelos.map((m) => (
+                    <Card key={m.id}>
+                      <CardHeader>
+                        <CardTitle className="text-base">{m.title}</CardTitle>
+                        {m.description && (
+                          <p className="text-sm text-muted-foreground">{m.description}</p>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {modelos.length === 0 && (
-                  <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">
-                    Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um
-                    texto-base.
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                          {m.content}
+                        </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline">Versão {m.version}</Badge>
+                          <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
+                          {m.legal_basis && <span>{m.legal_basis}</span>}
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Campos automáticos: processo, objeto, Secretaria, município, unidade,
+                          responsável, prioridade e prazo quando cadastrados.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void abrirHistoricoModelo(m)}
+                          >
+                            <History className="h-4 w-4" /> Histórico
+                          </Button>
+                          {capacidades.can_manage_templates && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => iniciarEdicaoModelo(m)}
+                            >
+                              <Pencil className="h-4 w-4" /> Editar modelo
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {modelos.length === 0 && (
+                    <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">
+                      Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um
+                      texto-base.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
             )}
             {moduloModelosAtivo && capacidades.can_manage_templates && (
               <TabsContent value="biblioteca" className="mt-4">
                 <div className="mb-3 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Modelos-base orientativos da plataforma. A instalação cria uma cópia independente nesta Secretaria.
-                  Revise e adapte o conteúdo à regulamentação municipal e ao objeto antes de utilizar.
+                  Modelos-base orientativos da plataforma. A instalação cria uma cópia independente
+                  nesta Secretaria. Revise e adapte o conteúdo à regulamentação municipal e ao
+                  objeto antes de utilizar.
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {catalogo.length === 0 && (
@@ -911,7 +940,9 @@ function Documentos() {
                                 onClick={() => void instalarModeloBase(m)}
                                 disabled={instalandoModelo !== null}
                               >
-                                {instalandoModelo === m.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {instalandoModelo === m.id && (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
                                 Instalar nesta Secretaria
                               </Button>
                             )}
@@ -950,8 +981,8 @@ function Documentos() {
                               <p className="text-xs text-muted-foreground">
                                 {d.process_id
                                   ? "Processo de contratação vinculado"
-                                  : fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
-                                    "Sem fornecedor vinculado"}
+                                  : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
+                                    "Sem fornecedor vinculado")}
                               </p>
                             </td>
                             <td className="p-3">
@@ -1121,13 +1152,18 @@ function Documentos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={dialogModelo} onOpenChange={(open) => {
-        setDialogModelo(open);
-        if (!open) setModeloEditando(null);
-      }}>
+      <Dialog
+        open={dialogModelo}
+        onOpenChange={(open) => {
+          setDialogModelo(open);
+          if (!open) setModeloEditando(null);
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{modeloEditando ? "Editar modelo de documento" : "Novo modelo de documento"}</DialogTitle>
+            <DialogTitle>
+              {modeloEditando ? "Editar modelo de documento" : "Novo modelo de documento"}
+            </DialogTitle>
             <DialogDescription>
               {modeloEditando
                 ? "A alteração cria uma nova versão e preserva as versões anteriores e os documentos já gerados."
@@ -1211,7 +1247,8 @@ function Documentos() {
           <DialogHeader>
             <DialogTitle>Histórico de versões</DialogTitle>
             <DialogDescription>
-              {modeloHistorico?.title ?? "Modelo"} — as versões anteriores são somente para consulta.
+              {modeloHistorico?.title ?? "Modelo"} — as versões anteriores são somente para
+              consulta.
             </DialogDescription>
           </DialogHeader>
           {carregandoVersoes ? (
@@ -1229,7 +1266,9 @@ function Documentos() {
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="text-base">Versão {versao.version}</CardTitle>
-                      <Badge variant="outline">{new Date(versao.created_at).toLocaleString("pt-BR")}</Badge>
+                      <Badge variant="outline">
+                        {new Date(versao.created_at).toLocaleString("pt-BR")}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {versao.change_summary || "Versão arquivada automaticamente."}
@@ -1237,7 +1276,9 @@ function Documentos() {
                   </CardHeader>
                   <CardContent>
                     <details>
-                      <summary className="cursor-pointer text-sm font-medium">Consultar conteúdo desta versão</summary>
+                      <summary className="cursor-pointer text-sm font-medium">
+                        Consultar conteúdo desta versão
+                      </summary>
                       <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-5">
                         {versao.content}
                       </pre>
@@ -1269,30 +1310,30 @@ function Documentos() {
               {selecionado.enabled_modules["processos"] === true &&
                 selecionado.enabled_modules["documentos"] === true &&
                 selecionado.enabled_modules["modelos"] === true && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Vincular a processo de contratação (opcional)</Label>
-                  <Select
-                    value={processoGeracao || "sem_vinculo"}
-                    onValueChange={(value) => {
-                      setProcessoGeracao(value === "sem_vinculo" ? "" : value);
-                      setCamposComplementares({});
-                      if (value !== "sem_vinculo") setFornecedorGeracao("nenhum");
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Documento avulso ou selecione um processo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sem_vinculo">Documento avulso (sem processo)</SelectItem>
-                      {processos.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.number} — {p.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Vincular a processo de contratação (opcional)</Label>
+                    <Select
+                      value={processoGeracao || "sem_vinculo"}
+                      onValueChange={(value) => {
+                        setProcessoGeracao(value === "sem_vinculo" ? "" : value);
+                        setCamposComplementares({});
+                        if (value !== "sem_vinculo") setFornecedorGeracao("nenhum");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Documento avulso ou selecione um processo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sem_vinculo">Documento avulso (sem processo)</SelectItem>
+                        {processos.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.number} — {p.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               <div className="space-y-2">
                 <Label>Modelo</Label>
                 <Select value={modeloSelecionado} onValueChange={selecionarModelo}>
@@ -1342,9 +1383,9 @@ function Documentos() {
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Dados complementares do documento</Label>
                   <p className="text-xs text-muted-foreground">
-                    Os campos com origem nos dados do processo serão preenchidos automaticamente. Complete apenas
-                    os campos técnicos e administrativos abaixo; dados ausentes no cadastro ficam identificados
-                    no rascunho para conferência.
+                    Os campos com origem nos dados do processo serão preenchidos automaticamente.
+                    Complete apenas os campos técnicos e administrativos abaixo; dados ausentes no
+                    cadastro ficam identificados no rascunho para conferência.
                   </p>
                   {camposDoModelo.length === 0 ? (
                     <Alert>
@@ -1357,7 +1398,8 @@ function Documentos() {
                       {camposDoModelo.map((campo) => (
                         <div key={campo.key} className="space-y-1.5">
                           <Label>
-                            {campo.label || campo.key}{campo.required ? " *" : ""}
+                            {campo.label || campo.key}
+                            {campo.required ? " *" : ""}
                           </Label>
                           <Textarea
                             rows={2}
@@ -1388,7 +1430,8 @@ function Documentos() {
                     onChange={(e) => setConteudoGerado(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Campos automáticos: fornecedor, nome_fantasia, cnpj, secretaria, municipio, data e usuario.
+                    Campos automáticos: fornecedor, nome_fantasia, cnpj, secretaria, municipio, data
+                    e usuario.
                   </p>
                 </div>
               )}
@@ -1407,7 +1450,10 @@ function Documentos() {
                 disabled={
                   salvandoGerado ||
                   (processoGeracao
-                    ? !modeloSelecionado || camposDoModelo.some((campo) => campo.required && !camposComplementares[campo.key]?.trim())
+                    ? !modeloSelecionado ||
+                      camposDoModelo.some(
+                        (campo) => campo.required && !camposComplementares[campo.key]?.trim(),
+                      )
                     : !tituloGerado.trim() || !conteudoGerado.trim())
                 }
               >
