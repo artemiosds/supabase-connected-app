@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import {
   AlertCircle,
   CheckCircle2,
+  Download,
   ExternalLink,
   FilePlus2,
   FileText,
@@ -59,6 +60,66 @@ type ProcessoContratacao = Pick<
 >;
 type CampoComplementar = { key: string; label: string; required?: boolean; source?: string };
 type DocumentoGerado = Tables<"generated_documents">;
+
+const LIMITE_ARQUIVO_PRIVADO = 20 * 1024 * 1024;
+const TIPOS_ARQUIVO_PRIVADO: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+};
+
+async function validarArquivoPrivado(
+  file: File,
+): Promise<{ mimeType: string; extension: string }> {
+  if (file.size < 1 || file.size > LIMITE_ARQUIVO_PRIVADO) {
+    throw new Error("O arquivo precisa ter entre 1 byte e 20 MB.");
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mimeType = TIPOS_ARQUIVO_PRIVADO[extension];
+  if (!mimeType) {
+    throw new Error("Formato não permitido. Use PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG.");
+  }
+
+  if (file.type && file.type !== "application/octet-stream" && file.type !== mimeType) {
+    throw new Error("O tipo informado pelo navegador não corresponde à extensão do arquivo.");
+  }
+
+  const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const startsWith = (expected: number[]) =>
+    expected.every((byte, index) => signature[index] === byte);
+
+  const validSignature =
+    (extension === "pdf" && new TextDecoder().decode(signature.slice(0, 5)) === "%PDF-") ||
+    ((extension === "jpg" || extension === "jpeg") && startsWith([0xff, 0xd8, 0xff])) ||
+    (extension === "png" &&
+      startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
+    ((extension === "doc" || extension === "xls") &&
+      startsWith([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) ||
+    ((extension === "docx" || extension === "xlsx") &&
+      signature[0] === 0x50 &&
+      signature[1] === 0x4b &&
+      (signature[2] === 0x03 || signature[2] === 0x05 || signature[2] === 0x07));
+
+  if (!validSignature) {
+    throw new Error("O conteúdo do arquivo não corresponde ao formato selecionado.");
+  }
+
+  return { mimeType, extension };
+}
+
+function nomeSeguroArquivo(name: string): string {
+  return name
+    .normalize("NFC")
+    .replace(/[\\/\u0000-\u001f\u007f]/g, "_")
+    .trim()
+    .slice(0, 255);
+}
 type Capacidades = {
   can_view: boolean;
   can_create: boolean;
@@ -161,6 +222,7 @@ function Documentos() {
   const [vencimento, setVencimento] = useState("");
   const [linkDocumento, setLinkDocumento] = useState("");
   const [observacaoDocumento, setObservacaoDocumento] = useState("");
+  const [arquivoDocumento, setArquivoDocumento] = useState<File | null>(null);
 
   const [dialogModelo, setDialogModelo] = useState(false);
   const [modeloEditando, setModeloEditando] = useState<Modelo | null>(null);
@@ -330,6 +392,7 @@ function Documentos() {
     setVencimento("");
     setLinkDocumento("");
     setObservacaoDocumento("");
+    setArquivoDocumento(null);
     setDialogDocumento(true);
   }
   function abrirEdicaoDocumento(d: DocumentoFornecedor) {
@@ -341,6 +404,7 @@ function Documentos() {
     setVencimento(d.expires_at ?? "");
     setLinkDocumento(d.external_url ?? "");
     setObservacaoDocumento(d.notes ?? "");
+    setArquivoDocumento(null);
     setDialogDocumento(true);
   }
   function extrairDriveFileId(url: string): string | null {
@@ -352,6 +416,47 @@ function Documentos() {
     } catch {
       return null;
     }
+  }
+
+  async function selecionarArquivoPrivado(file?: File) {
+    setArquivoDocumento(null);
+    if (!file) return;
+    if (documentoEditando) {
+      toast.error("Para substituir um arquivo, cadastre um novo documento e arquive o anterior.");
+      return;
+    }
+    try {
+      await validarArquivoPrivado(file);
+      setArquivoDocumento(file);
+      setLinkDocumento("");
+      toast.success("Arquivo validado e pronto para envio privado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Arquivo inválido.");
+    }
+  }
+
+  async function abrirArquivoPrivado(documento: DocumentoFornecedor) {
+    if (
+      documento.storage_provider !== "supabase_storage" ||
+      !documento.storage_path ||
+      documento.status !== "active"
+    ) {
+      toast.error("Este arquivo não está disponível para visualização.");
+      return;
+    }
+
+    const { data, error: signedUrlError } = await db.storage
+      .from("gfs-private-documents")
+      .createSignedUrl(documento.storage_path, 60, {
+        download: documento.file_name || true,
+      });
+    if (signedUrlError || !data?.signedUrl) {
+      toast.error(signedUrlError?.message ?? "Não foi possível gerar o link temporário.");
+      return;
+    }
+
+    const opened = window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.assign(data.signedUrl);
   }
 
   async function importarModelo(file?: File) {
@@ -385,32 +490,120 @@ function Documentos() {
       return;
     }
     setSalvandoDocumento(true);
-    const payload = {
-      tenant_id: selecionado.id,
-      supplier_id: fornecedorId,
+
+    const metadata = {
       title: tituloDocumento.trim(),
       document_type: tipoDocumento,
       issue_date: emissao || null,
       expires_at: vencimento || null,
-      external_url: linkDocumento.trim() || null,
-      storage_provider: extrairDriveFileId(linkDocumento.trim()) ? "google_drive" : "external_link",
-      drive_file_id: extrairDriveFileId(linkDocumento.trim()),
       notes: observacaoDocumento.trim() || null,
-      status: "active",
     };
-    const result = documentoEditando
-      ? await db
-          .from("supplier_documents")
-          .update(payload)
-          .eq("id", documentoEditando.id)
-          .eq("tenant_id", selecionado.id)
-      : await db.from("supplier_documents").insert(payload);
-    setSalvandoDocumento(false);
-    if (result.error) {
-      toast.error(result.error.message);
-      return;
+
+    if (documentoEditando) {
+      const payload =
+        documentoEditando.storage_provider === "supabase_storage"
+          ? metadata
+          : {
+              ...metadata,
+              external_url: linkDocumento.trim() || null,
+              storage_provider: extrairDriveFileId(linkDocumento.trim())
+                ? "google_drive"
+                : "external_link",
+              drive_file_id: extrairDriveFileId(linkDocumento.trim()),
+            };
+      const { error: updateError } = await db
+        .from("supplier_documents")
+        .update(payload)
+        .eq("id", documentoEditando.id)
+        .eq("tenant_id", selecionado.id);
+      setSalvandoDocumento(false);
+      if (updateError) {
+        toast.error(updateError.message);
+        return;
+      }
+      toast.success("Documento atualizado. O arquivo original foi preservado.");
+    } else if (arquivoDocumento) {
+      let validated: { mimeType: string; extension: string };
+      try {
+        validated = await validarArquivoPrivado(arquivoDocumento);
+      } catch (error) {
+        setSalvandoDocumento(false);
+        toast.error(error instanceof Error ? error.message : "Arquivo inválido.");
+        return;
+      }
+
+      const documentId = crypto.randomUUID();
+      const objectId = crypto.randomUUID();
+      const storagePath = [
+        selecionado.id,
+        "supplier-documents",
+        fornecedorId,
+        documentId,
+        `${objectId}.${validated.extension}`,
+      ].join("/");
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(storagePath, arquivoDocumento, {
+          contentType: validated.mimeType,
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setSalvandoDocumento(false);
+        toast.error(`Não foi possível enviar o arquivo: ${uploadError.message}`);
+        return;
+      }
+
+      const { error: insertError } = await db.from("supplier_documents").insert({
+        id: documentId,
+        tenant_id: selecionado.id,
+        supplier_id: fornecedorId,
+        ...metadata,
+        storage_provider: "supabase_storage",
+        storage_path: storagePath,
+        file_name: nomeSeguroArquivo(arquivoDocumento.name),
+        mime_type: validated.mimeType,
+        file_size: arquivoDocumento.size,
+        external_url: null,
+        drive_file_id: null,
+        status: "active",
+      });
+
+      if (insertError) {
+        const { error: cleanupError } = await db.storage
+          .from("gfs-private-documents")
+          .remove([storagePath]);
+        setSalvandoDocumento(false);
+        toast.error(
+          cleanupError
+            ? `O registro não foi salvo (${insertError.message}). O arquivo permanece privado e sem vínculo; solicite a limpeza ao suporte.`
+            : `O cadastro não foi salvo e o arquivo enviado foi removido: ${insertError.message}`,
+        );
+        return;
+      }
+      setSalvandoDocumento(false);
+      toast.success("Documento e arquivo privado registrados com sucesso.");
+    } else {
+      const externalUrl = linkDocumento.trim();
+      const { error: insertError } = await db.from("supplier_documents").insert({
+        tenant_id: selecionado.id,
+        supplier_id: fornecedorId,
+        ...metadata,
+        external_url: externalUrl || null,
+        storage_provider: extrairDriveFileId(externalUrl) ? "google_drive" : "external_link",
+        drive_file_id: extrairDriveFileId(externalUrl),
+        status: "active",
+      });
+      setSalvandoDocumento(false);
+      if (insertError) {
+        toast.error(insertError.message);
+        return;
+      }
+      toast.success("Documento registrado.");
     }
-    toast.success(documentoEditando ? "Documento atualizado." : "Documento registrado.");
+
+    setArquivoDocumento(null);
     setDialogDocumento(false);
     await carregar();
   }
@@ -780,6 +973,9 @@ function Documentos() {
                                 <p className="text-xs text-muted-foreground">
                                   {TIPOS.find(([v]) => v === d.document_type)?.[1] ??
                                     d.document_type}
+                                  {d.storage_provider === "supabase_storage" && d.file_name
+                                    ? ` · Arquivo privado: ${d.file_name}`
+                                    : ""}
                                 </p>
                               </td>
                               <td className="p-3">
@@ -792,6 +988,16 @@ function Documentos() {
                               </td>
                               <td className="p-3">
                                 <div className="flex justify-end gap-1">
+                                  {d.storage_provider === "supabase_storage" && d.storage_path && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => void abrirArquivoPrivado(d)}
+                                      aria-label="Baixar arquivo privado"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                   {d.external_url && (
                                     <Button size="icon" variant="ghost" asChild>
                                       <a
@@ -1116,15 +1322,45 @@ function Documentos() {
                   onChange={(e) => setVencimento(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Link do arquivo (Drive ou outro)</Label>
-                <Input
-                  type="url"
-                  placeholder="https://"
-                  value={linkDocumento}
-                  onChange={(e) => setLinkDocumento(e.target.value)}
-                />
-              </div>
+              {!documentoEditando && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Arquivo privado (opcional)</Label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
+                    onChange={(event) => void selecionarArquivoPrivado(event.target.files?.[0])}
+                  />
+                  {arquivoDocumento && (
+                    <p className="text-xs text-muted-foreground">
+                      Selecionado: {arquivoDocumento.name} · {(arquivoDocumento.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    PDF, Word, Excel, JPG ou PNG. Limite de 20 MB. O arquivo ficará em armazenamento
+                    privado e só poderá ser acessado por usuários autorizados desta Secretaria.
+                  </p>
+                </div>
+              )}
+              {documentoEditando?.storage_provider === "supabase_storage" && (
+                <Alert className="sm:col-span-2">
+                  <AlertDescription>
+                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O conteúdo é imutável.
+                    Para substituir, cadastre um novo documento e arquive este registro.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {(!documentoEditando || documentoEditando.storage_provider !== "supabase_storage") &&
+                !arquivoDocumento && (
+                  <div className="space-y-2">
+                    <Label>Link do arquivo (Drive ou outro)</Label>
+                    <Input
+                      type="url"
+                      placeholder="https://"
+                      value={linkDocumento}
+                      onChange={(e) => setLinkDocumento(e.target.value)}
+                    />
+                  </div>
+                )}
               <div className="space-y-2 sm:col-span-2">
                 <Label>Observações</Label>
                 <Textarea
