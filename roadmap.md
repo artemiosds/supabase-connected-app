@@ -1,14 +1,14 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-Atualizado em **06/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
+Atualizado em **07/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
 
 ## Estado real verificado
 
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 30 versões registradas no histórico do SMS2. As duas últimas são `20261106204304_phase4_document_templates_and_process_links` e `20261106205404_phase4_1_validate_required_document_fields`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
-- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos instalados por Secretaria, 0 processos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo global. Não há dados municipais reais para homologação.
+- **Migrations:** 31 versões registradas no histórico do SMS2. A mais recente é `20261107043056_phase5_1_private_supplier_document_storage`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
+- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos instalados por Secretaria, 0 processos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo global e o bucket GED privado está criado. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
 
@@ -59,7 +59,7 @@ Inclui:
 - RLS forçado nas tabelas operacionais de documentos, templates e documentos gerados.
 
 ### Limites conhecidos — não marcar como implementados
-- **Google Drive:** o sistema reconhece links e extrai o ID do arquivo; OAuth, autorização de pastas, upload e sincronização automática ainda não foram configurados.
+- **Google Drive:** o sistema reconhece links e extrai o ID do arquivo; OAuth, autorização de pastas, upload e sincronização automática ainda não foram configurados. O GED privado pelo Supabase Storage foi iniciado na Fase 5.1.
 - **PDF:** a versão atual usa a impressão do navegador; não há geração PDF no servidor nem armazenamento persistente da via assinada.
 - **Assinatura:** é eletrônica simples e associada à sessão; não é assinatura qualificada ICP-Brasil nem integração com provedor de assinatura.
 - **Alertas:** painel e listagem exibem vencimentos; envio agendado por e-mail/WhatsApp requer provedor e agendador.
@@ -109,11 +109,25 @@ Inclui:
 4. Testar isolamento com duas Secretarias e papéis diferentes, incluindo tentativa de acesso por ID de outro tenant.
 5. Conferir impressão/PDF, assinatura simples e trilha de auditoria.
 
+
+## FASE 5.1 — GED privado de documentos de fornecedores (07/11/2026)
+
+**Status:** migration aplicada e UI de upload/acesso implementada; teste autenticado com arquivo real ainda pendente.
+
+- Bucket `gfs-private-documents` criado como **privado**, limite de 20 MiB, somente PDF, DOC, DOCX, XLS, XLSX, JPG e PNG.
+- `supplier_documents` recebeu `storage_path`, `file_name`, `mime_type` e `file_size`; os registros antigos de Drive/link externo foram preservados.
+- RLS do Storage separa cada arquivo por Secretaria, fornecedor e documento; leitura depende do registro documental ativo e das permissões/módulos da Secretaria.
+- Upload exige permissões de criação e consulta documental, consulta de fornecedor, Secretaria ativa e módulos `documentos` e `fornecedores`.
+- A interface valida extensão, MIME, assinatura básica e tamanho; envia ao bucket privado e depois grava os metadados. A abertura usa URL assinada temporária de 60 segundos.
+- Arquivo vinculado e seus metadados não podem ser sobrescritos em edição; para substituir, deve ser cadastrado um novo documento e o anterior arquivado.
+- A limpeza pelo usuário fica limitada a objetos órfãos de sua própria sessão, sem vínculo documental. Arquivos ativos ou arquivados não podem ser removidos pelo cliente.
+- **Limite desta entrega:** o GED cobre documentos de fornecedores. Documentos gerados pelo editor ainda não são automaticamente convertidos em PDF e armazenados no bucket.
+- **Homologação pendente:** enviar e abrir arquivo com uma conta municipal, testar segunda Secretaria, arquivar um documento e confirmar o bloqueio de acesso ao arquivo.
 ## FASE 5 — O que falta para o SaaS estar pronto para clientes
 
 1. **Onboarding real de tenant:** criar fluxo completo de cadastro, validação institucional, convite do administrador municipal e primeira configuração de módulos/permissões.
 2. **Reconciliação das migrations:** versionar corretamente o DDL de processos/contratos já presente no SMS2, sem reaplicar o script antigo.
-3. **GED privado:** buckets privados no Supabase Storage, políticas por tenant, upload/download seguro, limite de tamanho/tipo, versões, retenção e backup.
+3. **GED completo:** a primeira camada privada para documentos de fornecedores foi implementada; faltam homologação autenticada, política de retenção/backup e integração do editor de documentos gerados com o GED.
 4. **Convites por e-mail:** convite e ativação de usuário sem depender de o usuário já ter criado e confirmado a própria conta.
 5. **Cobrança real:** provedor de pagamento, planos/assinaturas, faturas, webhooks, inadimplência, tentativas de cobrança, cancelamento e conciliação. Hoje existem somente os metadados comerciais.
 6. **Dados estruturados de compras:** itens/itens de fornecimento, unidade, quantidade, preço unitário, pesquisa de preços, dotação e memória de cálculo; hoje o checklist de processo não substitui esses dados estruturados.
@@ -123,4 +137,4 @@ Inclui:
 10. **Produção:** domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada.
 11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
 
-**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. O CI executado antes desta Fase 4 não comprova a qualidade dos commits novos; a validação desta etapa precisa ser repetida no GitHub Actions e em preview autenticado antes de produção.
+**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. A rotina de formatação executou testes, build, TypeScript e lint com sucesso no commit de código formatado; o workflow principal e a validação visual autenticada ainda precisam ser confirmados no commit mais recente.
