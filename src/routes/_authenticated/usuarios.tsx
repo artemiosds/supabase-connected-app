@@ -51,6 +51,7 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
 
 type Membership = Tables<"tenant_memberships">;
 type TenantRole = Tables<"tenant_roles">;
+type Convite = Tables<"tenant_invitations">;
 type Membro = Membership & {
   profiles?: { full_name: string } | null;
   membership_roles?: { role_id: string; tenant_roles?: { name: string; slug: string } | null }[];
@@ -69,6 +70,7 @@ function Usuarios() {
   const { session } = useAuth();
   const [membros, setMembros] = useState<Membro[]>([]);
   const [papeis, setPapeis] = useState<TenantRole[]>([]);
+  const [convites, setConvites] = useState<Convite[]>([]);
   const [capacidades, setCapacidades] = useState<Capabilities>({
     can_view: false,
     can_create: false,
@@ -79,6 +81,12 @@ function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [dialogoAberto, setDialogoAberto] = useState(false);
+  const [dialogoConviteAberto, setDialogoConviteAberto] = useState(false);
+  const [nomeConvite, setNomeConvite] = useState("");
+  const [emailConvite, setEmailConvite] = useState("");
+  const [papelConviteId, setPapelConviteId] = useState("");
+  const [enviandoConvite, setEnviandoConvite] = useState(false);
+  const [cancelandoConviteId, setCancelandoConviteId] = useState<string | null>(null);
   const [membroEmEdicao, setMembroEmEdicao] = useState<Membro | null>(null);
   const [novoPapelId, setNovoPapelId] = useState("");
   const [salvandoPapel, setSalvandoPapel] = useState(false);
@@ -93,6 +101,7 @@ function Usuarios() {
     if (!selecionado?.id) {
       setMembros([]);
       setPapeis([]);
+      setConvites([]);
       setCapacidades({
         can_view: false,
         can_create: false,
@@ -106,7 +115,7 @@ function Usuarios() {
     setLoading(true);
     setErro(null);
     try {
-      const [cap, membershipResult, roleResult] = await Promise.all([
+      const [cap, membershipResult, roleResult, invitationResult] = await Promise.all([
         db.rpc("get_tenant_user_capabilities", { p_tenant_id: selecionado.id }),
         db
           .from("tenant_memberships")
@@ -116,10 +125,16 @@ function Usuarios() {
           .eq("tenant_id", selecionado.id)
           .order("created_at", { ascending: false }),
         db.from("tenant_roles").select("*").eq("tenant_id", selecionado.id).order("name"),
+        db
+          .from("tenant_invitations")
+          .select("*")
+          .eq("tenant_id", selecionado.id)
+          .order("created_at", { ascending: false }),
       ]);
       if (cap.error) throw cap.error;
       if (membershipResult.error) throw membershipResult.error;
       if (roleResult.error) throw roleResult.error;
+      if (invitationResult.error) throw invitationResult.error;
       const allowed = cap.data?.[0] ?? {
         can_view: false,
         can_create: false,
@@ -130,6 +145,7 @@ function Usuarios() {
       setCapacidades(allowed);
       setMembros(allowed.can_view ? ((membershipResult.data ?? []) as unknown as Membro[]) : []);
       setPapeis(roleResult.data ?? []);
+      setConvites(allowed.can_view ? (invitationResult.data ?? []) : []);
       setPapelId((current) =>
         roleResult.data?.some((role) => role.id === current)
           ? current
@@ -137,10 +153,18 @@ function Usuarios() {
             roleResult.data?.[0]?.id ??
             ""),
       );
+      setPapelConviteId((current) =>
+        roleResult.data?.some((role) => role.id === current)
+          ? current
+          : (roleResult.data?.find((role) => role.slug === "operador")?.id ??
+            roleResult.data?.[0]?.id ??
+            ""),
+      );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setMembros([]);
       setPapeis([]);
+      setConvites([]);
     } finally {
       setLoading(false);
     }
@@ -203,6 +227,59 @@ function Usuarios() {
     } finally {
       setVinculando(false);
     }
+  }
+
+  async function enviarConvite(e: FormEvent) {
+    e.preventDefault();
+    if (!selecionado || !capacidades.can_create || !capacidades.can_assign_role) return;
+    setEnviandoConvite(true);
+    setErro(null);
+    const { data, error: inviteError } = await db.functions.invoke("invite-tenant-user", {
+      body: {
+        tenant_id: selecionado.id,
+        email: emailConvite.trim().toLowerCase(),
+        full_name: nomeConvite.trim(),
+        role_id: papelConviteId,
+      },
+    });
+    setEnviandoConvite(false);
+    if (inviteError) {
+      setErro(
+        "Não foi possível enviar o convite. Confira a configuração de SMTP do Supabase e se o e-mail ainda não possui uma conta cadastrada.",
+      );
+      return;
+    }
+    toast.success("Convite enviado. O acesso será liberado após a confirmação do e-mail.");
+    setDialogoConviteAberto(false);
+    setNomeConvite("");
+    setEmailConvite("");
+    setPapelConviteId(papeis.find((role) => role.slug === "operador")?.id ?? papeis[0]?.id ?? "");
+    await carregar();
+    void data;
+  }
+
+  async function cancelarConvite(convite: Convite) {
+    if (!selecionado || convite.status !== "pending") return;
+    setCancelandoConviteId(convite.id);
+    const { error: revokeError } = await db.rpc("revoke_tenant_invitation", {
+      p_invitation_id: convite.id,
+    });
+    setCancelandoConviteId(null);
+    if (revokeError) {
+      toast.error(revokeError.message);
+      return;
+    }
+    toast.success("Convite cancelado. O link não poderá mais ativar o acesso.");
+    await carregar();
+  }
+
+  function statusConvite(status: string) {
+    if (status === "pending") return "Pendente";
+    if (status === "accepted") return "Aceito";
+    if (status === "revoked") return "Cancelado";
+    if (status === "expired") return "Expirado";
+    if (status === "already_member") return "Já era membro";
+    return status;
   }
 
   function abrirEdicaoPapel(membro: Membro) {
@@ -283,16 +360,29 @@ function Usuarios() {
             <RefreshCw className="h-4 w-4" />
           </Button>
           {capacidades.can_create && capacidades.can_assign_role && (
-            <Button
-              onClick={() => {
-                setErro(null);
-                setEmail("");
-                setCandidato(null);
-                setDialogoAberto(true);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Vincular usuário
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setErro(null);
+                  setNomeConvite("");
+                  setEmailConvite("");
+                  setDialogoConviteAberto(true);
+                }}
+              >
+                <Plus className="h-4 w-4" /> Convidar por e-mail
+              </Button>
+              <Button
+                onClick={() => {
+                  setErro(null);
+                  setEmail("");
+                  setCandidato(null);
+                  setDialogoAberto(true);
+                }}
+              >
+                <UserCheck className="h-4 w-4" /> Vincular conta existente
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -315,6 +405,53 @@ function Usuarios() {
           </p>
         </div>
       </div>
+
+      {capacidades.can_view && (
+        <div className="rounded-lg border bg-card">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b p-4">
+            <div>
+              <h2 className="font-semibold">Convites por e-mail</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                O vínculo só será ativado quando o convidado confirmar o endereço e entrar na plataforma.
+              </p>
+            </div>
+            <Badge variant="outline">{convites.filter((convite) => convite.status === "pending").length} pendentes</Badge>
+          </div>
+          {convites.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">Nenhum convite registrado nesta Secretaria.</p>
+          ) : (
+            <div className="divide-y">
+              {convites.slice(0, 10).map((convite) => (
+                <div key={convite.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{convite.invited_email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {papeis.find((role) => role.id === convite.role_id)?.name ?? "Papel"} ·
+                      {" "}{statusConvite(convite.status)} ·
+                      {" "}expira em {new Date(convite.expires_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  {convite.status === "pending" && capacidades.can_create && capacidades.can_assign_role && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void cancelarConvite(convite)}
+                      disabled={cancelandoConviteId !== null}
+                    >
+                      {cancelandoConviteId === convite.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserX className="h-4 w-4" />
+                      )}
+                      Cancelar convite
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {erro && (
         <Alert variant="destructive">
@@ -441,6 +578,85 @@ function Usuarios() {
         confirmar o e-mail. Depois, informe aqui o mesmo e-mail e selecione o papel. A suspensão
         remove o acesso somente a esta Secretaria, sem apagar a conta nem o histórico.
       </div>
+
+      <Dialog
+        open={dialogoConviteAberto}
+        onOpenChange={(open) => {
+          if (!enviandoConvite) setDialogoConviteAberto(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Convidar usuário por e-mail</DialogTitle>
+            <DialogDescription>
+              Enviaremos um link de convite. O acesso só será ativado após a confirmação do mesmo e-mail.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={enviarConvite} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="convite-nome">Nome completo</Label>
+              <Input
+                id="convite-nome"
+                required
+                minLength={2}
+                maxLength={160}
+                value={nomeConvite}
+                onChange={(event) => setNomeConvite(event.target.value)}
+                placeholder="Nome do profissional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="convite-email">E-mail do convidado</Label>
+              <Input
+                id="convite-email"
+                type="email"
+                autoComplete="email"
+                required
+                maxLength={254}
+                value={emailConvite}
+                onChange={(event) => setEmailConvite(event.target.value)}
+                placeholder="usuario@orgao.gov.br"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Papel na Secretaria</Label>
+              <Select value={papelConviteId} onValueChange={setPapelConviteId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {papeis.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Alert>
+              <AlertTitle>Entrega do e-mail</AlertTitle>
+              <AlertDescription>
+                O envio depende do SMTP configurado no Supabase. Para convidar endereços externos ao time do projeto,
+                configure um provedor SMTP próprio antes de utilizar em produção.
+              </AlertDescription>
+            </Alert>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogoConviteAberto(false)}
+                disabled={enviandoConvite}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={enviandoConvite || !papelConviteId}>
+                {enviandoConvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Enviar convite
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={dialogoAberto}
