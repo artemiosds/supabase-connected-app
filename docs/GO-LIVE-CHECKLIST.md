@@ -1,86 +1,85 @@
 # Checklist de liberação do SaaS — Gestão de Fornecedores da Saúde
 
-Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em uso real por Secretarias. Estrutura e CI verdes não substituem homologação operacional, revisão jurídica e configuração dos serviços externos.
+Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em uso real por Secretarias. Estrutura de banco e CI verdes não substituem homologação autenticada, restauração testada, revisão jurídica e configuração de serviços externos.
 
 ## Situação técnica conferida em 08/11/2026
 
-- Supabase SMS2: 41 migrations registradas; última `20261108154457_tenant_first_invitation_mutation_locking`.
-- 23 tabelas públicas da aplicação com RLS; 12 tabelas operacionais multi-tenant com FORCE RLS.
-- As quatro RPCs públicas de convite são `SECURITY INVOKER`; nenhuma delas aceita execução por `anon`.
-- `anon` e `authenticated` não possuem privilégios de TRUNCATE, TRIGGER, REFERENCES ou MAINTAIN nas tabelas públicas.
-- GED privado `gfs-private-documents`: bucket não público, 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG.
-- Catálogo global com cinco modelos-base documentais.
-- CI principal aprovado com testes Python de backup, testes do app, build, TypeScript e lint.
-- Banco permanece sem Secretarias, vínculos, fornecedores, convites, processos, cotações, contratos ou arquivos reais. Não há homologação ponta a ponta com usuários municipais.
+- Supabase SMS2: **45 migrations registradas**; última 20261108200651_create_procurement_process_with_atomic_checklist. As 45 versões estão sincronizadas com 45 arquivos SQL no GitHub.
+- **24 tabelas públicas da aplicação com RLS**; **13 tabelas com FORCE RLS**; 18 permissões cadastradas.
+- Administrador Master ativo e confirmado; há dois usuários Auth no total.
+- Banco sem Secretarias, vínculos municipais, fornecedores, convites, documentos, processos, itens/cotações, orçamento, contratos, aditivos ou arquivos GED. Cinco modelos globais existem no catálogo, mas nenhum está instalado numa Secretaria.
+- GED gfs-private-documents: bucket privado, limite 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; ainda sem objetos.
+- Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
+- Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo.
+- Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado.
+- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier.
 
 ## Bloqueadores antes de produção
 
 ### 1. Identidade, Auth e e-mail
-
 - [ ] Escolher e configurar provedor SMTP com domínio verificado.
 - [ ] Configurar SPF, DKIM e DMARC no domínio remetente.
 - [ ] Configurar Supabase Auth Site URL e allowlist de URLs de redirecionamento.
-- [ ] Configurar `APP_URL` e `INVITE_ALLOWED_ORIGINS` na Edge Function para o domínio real.
-- [ ] Testar cadastro, confirmação, recuperação de senha, convite, definição de senha, aceite, revogação e expiração.
+- [ ] Configurar APP_URL e INVITE_ALLOWED_ORIGINS na Edge Function para o domínio real.
+- [ ] Testar cadastro, confirmação, recuperação de senha, convite, definição de senha, aceite, revogação e expiração com endereços controlados.
 - [ ] Definir política de senha com comprimento mínimo de pelo menos 8 caracteres e requisitos adequados.
-- [ ] Decidir se o projeto será mantido no Free ou migrado para Pro. A proteção contra senhas vazadas é recurso Pro ou superior.
+- [ ] Decidir se o projeto será mantido no Free ou migrado para Pro. A proteção contra senhas vazadas é recurso Pro ou superior e está desativada no SMS2 Free.
 
 ### 2. Onboarding e isolamento municipal
-
-- [ ] Criar uma Secretaria de homologação usando dados fictícios, mas sem inserir registros diretamente como se fossem reais.
-- [ ] Confirmar um administrador municipal por e-mail.
-- [ ] Habilitar os módulos e atribuir somente as permissões necessárias.
-- [ ] Criar uma segunda Secretaria de teste, com usuários e papéis distintos.
-- [ ] Confirmar isolamento por tenant em fornecedores, documentos, processos, itens, cotações, orçamento, contratos, GED e auditoria.
+- [ ] Criar uma Secretaria de homologação com dados fictícios pelo fluxo normal de provisionamento.
+- [ ] Confirmar administrador municipal por e-mail.
+- [ ] Habilitar somente os módulos contratados e atribuir permissões necessárias.
+- [ ] Criar segunda Secretaria de teste, com usuário e papel distintos.
+- [ ] Comprovar isolamento de fornecedores, documentos, processos, itens, cotações, orçamento, contratos, aditivos, GED e auditoria.
 - [ ] Testar bloqueio por Secretaria suspensa, bloqueio comercial, módulo desabilitado e limite de usuários.
 - [ ] Testar reservas de convites e operações simultâneas no limite do plano.
+- [ ] Executar o fluxo num navegador autenticado, não apenas por SQL ou CI.
 
 ### 3. GED, compras e documentos
-
-- [ ] Fazer upload e download de PDF e dos outros tipos permitidos com usuário municipal.
+- [ ] Fazer upload e download de PDF e de cada tipo de arquivo permitido com usuário municipal.
 - [ ] Confirmar URLs assinadas temporárias, arquivo privado, bloqueio após arquivamento e isolamento entre duas Secretarias.
-- [ ] Testar fornecedor, documento e vencimento.
+- [ ] Testar fornecedor, certidões, vencimentos e arquivamento.
 - [ ] Cadastrar itens, pelo menos três cotações, selecionar uma referência, vincular dotação e conferir cálculos.
-- [ ] Instalar e personalizar os modelos DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
+- [ ] Instalar e personalizar DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
 - [ ] Conferir snapshots, versionamento, campos obrigatórios, impressão e auditoria.
+- [ ] Testar contratos e aditivos de prazo e valor, inclusive limites e autorização.
 - [ ] Decidir se PDF server-side e armazenamento das vias finais são obrigatórios para o contrato comercial.
 - [ ] Decidir qual nível de assinatura é necessário. A assinatura atual é eletrônica simples e não ICP-Brasil.
 
 ### 4. Backup, segurança e continuidade
-
-- [ ] Gerar uma identidade age e guardar a chave privada offline; cadastrar somente a chave pública em `AGE_RECIPIENT`.
-- [ ] Cadastrar `SUPABASE_DB_URL` e `SUPABASE_SERVICE_ROLE_KEY` como GitHub Secrets.
-- [ ] Executar manualmente **Encrypted SMS2 backup**, conferir artefato criptografado, hash e descriptografia.
-- [ ] Somente após o teste, definir `SUPABASE_BACKUP_ENABLED=true` para habilitar o agendamento semanal.
-- [ ] Testar um procedimento de recuperação em projeto separado antes de confiar no backup.
-- [ ] Definir estratégia adicional para Auth, identidades, configurações do projeto, secrets, logs e recuperação integral. O dump lógico do CLI exclui schemas gerenciados Auth/Storage.
-- [ ] Definir retenção, responsável, monitoração e periodicidade para os artefatos de backup.
-- [ ] Avaliar o upgrade do Supabase para backup diário gerenciado e proteção contra senhas vazadas; nenhum upgrade foi feito neste projeto.
+- [ ] Gerar identidade age e guardar a chave privada offline; cadastrar somente a chave pública em AGE_RECIPIENT.
+- [ ] Cadastrar SUPABASE_DB_URL e SUPABASE_SERVICE_ROLE_KEY como GitHub Secrets.
+- [ ] Executar manualmente Encrypted SMS2 backup e conferir dump, Storage, criptografia, artefato e hash.
+- [ ] Descriptografar o artefato com a identidade privada correspondente e listar o TAR.
+- [ ] Restaurar em projeto Supabase separado e validar schema, dados, Auth reconstruído, papéis, bucket, políticas, login e downloads GED.
+- [ ] Somente após o teste, definir SUPABASE_BACKUP_ENABLED=true para habilitar o agendamento semanal.
+- [ ] Definir estratégia adicional para Auth identities/passwords, configuração do projeto, secrets, SMTP, funções, logs e recuperação integral; o dump lógico exclui schemas gerenciados Auth/Storage.
+- [ ] Definir retenção, responsável, monitoração, RPO/RTO e procedimento de incidente.
+- [ ] Avaliar upgrade Supabase para backups diários gerenciados e proteção contra senhas vazadas; nenhum upgrade foi feito.
 
 ### 5. Cobrança, LGPD e operação
-
-- [ ] Escolher o provedor de cobrança (por exemplo, Mercado Pago ou Stripe) e abrir a conta comercial.
-- [ ] Definir planos, preços, trial, impostos, faturas, cancelamento, estorno, inadimplência e conciliação.
-- [ ] Configurar chaves privadas, webhook assinado, idempotência, logs e reconciliação do provedor.
-- [ ] Definir controlador e operador de dados, finalidades, bases legais, retenção, direitos dos titulares e processo de incidente.
-- [ ] Revisar termos de uso, política de privacidade, contrato de tratamento de dados e cláusulas com cada município com assessoria jurídica.
-- [ ] Definir suporte, SLA, canal de incidentes, monitoramento, RPO/RTO e plano de continuidade.
+- [ ] Escolher gateway (Mercado Pago, Stripe ou outro) e abrir conta comercial.
+- [ ] Definir planos, preços, trial, limites, tributos, faturas, cancelamento, estorno, inadimplência e conciliação.
+- [ ] Implementar adaptador do gateway, validação de credenciais, webhooks assinados, idempotência, retentativas, logs e conciliação.
+- [ ] Testar em Sandbox antes de permitir ativação real de pagamentos.
+- [ ] Definir controlador e operador de dados, finalidades, bases legais, retenção, direitos dos titulares e resposta a incidentes.
+- [ ] Revisar termos de uso, privacidade, contrato de tratamento de dados e cláusulas com cada município com assessoria jurídica.
+- [ ] Definir suporte, SLA, canal de incidentes, monitoramento e continuidade.
 
 ### 6. Infraestrutura e publicação
-
-- [ ] Definir o domínio oficial e DNS.
+- [ ] Definir domínio oficial e DNS.
 - [ ] Configurar TLS, redirects Auth, CORS/origens e secrets de produção.
-- [ ] Separar ambiente de homologação e produção.
-- [ ] Definir política de atualização, janela de manutenção e rollback.
-- [ ] Fazer validação visual autenticada no domínio real.
+- [ ] Separar ambientes de homologação e produção.
+- [ ] Definir atualização, janela de manutenção, rollback e política de release.
+- [ ] Fazer validação visual e funcional autenticada no domínio real.
 - [ ] Aprovar formalmente o GO para produção após concluir os testes.
 
 ## Critério de decisão
 
-**NO-GO:** qualquer item obrigatório acima sem evidência de teste, especialmente SMTP, backup restaurável, isolamento entre duas Secretarias, cobrança, termos/contratos, domínio e validação autenticada.
+**NO-GO:** qualquer item obrigatório acima sem evidência, especialmente SMTP, backup restaurável, isolamento entre duas Secretarias, GED, cobranças, termos/contratos, domínio e homologação autenticada.
 
-**GO controlado:** só após os bloqueadores de segurança, backup, onboarding e conformidade serem resolvidos e uma Secretaria piloto aprovar a operação.
+**GO controlado:** somente após concluir segurança, backup, onboarding, GED e conformidade e uma Secretaria piloto aprovar a operação.
 
-## Limites conhecidos do backup do plano Free
+## Limites conhecidos do backup
 
-O workflow deste repositório faz backup lógico dos schemas da aplicação, dados e roles e baixa os arquivos do bucket GED. O Supabase CLI exclui os schemas gerenciados `auth` e `storage`; portanto, o pacote não contém senhas/identidades Auth, configurações completas do projeto, secrets de Edge Functions ou configuração SMTP. Não é um backup integral nem substitui os backups diários gerenciados de planos elegíveis.
+O workflow do repositório exporta schema, dados e roles dos schemas da aplicação, além dos objetos do bucket GED, e criptografa o pacote com age. O Supabase CLI exclui os schemas gerenciados auth e storage; portanto, o artefato não contém senhas/identidades Auth, metadados de Storage, configurações completas do projeto, secrets de Edge Functions, SMTP nem logs gerenciados. Não é backup integral ou ponto-no-tempo do projeto. O procedimento está em docs/ROTINA-DE-BACKUP.md; ainda falta comprovar descriptografia e restauração em projeto separado.
