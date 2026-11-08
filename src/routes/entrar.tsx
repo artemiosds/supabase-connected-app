@@ -41,7 +41,8 @@ function Entrar() {
     }
   }, [loading, session, navigate]);
 
-  const convitePendente = typeof window !== "undefined" &&
+  const convitePendente =
+    typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("convite") === "1";
 
   async function aoEnviar(e: FormEvent) {
@@ -60,9 +61,11 @@ function Entrar() {
   return (
     <AuthShell
       title="Entrar"
-      subtitle={convitePendente
-        ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
-        : "Acesse sua conta para continuar."}
+      subtitle={
+        convitePendente
+          ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
+          : "Acesse sua conta para continuar."
+      }
     >
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">

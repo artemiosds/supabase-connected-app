@@ -412,40 +412,50 @@ function Usuarios() {
             <div>
               <h2 className="font-semibold">Convites por e-mail</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                O vínculo só será ativado quando o convidado confirmar o endereço e entrar na plataforma.
+                O vínculo só será ativado quando o convidado confirmar o endereço e entrar na
+                plataforma.
               </p>
             </div>
-            <Badge variant="outline">{convites.filter((convite) => convite.status === "pending").length} pendentes</Badge>
+            <Badge variant="outline">
+              {convites.filter((convite) => convite.status === "pending").length} pendentes
+            </Badge>
           </div>
           {convites.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Nenhum convite registrado nesta Secretaria.</p>
+            <p className="p-4 text-sm text-muted-foreground">
+              Nenhum convite registrado nesta Secretaria.
+            </p>
           ) : (
             <div className="divide-y">
               {convites.slice(0, 10).map((convite) => (
-                <div key={convite.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div
+                  key={convite.id}
+                  className="flex flex-wrap items-center justify-between gap-3 p-4"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{convite.invited_email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {papeis.find((role) => role.id === convite.role_id)?.name ?? "Papel"} ·
-                      {" "}{statusConvite(convite.status)} ·
-                      {" "}expira em {new Date(convite.expires_at).toLocaleDateString("pt-BR")}
+                      {papeis.find((role) => role.id === convite.role_id)?.name ?? "Papel"} ·{" "}
+                      {statusConvite(convite.status)} · expira em{" "}
+                      {new Date(convite.expires_at).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
-                  {convite.status === "pending" && capacidades.can_create && capacidades.can_assign_role && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void cancelarConvite(convite)}
-                      disabled={cancelandoConviteId !== null}
-                    >
-                      {cancelandoConviteId === convite.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <UserX className="h-4 w-4" />
-                      )}
-                      Cancelar convite
-                    </Button>
-                  )}
+                  {convite.status === "pending" &&
+                    capacidades.can_create &&
+                    capacidades.can_assign_role && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void cancelarConvite(convite)}
+                        disabled={cancelandoConviteId !== null}
+                      >
+                        {cancelandoConviteId === convite.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <UserX className="h-4 w-4" />
+                        )}
+                        Cancelar convite
+                      </Button>
+                    )}
                 </div>
               ))}
             </div>
@@ -589,7 +599,8 @@ function Usuarios() {
           <DialogHeader>
             <DialogTitle>Convidar usuário por e-mail</DialogTitle>
             <DialogDescription>
-              Enviaremos um link de convite. O acesso só será ativado após a confirmação do mesmo e-mail.
+              Enviaremos um link de convite. O acesso só será ativado após a confirmação do mesmo
+              e-mail.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={enviarConvite} className="space-y-4">
@@ -636,8 +647,8 @@ function Usuarios() {
             <Alert>
               <AlertTitle>Entrega do e-mail</AlertTitle>
               <AlertDescription>
-                O envio depende do SMTP configurado no Supabase. Para convidar endereços externos ao time do projeto,
-                configure um provedor SMTP próprio antes de utilizar em produção.
+                O envio depende do SMTP configurado no Supabase. Para convidar endereços externos ao
+                time do projeto, configure um provedor SMTP próprio antes de utilizar em produção.
               </AlertDescription>
             </Alert>
             <DialogFooter>
@@ -650,7 +661,11 @@ function Usuarios() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={enviandoConvite || !papelConviteId}>
-                {enviandoConvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {enviandoConvite ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Enviar convite
               </Button>
             </DialogFooter>

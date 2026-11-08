@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
 
-const PREVIEW_ORIGIN =
-  "https://id-preview--0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798.lovable.app";
+const PREVIEW_ORIGIN = "https://id-preview--0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798.lovable.app";
 
 function getAllowedOrigins(): Set<string> {
   const configured = (Deno.env.get("INVITE_ALLOWED_ORIGINS") ?? "")
@@ -9,18 +8,17 @@ function getAllowedOrigins(): Set<string> {
     .map((value) => value.trim())
     .filter(Boolean);
   const appUrl = Deno.env.get("APP_URL")?.trim();
-  return new Set([
-    PREVIEW_ORIGIN,
-    "http://localhost:5173",
-    ...(appUrl ? [appUrl] : []),
-    ...configured,
-  ].map((value) => {
-    try {
-      return new URL(value).origin;
-    } catch {
-      return "";
-    }
-  }).filter(Boolean));
+  return new Set(
+    [PREVIEW_ORIGIN, "http://localhost:5173", ...(appUrl ? [appUrl] : []), ...configured]
+      .map((value) => {
+        try {
+          return new URL(value).origin;
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean),
+  );
 }
 
 function jsonResponse(payload: Record<string, unknown>, status: number, origin: string) {
@@ -32,7 +30,7 @@ function jsonResponse(payload: Record<string, unknown>, status: number, origin: 
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Vary": "Origin",
+      Vary: "Origin",
     },
   });
 }
@@ -56,7 +54,7 @@ Deno.serve(async (request: Request) => {
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Vary": "Origin",
+        Vary: "Origin",
       },
     });
   }
@@ -102,8 +100,7 @@ Deno.serve(async (request: Request) => {
   const roleId = body.role_id?.trim() ?? "";
   const fullName = body.full_name?.trim() ?? "";
 
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!uuidPattern.test(tenantId) || !uuidPattern.test(roleId)) {
@@ -181,11 +178,17 @@ Deno.serve(async (request: Request) => {
       p_invitation_id: invitationId,
     });
     if (revokeError) {
-      console.error("Não foi possível encerrar o convite após falha do provedor.", revokeError.message);
+      console.error(
+        "Não foi possível encerrar o convite após falha do provedor.",
+        revokeError.message,
+      );
     }
-    console.error("Falha ao enviar e-mail de convite.", sendError?.message ?? "Auth não retornou usuário.");
-    const throttled = sendError?.status === 429 ||
-      sendError?.message.toLowerCase().includes("rate limit");
+    console.error(
+      "Falha ao enviar e-mail de convite.",
+      sendError?.message ?? "Auth não retornou usuário.",
+    );
+    const throttled =
+      sendError?.status === 429 || sendError?.message.toLowerCase().includes("rate limit");
     return jsonResponse(
       {
         error: throttled
@@ -203,14 +206,18 @@ Deno.serve(async (request: Request) => {
   });
   if (attachError) {
     // Acceptance remains bound to the invited email when this auxiliary link fails.
-    console.error("Convite enviado, mas não foi possível associar o ID do Auth.", attachError.message);
+    console.error(
+      "Convite enviado, mas não foi possível associar o ID do Auth.",
+      attachError.message,
+    );
   }
 
   return jsonResponse(
     {
       invitation_id: invitationId,
       status: "pending",
-      message: "Convite enviado. O acesso será ativado somente após a confirmação do e-mail e o primeiro acesso.",
+      message:
+        "Convite enviado. O acesso será ativado somente após a confirmação do e-mail e o primeiro acesso.",
     },
     200,
     origin,

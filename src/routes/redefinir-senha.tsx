@@ -30,7 +30,8 @@ export const Route = createFileRoute("/redefinir-senha")({
 
 function RedefinirSenha() {
   const { session, loading, updatePassword } = useAuth();
-  const convite = typeof window !== "undefined" &&
+  const convite =
+    typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("convite") === "1";
   const navigate = useNavigate();
   const [senha, setSenha] = useState("");
@@ -71,9 +72,11 @@ function RedefinirSenha() {
     return (
       <AuthShell
         title="Link inválido"
-        subtitle={convite
-          ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
-          : "Este link de redefinição expirou ou já foi usado."}
+        subtitle={
+          convite
+            ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
+            : "Este link de redefinição expirou ou já foi usado."
+        }
       >
         <Button asChild className="w-full">
           <Link to="/recuperar-senha">Solicitar novo link</Link>
@@ -85,9 +88,11 @@ function RedefinirSenha() {
   return (
     <AuthShell
       title={convite ? "Crie sua senha de acesso" : "Redefinir senha"}
-      subtitle={convite
-        ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
-        : "Defina a nova senha da sua conta."}
+      subtitle={
+        convite
+          ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
+          : "Defina a nova senha da sua conta."
+      }
     >
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">
