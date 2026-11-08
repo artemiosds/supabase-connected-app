@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, FilePlus2, Loader2, Plus, ScrollText } from "lucide-react";
 import { toast } from "sonner";
-import { dbFase3, bancoNaoConfigurado, db } from "@/lib/db";
+import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -91,7 +91,7 @@ function Contratos() {
     setLoading(true);
     setErro(null);
     const [c, f] = await Promise.all([
-      dbFase3
+      db
         .from("contracts")
         .select("*")
         .eq("tenant_id", selecionado.id)
@@ -300,7 +300,7 @@ function NovoContrato(props: {
       return;
     }
     setSalvando(true);
-    const { error } = await dbFase3.from("contracts").insert({
+    const { error } = await db.from("contracts").insert({
       tenant_id: props.tenantId,
       number: f.number.trim(),
       object: f.object.trim(),
@@ -446,7 +446,7 @@ function NovoAditivo(props: {
     if (!props.contrato) return;
     const v = Number(valor.replace(",", ".")) || 0;
     setSalvando(true);
-    const { error } = await dbFase3.from("contract_amendments").insert({
+    const { error } = await db.from("contract_amendments").insert({
       tenant_id: props.tenantId,
       contract_id: props.contrato.id,
       number: numero.trim(),
