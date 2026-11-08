@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/lib/db";
+import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -161,27 +161,6 @@ function situacaoVencimento(data: string | null): {
   return { label: "Em dia", variant: "outline" };
 }
 
-async function carregarTodasAsPaginas<T>(
-  consultar: (
-    inicio: number,
-    fim: number,
-  ) => PromiseLike<{
-    data: T[] | null;
-    error: { message: string } | null;
-  }>,
-): Promise<T[]> {
-  const registros: T[] = [];
-  const tamanhoPagina = 500;
-
-  for (let inicio = 0; ; inicio += tamanhoPagina) {
-    const { data, error } = await consultar(inicio, inicio + tamanhoPagina - 1);
-    if (error) throw error;
-    const pagina = data ?? [];
-    registros.push(...pagina);
-    if (pagina.length < tamanhoPagina) return registros;
-  }
-}
-
 function Documentos() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
@@ -284,6 +263,7 @@ function Documentos() {
             .select("id,legal_name,trade_name,cnpj")
             .eq("tenant_id", selecionado.id)
             .order("legal_name")
+            .order("id")
             .range(inicio, fim),
         ),
         carregarTodasAsPaginas<DocumentoFornecedor>((inicio, fim) =>
@@ -293,6 +273,7 @@ function Documentos() {
             .eq("tenant_id", selecionado.id)
             .eq("status", "active")
             .order("expires_at", { ascending: true, nullsFirst: false })
+            .order("id")
             .range(inicio, fim),
         ),
         carregarTodasAsPaginas<Modelo>((inicio, fim) =>
@@ -302,6 +283,7 @@ function Documentos() {
             .eq("tenant_id", selecionado.id)
             .eq("is_active", true)
             .order("title")
+            .order("id")
             .range(inicio, fim),
         ),
         carregarTodasAsPaginas<DocumentoGerado>((inicio, fim) =>
@@ -310,6 +292,7 @@ function Documentos() {
             .select("*")
             .eq("tenant_id", selecionado.id)
             .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
             .range(inicio, fim),
         ),
         db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
@@ -319,6 +302,7 @@ function Documentos() {
             .select("*")
             .eq("is_active", true)
             .order("template_type")
+            .order("id")
             .range(inicio, fim),
         ),
         selecionado.enabled_modules["processos"] === true
@@ -329,6 +313,7 @@ function Documentos() {
                 .eq("tenant_id", selecionado.id)
                 .neq("status", "arquivado")
                 .order("created_at", { ascending: false })
+                .order("id", { ascending: false })
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
