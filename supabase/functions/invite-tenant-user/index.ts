@@ -148,7 +148,8 @@ Deno.serve(async (request: Request) => {
     const isConflict =
       message.includes("Já existe uma conta") ||
       message.includes("convite pendente") ||
-      message.includes("papel selecionado");
+      message.includes("papel selecionado") ||
+      message.includes("Limite de usuários atingido");
     return jsonResponse(
       {
         error: isConflict
