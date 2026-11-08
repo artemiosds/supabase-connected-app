@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Provider = "mercado_pago" | "stripe" | "other";
 type Environment = "sandbox" | "production";
+type ProviderChoice = Provider | "";
 
 type BillingConfiguration = {
   provider: Provider;
@@ -45,7 +46,7 @@ type BillingConfiguration = {
 };
 
 type BillingForm = {
-  provider: Provider;
+  provider: ProviderChoice;
   provider_other_name: string;
   environment: Environment;
   account_name: string;
@@ -60,7 +61,7 @@ type BillingForm = {
 };
 
 const EMPTY_FORM: BillingForm = {
-  provider: "mercado_pago",
+  provider: "",
   provider_other_name: "",
   environment: "sandbox",
   account_name: "",
@@ -153,8 +154,12 @@ export function MasterBillingSettings() {
     void loadConfiguration();
   }, [loadConfiguration]);
 
-  const saveConfiguration = async (event: React.FormEvent<HTMLFormElement>) => {
+  const saveConfiguration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!form.provider) {
+      toast.error("Escolha o provedor quando decidir qual conta será vinculada.");
+      return;
+    }
     if (!form.account_name.trim()) {
       toast.error("Informe o nome da conta de cobrança.");
       return;
@@ -360,7 +365,7 @@ export function MasterBillingSettings() {
                 <div className="space-y-2">
                   <Label>Provedor de pagamento</Label>
                   <Select value={form.provider} onValueChange={(value) => setField("provider", value as Provider)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o provedor" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione quando decidir" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
                       <SelectItem value="stripe">Stripe</SelectItem>
