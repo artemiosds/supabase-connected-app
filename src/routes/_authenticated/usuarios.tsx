@@ -244,9 +244,20 @@ function Usuarios() {
     });
     setEnviandoConvite(false);
     if (inviteError) {
-      setErro(
-        "Não foi possível enviar o convite. Confira a configuração de SMTP do Supabase e se o e-mail ainda não possui uma conta cadastrada.",
-      );
+      let mensagem =
+        "Não foi possível enviar o convite. Confira a configuração de SMTP do Supabase e as permissões do seu perfil.";
+      const contexto = (inviteError as { context?: unknown }).context;
+      if (contexto instanceof Response) {
+        try {
+          const resposta = (await contexto.clone().json()) as { error?: unknown };
+          if (typeof resposta.error === "string" && resposta.error.trim()) {
+            mensagem = resposta.error;
+          }
+        } catch {
+          // Keep the generic message when the server does not return JSON.
+        }
+      }
+      setErro(mensagem);
       return;
     }
     toast.success("Convite enviado. O acesso será liberado após a confirmação do e-mail.");
