@@ -52,7 +52,29 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 
 **Atenção:** a Matriz Contratual de Alocação de Riscos é separada do Mapa de Análise de Riscos e só deve ser utilizada após avaliação do cabimento e da necessidade no caso concreto.
 
-## 6. Validar usuários e permissões
+## 6. Validar compras estruturadas e orçamento
+
+1. Crie um processo de teste e inclua itens com descrição, unidade de fornecimento, quantidade e especificação.
+2. Cadastre pelo menos três cotações para um item, com fornecedor, preço unitário, frete e fonte de referência.
+3. Escolha uma cotação como referência; confirme que a seleção é atômica e que apenas uma cotação fica marcada como escolhida por item.
+4. Confira o cálculo dos valores e o contexto utilizado na geração do DFD/ETP/TR.
+5. Cadastre uma dotação por exercício, unidade orçamentária, programa/ação, natureza da despesa, fonte e valor alocado.
+6. Teste atualização e arquivamento da cotação e da dotação; confira o histórico e o isolamento por Secretaria.
+
+## 7. Validar convites por e-mail
+
+Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homologação em **Authentication → URL Configuration**. Consulte `docs/CONFIGURAR-CONVITES-E-MAIL.md`.
+
+1. Com um administrador municipal, convide um endereço de e-mail novo e selecione o papel Operador.
+2. Confirme a entrega da mensagem, abra o link, confirme o endereço e defina uma senha.
+3. Entre com a conta convidada e confira que o vínculo foi criado somente na Secretaria que enviou o convite e com o papel selecionado.
+4. Tente aceitar o mesmo convite novamente; não deve criar vínculo duplicado.
+5. Convide um endereço já cadastrado e confirmado; o sistema deve orientar usar **Vincular conta existente**.
+6. Crie outro convite pendente e cancele-o antes do aceite. Abrir o link cancelado não deve conceder acesso.
+7. Confira a expiração de 7 dias, o limite de usuários ativos e o comportamento quando uma conta já possui vínculo suspenso.
+8. Consulte a auditoria e confira criação, aceite, expiração ou cancelamento do convite sem expor token/link de acesso.
+
+## 8. Validar usuários e permissões
 
 1. Crie mais duas contas municipais em janelas anônimas e confirme seus e-mails.
 2. Na Secretaria de teste, vincule uma delas como Operador e outra como Consulta.
@@ -61,14 +83,14 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 5. Como Administrador local, altere o papel de um membro e suspenda/reative um vínculo.
 6. Verifique que o sistema impede suspender a própria conta e remover o último Administrador ativo.
 
-## 7. Validar separação entre Secretarias
+## 9. Validar separação entre Secretarias
 
 1. Crie uma segunda Secretaria de teste com outra conta municipal.
 2. Cadastre fornecedores e documentos em ambas.
 3. Entre em cada conta e confira que somente os registros da própria Secretaria aparecem.
 4. Tente usar IDs de registros da outra Secretaria em operações diretas; o banco deve negar a leitura e a alteração.
 
-## 8. Conferir painel, configurações e histórico
+## 10. Conferir painel, configurações e histórico
 
 1. Confira os indicadores do painel com os registros de teste.
 2. Atualize dados institucionais da Secretaria e verifique CNPJ, e-mail, telefone, endereço, município e UF.
