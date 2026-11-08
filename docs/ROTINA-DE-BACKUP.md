@@ -64,6 +64,10 @@ Antes de restaurar:
 
 **Não faça o primeiro restore diretamente em produção.** Primeiro use um projeto de homologação descartável, valide relacionamentos, usuários, downloads do GED e login do Master, e documente cada diferença.
 
+## Estado atual de execução
+
+A rotina está versionada, mas a consulta ao histórico do GitHub Actions em 08/11/2026 não encontrou nenhuma execução do workflow Encrypted SMS2 backup. Portanto, ainda não há evidência de que os secrets/variables estejam configurados, de que um artefato criptografado tenha sido gerado, nem de que a chave privada consiga descriptografá-lo. O primeiro backup manual e o teste de restauração em projeto separado continuam obrigatórios.
+
 ## Frequência e política
 
 - Enquanto o projeto estiver no Free, execute o workflow manual após mudanças relevantes e pelo menos semanalmente, depois de habilitar os secrets e a variável de agendamento.
