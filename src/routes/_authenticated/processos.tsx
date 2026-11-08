@@ -87,6 +87,20 @@ type Item = {
   sort_order: number;
 };
 
+function ehEtapa(valor: string): valor is EtapaId {
+  return ETAPAS.some((e) => e.id === valor);
+}
+
+// O banco tipa `stage` como texto; mantém somente linhas com etapa conhecida.
+function comEtapaValida<T extends { stage: string }>(
+  linhas: T[],
+): (Omit<T, "stage"> & { stage: EtapaId })[] {
+  return linhas.flatMap((l) => {
+    const { stage } = l;
+    return ehEtapa(stage) ? [{ ...l, stage }] : [];
+  });
+}
+
 const corPrioridade: Record<string, string> = {
   urgente: "bg-destructive/15 text-destructive",
   alta: "bg-accent text-accent-foreground",
@@ -119,11 +133,7 @@ function Processos() {
         .eq("tenant_id", selecionado.id)
         .neq("status", "arquivado")
         .order("created_at", { ascending: false }),
-      db
-        .from("process_items")
-        .select("*")
-        .eq("tenant_id", selecionado.id)
-        .order("sort_order"),
+      db.from("process_items").select("*").eq("tenant_id", selecionado.id).order("sort_order"),
     ]);
     const loadError = processosResult.error ?? checklistResult.error;
     if (loadError) {
@@ -133,8 +143,8 @@ function Processos() {
       else setErro(loadError.message);
     } else {
       setPendente(false);
-      setProcessos(processosResult.data ?? []);
-      setItens(checklistResult.data ?? []);
+      setProcessos(comEtapaValida(processosResult.data ?? []));
+      setItens(comEtapaValida(checklistResult.data ?? []));
     }
     setLoading(false);
   }, [selecionado?.id]);
