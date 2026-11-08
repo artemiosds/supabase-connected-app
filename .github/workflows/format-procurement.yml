@@ -28,7 +28,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Format files reported by Prettier
-        run: bunx prettier --write src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/hooks/use-tenant.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts
+        run: bunx prettier --write src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/hooks/use-tenant.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts
 
       - name: Run unit tests
         run: bun run test
