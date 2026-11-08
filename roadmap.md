@@ -7,7 +7,7 @@ Atualizado em **08/11/2026**, com conferência do GitHub `main` e do Supabase SM
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 37 versões registradas no histórico do SMS2. As migrations da Fase 4, Fase 5.1/5.2 e Fase 5.3/5.3.1/5.3.2 estão aplicadas. A última é `20261108141604_phase5_3_2_reserve_invitation_seats`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
+- **Migrations:** 41 versões registradas no histórico do SMS2. A mais recente é `20261108154457_tenant_first_invitation_mutation_locking`. As migrations das Fases 1, 2, 3, 4, 5.1, 5.2 e 5.3/5.3.1/5.3.2, além dos reforços finais de capacidade, RLS, índices e privilégios, estão aplicadas e versionadas. A estrutura histórica inicial de processos/contratos continua sendo instalada pela baseline manual documentada; não execute essa baseline no SMS2 atual.
 - **Dados atuais:** 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 convites, 0 arquivos GED, 0 processos, 0 itens/cotações/orçamentos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo e o bucket GED privado está criado. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
@@ -25,17 +25,17 @@ Inclui:
 - Validação de CNPJ numérico e alfanumérico no banco e no frontend.
 
 ### Evidências da Fase 1
-- Todas as 13 tabelas de aplicação no schema `public` estão com RLS habilitado.
-- As quatro tabelas operacionais usam também FORCE ROW LEVEL SECURITY.
+- Todas as 23 tabelas de aplicação
+- As 12 tabelas operacionais multi-tenant usam também FORCE ROW LEVEL SECURITY; as tabelas auxiliares globais e de identidade mantêm RLS com políticas próprias.
 - Schema interno `app_auth`: `anon` não possui USAGE; as funções privilegiadas têm caminho de busca fixado.
-- As 22 migrations estão sincronizadas entre o Supabase e o GitHub.
+- As 41 migrations registradas estão sincronizadas
 - Já existe um superadministrador global ativo, com usuário Auth confirmado. **Não execute o bootstrap inicial novamente neste SMS2.** O script em `supabase/operations/bootstrap_first_platform_admin.sql` serve apenas para instalação nova, sem nenhum administrador global.
 - Testes SQL transacionais anteriores validaram criação de Secretaria, papéis padrão, proteção de papéis/permissões administrativas e isolamento entre duas Secretarias. As transações foram revertidas.
 - A consulta atual confirmou que não há tenants ou dados operacionais fictícios persistidos.
 
 ### Pendências de configuração/homologação da Fase 1
 1. No Supabase Dashboard, confirme em **Project Settings → API → Exposed schemas** que `app_auth` não está listado. A lista de schemas expostos é uma configuração da API e não pode ser comprovada só pela consulta SQL.
-2. Habilite a proteção contra senhas vazadas em **Auth → Settings / Password Security**. O Security Advisor ainda aponta `auth_leaked_password_protection` como WARN.
+2. **Proteção contra senhas vazadas:** o Supabase informa que esse recurso está disponível apenas no plano Pro ou superior. O SMS2 permanece no Free; remover esse alerta exige aprovação de upgrade pago.
 3. Homologue o fluxo real com uma conta municipal confirmada e duas Secretarias de teste. Não use dados pessoais reais na primeira rodada.
 
 ## FASE 2 — Fornecedores, documentos e operação
@@ -72,8 +72,8 @@ Inclui:
 - Foram adicionadas verificações de rotas para todas as telas autenticadas e um teste do exemplo alfanumérico de CNPJ `00.000.000/E08G-12`.
 - O workflow de CI usa Bun e o lockfile oficial `bun.lock`; o último run completo passou em todas as etapas.
 - O roteiro de homologação está em `docs/TESTE-MVP.md`.
-- Security Advisor: WARN por proteção contra senhas vazadas desativada.
-- Performance Advisor: índices INFO ainda sem uso, esperado porque não há carga operacional; não remover índices só por essa observação.
+- Security Advisor:
+- Performance Advisor:
 - **Fase 3** deve ser estabilização/homologação autenticada, teste de escala, correção dos defeitos observados e preparação para produção. Evitar novas migrations se não houver necessidade comprovada.
 
 ## FASE 3 — Contratos e Processos de Contratação (06/11/2026)
@@ -148,15 +148,15 @@ Inclui:
 ## FASE 6 — O que falta para o SaaS estar pronto para clientes
 
 1. **Onboarding/homologação real:** cadastrar a primeira Secretaria de teste, confirmar o administrador municipal, habilitar módulos, atribuir permissões e percorrer os fluxos com duas Secretarias. O convite está preparado, mas depende de SMTP.
-2. **Reconciliação das migrations:** versionar corretamente o DDL de processos/contratos já presente no SMS2, sem reaplicar o script antigo.
-3. **GED completo:** testar upload/download real, definir retenção e backup e integrar os documentos gerados ao PDF e armazenamento privado.
+2. **Instalações novas:** a baseline manual de processos/contratos e a ordem completa de instalação estão documentadas em `docs/INSTALACAO-BASELINE.md`. O SMS2 atual já possui as quatro tabelas; não executar a baseline nele.
+3. **GED completo:** testar upload/download real, definir retenção e validar restauração dos arquivos. O backup lógico criptografado de `gfs-private-documents` foi preparado; os documentos gerados ainda precisam de PDF server-side e integração ao GED.
 4. **E-mail operacional:** configurar SMTP próprio, allowlist de URLs/domínios e monitorar entregas/retentativas dos convites e notificações.
 5. **Cobrança real:** provedor de pagamento, planos/assinaturas, faturas, webhooks, inadimplência, tentativas de cobrança, cancelamento e conciliação. Hoje existem somente os metadados comerciais.
 6. **Compras estruturadas:** homologar itens, cotações, cotação vencedora, orçamento e relatórios com processos reais; ampliar depois a pesquisa formal e memória de cálculo.
 7. **Assinatura e documentos finais:** avaliar provedor de assinatura adequado ao nível jurídico exigido; a atual é simples e não ICP-Brasil. Implementar PDF server-side e armazenamento/versionamento da via final se exigido.
 8. **Alertas operacionais:** e-mail/WhatsApp e agendamento de alertas de vencimento, com logs, retentativas e preferências.
-9. **LGPD e operação:** termos de uso, política de privacidade, contrato de tratamento de dados, retenção/eliminação, plano de incidentes, backups testados, monitoramento, suporte e SLA.
-10. **Produção:** domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada.
+9. **LGPD e operação:** termos de uso, política de privacidade, contrato de tratamento de dados, retenção/eliminação, plano de incidentes, backups testados, monitoramento, suporte e SLA. A rotina lógica de backup está em `docs/ROTINA-DE-BACKUP.md`, mas exige secrets e chave de criptografia; não substitui backup integral de Auth.
+10. **Produção:** escolher domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada. O domínio de produção ainda não foi informado e não foi configurado.
 11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
 
-**Avisos que continuam abertos:** Security Advisor ainda aponta auth_leaked_password_protection desativado. O GitHub Actions principal passou no commit `af63fbf18a67ae1902764ed7f30c04ec31bd1561`: testes, build de produção, TypeScript e lint. A validação visual autenticada e a homologação com Secretaria real ainda estão pendentes.
+**Avisos que continuam abertos:**
