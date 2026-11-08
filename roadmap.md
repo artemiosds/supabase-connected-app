@@ -1,14 +1,14 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-Atualizado em **07/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
+Atualizado em **08/11/2026**, com conferência do GitHub `main` e do Supabase SMS2.
 
 ## Estado real verificado
 
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 31 versões registradas no histórico do SMS2. A mais recente é `20261107043056_phase5_1_private_supplier_document_storage`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
-- **Dados atuais:** 1 usuário Auth confirmado, 1 perfil e 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 modelos instalados por Secretaria, 0 processos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo global e o bucket GED privado está criado. Não há dados municipais reais para homologação.
+- **Migrations:** 36 versões registradas no histórico do SMS2. As quatro migrations da Fase 5.1/5.2 e as duas da Fase 5.3 estão aplicadas. A última é `20261108141022_phase5_3_1_harden_invitation_rpc_surface`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
+- **Dados atuais:** 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 convites, 0 arquivos GED, 0 processos, 0 itens/cotações/orçamentos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo e o bucket GED privado está criado. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
 
@@ -63,7 +63,7 @@ Inclui:
 - **PDF:** a versão atual usa a impressão do navegador; não há geração PDF no servidor nem armazenamento persistente da via assinada.
 - **Assinatura:** é eletrônica simples e associada à sessão; não é assinatura qualificada ICP-Brasil nem integração com provedor de assinatura.
 - **Alertas:** painel e listagem exibem vencimentos; envio agendado por e-mail/WhatsApp requer provedor e agendador.
-- **Convites:** o administrador vincula contas previamente cadastradas e confirmadas; convite automático por e-mail não está integrado.
+- **Convites:** a Fase 5.3 implementou convite por e-mail, aceite após confirmação e definição de senha, administração e cancelamento de convites; depende de SMTP próprio e homologação com destinatários reais.
 - **Importação de modelos:** arquivos `.txt` e `.md`; DOC/DOCX precisam ser copiados e colados, pois não existe importador Word nativo.
 
 ## Qualidade e liberação
@@ -114,23 +114,44 @@ Inclui:
 
 **Status:** migration aplicada e UI de upload/acesso implementada; teste autenticado com arquivo real ainda pendente.
 
-- Bucket `gfs-private-documents` criado como **privado**, limite de 20 MiB, somente PDF, DOC, DOCX, XLS, XLSX, JPG e PNG.
-- `supplier_documents` recebeu `storage_path`, `file_name`, `mime_type` e `file_size`; os registros antigos de Drive/link externo foram preservados.
-- RLS do Storage separa cada arquivo por Secretaria, fornecedor e documento; leitura depende do registro documental ativo e das permissões/módulos da Secretaria.
-- Upload exige permissões de criação e consulta documental, consulta de fornecedor, Secretaria ativa e módulos `documentos` e `fornecedores`.
-- A interface valida extensão, MIME, assinatura básica e tamanho; envia ao bucket privado e depois grava os metadados. A abertura usa URL assinada temporária de 60 segundos.
-- Arquivo vinculado e seus metadados não podem ser sobrescritos em edição; para substituir, deve ser cadastrado um novo documento e o anterior arquivado.
-- A limpeza pelo usuário fica limitada a objetos órfãos de sua própria sessão, sem vínculo documental. Arquivos ativos ou arquivados não podem ser removidos pelo cliente.
-- **Limite desta entrega:** o GED cobre documentos de fornecedores. Documentos gerados pelo editor ainda não são automaticamente convertidos em PDF e armazenados no bucket.
-- **Homologação pendente:** enviar e abrir arquivo com uma conta municipal, testar segunda Secretaria, arquivar um documento e confirmar o bloqueio de acesso ao arquivo.
-## FASE 5 — O que falta para o SaaS estar pronto para clientes
+- Bucket \`gfs-private-documents\` privado, limite de 20 MiB e allowlist de PDF, DOC, DOCX, XLS, XLSX, JPG e PNG.
+- \`supplier_documents\` recebeu \`storage_path\`, \`file_name\`, \`mime_type\` e \`file_size\`; metadados antigos de links/Drive foram preservados.
+- RLS do Storage separa cada arquivo por Secretaria, fornecedor e documento; leitura exige documento ativo e permissões/módulos corretos.
+- Upload valida extensão, MIME, assinatura básica e tamanho; download usa URL assinada temporária.
+- Arquivo vinculado não pode ser sobrescrito em edição; substituição exige novo documento e preserva o anterior.
+- **Pendente:** teste autenticado de upload/download, isolamento entre duas Secretarias, arquivamento e bloqueio do link.
 
-1. **Onboarding real de tenant:** criar fluxo completo de cadastro, validação institucional, convite do administrador municipal e primeira configuração de módulos/permissões.
+## FASE 5.2 — Dados estruturados da contratação (07/11/2026)
+
+**Status:** banco e telas implementados; homologação com cotações e orçamento reais de teste pendente.
+
+- Tabelas \`procurement_items\`, \`procurement_price_quotes\` e \`procurement_budget_allocations\` estão criadas e isoladas por \`tenant_id\`.
+- Processos aceitam itens de compra estruturados, especificação, unidade e quantidade.
+- Cotações registram fornecedor, fonte e valores; a escolha de cotação de referência é atômica.
+- Dados de itens, cotações e orçamento são incorporados ao contexto/snapshot dos documentos.
+- **Pendente:** cadastrar três cotações, escolher referência, verificar totais, vincular dotação e testar isolamento entre Secretarias.
+
+## FASE 5.3 — Convites de usuários por e-mail (08/11/2026)
+
+**Status:** schema aplicado, Edge Function publicada e interface integrada; entrega real depende de SMTP próprio e homologação com destinatários controlados.
+
+- Tabela \`tenant_invitations\` com validade de 7 dias, papel atribuído, aceite, revogação e auditoria.
+- Edge Function \`invite-tenant-user\` publicada no SMS2 com \`verify_jwt=true\`; chave administrativa permanece apenas no ambiente servidor.
+- Tela Usuários oferece **Convidar por e-mail**, lista convites e permite cancelar convites pendentes; o vínculo de contas existentes foi preservado.
+- Convidado confirma o mesmo endereço, define senha em \`/redefinir-senha?convite=1\` e recebe o vínculo no primeiro acesso.
+- O aceite respeita Secretaria ativa, limite de usuários e papel escolhido; não reativa vínculo suspenso/inativo nem concede acesso a administrador global.
+- RPCs públicas de convite são \`SECURITY INVOKER\`; a lógica privilegiada está no schema interno \`app_auth\`. O Security Advisor deixou de apontar essas quatro RPCs públicas como SECURITY DEFINER.
+- **Configuração pendente:** SMTP personalizado e URLs de redirecionamento no Supabase Auth. O preview atual está autorizado; o domínio de produção precisa ser incluído em \`INVITE_ALLOWED_ORIGINS\` e nas URLs permitidas do Auth.
+- **Pendente:** envio/recebimento real, confirmação, definição de senha, aceite, revogação, expiração, duplicidade e limite de usuários.
+
+## FASE 6 — O que falta para o SaaS estar pronto para clientes
+
+1. **Onboarding/homologação real:** cadastrar a primeira Secretaria de teste, confirmar o administrador municipal, habilitar módulos, atribuir permissões e percorrer os fluxos com duas Secretarias. O convite está preparado, mas depende de SMTP.
 2. **Reconciliação das migrations:** versionar corretamente o DDL de processos/contratos já presente no SMS2, sem reaplicar o script antigo.
-3. **GED completo:** a primeira camada privada para documentos de fornecedores foi implementada; faltam homologação autenticada, política de retenção/backup e integração do editor de documentos gerados com o GED.
-4. **Convites por e-mail:** convite e ativação de usuário sem depender de o usuário já ter criado e confirmado a própria conta.
+3. **GED completo:** testar upload/download real, definir retenção e backup e integrar os documentos gerados ao PDF e armazenamento privado.
+4. **E-mail operacional:** configurar SMTP próprio, allowlist de URLs/domínios e monitorar entregas/retentativas dos convites e notificações.
 5. **Cobrança real:** provedor de pagamento, planos/assinaturas, faturas, webhooks, inadimplência, tentativas de cobrança, cancelamento e conciliação. Hoje existem somente os metadados comerciais.
-6. **Dados estruturados de compras:** itens/itens de fornecimento, unidade, quantidade, preço unitário, pesquisa de preços, dotação e memória de cálculo; hoje o checklist de processo não substitui esses dados estruturados.
+6. **Compras estruturadas:** homologar itens, cotações, cotação vencedora, orçamento e relatórios com processos reais; ampliar depois a pesquisa formal e memória de cálculo.
 7. **Assinatura e documentos finais:** avaliar provedor de assinatura adequado ao nível jurídico exigido; a atual é simples e não ICP-Brasil. Implementar PDF server-side e armazenamento/versionamento da via final se exigido.
 8. **Alertas operacionais:** e-mail/WhatsApp e agendamento de alertas de vencimento, com logs, retentativas e preferências.
 9. **LGPD e operação:** termos de uso, política de privacidade, contrato de tratamento de dados, retenção/eliminação, plano de incidentes, backups testados, monitoramento, suporte e SLA.
