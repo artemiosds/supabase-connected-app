@@ -515,9 +515,11 @@ function DadosEstruturados(props: {
       toast.error(firstError.message);
     } else {
       setItems((itemsResult.data ?? []) as ItemCompra[]);
-      setQuotes((quotesResult.data ?? []).filter((q: CotacaoCompra) =>
-        (itemsResult.data ?? []).some((item: ItemCompra) => item.id === q.procurement_item_id),
-      ) as CotacaoCompra[]);
+      setQuotes(
+        (quotesResult.data ?? []).filter((q: CotacaoCompra) =>
+          (itemsResult.data ?? []).some((item: ItemCompra) => item.id === q.procurement_item_id),
+        ) as CotacaoCompra[],
+      );
       setBudgets((budgetsResult.data ?? []) as DotacaoCompra[]);
       setSuppliers((supplierResult.data ?? []) as FornecedorCompra[]);
     }
@@ -573,8 +575,14 @@ function DadosEstruturados(props: {
     const quoteQuantity = numeroDecimal(quoteForm.quantity);
     const unitPrice = numeroDecimal(quoteForm.unit_price);
     const deliveryCost = numeroDecimal(quoteForm.delivery_cost || "0");
-    if (!Number.isFinite(quoteQuantity) || quoteQuantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0 ||
-        !Number.isFinite(deliveryCost) || deliveryCost < 0) {
+    if (
+      !Number.isFinite(quoteQuantity) ||
+      quoteQuantity <= 0 ||
+      !Number.isFinite(unitPrice) ||
+      unitPrice < 0 ||
+      !Number.isFinite(deliveryCost) ||
+      deliveryCost < 0
+    ) {
       toast.error("Informe quantidade, preço e frete válidos.");
       return;
     }
@@ -671,7 +679,13 @@ function DadosEstruturados(props: {
     event.preventDefault();
     const amount = numeroDecimal(budgetForm.allocated_amount);
     const year = Number(budgetForm.fiscal_year);
-    if (!Number.isInteger(year) || year < 2000 || year > 2200 || !Number.isFinite(amount) || amount < 0) {
+    if (
+      !Number.isInteger(year) ||
+      year < 2000 ||
+      year > 2200 ||
+      !Number.isFinite(amount) ||
+      amount < 0
+    ) {
       toast.error("Informe exercício e valor orçamentário válidos.");
       return;
     }
@@ -725,8 +739,14 @@ function DadosEstruturados(props: {
     }
   }
 
-  const totalEstimadoItens = items.reduce((total, item) => total + (Number(item.estimated_total) || 0), 0);
-  const totalOrcamentario = budgets.reduce((total, entry) => total + Number(entry.allocated_amount || 0), 0);
+  const totalEstimadoItens = items.reduce(
+    (total, item) => total + (Number(item.estimated_total) || 0),
+    0,
+  );
+  const totalOrcamentario = budgets.reduce(
+    (total, entry) => total + Number(entry.allocated_amount || 0),
+    0,
+  );
 
   if (!props.aberto) return null;
 
@@ -763,8 +783,12 @@ function DadosEstruturados(props: {
         ) : (
           <Tabs defaultValue="items" className="w-full">
             <TabsList>
-              <TabsTrigger value="items"><ClipboardList className="h-4 w-4" /> Itens e preços</TabsTrigger>
-              <TabsTrigger value="budget"><Coins className="h-4 w-4" /> Orçamento</TabsTrigger>
+              <TabsTrigger value="items">
+                <ClipboardList className="h-4 w-4" /> Itens e preços
+              </TabsTrigger>
+              <TabsTrigger value="budget">
+                <Coins className="h-4 w-4" /> Orçamento
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="items" className="space-y-4">
               <div className="flex justify-end">
@@ -778,37 +802,95 @@ function DadosEstruturados(props: {
                     <form onSubmit={salvarItem} className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1 sm:col-span-2">
                         <Label>Descrição do item *</Label>
-                        <Input required minLength={3} maxLength={500} value={itemForm.description}
-                          onChange={(event) => setItemForm((current) => ({ ...current, description: event.target.value }))} />
+                        <Input
+                          required
+                          minLength={3}
+                          maxLength={500}
+                          value={itemForm.description}
+                          onChange={(event) =>
+                            setItemForm((current) => ({
+                              ...current,
+                              description: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1 sm:col-span-2">
                         <Label>Especificação técnica</Label>
-                        <Textarea rows={2} value={itemForm.technical_specification}
-                          onChange={(event) => setItemForm((current) => ({ ...current, technical_specification: event.target.value }))} />
+                        <Textarea
+                          rows={2}
+                          value={itemForm.technical_specification}
+                          onChange={(event) =>
+                            setItemForm((current) => ({
+                              ...current,
+                              technical_specification: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Unidade *</Label>
-                        <Input required maxLength={30} value={itemForm.unit}
-                          onChange={(event) => setItemForm((current) => ({ ...current, unit: event.target.value }))} />
+                        <Input
+                          required
+                          maxLength={30}
+                          value={itemForm.unit}
+                          onChange={(event) =>
+                            setItemForm((current) => ({ ...current, unit: event.target.value }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Quantidade *</Label>
-                        <Input required inputMode="decimal" value={itemForm.quantity}
-                          onChange={(event) => setItemForm((current) => ({ ...current, quantity: event.target.value }))} />
+                        <Input
+                          required
+                          inputMode="decimal"
+                          value={itemForm.quantity}
+                          onChange={(event) =>
+                            setItemForm((current) => ({ ...current, quantity: event.target.value }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Preço unitário estimado (R$)</Label>
-                        <Input inputMode="decimal" value={itemForm.estimated_unit_price}
-                          onChange={(event) => setItemForm((current) => ({ ...current, estimated_unit_price: event.target.value }))} />
+                        <Input
+                          inputMode="decimal"
+                          value={itemForm.estimated_unit_price}
+                          onChange={(event) =>
+                            setItemForm((current) => ({
+                              ...current,
+                              estimated_unit_price: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Local de entrega</Label>
-                        <Input value={itemForm.delivery_location}
-                          onChange={(event) => setItemForm((current) => ({ ...current, delivery_location: event.target.value }))} />
+                        <Input
+                          value={itemForm.delivery_location}
+                          onChange={(event) =>
+                            setItemForm((current) => ({
+                              ...current,
+                              delivery_location: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="flex justify-end gap-2 sm:col-span-2">
-                        <Button type="button" variant="outline" onClick={() => setItemFormOpen(false)}>Cancelar</Button>
-                        <Button type="submit" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Salvar item</Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setItemFormOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={saving}>
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4" />
+                          )}{" "}
+                          Salvar item
+                        </Button>
                       </div>
                     </form>
                   </CardContent>
@@ -821,104 +903,257 @@ function DadosEstruturados(props: {
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => {
-                    const itemQuotes = quotes.filter((quote) => quote.procurement_item_id === item.id);
+                    const itemQuotes = quotes.filter(
+                      (quote) => quote.procurement_item_id === item.id,
+                    );
                     return (
                       <Card key={item.id}>
                         <CardContent className="space-y-3 pt-4">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold">{item.line_number}. {item.description}</p>
-                              {item.technical_specification && <p className="mt-1 text-xs text-muted-foreground">{item.technical_specification}</p>}
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {item.quantity} {item.unit} · Unitário: {formatarMoeda(item.estimated_unit_price)} · Total: {formatarMoeda(item.estimated_total)}
+                              <p className="text-sm font-semibold">
+                                {item.line_number}. {item.description}
                               </p>
-                              {item.delivery_location && <p className="text-xs text-muted-foreground">Entrega: {item.delivery_location}</p>}
+                              {item.technical_specification && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {item.technical_specification}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {item.quantity} {item.unit} · Unitário:{" "}
+                                {formatarMoeda(item.estimated_unit_price)} · Total:{" "}
+                                {formatarMoeda(item.estimated_total)}
+                              </p>
+                              {item.delivery_location && (
+                                <p className="text-xs text-muted-foreground">
+                                  Entrega: {item.delivery_location}
+                                </p>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              <Button size="sm" variant="outline" onClick={() => {
-                                setQuoteTarget(item.id);
-                                setQuoteForm((current) => ({ ...current, quantity: String(item.quantity) }));
-                              }}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setQuoteTarget(item.id);
+                                  setQuoteForm((current) => ({
+                                    ...current,
+                                    quantity: String(item.quantity),
+                                  }));
+                                }}
+                              >
                                 <Search className="h-4 w-4" /> Nova cotação
                               </Button>
-                              <Button size="icon" variant="ghost" onClick={() => void arquivarItem(item)} disabled={saving} aria-label="Arquivar item">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => void arquivarItem(item)}
+                                disabled={saving}
+                                aria-label="Arquivar item"
+                              >
                                 <Archive className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
                           {quoteTarget === item.id && (
-                            <form onSubmit={salvarCotacao} className="grid gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-2">
+                            <form
+                              onSubmit={salvarCotacao}
+                              className="grid gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-2"
+                            >
                               <div className="space-y-1 sm:col-span-2">
                                 <Label>Fonte da cotação / fornecedor *</Label>
-                                <Input required value={quoteForm.source_name}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, source_name: event.target.value }))} />
+                                <Input
+                                  required
+                                  value={quoteForm.source_name}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_name: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Fornecedor cadastrado (opcional)</Label>
-                                <Select value={quoteForm.supplier_id} onValueChange={(value) => setQuoteForm((current) => ({
-                                  ...current,
-                                  supplier_id: value,
-                                  source_name: value === "sem_fornecedor" ? current.source_name : suppliers.find((supplier) => supplier.id === value)?.legal_name ?? current.source_name,
-                                }))}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                <Select
+                                  value={quoteForm.supplier_id}
+                                  onValueChange={(value) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      supplier_id: value,
+                                      source_name:
+                                        value === "sem_fornecedor"
+                                          ? current.source_name
+                                          : (suppliers.find((supplier) => supplier.id === value)
+                                              ?.legal_name ?? current.source_name),
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="sem_fornecedor">Outra fonte de mercado</SelectItem>
-                                    {suppliers.map((supplier) => <SelectItem key={supplier.id} value={supplier.id}>{supplier.legal_name}</SelectItem>)}
+                                    <SelectItem value="sem_fornecedor">
+                                      Outra fonte de mercado
+                                    </SelectItem>
+                                    {suppliers.map((supplier) => (
+                                      <SelectItem key={supplier.id} value={supplier.id}>
+                                        {supplier.legal_name}
+                                      </SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               </div>
                               <div className="space-y-1">
                                 <Label>Data da cotação *</Label>
-                                <Input type="date" required value={quoteForm.quoted_at}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, quoted_at: event.target.value }))} />
+                                <Input
+                                  type="date"
+                                  required
+                                  value={quoteForm.quoted_at}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      quoted_at: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Quantidade cotada *</Label>
-                                <Input required inputMode="decimal" value={quoteForm.quantity}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, quantity: event.target.value }))} />
+                                <Input
+                                  required
+                                  inputMode="decimal"
+                                  value={quoteForm.quantity}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      quantity: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Preço unitário (R$) *</Label>
-                                <Input required inputMode="decimal" value={quoteForm.unit_price}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, unit_price: event.target.value }))} />
+                                <Input
+                                  required
+                                  inputMode="decimal"
+                                  value={quoteForm.unit_price}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      unit_price: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Frete (R$)</Label>
-                                <Input inputMode="decimal" value={quoteForm.delivery_cost}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, delivery_cost: event.target.value }))} />
+                                <Input
+                                  inputMode="decimal"
+                                  value={quoteForm.delivery_cost}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      delivery_cost: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Referência HTTPS</Label>
-                                <Input type="url" placeholder="https://" value={quoteForm.reference_url}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, reference_url: event.target.value }))} />
+                                <Input
+                                  type="url"
+                                  placeholder="https://"
+                                  value={quoteForm.reference_url}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      reference_url: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="space-y-1 sm:col-span-2">
                                 <Label>Observações</Label>
-                                <Textarea rows={2} value={quoteForm.notes}
-                                  onChange={(event) => setQuoteForm((current) => ({ ...current, notes: event.target.value }))} />
+                                <Textarea
+                                  rows={2}
+                                  value={quoteForm.notes}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      notes: event.target.value,
+                                    }))
+                                  }
+                                />
                               </div>
                               <div className="flex justify-end gap-2 sm:col-span-2">
-                                <Button type="button" variant="outline" onClick={() => setQuoteTarget(null)}>Cancelar</Button>
-                                <Button type="submit" disabled={saving}>Salvar cotação</Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setQuoteTarget(null)}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button type="submit" disabled={saving}>
+                                  Salvar cotação
+                                </Button>
                               </div>
                             </form>
                           )}
                           {itemQuotes.length > 0 && (
                             <div className="border-t pt-3">
-                              <p className="mb-2 text-xs font-semibold text-muted-foreground">PESQUISA DE PREÇOS ({itemQuotes.length})</p>
+                              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                                PESQUISA DE PREÇOS ({itemQuotes.length})
+                              </p>
                               <div className="space-y-2">
                                 {itemQuotes.map((quote) => (
-                                  <div key={quote.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/30 p-2">
+                                  <div
+                                    key={quote.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/30 p-2"
+                                  >
                                     <div className="min-w-0">
-                                      <p className="text-sm font-medium">{quote.source_name} {quote.selected_for_estimate && <Badge variant="secondary">Referência escolhida</Badge>}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {formatarData(quote.quoted_at)} · {quote.quantity} un. · Unitário {formatarMoeda(quote.unit_price)} · Total {formatarMoeda(quote.total_price)}
+                                      <p className="text-sm font-medium">
+                                        {quote.source_name}{" "}
+                                        {quote.selected_for_estimate && (
+                                          <Badge variant="secondary">Referência escolhida</Badge>
+                                        )}
                                       </p>
-                                      {quote.reference_url && <a href={quote.reference_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Consultar fonte</a>}
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatarData(quote.quoted_at)} · {quote.quantity} un. ·
+                                        Unitário {formatarMoeda(quote.unit_price)} · Total{" "}
+                                        {formatarMoeda(quote.total_price)}
+                                      </p>
+                                      {quote.reference_url && (
+                                        <a
+                                          href={quote.reference_url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs text-primary underline"
+                                        >
+                                          Consultar fonte
+                                        </a>
+                                      )}
                                     </div>
                                     <div className="flex gap-1">
-                                      {!quote.selected_for_estimate && <Button size="sm" variant="outline" onClick={() => void selecionarCotacao(quote)} disabled={saving}>Usar como referência</Button>}
-                                      <Button size="icon" variant="ghost" onClick={() => void arquivarCotacao(quote)} disabled={saving} aria-label="Arquivar cotação"><Archive className="h-4 w-4" /></Button>
+                                      {!quote.selected_for_estimate && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => void selecionarCotacao(quote)}
+                                          disabled={saving}
+                                        >
+                                          Usar como referência
+                                        </Button>
+                                      )}
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => void arquivarCotacao(quote)}
+                                        disabled={saving}
+                                        aria-label="Arquivar cotação"
+                                      >
+                                        <Archive className="h-4 w-4" />
+                                      </Button>
                                     </div>
                                   </div>
                                 ))}
@@ -944,39 +1179,89 @@ function DadosEstruturados(props: {
                     <form onSubmit={salvarDotacao} className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <Label>Exercício *</Label>
-                        <Input type="number" min={2000} max={2200} required value={budgetForm.fiscal_year}
-                          onChange={(event) => setBudgetForm((current) => ({ ...current, fiscal_year: event.target.value }))} />
+                        <Input
+                          type="number"
+                          min={2000}
+                          max={2200}
+                          required
+                          value={budgetForm.fiscal_year}
+                          onChange={(event) =>
+                            setBudgetForm((current) => ({
+                              ...current,
+                              fiscal_year: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Unidade orçamentária *</Label>
-                        <Input required value={budgetForm.budget_unit}
-                          onChange={(event) => setBudgetForm((current) => ({ ...current, budget_unit: event.target.value }))} />
+                        <Input
+                          required
+                          value={budgetForm.budget_unit}
+                          onChange={(event) =>
+                            setBudgetForm((current) => ({
+                              ...current,
+                              budget_unit: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
-                      {([
-                        ["functional_program", "Programa funcional"],
-                        ["budget_action", "Ação orçamentária"],
-                        ["expense_nature", "Natureza da despesa"],
-                        ["funding_source", "Fonte de recurso"],
-                      ] as const).map(([key, label]) => (
+                      {(
+                        [
+                          ["functional_program", "Programa funcional"],
+                          ["budget_action", "Ação orçamentária"],
+                          ["expense_nature", "Natureza da despesa"],
+                          ["funding_source", "Fonte de recurso"],
+                        ] as const
+                      ).map(([key, label]) => (
                         <div className="space-y-1" key={key}>
                           <Label>{label}</Label>
-                          <Input value={budgetForm[key]}
-                            onChange={(event) => setBudgetForm((current) => ({ ...current, [key]: event.target.value }))} />
+                          <Input
+                            value={budgetForm[key]}
+                            onChange={(event) =>
+                              setBudgetForm((current) => ({
+                                ...current,
+                                [key]: event.target.value,
+                              }))
+                            }
+                          />
                         </div>
                       ))}
                       <div className="space-y-1">
                         <Label>Valor alocado (R$) *</Label>
-                        <Input required inputMode="decimal" value={budgetForm.allocated_amount}
-                          onChange={(event) => setBudgetForm((current) => ({ ...current, allocated_amount: event.target.value }))} />
+                        <Input
+                          required
+                          inputMode="decimal"
+                          value={budgetForm.allocated_amount}
+                          onChange={(event) =>
+                            setBudgetForm((current) => ({
+                              ...current,
+                              allocated_amount: event.target.value,
+                            }))
+                          }
+                        />
                       </div>
                       <div className="space-y-1 sm:col-span-2">
                         <Label>Observações</Label>
-                        <Textarea rows={2} value={budgetForm.notes}
-                          onChange={(event) => setBudgetForm((current) => ({ ...current, notes: event.target.value }))} />
+                        <Textarea
+                          rows={2}
+                          value={budgetForm.notes}
+                          onChange={(event) =>
+                            setBudgetForm((current) => ({ ...current, notes: event.target.value }))
+                          }
+                        />
                       </div>
                       <div className="flex justify-end gap-2 sm:col-span-2">
-                        <Button type="button" variant="outline" onClick={() => setBudgetFormOpen(false)}>Cancelar</Button>
-                        <Button type="submit" disabled={saving}>Salvar dotação</Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setBudgetFormOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={saving}>
+                          Salvar dotação
+                        </Button>
                       </div>
                     </form>
                   </CardContent>
@@ -992,15 +1277,32 @@ function DadosEstruturados(props: {
                     <Card key={entry.id}>
                       <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4">
                         <div>
-                          <p className="font-medium">{entry.fiscal_year} · {entry.budget_unit}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {[entry.functional_program, entry.budget_action, entry.expense_nature, entry.funding_source].filter(Boolean).join(" · ")}
+                          <p className="font-medium">
+                            {entry.fiscal_year} · {entry.budget_unit}
                           </p>
-                          {entry.notes && <p className="text-xs text-muted-foreground">{entry.notes}</p>}
+                          <p className="text-xs text-muted-foreground">
+                            {[
+                              entry.functional_program,
+                              entry.budget_action,
+                              entry.expense_nature,
+                              entry.funding_source,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          {entry.notes && (
+                            <p className="text-xs text-muted-foreground">{entry.notes}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <strong>{formatarMoeda(entry.allocated_amount)}</strong>
-                          <Button size="icon" variant="ghost" onClick={() => void arquivarDotacao(entry)} disabled={saving} aria-label="Arquivar dotação">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => void arquivarDotacao(entry)}
+                            disabled={saving}
+                            aria-label="Arquivar dotação"
+                          >
                             <Archive className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1013,7 +1315,9 @@ function DadosEstruturados(props: {
           </Tabs>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={props.onFechar}>Fechar</Button>
+          <Button variant="outline" onClick={props.onFechar}>
+            Fechar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
