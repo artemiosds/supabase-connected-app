@@ -1,1 +1,3 @@
 project_id = "rwbbznqtocunzrpcvjvk"
+[functions.invite-tenant-user]
+verify_jwt = true
