@@ -12,7 +12,9 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 - Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
 - Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo.
 - Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado.
-- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier.
+- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier; a última execução aprovada é [GitHub Actions #42522267976](https://github.com/artemiosds/supabase-connected-app/actions/runs/42522267976).
+- Smoke test transacional validou fornecedor, processo/checklist atômico, item, cotação, dotação, contrato, aditivo, documento, modelo, documento gerado, assinatura simples e convite/limite. Todos os dados foram revertidos com ROLLBACK.
+- A rotina Encrypted SMS2 backup não possui execução registrada; nenhum artefato criptografado ou restore foi comprovado.
 
 ## Bloqueadores antes de produção
 
