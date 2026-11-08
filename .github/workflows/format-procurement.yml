@@ -27,8 +27,23 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Format procurement page only
-        run: bunx prettier --write src/routes/_authenticated/processos.tsx
+      - name: Format files reported by Prettier
+        run: |
+          bunx prettier --write \
+            src/test/commercial-access.test.ts \\
+            src/lib/cnpj.test.ts \\
+            src/test/app-routing.test.tsx \\
+            src/lib/contratacao.test.ts \\
+            src/components/ui/badge.tsx \\
+            src/components/ui/button.tsx \\
+            src/components/ui/form.tsx \\
+            src/components/ui/navigation-menu.tsx \\
+            src/components/ui/sidebar.tsx \\
+            src/components/ui/toggle.tsx \\
+            src/hooks/use-auth.tsx \\
+            src/hooks/use-tenant.tsx \\
+            src/integrations/supabase/types.ts \\
+            src/routes/_authenticated/processos.tsx
 
       - name: Run unit tests
         run: bun run test
@@ -44,12 +59,40 @@ jobs:
 
       - name: Commit formatting only
         run: |
-          if git diff --quiet -- src/routes/_authenticated/processos.tsx; then
-            echo "The procurement page already matches Prettier."
+          if git diff --quiet -- \
+            src/test/commercial-access.test.ts \\
+            src/lib/cnpj.test.ts \\
+            src/test/app-routing.test.tsx \\
+            src/lib/contratacao.test.ts \\
+            src/components/ui/badge.tsx \\
+            src/components/ui/button.tsx \\
+            src/components/ui/form.tsx \\
+            src/components/ui/navigation-menu.tsx \\
+            src/components/ui/sidebar.tsx \\
+            src/components/ui/toggle.tsx \\
+            src/hooks/use-auth.tsx \\
+            src/hooks/use-tenant.tsx \\
+            src/integrations/supabase/types.ts \\
+            src/routes/_authenticated/processos.tsx; then
+            echo "All reported files already match Prettier."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/_authenticated/processos.tsx
-          git commit -m "style(procurement): format structured procurement interface"
+          git add \
+            src/test/commercial-access.test.ts \\
+            src/lib/cnpj.test.ts \\
+            src/test/app-routing.test.tsx \\
+            src/lib/contratacao.test.ts \\
+            src/components/ui/badge.tsx \\
+            src/components/ui/button.tsx \\
+            src/components/ui/form.tsx \\
+            src/components/ui/navigation-menu.tsx \\
+            src/components/ui/sidebar.tsx \\
+            src/components/ui/toggle.tsx \\
+            src/hooks/use-auth.tsx \\
+            src/hooks/use-tenant.tsx \\
+            src/integrations/supabase/types.ts \\
+            src/routes/_authenticated/processos.tsx
+          git commit -m "style: format files reported by lint"
           git push
