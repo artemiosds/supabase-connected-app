@@ -78,9 +78,11 @@ Cadastro seguro de conta de gateway e guarda de credenciais no Vault estão impl
 
 ## Qualidade e liberação
 
-- O workflow de formatação/validação executou testes do aplicativo, build, TypeScript e lint com sucesso antes do commit automático de formatação; referência: GitHub Actions #42520694652.
-- A última revisão removeu o cliente genérico dbFase3; as telas afetadas usam o cliente Supabase tipado.
-- O workflow de formatação valida o mesmo conteúdo corrigido antes de gravar o commit automático; uma execução do CI principal iniciada em paralelo ao commit anterior pode refletir o estado ainda não formatado.
+- O workflow de formatação/validação executou os testes do aplicativo, build, TypeScript e lint com sucesso no conteúdo corrigido antes do commit automático. A última execução integral aprovada foi GitHub Actions #42522267976; a execução do CI principal do commit anterior ao formatter pode falhar somente por formatação ainda não gravada.
+- O cliente genérico dbFase3 foi removido; Processos, Contratos, Fornecedores e Documentos usam o cliente Supabase tipado.
+- A paginação compartilhada foi aplicada às listas de fornecedores, documentos, processos, modelos, contratos, itens, cotações e dotações; cotações no detalhe de processo são carregadas apenas para os itens selecionados, em blocos de até 100 IDs.
+- Um smoke test transacional validou fornecedor, processo, checklist de 11 etapas, item, cotação selecionada, dotação, contrato, aditivo, documento de fornecedor, modelo, documento gerado, assinatura simples e convite. A cotação total foi R$ 40,00, o item estimado R$ 30,00, o aditivo atualizou o término do contrato e o segundo convite foi bloqueado no limite. Tudo terminou em ROLLBACK e a consulta posterior confirmou o banco sem dados fictícios.
+- O workflow Encrypted SMS2 backup ainda não possui execuções registradas; não há evidência de artefato criptografado ou restauração testada.
 - O roteiro GO/NO-GO está em docs/GO-LIVE-CHECKLIST.md; backup em docs/ROTINA-DE-BACKUP.md.
 - Performance Advisor registra 63 índices INFO não utilizados, esperado com tabelas sem carga operacional. Não remover índices sem medição com dados reais.
 
