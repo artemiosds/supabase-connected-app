@@ -109,3 +109,21 @@ Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homol
 - A proteção de senhas vazadas do Supabase Auth deve ser ativada antes de produção.
 
 Não use dados pessoais reais nos primeiros testes. Prefira fornecedores e documentos fictícios de homologação.
+
+
+## 11. Validar contratos e aditivos
+
+1. No processo com cotação e dotação cadastradas, registre um contrato com fornecedor, objeto, valor, vigência, gestor e fiscal.
+2. Confira que o contrato fica ligado à mesma Secretaria, ao fornecedor e ao processo selecionado.
+3. Registre um aditivo de prorrogação e confirme que a data final do contrato é atualizada e que o evento aparece na auditoria.
+4. Teste aditivos de acréscimo e supressão, verificando sinal, valor acumulado e limites autorizados no fluxo.
+5. Tente associar fornecedor, processo ou contrato de outra Secretaria; o banco deve negar.
+6. Arquive ou encerre um contrato e confirme que o histórico e os aditivos permanecem disponíveis para consulta.
+
+## 12. Validar integridade e paginação
+
+1. Crie mais de 500 registros de teste em cada lista relevante, em uma base de homologação separada.
+2. Confira que Fornecedores, Documentos, Processos, Modelos, Contratos, Itens, Cotações e Dotações carregam todas as páginas, sem repetir ou pular linhas.
+3. Inclua registros com a mesma data/nome/ordem e valide que o identificador secundário mantém paginação estável.
+4. Consulte um processo com muitos itens e cotações; confirme que a tela carrega cotações somente para seus itens e em blocos de IDs.
+5. Faça testes de carga com rede lenta e computador de desempenho limitado; registre tempo de primeira exibição, tempo total e memória utilizada.
