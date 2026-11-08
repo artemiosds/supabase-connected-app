@@ -7,7 +7,7 @@ Atualizado em **08/11/2026**, com conferência direta do repositório GitHub mai
 - **Repositório oficial:** artemiosds/supabase-connected-app, branch main.
 - **Banco gerenciado:** Supabase SMS2, projeto rwbbznqtocunzrpcvjvk, região São Paulo.
 - **Pré-visualização:** Lovable conectado ao GitHub. O preview pronto e um build verde não substituem homologação autenticada no navegador.
-- **Migrations:** 46 aplicadas no Supabase e 46 arquivos SQL correspondentes em supabase/migrations. Não há migration aplicada ausente no repositório nem arquivo SQL versionado pendente. As duas últimas são 20261108200651_create_procurement_process_with_atomic_checklist e 20261108210335_select_procurement_quote_including_delivery_cost.
+- **Migrations:** 47 aplicadas no Supabase e 47 arquivos SQL correspondentes em supabase/migrations. Não há migration aplicada ausente no repositório nem arquivo SQL versionado pendente. As três últimas são 20261108200651_create_procurement_process_with_atomic_checklist, 20261108210335_select_procurement_quote_including_delivery_cost e 20261108211206_guard_contract_amendment_value_and_dates.
 - **Banco operacional:** 24 tabelas no schema público; 24/24 com RLS habilitado e 13/24 com FORCE ROW LEVEL SECURITY. Existem 18 permissões cadastradas.
 - **Identidades:** 2 usuários Auth, dos quais 1 é Administrador Master ativo. Há 0 Secretarias, 0 vínculos municipais e 0 convites.
 - **Dados operacionais:** 0 fornecedores, 0 documentos de fornecedor, 0 modelos instalados por Secretaria, 0 processos, 0 itens de processo/checklist, 0 itens de contratação, 0 cotações, 0 dotações, 0 contratos, 0 aditivos e 0 documentos gerados. O catálogo global tem 5 modelos-base.
@@ -58,6 +58,8 @@ A criação do processo e seus 11 itens de checklist agora ocorre numa única RP
 
 A seleção da cotação de referência agora incorpora frete proporcionalmente: total da cotação (produto + frete) dividido pela quantidade cotada, com arredondamento de quatro casas para o valor unitário. O item estimado reflete o custo integral. A RPC trava o item durante a seleção e o índice único parcial mantém uma única cotação de referência por item.
 
+Aditivos contratuais agora têm guardrails no banco: acréscimo exige valor positivo, supressão exige valor negativo e não pode levar o contrato abaixo de zero, e prorrogação exige nova data final posterior à atual. A interface valida esses dados antes do envio; a regra do banco continua sendo a barreira definitiva. Percentuais legais de aumento/supressão ainda exigem parametrização e revisão jurídica.
+
 ### Homologação pendente
 - Testar itens, três ou mais cotações, escolha de referência, cálculo, dotação e contrato com dados controlados.
 - Conferir modalidades, etapas, consistência dos aditivos, imutabilidade de dados críticos e trilha de auditoria com gestor municipal.
@@ -80,7 +82,7 @@ Cadastro seguro de conta de gateway e guarda de credenciais no Vault estão impl
 
 ## Qualidade e liberação
 
-- O workflow de formatação/validação executou os testes do aplicativo, build, TypeScript e lint com sucesso antes do commit automático de formatação, inclusive nos ajustes do parser monetário e seleção de cotação. A execução aprovada mais recente é GitHub Actions #42523480227; o commit final de formatação é 68aac20746e6061851892c4a8a85a0452ed44877.
+- O workflow de formatação/validação executou os testes do aplicativo, build, TypeScript e lint com sucesso antes do commit automático de formatação, inclusive nos ajustes do parser monetário e seleção de cotação. A execução aprovada mais recente antes das últimas alterações de aditivos foi GitHub Actions #42523709314. As alterações mais recentes estão em validação na execução #42524076797.
 - O cliente genérico dbFase3 foi removido; Processos, Contratos, Fornecedores e Documentos usam o cliente Supabase tipado. O parser monetário comum aceita formatos brasileiros e internacionais e é usado nos formulários de compras, contratos e aditivos; a suíte possui 14 testes para as regras de contratação e conversão.
 - A paginação compartilhada foi aplicada às listas de fornecedores, documentos, processos, modelos, contratos, itens, cotações e dotações; cotações no detalhe de processo são carregadas apenas para os itens selecionados, em blocos de até 100 IDs.
 - Um smoke test transacional validou fornecedor, processo, checklist de 11 etapas, item, cotação selecionada, dotação, contrato, aditivo, documento de fornecedor, modelo, documento gerado, assinatura simples e convite. A cotação total foi R$ 40,00, o item estimado R$ 30,00, o aditivo atualizou o término do contrato e o segundo convite foi bloqueado no limite. Tudo terminou em ROLLBACK e a consulta posterior confirmou o banco sem dados fictícios.
