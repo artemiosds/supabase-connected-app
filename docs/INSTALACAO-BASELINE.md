@@ -4,14 +4,15 @@
 
 O Supabase SMS2 contém as tabelas `procurement_processes`, `process_items`, `contracts` e `contract_amendments`, com RLS/FORCE RLS e políticas comerciais. Entretanto, o DDL que as criou não aparece no histórico de migrations registrado no projeto.
 
-A baseline `supabase/operations/baseline_phase3_process_contracts.sql` recompõe a estrutura inicial para instalações novas. Ela fica em `operations`, fora de `migrations`, porque precisa ser aplicada entre as migrations da Fase 2 e as migrations comerciais da Fase 3.
+A baseline `supabase/operations/baseline_phase3_process_contracts.sql` recompõe a estrutura inicial para instalações novas. Ela fica em `operations`, fora de `migrations`, porque precisa ser aplicada entre as migrations da Fase 2 e as migrations comerciais da Fase 3. Esse procedimento manual é a reconciliação explícita da lacuna histórica: o SQL original não está no histórico de 36 migrations aplicadas ao SMS2.
 
 ## Ordem de instalação limpa
 
 1. Criar o projeto Supabase e aplicar as migrations de Fundação (Fase 1) e Fornecedores/Documentos (Fase 2), incluindo helpers de autorização, auditoria e índices compostos de fornecedores.
 2. Executar uma vez a baseline `supabase/operations/baseline_phase3_process_contracts.sql` no SQL Editor, após confirmar as pré-condições no cabeçalho do arquivo.
-3. Continuar com as migrations comerciais da Fase 3, depois Fase 4 e GED (Fase 5.1).
-4. Conferir RLS e FORCE RLS nas quatro tabelas, políticas base e comerciais, chaves compostas e gatilhos.
+3. Aplicar as migrations comerciais da Fase 3 (plano, módulos, políticas restritivas e painel Master).
+4. Continuar com as migrations da Fase 4 (modelos e geração documental), Fase 5.1 (GED privado), Fase 5.2 (itens/cotações/orçamento) e Fase 5.3 (convites e hardening).
+5. Conferir RLS e FORCE RLS nas quatro tabelas, políticas base e comerciais, chaves compostas, gatilhos e a presença das três tabelas estruturadas de compras.
 
 ## SMS2 atual
 
