@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
-import { dbFase3 } from "@/lib/db";
+import { db } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { diasAte, nivelAlerta, ROTULO_ALERTA, type NivelAlerta } from "@/lib/contratacao";
 import { Button } from "@/components/ui/button";
@@ -17,30 +17,22 @@ export function SinoAlertas() {
     let ativo = true;
     if (!selecionado?.id) return;
     const limite = new Date(Date.now() + 120 * 86_400_000).toISOString().slice(0, 10);
-    void dbFase3
+    void db
       .from("contracts")
       .select("id, number, end_date")
       .eq("tenant_id", selecionado.id)
       .eq("status", "vigente")
       .lte("end_date", limite)
       .order("end_date")
-      .then(
-        ({
-          data,
-          error,
-        }: {
-          data: { id: string; number: string; end_date: string }[] | null;
-          error: unknown;
-        }) => {
-          if (!ativo || error) return;
-          setAvisos(
-            (data ?? []).map((c) => {
-              const dias = diasAte(c.end_date);
-              return { id: c.id, number: c.number, dias, nivel: nivelAlerta(dias) };
-            }),
-          );
-        },
-      );
+      .then(({ data, error }) => {
+        if (!ativo || error) return;
+        setAvisos(
+          (data ?? []).map((c) => {
+            const dias = diasAte(c.end_date);
+            return { id: c.id, number: c.number, dias, nivel: nivelAlerta(dias) };
+          }),
+        );
+      });
     return () => {
       ativo = false;
     };
