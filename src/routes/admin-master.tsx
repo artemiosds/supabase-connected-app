@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CheckCircle2,
   CircleDollarSign,
+  CreditCard,
   Clock3,
   FileClock,
   FileText,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { MasterBillingSettings } from "@/components/admin-master-billing";
 import {
   usePlatformAdmin,
   type AdminCandidate,
@@ -577,6 +579,10 @@ function AdminMaster() {
               <Wallet className="mr-2 h-4 w-4" />
               Planos
             </TabsTrigger>
+            <TabsTrigger value="cobranca">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Cobrança
+            </TabsTrigger>
             <TabsTrigger value="metricas">
               <Activity className="mr-2 h-4 w-4" />
               Métricas
@@ -851,6 +857,10 @@ function AdminMaster() {
                 nesta etapa.
               </AlertDescription>
             </Alert>
+          </TabsContent>
+
+          <TabsContent value="cobranca" className="space-y-6">
+            <MasterBillingSettings />
           </TabsContent>
 
           <TabsContent value="metricas" className="space-y-6">
