@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diasAte, nivelAlerta, proximaEtapa, etapaAnterior } from "./contratacao";
+import { diasAte, nivelAlerta, numeroDecimal, proximaEtapa, etapaAnterior } from "./contratacao";
 
 describe("régua de vencimento 120/90/60/30", () => {
   it("120 dias ainda é alerta de planejamento", () => expect(nivelAlerta(120)).toBe("120"));
@@ -26,6 +26,7 @@ describe("conversão de valores decimais", () => {
     expect(numeroDecimal("1.234,56")).toBe(1234.56);
     expect(numeroDecimal("R$ 1.234,56")).toBe(1234.56);
     expect(numeroDecimal("1234,56")).toBe(1234.56);
+    expect(numeroDecimal("1,234")).toBe(1.234);
   });
 
   it("aceita decimal com ponto e formato internacional", () => {
