@@ -21,7 +21,7 @@ CREATE TABLE public.platform_payment_integrations (
     OR (provider<>'other' AND provider_other_name IS NULL)
   ),
   CONSTRAINT platform_payment_account_email_check CHECK (
-    account_email IS NULL OR (length(account_email)<=254 AND account_email ~* '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$')
+    account_email IS NULL OR (length(account_email)<=254 AND account_email ~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')
   ),
   CONSTRAINT platform_payment_processing_off_check CHECK (payments_enabled=false)
 );
@@ -56,7 +56,7 @@ BEGIN
   IF p_account_name IS NULL OR length(btrim(p_account_name)) NOT BETWEEN 2 AND 160 THEN RAISE EXCEPTION 'Informe o nome da conta (2 a 160 caracteres).'; END IF;
   IF p_provider='other' AND (p_provider_other_name IS NULL OR length(btrim(p_provider_other_name)) NOT BETWEEN 2 AND 100) THEN RAISE EXCEPTION 'Informe o nome do provedor selecionado como Outro.'; END IF;
   IF p_provider<>'other' AND p_provider_other_name IS NOT NULL THEN RAISE EXCEPTION 'Nome adicional de provedor não se aplica a esta opção.'; END IF;
-  IF p_account_email IS NOT NULL AND (length(p_account_email)>254 OR p_account_email !~* '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$') THEN RAISE EXCEPTION 'E-mail da conta de cobrança inválido.'; END IF;
+  IF p_account_email IS NOT NULL AND (length(p_account_email)>254 OR p_account_email !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') THEN RAISE EXCEPTION 'E-mail da conta de cobrança inválido.'; END IF;
   IF p_account_reference IS NOT NULL AND length(p_account_reference)>160 THEN RAISE EXCEPTION 'Identificador da conta excede o limite permitido.'; END IF;
   IF p_client_id IS NOT NULL AND length(p_client_id)>512 THEN RAISE EXCEPTION 'Client ID excede o limite permitido.'; END IF;
   IF p_public_key IS NOT NULL AND length(p_public_key)>1024 THEN RAISE EXCEPTION 'Chave pública excede o limite permitido.'; END IF;
