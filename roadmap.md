@@ -114,8 +114,8 @@ Inclui:
 
 **Status:** migration aplicada e UI de upload/acesso implementada; teste autenticado com arquivo real ainda pendente.
 
-- Bucket \`gfs-private-documents\` privado, limite de 20 MiB e allowlist de PDF, DOC, DOCX, XLS, XLSX, JPG e PNG.
-- \`supplier_documents\` recebeu \`storage_path\`, \`file_name\`, \`mime_type\` e \`file_size\`; metadados antigos de links/Drive foram preservados.
+- Bucket `gfs-private-documents` privado, limite de 20 MiB e allowlist de PDF, DOC, DOCX, XLS, XLSX, JPG e PNG.
+- `supplier_documents` recebeu `storage_path`, `file_name`, `mime_type` e `file_size`; metadados antigos de links/Drive foram preservados.
 - RLS do Storage separa cada arquivo por Secretaria, fornecedor e documento; leitura exige documento ativo e permissões/módulos corretos.
 - Upload valida extensão, MIME, assinatura básica e tamanho; download usa URL assinada temporária.
 - Arquivo vinculado não pode ser sobrescrito em edição; substituição exige novo documento e preserva o anterior.
@@ -125,7 +125,7 @@ Inclui:
 
 **Status:** banco e telas implementados; homologação com cotações e orçamento reais de teste pendente.
 
-- Tabelas \`procurement_items\`, \`procurement_price_quotes\` e \`procurement_budget_allocations\` estão criadas e isoladas por \`tenant_id\`.
+- Tabelas `procurement_items`, `procurement_price_quotes` e `procurement_budget_allocations` estão criadas e isoladas por `tenant_id`.
 - Processos aceitam itens de compra estruturados, especificação, unidade e quantidade.
 - Cotações registram fornecedor, fonte e valores; a escolha de cotação de referência é atômica.
 - Dados de itens, cotações e orçamento são incorporados ao contexto/snapshot dos documentos.
@@ -135,13 +135,13 @@ Inclui:
 
 **Status:** schema aplicado, Edge Function publicada e interface integrada; entrega real depende de SMTP próprio e homologação com destinatários controlados.
 
-- Tabela \`tenant_invitations\` com validade de 7 dias, papel atribuído, aceite, revogação e auditoria.
-- Edge Function \`invite-tenant-user\` publicada no SMS2 com \`verify_jwt=true\`; chave administrativa permanece apenas no ambiente servidor.
+- Tabela `tenant_invitations` com validade de 7 dias, papel atribuído, aceite, revogação e auditoria.
+- Edge Function `invite-tenant-user` publicada no SMS2 com `verify_jwt=true`; chave administrativa permanece apenas no ambiente servidor.
 - Tela Usuários oferece **Convidar por e-mail**, lista convites e permite cancelar convites pendentes; o vínculo de contas existentes foi preservado.
-- Convidado confirma o mesmo endereço, define senha em \`/redefinir-senha?convite=1\` e recebe o vínculo no primeiro acesso.
+- Convidado confirma o mesmo endereço, define senha em `/redefinir-senha?convite=1` e recebe o vínculo no primeiro acesso.
 - O aceite respeita Secretaria ativa, limite de usuários e papel escolhido; não reativa vínculo suspenso/inativo nem concede acesso a administrador global.
-- RPCs públicas de convite são \`SECURITY INVOKER\`; a lógica privilegiada está no schema interno \`app_auth\`. O Security Advisor deixou de apontar essas quatro RPCs públicas como SECURITY DEFINER.
-- **Configuração pendente:** SMTP personalizado e URLs de redirecionamento no Supabase Auth. O preview atual está autorizado; o domínio de produção precisa ser incluído em \`INVITE_ALLOWED_ORIGINS\` e nas URLs permitidas do Auth.
+- RPCs públicas de convite são `SECURITY INVOKER`; a lógica privilegiada está no schema interno `app_auth`. O Security Advisor deixou de apontar essas quatro RPCs públicas como SECURITY DEFINER.
+- **Configuração pendente:** SMTP personalizado e URLs de redirecionamento no Supabase Auth. O preview atual está autorizado; o domínio de produção precisa ser incluído em `INVITE_ALLOWED_ORIGINS` e nas URLs permitidas do Auth.
 - A criação do convite reserva uma vaga no limite de usuários: o cálculo considera vínculos ativos mais convites pendentes e não expirados. A expiração libera a vaga.
 - **Pendente:** SMTP próprio, envio/recebimento real, confirmação, definição de senha, aceite, revogação, expiração e testes do limite com duas Secretarias.
 
