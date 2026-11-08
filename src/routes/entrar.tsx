@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,12 +28,21 @@ export const Route = createFileRoute("/entrar")({
 });
 
 function Entrar() {
-  const { signIn } = useAuth();
+  const { signIn, session, loading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!loading && session) {
+      navigate({ to: "/painel", replace: true });
+    }
+  }, [loading, session, navigate]);
+
+  const convitePendente = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("convite") === "1";
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
@@ -49,7 +58,12 @@ function Entrar() {
   }
 
   return (
-    <AuthShell title="Entrar" subtitle="Acesse sua conta para continuar.">
+    <AuthShell
+      title="Entrar"
+      subtitle={convitePendente
+        ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
+        : "Acesse sua conta para continuar."}
+    >
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
