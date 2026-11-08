@@ -77,9 +77,8 @@ export function numeroDecimal(valor: string): number {
         ? texto.replace(/\./g, "").replace(",", ".")
         : texto.replace(/,/g, "");
   } else if (ultimaVirgula >= 0) {
-    normalizado = /^[-+]?\d{1,3}(,\d{3})+$/.test(texto)
-      ? texto.replace(/,/g, "")
-      : texto.replace(",", ".");
+    // A single comma follows the Brazilian decimal convention, even with 3 decimals.
+    normalizado = texto.replace(",", ".");
   } else if ((texto.match(/\./g) ?? []).length > 1) {
     normalizado = /^[-+]?\d{1,3}(\.\d{3})+$/.test(texto)
       ? texto.replace(/\./g, "")
