@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Building2, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
-import { db, bancoNaoConfigurado } from "@/lib/db";
+import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
 import type { Tables } from "@/integrations/supabase/types";
@@ -159,20 +159,15 @@ function Fornecedores() {
         return;
       }
 
-      const todosFornecedores: Fornecedor[] = [];
-      const tamanhoPagina = 500;
-      for (let inicio = 0; ; inicio += tamanhoPagina) {
-        const { data, error: erroFornecedores } = await db
+      const todosFornecedores = await carregarTodasAsPaginas((inicio, fim) =>
+        db
           .from("suppliers")
           .select("*")
           .eq("tenant_id", selecionado.id)
           .order("legal_name", { ascending: true })
-          .range(inicio, inicio + tamanhoPagina - 1);
-        if (erroFornecedores) throw erroFornecedores;
-        const pagina = data ?? [];
-        todosFornecedores.push(...pagina);
-        if (pagina.length < tamanhoPagina) break;
-      }
+          .order("id")
+          .range(inicio, fim),
+      );
       setFornecedores(todosFornecedores);
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
