@@ -18,7 +18,6 @@ import { db, dbFase3, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  CHECKLIST_PADRAO,
   ETAPAS,
   etapaAnterior,
   formatarData,
@@ -1348,46 +1347,37 @@ function NovoProcesso(props: {
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
-    setSalvando(true);
-    const { data, error } = await dbFase3
-      .from("procurement_processes")
-      .insert({
-        tenant_id: props.tenantId,
-        number: f.number.trim(),
-        title: f.title.trim(),
-        description: f.description.trim() || null,
-        modality: f.modality,
-        priority: f.priority,
-        requesting_unit: f.requesting_unit.trim() || null,
-        responsible_name: f.responsible_name.trim() || null,
-        estimated_value: f.estimated_value ? Number(f.estimated_value.replace(",", ".")) : null,
-        due_date: f.due_date || null,
-        created_by: props.userId,
-        updated_by: props.userId,
-      })
-      .select("id")
-      .single();
-    if (error) {
-      setSalvando(false);
-      toast.error(error.message);
+    const valorEstimado = f.estimated_value.trim()
+      ? Number(f.estimated_value.replace(",", "."))
+      : null;
+    if (valorEstimado !== null && (!Number.isFinite(valorEstimado) || valorEstimado < 0)) {
+      toast.error("Informe um valor estimado válido e não negativo.");
       return;
     }
-    // Checklist automático com os documentos de cada etapa.
-    const itens = ETAPAS.flatMap((etapa) =>
-      CHECKLIST_PADRAO[etapa.id].map((title, i) => ({
-        tenant_id: props.tenantId,
-        process_id: data.id,
-        stage: etapa.id,
-        title,
-        sort_order: i,
-        created_by: props.userId,
-        updated_by: props.userId,
-      })),
+
+    setSalvando(true);
+    const { data: processId, error } = await db.rpc(
+      "create_procurement_process_with_checklist",
+      {
+        p_tenant_id: props.tenantId,
+        p_number: f.number.trim(),
+        p_title: f.title.trim(),
+        p_description: f.description.trim() || null,
+        p_modality: f.modality,
+        p_priority: f.priority,
+        p_requesting_unit: f.requesting_unit.trim() || null,
+        p_responsible_name: f.responsible_name.trim() || null,
+        p_estimated_value: valorEstimado,
+        p_due_date: f.due_date || null,
+      },
     );
-    const r = await dbFase3.from("process_items").insert(itens);
     setSalvando(false);
-    if (r.error) toast.error(`Processo criado, mas o checklist falhou: ${r.error.message}`);
-    else toast.success("Processo criado com o checklist de documentos.");
+    if (error || !processId) {
+      toast.error(error?.message ?? "Não foi possível criar o processo.");
+      return;
+    }
+
+    toast.success("Processo criado com o checklist completo.");
     setF(vazio);
     props.onFechar();
     props.onSalvo();
