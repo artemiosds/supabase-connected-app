@@ -470,9 +470,20 @@ function NovoAditivo(props: {
     e.preventDefault();
     if (!props.contrato) return;
     const v = valor.trim() ? numeroDecimal(valor) : 0;
-    if (!Number.isFinite(v) || v < 0) {
-      toast.error("Informe um valor de aditivo válido e não negativo.");
-      return;
+    if (tipo === "prorrogacao") {
+      if (!novaData || novaData <= props.contrato.end_date) {
+        toast.error("A nova data final deve ser posterior à vigência atual do contrato.");
+        return;
+      }
+    } else if (tipo === "acrescimo" || tipo === "supressao") {
+      if (!valor.trim() || !Number.isFinite(v) || v <= 0) {
+        toast.error("Informe um valor de aditivo válido e maior que zero.");
+        return;
+      }
+      if (tipo === "supressao" && v > props.contrato.total_value) {
+        toast.error("A supressão não pode exceder o valor atual do contrato.");
+        return;
+      }
     }
     setSalvando(true);
     const { error } = await db.from("contract_amendments").insert({
