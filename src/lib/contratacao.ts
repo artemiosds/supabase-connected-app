@@ -58,6 +58,40 @@ export function nivelAlerta(dias: number): NivelAlerta {
   return "ok";
 }
 
+/**
+ * Parses decimal text from Brazilian and international keyboards.
+ * Examples: 1.234,56; 1234,56; 1,234.56; 1234.56.
+ * Ambiguous single separators are treated as decimal separators, not grouping.
+ */
+export function numeroDecimal(valor: string): number {
+  const texto = valor.trim().replace(/\s/g, "").replace(/^R\$/i, "");
+  if (!texto) return Number.NaN;
+
+  const ultimaVirgula = texto.lastIndexOf(",");
+  const ultimoPonto = texto.lastIndexOf(".");
+  let normalizado = texto;
+
+  if (ultimaVirgula >= 0 && ultimoPonto >= 0) {
+    normalizado =
+      ultimaVirgula > ultimoPonto
+        ? texto.replace(/\./g, "").replace(",", ".")
+        : texto.replace(/,/g, "");
+  } else if (ultimaVirgula >= 0) {
+    normalizado = /^[-+]?\d{1,3}(,\d{3})+$/.test(texto)
+      ? texto.replace(/,/g, "")
+      : texto.replace(",", ".");
+  } else if ((texto.match(/\./g) ?? []).length > 1) {
+    normalizado = /^[-+]?\d{1,3}(\.\d{3})+$/.test(texto)
+      ? texto.replace(/\./g, "")
+      : texto;
+  }
+
+  if (!/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalizado)) {
+    return Number.NaN;
+  }
+  return Number(normalizado);
+}
+
 export const ROTULO_ALERTA: Record<NivelAlerta, string> = {
   vencido: "Vencido",
   "30": "Vence em até 30 dias",
