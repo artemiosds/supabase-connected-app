@@ -7,7 +7,7 @@ Atualizado em **08/11/2026**, com conferência do GitHub `main` e do Supabase SM
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 36 versões registradas no histórico do SMS2. As quatro migrations da Fase 5.1/5.2 e as duas da Fase 5.3 estão aplicadas. A última é `20261108141022_phase5_3_1_harden_invitation_rpc_surface`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
+- **Migrations:** 37 versões registradas no histórico do SMS2. As migrations da Fase 4, Fase 5.1/5.2 e Fase 5.3/5.3.1/5.3.2 estão aplicadas. A última é `20261108141604_phase5_3_2_reserve_invitation_seats`. As tabelas de processos/contratos já existem, mas o DDL original não está registrado no histórico; o script antigo em `supabase/operations` é obsoleto e não deve ser executado.
 - **Dados atuais:** 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 convites, 0 arquivos GED, 0 processos, 0 itens/cotações/orçamentos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo e o bucket GED privado está criado. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
@@ -142,7 +142,8 @@ Inclui:
 - O aceite respeita Secretaria ativa, limite de usuários e papel escolhido; não reativa vínculo suspenso/inativo nem concede acesso a administrador global.
 - RPCs públicas de convite são \`SECURITY INVOKER\`; a lógica privilegiada está no schema interno \`app_auth\`. O Security Advisor deixou de apontar essas quatro RPCs públicas como SECURITY DEFINER.
 - **Configuração pendente:** SMTP personalizado e URLs de redirecionamento no Supabase Auth. O preview atual está autorizado; o domínio de produção precisa ser incluído em \`INVITE_ALLOWED_ORIGINS\` e nas URLs permitidas do Auth.
-- **Pendente:** envio/recebimento real, confirmação, definição de senha, aceite, revogação, expiração, duplicidade e limite de usuários.
+- A criação do convite reserva uma vaga no limite de usuários: o cálculo considera vínculos ativos mais convites pendentes e não expirados. A expiração libera a vaga.
+- **Pendente:** SMTP próprio, envio/recebimento real, confirmação, definição de senha, aceite, revogação, expiração e testes do limite com duas Secretarias.
 
 ## FASE 6 — O que falta para o SaaS estar pronto para clientes
 
