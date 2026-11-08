@@ -56,8 +56,8 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 
 1. Crie um processo de teste e inclua itens com descrição, unidade de fornecimento, quantidade e especificação.
 2. Cadastre pelo menos três cotações para um item, com fornecedor, preço unitário, frete e fonte de referência.
-3. Escolha uma cotação como referência; confirme que a seleção é atômica e que apenas uma cotação fica marcada como escolhida por item.
-4. Confira o cálculo dos valores e o contexto utilizado na geração do DFD/ETP/TR.
+3. Escolha uma cotação como referência; confirme que a seleção é atômica e que apenas uma cotação fica marcada como escolhida por item. O preço unitário estimado deve incluir o frete proporcional (total cotado dividido pela quantidade cotada).
+4. Confira o cálculo dos valores (produto + frete), o valor unitário efetivo e o total estimado do item; confira também o contexto utilizado na geração do DFD/ETP/TR.
 5. Cadastre uma dotação por exercício, unidade orçamentária, programa/ação, natureza da despesa, fonte e valor alocado.
 6. Teste atualização e arquivamento da cotação e da dotação; confira o histórico e o isolamento por Secretaria.
 
