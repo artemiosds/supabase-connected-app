@@ -7,7 +7,7 @@ Atualizado em **08/11/2026**, com conferência do GitHub `main` e do Supabase SM
 - **Repositório oficial:** `artemiosds/supabase-connected-app`, branch `main`.
 - **Banco gerenciado:** Supabase SMS2, projeto `rwbbznqtocunzrpcvjvk`, região São Paulo.
 - **Preview:** projeto Lovable conectado ao GitHub. “Ready” no preview não substitui homologação autenticada.
-- **Migrations:** 41 versões registradas no histórico do SMS2. A mais recente é `20261108154457_tenant_first_invitation_mutation_locking`. As migrations das Fases 1, 2, 3, 4, 5.1, 5.2 e 5.3/5.3.1/5.3.2, além dos reforços finais de capacidade, RLS, índices e privilégios, estão aplicadas e versionadas. A estrutura histórica inicial de processos/contratos continua sendo instalada pela baseline manual documentada; não execute essa baseline no SMS2 atual.
+- **Migrations:** 44 versões registradas no histórico do SMS2. A mais recente é `20261108185451_platform_billing_audit_foreign_key_indexes`. As migrations das Fases 1, 2, 3, 4, 5.1, 5.2, 5.3 e a configuração da conta global de cobrança (sem ativar pagamentos) estão aplicadas e versionadas. A estrutura histórica inicial de processos/contratos continua sendo instalada pela baseline manual documentada; não execute essa baseline no SMS2 atual.
 - **Dados atuais:** 1 administrador global ativo; 0 Secretarias, 0 vínculos municipais, 0 fornecedores, 0 documentos de fornecedores, 0 convites, 0 arquivos GED, 0 processos, 0 itens/cotações/orçamentos, 0 contratos e 0 documentos gerados. Existem 5 modelos-base no catálogo e o bucket GED privado está criado. Não há dados municipais reais para homologação.
 
 ## FASE 1 — Fundação multitenant e segurança
@@ -73,7 +73,7 @@ Inclui:
 - O workflow de CI usa Bun e o lockfile oficial `bun.lock`; o último run completo passou em todas as etapas.
 - O roteiro de homologação está em `docs/TESTE-MVP.md`; o procedimento de backup está em `docs/ROTINA-DE-BACKUP.md` e o checklist de publicação em `docs/GO-LIVE-CHECKLIST.md`.
 - Security Advisor: um WARN restante, `auth_leaked_password_protection`. A proteção contra senhas vazadas está disponível somente no Supabase Pro ou superior; o SMS2 continua no Free e nenhum upgrade pago foi realizado.
-- Performance Advisor: 61 avisos INFO de índices ainda não usados, esperados porque não há carga operacional. Não remover índices sem medição. O aviso de chaves estrangeiras sem índice e os avisos de políticas permissivas duplicadas foram eliminados.
+- Performance Advisor: 63 avisos INFO de índices ainda não usados, esperados porque não há carga operacional. Não remover índices sem medição. O aviso de chaves estrangeiras sem índice e os avisos de políticas permissivas duplicadas foram eliminados.
 - Health Advisor: sem lints pendentes.
 - Privilégios de API: `anon` e `authenticated` não possuem `TRUNCATE`, `TRIGGER`, `REFERENCES` ou `MAINTAIN` nas tabelas públicas.
 - **Fase 3** deve ser estabilização/homologação autenticada, teste de escala, correção dos defeitos observados e preparação para produção. Evitar novas migrations se não houver necessidade comprovada.
@@ -147,13 +147,31 @@ Inclui:
 - A criação do convite reserva uma vaga no limite de usuários: o cálculo considera vínculos ativos mais convites pendentes e não expirados. A expiração libera a vaga.
 - **Pendente:** SMTP próprio, envio/recebimento real, confirmação, definição de senha, aceite, revogação, expiração e testes do limite com duas Secretarias.
 
+## FASE 7 — Cadastro da conta de recebimento da plataforma (08/11/2026)
+
+**Status:** estrutura do banco, armazenamento seguro e tela do Painel Master implementados; provedor permanece deliberadamente sem escolha e pagamentos desativados.
+
+- [x] Nova aba **Painel Master → Cobrança**, sem provedor preselecionado.
+- [x] Cadastro de Mercado Pago, Stripe ou outro provedor, ambiente Sandbox/Produção e identificação da conta.
+- [x] Campos para Client ID, chave pública e credenciais privadas.
+- [x] Credenciais privadas armazenadas no Supabase Vault; a tabela de aplicação guarda apenas referência ao segredo e metadados não sensíveis.
+- [x] Edge Function `platform-billing-config` publicada com `verify_jwt=true`, validação de usuário confirmado e verificação de Administrador Master ativo.
+- [x] Atualização e desconexão da configuração; desconectar remove o segredo privado do Vault.
+- [x] Auditoria sem gravar tokens ou chaves privadas. Tabela com RLS/FORCE RLS e acesso de API restrito ao serviço administrativo.
+- [x] Banco força `payments_enabled=false`; nenhuma cobrança pode ser iniciada por esta versão.
+- [ ] Escolher provedor e cadastrar a conta diretamente no painel. Não há conta ou credencial real persistida no SMS2.
+- [ ] Implementar o adaptador do provedor escolhido: OAuth/validação de API, cobrança recorrente, assinaturas, webhooks assinados, idempotência, retentativas, conciliação e regras de inadimplência.
+- [ ] Homologar em Sandbox e aprovar separadamente qualquer ativação de pagamentos reais.
+
+**Limite importante:** o cadastro atual armazena as credenciais com segurança, mas não valida a autenticidade consultando a API do gateway nem realiza autorização OAuth. Esse trabalho depende da escolha do provedor. A documentação está em `docs/CONFIGURACAO-DA-CONTA-DE-COBRANCA.md`.
+
 ## FASE 6 — O que falta para o SaaS estar pronto para clientes
 
 1. **Onboarding/homologação real:** cadastrar a primeira Secretaria de teste, confirmar o administrador municipal, habilitar módulos, atribuir permissões e percorrer os fluxos com duas Secretarias. O convite está preparado, mas depende de SMTP.
 2. **Instalações novas:** a baseline manual de processos/contratos e a ordem completa de instalação estão documentadas em `docs/INSTALACAO-BASELINE.md`. O SMS2 atual já possui as quatro tabelas; não executar a baseline nele.
 3. **GED completo:** testar upload/download real, definir retenção e validar restauração dos arquivos. O backup lógico criptografado de `gfs-private-documents` foi preparado; os documentos gerados ainda precisam de PDF server-side e integração ao GED.
 4. **E-mail operacional:** configurar SMTP próprio, allowlist de URLs/domínios e monitorar entregas/retentativas dos convites e notificações.
-5. **Cobrança real:** provedor de pagamento, planos/assinaturas, faturas, webhooks, inadimplência, tentativas de cobrança, cancelamento e conciliação. Hoje existem somente os metadados comerciais.
+5. **Cobrança real:** a conta e as credenciais agora podem ser cadastradas em Painel Master → Cobrança. Continua pendente escolher o provedor, validar suas credenciais, integrar planos/assinaturas, faturas, webhooks, inadimplência, cancelamento e conciliação. Pagamentos permanecem forçados como desligados. Consulte `docs/CONFIGURACAO-DA-CONTA-DE-COBRANCA.md`.
 6. **Compras estruturadas:** homologar itens, cotações, cotação vencedora, orçamento e relatórios com processos reais; ampliar depois a pesquisa formal e memória de cálculo.
 7. **Assinatura e documentos finais:** avaliar provedor de assinatura adequado ao nível jurídico exigido; a atual é simples e não ICP-Brasil. Implementar PDF server-side e armazenamento/versionamento da via final se exigido.
 8. **Alertas operacionais:** e-mail/WhatsApp e agendamento de alertas de vencimento, com logs, retentativas e preferências.
@@ -161,4 +179,4 @@ Inclui:
 10. **Produção:** escolher domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada. O domínio de produção ainda não foi informado e não foi configurado.
 11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
 
-**Avisos que continuam abertos:** proteção contra senhas vazadas exige Pro+; 61 índices ainda não usados são INFO e não devem ser removidos sem carga; o projeto Free não oferece backup diário gerenciado; SMTP, secrets do backup, chave privada age, domínio, cobrança, validação visual autenticada e homologação com Secretaria real ainda não foram concluídos. O CI principal passou no commit `6c31e18f43b98e997798c1d2776b8734b173b650`; os commits seguintes foram apenas documentação.
+**Avisos que continuam abertos:** proteção contra senhas vazadas exige Pro+; 61 índices ainda não usados são INFO e não devem ser removidos sem carga; o projeto Free não oferece backup diário gerenciado; SMTP, secrets do backup, chave privada age, domínio, escolha e adaptação do provedor de cobrança, validação visual autenticada e homologação com Secretaria real ainda não foram concluídos. O novo painel de cobrança foi formatado e passou no workflow complementar de testes, build, TypeScript e lint. A validação principal do commit final ainda precisa ser confirmada.
