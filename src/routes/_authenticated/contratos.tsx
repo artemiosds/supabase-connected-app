@@ -11,6 +11,7 @@ import {
   formatarMoeda,
   MODALIDADES,
   nivelAlerta,
+  numeroDecimal,
   ORIENTACAO_ALERTA,
   ROTULO_ALERTA,
   type NivelAlerta,
@@ -317,6 +318,12 @@ function NovoContrato(props: {
       toast.error("A data final deve ser igual ou posterior à data inicial.");
       return;
     }
+    const totalValue = f.total_value.trim() ? numeroDecimal(f.total_value) : 0;
+    if (!Number.isFinite(totalValue) || totalValue < 0) {
+      toast.error("Informe um valor global válido e não negativo.");
+      return;
+    }
+
     setSalvando(true);
     const { error } = await db.from("contracts").insert({
       tenant_id: props.tenantId,
@@ -324,7 +331,7 @@ function NovoContrato(props: {
       object: f.object.trim(),
       supplier_id: f.supplier_id || null,
       modality: f.modality,
-      total_value: Number(f.total_value.replace(",", ".")) || 0,
+      total_value: totalValue,
       start_date: f.start_date,
       end_date: f.end_date,
       manager_name: f.manager_name.trim() || null,
@@ -462,7 +469,11 @@ function NovoAditivo(props: {
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!props.contrato) return;
-    const v = Number(valor.replace(",", ".")) || 0;
+    const v = valor.trim() ? numeroDecimal(valor) : 0;
+    if (!Number.isFinite(v) || v < 0) {
+      toast.error("Informe um valor de aditivo válido e não negativo.");
+      return;
+    }
     setSalvando(true);
     const { error } = await db.from("contract_amendments").insert({
       tenant_id: props.tenantId,
