@@ -20,7 +20,6 @@ describe("esteira de etapas", () => {
   it("planejamento não tem etapa anterior", () => expect(etapaAnterior("planejamento")).toBeNull());
 });
 
-
 describe("conversão de valores decimais", () => {
   it("interpreta moeda no formato brasileiro com milhar e decimal", () => {
     expect(numeroDecimal("1.234,56")).toBe(1234.56);

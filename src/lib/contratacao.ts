@@ -83,9 +83,7 @@ export function numeroDecimal(valor: string): number {
         ? texto.replace(/,/g, "")
         : texto.replace(",", ".");
   } else if ((texto.match(/\./g) ?? []).length > 1) {
-    normalizado = /^[-+]?\d{1,3}(\.\d{3})+$/.test(texto)
-      ? texto.replace(/\./g, "")
-      : texto;
+    normalizado = /^[-+]?\d{1,3}(\.\d{3})+$/.test(texto) ? texto.replace(/\./g, "") : texto;
   }
 
   if (!/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalizado)) {

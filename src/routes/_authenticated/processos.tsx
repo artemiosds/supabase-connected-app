@@ -1408,9 +1408,7 @@ function NovoProcesso(props: {
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
-    const valorEstimado = f.estimated_value.trim()
-      ? numeroDecimal(f.estimated_value)
-      : null;
+    const valorEstimado = f.estimated_value.trim() ? numeroDecimal(f.estimated_value) : null;
     if (valorEstimado !== null && (!Number.isFinite(valorEstimado) || valorEstimado < 0)) {
       toast.error("Informe um valor estimado válido e não negativo.");
       return;
