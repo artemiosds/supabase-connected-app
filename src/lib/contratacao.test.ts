@@ -19,3 +19,28 @@ describe("esteira de etapas", () => {
   it("conclusão é a última etapa", () => expect(proximaEtapa("conclusao")).toBeNull());
   it("planejamento não tem etapa anterior", () => expect(etapaAnterior("planejamento")).toBeNull());
 });
+
+
+describe("conversão de valores decimais", () => {
+  it("interpreta moeda no formato brasileiro com milhar e decimal", () => {
+    expect(numeroDecimal("1.234,56")).toBe(1234.56);
+    expect(numeroDecimal("R$ 1.234,56")).toBe(1234.56);
+    expect(numeroDecimal("1234,56")).toBe(1234.56);
+  });
+
+  it("aceita decimal com ponto e formato internacional", () => {
+    expect(numeroDecimal("1234.56")).toBe(1234.56);
+    expect(numeroDecimal("1,234.56")).toBe(1234.56);
+  });
+
+  it("reconhece grupos de milhares repetidos", () => {
+    expect(numeroDecimal("1.234.567")).toBe(1234567);
+    expect(numeroDecimal("1,234,567")).toBe(1234567);
+  });
+
+  it("não transforma entrada vazia ou malformada em zero", () => {
+    expect(Number.isNaN(numeroDecimal(""))).toBe(true);
+    expect(Number.isNaN(numeroDecimal("12,3,4"))).toBe(true);
+    expect(Number.isNaN(numeroDecimal("R$"))).toBe(true);
+  });
+});
