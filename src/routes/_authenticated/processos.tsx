@@ -517,57 +517,74 @@ function DadosEstruturados(props: {
   const carregarDados = useCallback(async () => {
     if (!props.aberto) return;
     setLoading(true);
-    const itemsResult = await db
-      .from("procurement_items")
-      .select("*")
-      .eq("tenant_id", props.tenantId)
-      .eq("process_id", props.processId)
-      .eq("is_active", true)
-      .order("line_number");
 
-    if (itemsResult.error) {
-      toast.error(itemsResult.error.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const [itemRows, budgetRows, supplierRows] = await Promise.all([
+        carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
+          db
+            .from("procurement_items")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("process_id", props.processId)
+            .eq("is_active", true)
+            .order("line_number")
+            .order("id")
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<DotacaoCompra>((inicio, fim) =>
+          db
+            .from("procurement_budget_allocations")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("process_id", props.processId)
+            .eq("is_active", true)
+            .order("fiscal_year", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<FornecedorCompra>((inicio, fim) =>
+          db
+            .from("suppliers")
+            .select("id,legal_name")
+            .eq("tenant_id", props.tenantId)
+            .order("legal_name")
+            .order("id")
+            .range(inicio, fim),
+        ),
+      ]);
 
-    const itemRows = (itemsResult.data ?? []) as ItemCompra[];
-    const itemIds = itemRows.map((item) => item.id);
-    const quotesRequest = itemIds.length
-      ? db
-          .from("procurement_price_quotes")
-          .select("*")
-          .eq("tenant_id", props.tenantId)
-          .eq("is_active", true)
-          .in("procurement_item_id", itemIds)
-          .order("quoted_at", { ascending: false })
-      : Promise.resolve({ data: [] as CotacaoCompra[], error: null });
+      const itemIds = itemRows.map((item) => item.id);
+      const quoteRows: CotacaoCompra[] = [];
+      // Keep PostgREST URL filters bounded even when a process contains many items.
+      for (let inicio = 0; inicio < itemIds.length; inicio += 100) {
+        const itemIdsPagina = itemIds.slice(inicio, inicio + 100);
+        const quotesPage = await carregarTodasAsPaginas<CotacaoCompra>((from, to) =>
+          db
+            .from("procurement_price_quotes")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("is_active", true)
+            .in("procurement_item_id", itemIdsPagina)
+            .order("quoted_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to),
+        );
+        quoteRows.push(...quotesPage);
+      }
 
-    const [quotesResult, budgetsResult, supplierResult] = await Promise.all([
-      quotesRequest,
-      db
-        .from("procurement_budget_allocations")
-        .select("*")
-        .eq("tenant_id", props.tenantId)
-        .eq("process_id", props.processId)
-        .eq("is_active", true)
-        .order("fiscal_year", { ascending: false }),
-      db
-        .from("suppliers")
-        .select("id,legal_name")
-        .eq("tenant_id", props.tenantId)
-        .order("legal_name"),
-    ]);
-    const firstError = quotesResult.error || budgetsResult.error || supplierResult.error;
-    if (firstError) {
-      toast.error(firstError.message);
-    } else {
       setItems(itemRows);
-      setQuotes((quotesResult.data ?? []) as CotacaoCompra[]);
-      setBudgets((budgetsResult.data ?? []) as DotacaoCompra[]);
-      setSuppliers((supplierResult.data ?? []) as FornecedorCompra[]);
+      setQuotes(quoteRows);
+      setBudgets(budgetRows);
+      setSuppliers(supplierRows);
+    } catch (error) {
+      setItems([]);
+      setQuotes([]);
+      setBudgets([]);
+      setSuppliers([]);
+      toast.error(error instanceof Error ? error.message : "Falha ao carregar os dados da contratação.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [props.aberto, props.tenantId, props.processId]);
 
   useEffect(() => {
