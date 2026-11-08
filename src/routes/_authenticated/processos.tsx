@@ -441,7 +441,7 @@ type CotacaoCompra = {
   quantity: number;
   unit_price: number;
   delivery_cost: number;
-  total_price: number;
+  total_price: number | null;
   notes: string | null;
   selected_for_estimate: boolean;
   is_active: boolean;
@@ -1182,7 +1182,7 @@ function DadosEstruturados(props: {
                                       <p className="text-xs text-muted-foreground">
                                         {formatarData(quote.quoted_at)} · {quote.quantity} un. ·
                                         Unitário {formatarMoeda(quote.unit_price)} · Total{" "}
-                                        {formatarMoeda(quote.total_price)}
+                                        {formatarMoeda(quote.total_price ?? 0)}
                                       </p>
                                       {quote.reference_url && (
                                         <a
