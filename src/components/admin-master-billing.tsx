@@ -102,9 +102,9 @@ export function MasterBillingSettings() {
     () =>
       Boolean(
         form.access_token.trim() ||
-          form.secret_key.trim() ||
-          form.client_secret.trim() ||
-          form.webhook_secret.trim(),
+        form.secret_key.trim() ||
+        form.client_secret.trim() ||
+        form.webhook_secret.trim(),
       ),
     [form],
   );
@@ -270,14 +270,20 @@ export function MasterBillingSettings() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Conta de recebimento da plataforma</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Conta de recebimento da plataforma
+          </h2>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             Cadastre a conta que futuramente receberá as mensalidades das Secretarias. O provedor
             permanece à sua escolha e pode ser vinculado aqui pelo Painel Master.
           </p>
         </div>
         <Button variant="outline" onClick={() => void loadConfiguration()} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          {loading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
           Atualizar
         </Button>
       </div>
@@ -286,9 +292,9 @@ export function MasterBillingSettings() {
         <LockKeyhole className="h-4 w-4" />
         <AlertTitle>Cobranças desativadas nesta etapa</AlertTitle>
         <AlertDescription>
-          Este cadastro guarda as credenciais com criptografia no Supabase Vault. Ele ainda não
-          cria cobranças, assinaturas, links de pagamento ou webhooks. A ativação ficará para uma
-          etapa própria, depois da escolha e homologação do provedor.
+          Este cadastro guarda as credenciais com criptografia no Supabase Vault. Ele ainda não cria
+          cobranças, assinaturas, links de pagamento ou webhooks. A ativação ficará para uma etapa
+          própria, depois da escolha e homologação do provedor.
         </AlertDescription>
       </Alert>
 
@@ -364,8 +370,13 @@ export function MasterBillingSettings() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Provedor de pagamento</Label>
-                  <Select value={form.provider} onValueChange={(value) => setField("provider", value as Provider)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione quando decidir" /></SelectTrigger>
+                  <Select
+                    value={form.provider}
+                    onValueChange={(value) => setField("provider", value as Provider)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione quando decidir" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
                       <SelectItem value="stripe">Stripe</SelectItem>
@@ -375,8 +386,13 @@ export function MasterBillingSettings() {
                 </div>
                 <div className="space-y-2">
                   <Label>Ambiente</Label>
-                  <Select value={form.environment} onValueChange={(value) => setField("environment", value as Environment)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o ambiente" /></SelectTrigger>
+                  <Select
+                    value={form.environment}
+                    onValueChange={(value) => setField("environment", value as Environment)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ambiente" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="sandbox">Teste / Sandbox</SelectItem>
                       <SelectItem value="production">Produção</SelectItem>
@@ -386,43 +402,70 @@ export function MasterBillingSettings() {
                 {form.provider === "other" && (
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="billing-provider-other">Nome do provedor</Label>
-                    <Input id="billing-provider-other" value={form.provider_other_name} maxLength={100}
-                      onChange={(event) => setField("provider_other_name", event.target.value)} required />
+                    <Input
+                      id="billing-provider-other"
+                      value={form.provider_other_name}
+                      maxLength={100}
+                      onChange={(event) => setField("provider_other_name", event.target.value)}
+                      required
+                    />
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="billing-account-name">Nome da conta / titular</Label>
-                  <Input id="billing-account-name" value={form.account_name} maxLength={160}
+                  <Input
+                    id="billing-account-name"
+                    value={form.account_name}
+                    maxLength={160}
                     onChange={(event) => setField("account_name", event.target.value)}
-                    placeholder="Nome cadastrado no provedor" required />
+                    placeholder="Nome cadastrado no provedor"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="billing-account-reference">ID da conta / Merchant ID</Label>
-                  <Input id="billing-account-reference" value={form.account_reference} maxLength={160}
+                  <Input
+                    id="billing-account-reference"
+                    value={form.account_reference}
+                    maxLength={160}
                     onChange={(event) => setField("account_reference", event.target.value)}
-                    placeholder="Identificador da conta no gateway" />
+                    placeholder="Identificador da conta no gateway"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="billing-account-email">E-mail da conta</Label>
-                  <Input id="billing-account-email" type="email" value={form.account_email}
+                  <Input
+                    id="billing-account-email"
+                    type="email"
+                    value={form.account_email}
                     onChange={(event) => setField("account_email", event.target.value)}
-                    placeholder="financeiro@empresa.com.br" />
+                    placeholder="financeiro@empresa.com.br"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="billing-client-id">Client ID (quando aplicável)</Label>
-                  <Input id="billing-client-id" value={form.client_id} maxLength={512}
+                  <Input
+                    id="billing-client-id"
+                    value={form.client_id}
+                    maxLength={512}
                     onChange={(event) => setField("client_id", event.target.value)}
-                    autoComplete="off" />
+                    autoComplete="off"
+                  />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="billing-public-key">
                     {form.provider === "stripe" ? "Publishable Key" : "Public Key"}
                   </Label>
-                  <Input id="billing-public-key" value={form.public_key} maxLength={1024}
+                  <Input
+                    id="billing-public-key"
+                    value={form.public_key}
+                    maxLength={1024}
                     onChange={(event) => setField("public_key", event.target.value)}
-                    autoComplete="off" />
+                    autoComplete="off"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Campo público do provedor. Nunca coloque aqui tokens privados ou chaves secretas.
+                    Campo público do provedor. Nunca coloque aqui tokens privados ou chaves
+                    secretas.
                   </p>
                 </div>
               </div>
@@ -442,33 +485,55 @@ export function MasterBillingSettings() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="billing-access-token">{credentialLabels.access_token}</Label>
-                    <Input id="billing-access-token" type="password" value={form.access_token}
+                    <Input
+                      id="billing-access-token"
+                      type="password"
+                      value={form.access_token}
                       onChange={(event) => setField("access_token", event.target.value)}
-                      autoComplete="new-password" spellCheck={false} />
+                      autoComplete="new-password"
+                      spellCheck={false}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="billing-secret-key">{credentialLabels.secret_key}</Label>
-                    <Input id="billing-secret-key" type="password" value={form.secret_key}
+                    <Input
+                      id="billing-secret-key"
+                      type="password"
+                      value={form.secret_key}
                       onChange={(event) => setField("secret_key", event.target.value)}
-                      autoComplete="new-password" spellCheck={false} />
+                      autoComplete="new-password"
+                      spellCheck={false}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="billing-client-secret">{credentialLabels.client_secret}</Label>
-                    <Input id="billing-client-secret" type="password" value={form.client_secret}
+                    <Input
+                      id="billing-client-secret"
+                      type="password"
+                      value={form.client_secret}
                       onChange={(event) => setField("client_secret", event.target.value)}
-                      autoComplete="new-password" spellCheck={false} />
+                      autoComplete="new-password"
+                      spellCheck={false}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="billing-webhook-secret">{credentialLabels.webhook_secret}</Label>
-                    <Input id="billing-webhook-secret" type="password" value={form.webhook_secret}
+                    <Label htmlFor="billing-webhook-secret">
+                      {credentialLabels.webhook_secret}
+                    </Label>
+                    <Input
+                      id="billing-webhook-secret"
+                      type="password"
+                      value={form.webhook_secret}
                       onChange={(event) => setField("webhook_secret", event.target.value)}
-                      autoComplete="new-password" spellCheck={false} />
+                      autoComplete="new-password"
+                      spellCheck={false}
+                    />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Os valores privados são enviados diretamente à função administrativa e armazenados
-                  no Vault criptografado. Não são gravados no perfil, no cadastro da Secretaria,
-                  no log de auditoria ou no navegador após salvar.
+                  no Vault criptografado. Não são gravados no perfil, no cadastro da Secretaria, no
+                  log de auditoria ou no navegador após salvar.
                 </p>
               </div>
 
@@ -476,17 +541,33 @@ export function MasterBillingSettings() {
                 {configuration?.has_credentials && (
                   <div className="space-y-2">
                     {!confirmDisconnect ? (
-                      <Button type="button" variant="outline" onClick={() => setConfirmDisconnect(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setConfirmDisconnect(true)}
+                      >
                         <Unplug className="mr-2 h-4 w-4" /> Desconectar conta
                       </Button>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Remover as credenciais do Vault?</span>
-                        <Button type="button" variant="destructive" onClick={() => void disconnect()} disabled={disconnecting}>
+                        <span className="text-sm text-muted-foreground">
+                          Remover as credenciais do Vault?
+                        </span>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => void disconnect()}
+                          disabled={disconnecting}
+                        >
                           {disconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Confirmar remoção
                         </Button>
-                        <Button type="button" variant="ghost" onClick={() => setConfirmDisconnect(false)} disabled={disconnecting}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setConfirmDisconnect(false)}
+                          disabled={disconnecting}
+                        >
                           Cancelar
                         </Button>
                       </div>
@@ -494,7 +575,11 @@ export function MasterBillingSettings() {
                   </div>
                 )}
                 <Button type="submit" disabled={saving || loading} className="ml-auto">
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {saving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
                   {configuration ? "Salvar configuração" : "Cadastrar conta"}
                 </Button>
               </div>

@@ -91,7 +91,11 @@ Deno.serve(async (request: Request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return jsonResponse({ error: "A configuração do serviço administrativo está incompleta." }, 503, origin);
+    return jsonResponse(
+      { error: "A configuração do serviço administrativo está incompleta." },
+      503,
+      origin,
+    );
   }
 
   const authorization = request.headers.get("Authorization");
@@ -105,8 +109,17 @@ Deno.serve(async (request: Request) => {
     global: { headers: { Authorization: "Bearer " + accessToken } },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser(accessToken);
-  if (authError || !authData.user || authData.user.is_anonymous || !authData.user.email_confirmed_at) {
-    return jsonResponse({ error: "Entre com uma conta confirmada do Administrador Master." }, 401, origin);
+  if (
+    authError ||
+    !authData.user ||
+    authData.user.is_anonymous ||
+    !authData.user.email_confirmed_at
+  ) {
+    return jsonResponse(
+      { error: "Entre com uma conta confirmada do Administrador Master." },
+      401,
+      origin,
+    );
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -144,15 +157,25 @@ Deno.serve(async (request: Request) => {
   if (action === "get") {
     const { data, error } = await adminClient
       .from("platform_payment_integrations")
-      .select("provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id")
+      .select(
+        "provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id",
+      )
       .eq("id", 1)
       .maybeSingle();
 
     if (error) {
       console.error("Falha ao carregar metadados da conta de cobrança:", error.message);
-      return jsonResponse({ error: "Não foi possível carregar a configuração de cobrança." }, 500, origin);
+      return jsonResponse(
+        { error: "Não foi possível carregar a configuração de cobrança." },
+        500,
+        origin,
+      );
     }
-    return jsonResponse({ configuration: safeConfiguration(data as Record<string, unknown> | null) }, 200, origin);
+    return jsonResponse(
+      { configuration: safeConfiguration(data as Record<string, unknown> | null) },
+      200,
+      origin,
+    );
   }
 
   if (action === "disconnect") {
@@ -161,17 +184,27 @@ Deno.serve(async (request: Request) => {
     });
     if (error) {
       console.error("Falha ao desconectar conta de cobrança:", error.message);
-      return jsonResponse({ error: "Não foi possível desconectar a conta de cobrança." }, 400, origin);
+      return jsonResponse(
+        { error: "Não foi possível desconectar a conta de cobrança." },
+        400,
+        origin,
+      );
     }
     const { data: row } = await adminClient
       .from("platform_payment_integrations")
-      .select("provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id")
+      .select(
+        "provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id",
+      )
       .eq("id", 1)
       .maybeSingle();
-    return jsonResponse({
-      result: data,
-      configuration: safeConfiguration(row as Record<string, unknown> | null),
-    }, 200, origin);
+    return jsonResponse(
+      {
+        result: data,
+        configuration: safeConfiguration(row as Record<string, unknown> | null),
+      },
+      200,
+      origin,
+    );
   }
 
   if (action !== "save") {
@@ -201,7 +234,10 @@ Deno.serve(async (request: Request) => {
   }
 
   const secretInput = body.credentials;
-  if (secretInput !== undefined && (typeof secretInput !== "object" || secretInput === null || Array.isArray(secretInput))) {
+  if (
+    secretInput !== undefined &&
+    (typeof secretInput !== "object" || secretInput === null || Array.isArray(secretInput))
+  ) {
     return jsonResponse({ error: "O conjunto de credenciais privadas é inválido." }, 400, origin);
   }
 
@@ -231,25 +267,43 @@ Deno.serve(async (request: Request) => {
 
   if (error) {
     console.error("Falha ao salvar configuração de cobrança:", error.message);
-    return jsonResponse({ error: error.message.includes("Informe") || error.message.includes("Cadastre") || error.message.includes("trocar")
-      ? error.message
-      : "Não foi possível salvar as credenciais de cobrança. Revise os campos e tente novamente." }, 400, origin);
+    return jsonResponse(
+      {
+        error:
+          error.message.includes("Informe") ||
+          error.message.includes("Cadastre") ||
+          error.message.includes("trocar")
+            ? error.message
+            : "Não foi possível salvar as credenciais de cobrança. Revise os campos e tente novamente.",
+      },
+      400,
+      origin,
+    );
   }
 
   const { data: row, error: readError } = await adminClient
     .from("platform_payment_integrations")
-    .select("provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id")
+    .select(
+      "provider, provider_other_name, environment, account_name, account_reference, account_email, client_id, public_key, status, updated_at, vault_secret_id",
+    )
     .eq("id", 1)
     .single();
 
   if (readError) {
-    console.error("Credenciais salvas, mas metadados não puderam ser recarregados:", readError.message);
+    console.error(
+      "Credenciais salvas, mas metadados não puderam ser recarregados:",
+      readError.message,
+    );
     return jsonResponse({ saved: true, result: data, configuration: null }, 200, origin);
   }
 
-  return jsonResponse({
-    saved: true,
-    result: data,
-    configuration: safeConfiguration(row as Record<string, unknown>),
-  }, 200, origin);
+  return jsonResponse(
+    {
+      saved: true,
+      result: data,
+      configuration: safeConfiguration(row as Record<string, unknown>),
+    },
+    200,
+    origin,
+  );
 });
