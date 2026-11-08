@@ -71,8 +71,11 @@ Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homol
 4. Tente aceitar o mesmo convite novamente; não deve criar vínculo duplicado.
 5. Convide um endereço já cadastrado e confirmado; o sistema deve orientar usar **Vincular conta existente**.
 6. Crie outro convite pendente e cancele-o antes do aceite. Abrir o link cancelado não deve conceder acesso.
-7. Confira a expiração de 7 dias, o limite de usuários ativos e o comportamento quando uma conta já possui vínculo suspenso.
-8. Consulte a auditoria e confira criação, aceite, expiração ou cancelamento do convite sem expor token/link de acesso.
+7. Configure uma Secretaria de teste com limite reduzido. Com todas as vagas preenchidas por vínculos ativos, tente enviar outro convite; o sistema deve bloquear.
+8. Preencha as vagas restantes com convites pendentes; um convite adicional deve ser bloqueado. Cancele ou deixe expirar um convite e confirme que a vaga volta a ficar disponível.
+9. Confira que usuários ativos mais convites pendentes e não expirados não excedem o limite contratado.
+10. Confira o comportamento quando uma conta já possui vínculo suspenso ou inativo; aceitar convite não deve reativar esse vínculo automaticamente.
+11. Consulte a auditoria e confira criação, aceite, expiração ou cancelamento do convite sem expor token/link de acesso.
 
 ## 8. Validar usuários e permissões
 
