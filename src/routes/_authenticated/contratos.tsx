@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, FilePlus2, Loader2, Plus, ScrollText } from "lucide-react";
 import { toast } from "sonner";
-import { db, bancoNaoConfigurado } from "@/lib/db";
+import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -87,30 +87,48 @@ function Contratos() {
   const [filtro, setFiltro] = useState<"todos" | "alerta">("todos");
 
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) return;
+    if (!selecionado?.id) {
+      setLista([]);
+      setFornecedores([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setErro(null);
-    const [c, f] = await Promise.all([
-      db
-        .from("contracts")
-        .select("*")
-        .eq("tenant_id", selecionado.id)
-        .order("end_date", { ascending: true }),
-      db
-        .from("suppliers")
-        .select("id, legal_name")
-        .eq("tenant_id", selecionado.id)
-        .order("legal_name"),
-    ]);
-    if (c.error) {
-      if (bancoNaoConfigurado(c.error.message)) setPendente(true);
-      else setErro(c.error.message);
-    } else {
+    try {
+      const [contratosRows, fornecedoresRows] = await Promise.all([
+        carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("contracts")
+            .select("*")
+            .eq("tenant_id", selecionado.id)
+            .order("end_date", { ascending: true })
+            .order("id")
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("suppliers")
+            .select("id, legal_name")
+            .eq("tenant_id", selecionado.id)
+            .order("legal_name")
+            .order("id")
+            .range(inicio, fim),
+        ),
+      ]);
       setPendente(false);
-      setLista((c.data ?? []) as Contrato[]);
+      setLista(contratosRows);
+      setFornecedores(fornecedoresRows);
+    } catch (error) {
+      setLista([]);
+      setFornecedores([]);
+      const message = error instanceof Error ? error.message : String(error);
+      if (bancoNaoConfigurado(message)) setPendente(true);
+      else setErro(message);
+    } finally {
+      setLoading(false);
     }
-    setFornecedores(f.data ?? []);
-    setLoading(false);
   }, [selecionado?.id]);
 
   useEffect(() => {
