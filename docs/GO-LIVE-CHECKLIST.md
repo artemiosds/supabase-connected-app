@@ -10,9 +10,9 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 - Banco sem Secretarias, vínculos municipais, fornecedores, convites, documentos, processos, itens/cotações, orçamento, contratos, aditivos ou arquivos GED. Cinco modelos globais existem no catálogo, mas nenhum está instalado numa Secretaria.
 - GED gfs-private-documents: bucket privado, limite 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; ainda sem objetos.
 - Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
-- Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo.
-- Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado.
-- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier; a última execução aprovada é [GitHub Actions #42522267976](https://github.com/artemiosds/supabase-connected-app/actions/runs/42522267976).
+- Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo. A RPC de seleção de cotação inclui frete no custo unitário de referência e foi testada com duas cotações; o valor do item foi de R$ 40,00 com frete (não R$ 30,00), e a troca de referência preservou exatamente uma cotação selecionada.
+- Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado. O parser de valores monetários brasileiros/internacionais é compartilhado e tem testes de formatos e rejeição de entradas inválidas.
+- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier; a última execução aprovada é [GitHub Actions #42523480227](https://github.com/artemiosds/supabase-connected-app/actions/runs/42523480227).
 - Smoke test transacional validou fornecedor, processo/checklist atômico, item, cotação, dotação, contrato, aditivo, documento, modelo, documento gerado, assinatura simples e convite/limite. Todos os dados foram revertidos com ROLLBACK.
 - A rotina Encrypted SMS2 backup não possui execução registrada; nenhum artefato criptografado ou restore foi comprovado.
 
