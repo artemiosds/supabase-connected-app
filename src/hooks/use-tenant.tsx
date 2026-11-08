@@ -103,6 +103,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         setTenants(((data ?? []) as TenantRow[]).map(mapTenant));
       } else {
+        // Convites só são aceitos aqui depois que o usuário entrou com o e-mail confirmado.
+        // A função também respeita a validade do convite, o limite de usuários e o tenant ativo.
+        const { error: invitationError } = await db.rpc("accept_my_tenant_invitations");
+        if (invitationError) throw invitationError;
+
         const { data, error } = await db
           .from("tenant_memberships")
           .select(`tenant:tenants(${tenantSelect})`)
