@@ -14,7 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { db, bancoNaoConfigurado } from "@/lib/db";
+import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -123,30 +123,49 @@ function Processos() {
   const [dadosAbertos, setDadosAbertos] = useState(false);
 
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) return;
-    setLoading(true);
-    setErro(null);
-    const [processosResult, checklistResult] = await Promise.all([
-      db
-        .from("procurement_processes")
-        .select("*")
-        .eq("tenant_id", selecionado.id)
-        .neq("status", "arquivado")
-        .order("created_at", { ascending: false }),
-      db.from("process_items").select("*").eq("tenant_id", selecionado.id).order("sort_order"),
-    ]);
-    const loadError = processosResult.error ?? checklistResult.error;
-    if (loadError) {
+    if (!selecionado?.id) {
       setProcessos([]);
       setItens([]);
-      if (bancoNaoConfigurado(loadError.message)) setPendente(true);
-      else setErro(loadError.message);
-    } else {
-      setPendente(false);
-      setProcessos(comEtapaValida(processosResult.data ?? []));
-      setItens(comEtapaValida(checklistResult.data ?? []));
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    setErro(null);
+    try {
+      const [processosRows, checklistRows] = await Promise.all([
+        carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("procurement_processes")
+            .select("*")
+            .eq("tenant_id", selecionado.id)
+            .neq("status", "arquivado")
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("process_items")
+            .select("*")
+            .eq("tenant_id", selecionado.id)
+            .order("sort_order")
+            .order("id")
+            .range(inicio, fim),
+        ),
+      ]);
+      setPendente(false);
+      setProcessos(comEtapaValida(processosRows));
+      setItens(comEtapaValida(checklistRows));
+    } catch (error) {
+      setProcessos([]);
+      setItens([]);
+      const message = error instanceof Error ? error.message : String(error);
+      if (bancoNaoConfigurado(message)) setPendente(true);
+      else setErro(message);
+    } finally {
+      setLoading(false);
+    }
   }, [selecionado?.id]);
 
   useEffect(() => {
