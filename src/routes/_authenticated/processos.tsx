@@ -1362,13 +1362,15 @@ function NovoProcesso(props: {
         p_tenant_id: props.tenantId,
         p_number: f.number.trim(),
         p_title: f.title.trim(),
-        p_description: f.description.trim() || undefined,
         p_modality: f.modality,
         p_priority: f.priority,
-        p_requesting_unit: f.requesting_unit.trim() || undefined,
-        p_responsible_name: f.responsible_name.trim() || undefined,
-        p_estimated_value: valorEstimado ?? undefined,
-        p_due_date: f.due_date || undefined,
+        ...(f.description.trim() ? { p_description: f.description.trim() } : {}),
+        ...(f.requesting_unit.trim() ? { p_requesting_unit: f.requesting_unit.trim() } : {}),
+        ...(f.responsible_name.trim()
+          ? { p_responsible_name: f.responsible_name.trim() }
+          : {}),
+        ...(valorEstimado !== null ? { p_estimated_value: valorEstimado } : {}),
+        ...(f.due_date ? { p_due_date: f.due_date } : {}),
       },
     );
     setSalvando(false);
