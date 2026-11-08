@@ -23,6 +23,7 @@ import {
   formatarData,
   formatarMoeda,
   MODALIDADES,
+  numeroDecimal,
   proximaEtapa,
   type EtapaId,
 } from "@/lib/contratacao";
@@ -461,10 +462,6 @@ type DotacaoCompra = {
 };
 
 type FornecedorCompra = { id: string; legal_name: string };
-
-function numeroDecimal(value: string): number {
-  return Number(value.trim().replace(/\s/g, "").replace(",", "."));
-}
 
 function DadosEstruturados(props: {
   aberto: boolean;
@@ -1412,7 +1409,7 @@ function NovoProcesso(props: {
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     const valorEstimado = f.estimated_value.trim()
-      ? Number(f.estimated_value.replace(",", "."))
+      ? numeroDecimal(f.estimated_value)
       : null;
     if (valorEstimado !== null && (!Number.isFinite(valorEstimado) || valorEstimado < 0)) {
       toast.error("Informe um valor estimado válido e não negativo.");
