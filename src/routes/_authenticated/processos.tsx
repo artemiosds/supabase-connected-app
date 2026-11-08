@@ -14,7 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { db, dbFase3, bancoNaoConfigurado } from "@/lib/db";
+import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -112,22 +112,29 @@ function Processos() {
     if (!selecionado?.id) return;
     setLoading(true);
     setErro(null);
-    const [p, i] = await Promise.all([
-      dbFase3
+    const [processosResult, checklistResult] = await Promise.all([
+      db
         .from("procurement_processes")
         .select("*")
         .eq("tenant_id", selecionado.id)
         .neq("status", "arquivado")
         .order("created_at", { ascending: false }),
-      dbFase3.from("process_items").select("*").eq("tenant_id", selecionado.id).order("sort_order"),
+      db
+        .from("process_items")
+        .select("*")
+        .eq("tenant_id", selecionado.id)
+        .order("sort_order"),
     ]);
-    if (p.error) {
-      if (bancoNaoConfigurado(p.error.message)) setPendente(true);
-      else setErro(p.error.message);
+    const loadError = processosResult.error ?? checklistResult.error;
+    if (loadError) {
+      setProcessos([]);
+      setItens([]);
+      if (bancoNaoConfigurado(loadError.message)) setPendente(true);
+      else setErro(loadError.message);
     } else {
       setPendente(false);
-      setProcessos(p.data ?? []);
-      setItens(i.data ?? []);
+      setProcessos(processosResult.data ?? []);
+      setItens(checklistResult.data ?? []);
     }
     setLoading(false);
   }, [selecionado?.id]);
@@ -145,7 +152,7 @@ function Processos() {
 
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
     if (!destino) return;
-    const { error } = await dbFase3
+    const { error } = await db
       .from("procurement_processes")
       .update({ stage: destino, updated_by: userId })
       .eq("id", p.id);
@@ -158,7 +165,7 @@ function Processos() {
   }
 
   async function alternarItem(item: Item) {
-    const { error } = await dbFase3
+    const { error } = await db
       .from("process_items")
       .update({ is_done: !item.is_done, updated_by: userId })
       .eq("id", item.id);
@@ -170,7 +177,7 @@ function Processos() {
   }
 
   async function concluir(p: Processo) {
-    const { error } = await dbFase3
+    const { error } = await db
       .from("procurement_processes")
       .update({ status: "concluido", updated_by: userId })
       .eq("id", p.id);
@@ -481,44 +488,53 @@ function DadosEstruturados(props: {
   const carregarDados = useCallback(async () => {
     if (!props.aberto) return;
     setLoading(true);
-    const [itemsResult, quotesResult, budgetsResult, supplierResult] = await Promise.all([
-      dbFase3
-        .from("procurement_items")
-        .select("*")
-        .eq("tenant_id", props.tenantId)
-        .eq("process_id", props.processId)
-        .eq("is_active", true)
-        .order("line_number"),
-      dbFase3
-        .from("procurement_price_quotes")
-        .select("*")
-        .eq("tenant_id", props.tenantId)
-        .eq("is_active", true)
-        .order("quoted_at", { ascending: false }),
-      dbFase3
+    const itemsResult = await db
+      .from("procurement_items")
+      .select("*")
+      .eq("tenant_id", props.tenantId)
+      .eq("process_id", props.processId)
+      .eq("is_active", true)
+      .order("line_number");
+
+    if (itemsResult.error) {
+      toast.error(itemsResult.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const itemRows = (itemsResult.data ?? []) as ItemCompra[];
+    const itemIds = itemRows.map((item) => item.id);
+    const quotesRequest = itemIds.length
+      ? db
+          .from("procurement_price_quotes")
+          .select("*")
+          .eq("tenant_id", props.tenantId)
+          .eq("is_active", true)
+          .in("procurement_item_id", itemIds)
+          .order("quoted_at", { ascending: false })
+      : Promise.resolve({ data: [] as CotacaoCompra[], error: null });
+
+    const [quotesResult, budgetsResult, supplierResult] = await Promise.all([
+      quotesRequest,
+      db
         .from("procurement_budget_allocations")
         .select("*")
         .eq("tenant_id", props.tenantId)
         .eq("process_id", props.processId)
         .eq("is_active", true)
         .order("fiscal_year", { ascending: false }),
-      dbFase3
+      db
         .from("suppliers")
         .select("id,legal_name")
         .eq("tenant_id", props.tenantId)
         .order("legal_name"),
     ]);
-    const firstError =
-      itemsResult.error || quotesResult.error || budgetsResult.error || supplierResult.error;
+    const firstError = quotesResult.error || budgetsResult.error || supplierResult.error;
     if (firstError) {
       toast.error(firstError.message);
     } else {
-      setItems((itemsResult.data ?? []) as ItemCompra[]);
-      setQuotes(
-        (quotesResult.data ?? []).filter((q: CotacaoCompra) =>
-          (itemsResult.data ?? []).some((item: ItemCompra) => item.id === q.procurement_item_id),
-        ) as CotacaoCompra[],
-      );
+      setItems(itemRows);
+      setQuotes((quotesResult.data ?? []) as CotacaoCompra[]);
       setBudgets((budgetsResult.data ?? []) as DotacaoCompra[]);
       setSuppliers((supplierResult.data ?? []) as FornecedorCompra[]);
     }
@@ -544,7 +560,7 @@ function DadosEstruturados(props: {
       return;
     }
     setSaving(true);
-    const { error } = await dbFase3.from("procurement_items").insert({
+    const { error } = await db.from("procurement_items").insert({
       tenant_id: props.tenantId,
       process_id: props.processId,
       line_number: Math.max(0, ...items.map((item) => item.line_number)) + 1,
@@ -592,7 +608,7 @@ function DadosEstruturados(props: {
     const item = items.find((entry) => entry.id === quoteTarget);
     const supplier = suppliers.find((entry) => entry.id === quoteForm.supplier_id);
     setSaving(true);
-    const { error } = await dbFase3.from("procurement_price_quotes").insert({
+    const { error } = await db.from("procurement_price_quotes").insert({
       tenant_id: props.tenantId,
       procurement_item_id: quoteTarget,
       supplier_id: quoteForm.supplier_id === "sem_fornecedor" ? null : quoteForm.supplier_id,
@@ -642,7 +658,7 @@ function DadosEstruturados(props: {
 
   async function arquivarCotacao(quote: CotacaoCompra) {
     setSaving(true);
-    const { error } = await dbFase3
+    const { error } = await db
       .from("procurement_price_quotes")
       .update({ is_active: false, selected_for_estimate: false, updated_by: props.userId })
       .eq("id", quote.id)
@@ -661,7 +677,7 @@ function DadosEstruturados(props: {
       return;
     }
     setSaving(true);
-    const { error } = await dbFase3
+    const { error } = await db
       .from("procurement_items")
       .update({ is_active: false, updated_by: props.userId })
       .eq("id", item.id)
@@ -689,7 +705,7 @@ function DadosEstruturados(props: {
       return;
     }
     setSaving(true);
-    const { error } = await dbFase3.from("procurement_budget_allocations").insert({
+    const { error } = await db.from("procurement_budget_allocations").insert({
       tenant_id: props.tenantId,
       process_id: props.processId,
       fiscal_year: year,
@@ -725,7 +741,7 @@ function DadosEstruturados(props: {
 
   async function arquivarDotacao(allocation: DotacaoCompra) {
     setSaving(true);
-    const { error } = await dbFase3
+    const { error } = await db
       .from("procurement_budget_allocations")
       .update({ is_active: false, updated_by: props.userId })
       .eq("id", allocation.id)
