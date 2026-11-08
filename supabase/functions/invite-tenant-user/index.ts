@@ -167,7 +167,7 @@ Deno.serve(async (request: Request) => {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
-  const redirectTo = new URL("/entrar?convite=1", origin).toString();
+  const redirectTo = new URL("/redefinir-senha?convite=1", origin).toString();
   const { data: inviteData, error: sendError } = await adminClient.auth.admin.inviteUserByEmail(
     email,
     {
