@@ -581,7 +581,9 @@ function DadosEstruturados(props: {
       setQuotes([]);
       setBudgets([]);
       setSuppliers([]);
-      toast.error(error instanceof Error ? error.message : "Falha ao carregar os dados da contratação.");
+      toast.error(
+        error instanceof Error ? error.message : "Falha ao carregar os dados da contratação.",
+      );
     } finally {
       setLoading(false);
     }
