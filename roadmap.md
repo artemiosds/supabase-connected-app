@@ -68,12 +68,14 @@ Inclui:
 
 ## Qualidade e liberação
 
-- CI do commit `f26b1b02f80e3da8e5ba39331b67f75d7d9fb4ad` passou integralmente no GitHub Actions: instalação congelada do Bun, 9 testes unitários, TypeScript, build de produção e lint. Execução: [GitHub Actions #50](https://github.com/artemiosds/supabase-connected-app/actions/runs/41957688389).
+- CI do commit `6c31e18f43b98e997798c1d2776b8734b173b650` passou integralmente: testes do utilitário Python de backup, testes do aplicativo, build, TypeScript e lint. Execução: [GitHub Actions #42496984193](https://github.com/artemiosds/supabase-connected-app/actions/runs/42496984193). Os últimos commits posteriores atualizaram somente documentação.
 - Foram adicionadas verificações de rotas para todas as telas autenticadas e um teste do exemplo alfanumérico de CNPJ `00.000.000/E08G-12`.
 - O workflow de CI usa Bun e o lockfile oficial `bun.lock`; o último run completo passou em todas as etapas.
-- O roteiro de homologação está em `docs/TESTE-MVP.md`.
-- Security Advisor:
-- Performance Advisor:
+- O roteiro de homologação está em `docs/TESTE-MVP.md`; o procedimento de backup está em `docs/ROTINA-DE-BACKUP.md` e o checklist de publicação em `docs/GO-LIVE-CHECKLIST.md`.
+- Security Advisor: um WARN restante, `auth_leaked_password_protection`. A proteção contra senhas vazadas está disponível somente no Supabase Pro ou superior; o SMS2 continua no Free e nenhum upgrade pago foi realizado.
+- Performance Advisor: 61 avisos INFO de índices ainda não usados, esperados porque não há carga operacional. Não remover índices sem medição. O aviso de chaves estrangeiras sem índice e os avisos de políticas permissivas duplicadas foram eliminados.
+- Health Advisor: sem lints pendentes.
+- Privilégios de API: `anon` e `authenticated` não possuem `TRUNCATE`, `TRIGGER`, `REFERENCES` ou `MAINTAIN` nas tabelas públicas.
 - **Fase 3** deve ser estabilização/homologação autenticada, teste de escala, correção dos defeitos observados e preparação para produção. Evitar novas migrations se não houver necessidade comprovada.
 
 ## FASE 3 — Contratos e Processos de Contratação (06/11/2026)
@@ -159,4 +161,4 @@ Inclui:
 10. **Produção:** escolher domínio próprio, TLS, redirects de Auth, SMTP, segredos, ambientes de homologação/produção e publicação controlada. O domínio de produção ainda não foi informado e não foi configurado.
 11. **Homologação e CI:** testes com duas Secretarias e perfis reais, testes de bloqueio comercial/módulos, restauração de backup, build/typecheck/lint/testes e validação visual autenticada do preview.
 
-**Avisos que continuam abertos:**
+**Avisos que continuam abertos:** proteção contra senhas vazadas exige Pro+; 61 índices ainda não usados são INFO e não devem ser removidos sem carga; o projeto Free não oferece backup diário gerenciado; SMTP, secrets do backup, chave privada age, domínio, cobrança, validação visual autenticada e homologação com Secretaria real ainda não foram concluídos. O CI principal passou no commit `6c31e18f43b98e997798c1d2776b8734b173b650`; os commits seguintes foram apenas documentação.
