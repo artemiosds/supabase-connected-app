@@ -1356,23 +1356,18 @@ function NovoProcesso(props: {
     }
 
     setSalvando(true);
-    const { data: processId, error } = await db.rpc(
-      "create_procurement_process_with_checklist",
-      {
-        p_tenant_id: props.tenantId,
-        p_number: f.number.trim(),
-        p_title: f.title.trim(),
-        p_modality: f.modality,
-        p_priority: f.priority,
-        ...(f.description.trim() ? { p_description: f.description.trim() } : {}),
-        ...(f.requesting_unit.trim() ? { p_requesting_unit: f.requesting_unit.trim() } : {}),
-        ...(f.responsible_name.trim()
-          ? { p_responsible_name: f.responsible_name.trim() }
-          : {}),
-        ...(valorEstimado !== null ? { p_estimated_value: valorEstimado } : {}),
-        ...(f.due_date ? { p_due_date: f.due_date } : {}),
-      },
-    );
+    const { data: processId, error } = await db.rpc("create_procurement_process_with_checklist", {
+      p_tenant_id: props.tenantId,
+      p_number: f.number.trim(),
+      p_title: f.title.trim(),
+      p_modality: f.modality,
+      p_priority: f.priority,
+      ...(f.description.trim() ? { p_description: f.description.trim() } : {}),
+      ...(f.requesting_unit.trim() ? { p_requesting_unit: f.requesting_unit.trim() } : {}),
+      ...(f.responsible_name.trim() ? { p_responsible_name: f.responsible_name.trim() } : {}),
+      ...(valorEstimado !== null ? { p_estimated_value: valorEstimado } : {}),
+      ...(f.due_date ? { p_due_date: f.due_date } : {}),
+    });
     setSalvando(false);
     if (error || !processId) {
       toast.error(error?.message ?? "Não foi possível criar o processo.");
