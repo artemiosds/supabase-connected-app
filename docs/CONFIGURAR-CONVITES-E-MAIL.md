@@ -20,7 +20,9 @@ A chave administrativa do Supabase é utilizada exclusivamente na Edge Function;
 
 No painel do projeto SMS2, acesse **Authentication → SMTP Settings** e configure um provedor SMTP com domínio de envio verificado, remetente, usuário, senha, host e porta.
 
-O remetente padrão do Supabase é limitado para testes e não é adequado para convidar indiscriminadamente usuários externos. Para uso real com Secretarias e prefeituras, configure SMTP próprio. A documentação oficial está em:
+O SMTP padrão do Supabase **não é suficiente para esta homologação com novos endereços externos**: ele só entrega a endereços que já pertencem à equipe da organização do projeto, tem limite atual de 2 mensagens por hora e não oferece SLA. Esse limite pode mudar; consulte a documentação vigente antes de um teste.
+
+Para convidar administradores e servidores de Secretarias que não sejam membros da equipe Supabase, configure SMTP próprio. A documentação oficial está em:
 
 - https://supabase.com/docs/guides/auth/auth-smtp
 - https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail
@@ -59,6 +61,15 @@ Não grave `SUPABASE_SERVICE_ROLE_KEY` no frontend, em arquivos `.env` publicado
 - O aceite respeita o limite comercial de usuários e o estado ativo da Secretaria.
 - O usuário recebe apenas o papel escolhido pelo administrador; não existe promoção automática para administrador.
 - O administrador pode cancelar somente convites pendentes da própria Secretaria.
+
+## Estado observado em 09/11/2026
+
+- O Supabase SMS2 está ativo e saudável.
+- Há dois usuários Auth confirmados: o Administrador Master e uma segunda conta cadastrada.
+- Ainda não existem Secretarias, vínculos municipais ou convites pendentes no banco.
+- A Edge Function de convites está ativa na versão 6; o código foi implantado, mas isso não comprova entrega de e-mail.
+- Para homologar duas Secretarias com administradores independentes, ainda são necessárias contas municipais distintas e controladas. Não use a mesma conta nas duas Secretarias como prova de isolamento.
+- Não foi possível configurar SMTP nesta etapa: o acesso administrativo de configuração e as credenciais do provedor não estão disponíveis nesta conexão. Cadastre essas credenciais diretamente em Supabase → Authentication → SMTP Settings; não as envie em mensagens.
 
 ## Homologação necessária
 
