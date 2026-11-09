@@ -1,6 +1,6 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-Atualizado em **08/11/2026**, com conferência direta do repositório GitHub main, do Supabase SMS2 e das execuções de validação.
+Atualizado em **08/11/2026**, com conferência direta do repositório GitHub main, do Supabase SMS2 e das execuções de validação do commit `5b9da605e534711ef092c130362cd34b7adc68f9`.
 
 ## Estado real verificado
 
@@ -13,6 +13,9 @@ Atualizado em **08/11/2026**, com conferência direta do repositório GitHub mai
 - **Dados operacionais:** 0 fornecedores, 0 documentos de fornecedor, 0 modelos instalados por Secretaria, 0 processos, 0 itens de processo/checklist, 0 itens de contratação, 0 cotações, 0 dotações, 0 contratos, 0 aditivos e 0 documentos gerados. O catálogo global tem 5 modelos-base.
 - **GED:** bucket gfs-private-documents existe, é privado e tem limite de 20 MiB; 0 objetos armazenados.
 - **Cobrança:** 0 contas de gateway cadastradas; payments_enabled=false. Não existe cobrança real ativa.
+- **Integrações ativas:** duas Edge Functions (`invite-tenant-user` v6 e `platform-billing-config` v4). Não há função publicada de alertas de vencimento nem OAuth/sincronização do Google Drive.
+- **Agendamento:** `pg_cron` e `pg_net` não estão instalados; `cron.job` não existe no projeto. Alertas recorrentes ainda não podem ser considerados configurados.
+- **Proteção do código:** a branch `main` está sem proteção e sem checks obrigatórios, embora a CI do commit atual tenha passado.
 - **Testes reversíveis:** a criação atômica de processo foi testada numa Secretaria temporária dentro de transação com ROLLBACK: 11 itens padrão foram criados; um título inválido foi rejeitado sem deixar processo parcial. A consulta posterior confirmou zero Secretarias e processos persistidos.
 
 ## FASE 1 — Fundação multitenant e segurança
@@ -27,7 +30,8 @@ Inclui perfis vinculados ao Supabase Auth; Secretarias e estados operacionais/co
 - Os privilégios internos de autorização são separados; ainda é necessário confirmar no Dashboard que app_auth não aparece em Project Settings → API → Exposed schemas.
 - O Administrador Master já existe e está confirmado. **Não executar novamente o bootstrap inicial** em SMS2.
 - Testes transacionais anteriores validaram provisionamento, regras de papéis e algumas barreiras de isolamento. O cenário completo com dois usuários municipais distintos e duas Secretarias continua pendente de homologação autenticada ponta a ponta.
-- O SMS2 permanece no Free. O Security Advisor aponta auth_leaked_password_protection; a proteção contra senhas vazadas requer plano Pro ou superior. Nenhum upgrade pago foi feito.
+- O SMS2 permanece no Free. O Security Advisor aponta `auth_leaked_password_protection`; a proteção contra senhas vazadas está desativada. Nenhum upgrade pago foi feito.
+- O Security Advisor retornou somente esse aviso; o Health Advisor não retornou alertas. O Performance Advisor listou 56 índices não utilizados (INFO), que não devem ser removidos antes de existir carga real e benchmark.
 
 ## FASE 2 — Fornecedores, documentos e operação
 
@@ -68,7 +72,7 @@ Aditivos contratuais agora têm guardrails no banco: acréscimo exige valor posi
 
 ## FASE 4 — Convites, identidade e e-mail
 
-A tabela de convites, RPCs de criação/aceite/revogação, reserva de vagas e Edge Function de envio estão implementadas. Falta configurar e testar o serviço de e-mail real: SMTP de domínio verificado, SPF/DKIM/DMARC, Supabase Auth Site URL/Redirect URLs, APP_URL e INVITE_ALLOWED_ORIGINS na Edge Function, e o fluxo completo de cadastro, confirmação, recuperação, convite, definição de senha, aceite, revogação e expiração.
+A tabela de convites, RPCs de criação/aceite/revogação, reserva de vagas e Edge Function `invite-tenant-user` (ativa, v6) estão implementadas. A função chama o Supabase Auth para enviar o convite, mas não houve disparo real comprovado. Falta configurar e testar o serviço de e-mail real: SMTP de domínio verificado, SPF/DKIM/DMARC, Supabase Auth Site URL/Redirect URLs, APP_URL e INVITE_ALLOWED_ORIGINS na Edge Function, e o fluxo completo de cadastro, confirmação, recuperação, convite, definição de senha, aceite, revogação e expiração.
 
 ## FASE 5 — Backup e continuidade
 
@@ -82,14 +86,30 @@ Cadastro seguro de conta de gateway e guarda de credenciais no Vault estão impl
 
 ## Qualidade e liberação
 
-- O workflow de formatação/validação executou os testes do aplicativo, build, TypeScript e lint com sucesso antes do commit automático de formatação, inclusive nos ajustes do parser monetário e seleção de cotação. A validação integral do commit final está aprovada em GitHub Actions #42524213830; a rotina de formatação também passou em #42524213844. Testes unitários, backup utility, build, TypeScript e lint concluíram com sucesso.
+- No commit atual `5b9da605e534711ef092c130362cd34b7adc68f9`, o workflow **Validate application #225** terminou com sucesso ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008518)) e **Format procurement module #107** também terminou com sucesso ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008620)). A validação executa Vitest, build, TypeScript e lint; isso não equivale a E2E autenticado no navegador com duas Secretarias.
 - O cliente genérico dbFase3 foi removido; Processos, Contratos, Fornecedores e Documentos usam o cliente Supabase tipado. O parser monetário comum aceita formatos brasileiros e internacionais e é usado nos formulários de compras, contratos e aditivos; a suíte possui 14 testes para as regras de contratação e conversão.
 - A paginação compartilhada foi aplicada às listas de fornecedores, documentos, processos, modelos, contratos, itens, cotações e dotações; cotações no detalhe de processo são carregadas apenas para os itens selecionados, em blocos de até 100 IDs.
 - Um smoke test transacional validou fornecedor, processo, checklist de 11 etapas, item, cotação selecionada, dotação, contrato, aditivo, documento de fornecedor, modelo, documento gerado, assinatura simples e convite. A cotação com frete totalizou R$ 40,00 e o custo unitário estimado foi R$ 20,00 para duas unidades; a seleção da referência foi retestada com troca de cotação. Os aditivos de valor e prazo foram testados com cenários válidos e inválidos. Tudo terminou em ROLLBACK e a consulta posterior confirmou o banco sem dados fictícios.
 - O workflow Encrypted SMS2 backup ainda não possui execuções registradas; não há evidência de artefato criptografado ou restauração testada.
 - O roteiro GO/NO-GO está em docs/GO-LIVE-CHECKLIST.md; backup em docs/ROTINA-DE-BACKUP.md.
-- Performance Advisor registra 63 índices INFO não utilizados, esperado com tabelas sem carga operacional. Não remover índices sem medição com dados reais.
+- Performance Advisor registra 56 índices INFO não utilizados, esperado com tabelas sem carga operacional. Não remover índices sem medição com dados reais.
 
 ## Decisão de liberação
 
 **NO-GO para produção comercial neste momento.** A estrutura do banco, módulos centrais e CI estão avançados, mas faltam homologação autenticada de duas Secretarias, upload/download real do GED, SMTP, backup restaurável, domínio, cobrança efetiva, revisão jurídica/LGPD e plano de operação. O próximo passo técnico é uma homologação controlada e documentada; não reconstruir a fundação.
+
+
+## Próxima trilha — integrações, homologação e liberação comercial
+
+Não reabrir a construção das Fases 1 e 2 nem criar tabelas por precaução. A próxima entrega deve fechar integrações e evidências de funcionamento real, seguindo a ordem e os critérios de aceite descritos em [docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md](docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md).
+
+1. **Controle de release:** proteger a branch principal e exigir validação antes de aceitar mudanças. Antes de tornar os workflows checks obrigatórios, ajustar o workflow de formatação que atualmente pode fazer commit automático.
+2. **E-mail/Auth:** configurar SMTP de domínio verificado, DNS SPF/DKIM/DMARC, URLs de Auth e origens permitidas; homologar cadastro, recuperação e convite com endereços controlados.
+3. **GED e isolamento:** testar upload/download real, links temporários, arquivamento e negação entre duas Secretarias com usuários municipais separados.
+4. **Homologação ponta a ponta:** percorrer fornecedores, vencimentos, modelos, processos, checklist, cotações, frete, orçamento, contratos, aditivos e auditoria no navegador autenticado.
+5. **Alertas:** depois de validar SMTP e destinatários, implementar disparo deduplicado e agenda diária; avaliar e habilitar `pg_cron`/`pg_net` ou um scheduler externo com segredo protegido. Nenhum agendamento está ativo hoje.
+6. **Google Drive:** decidir o fluxo OAuth por Secretaria, armazenamento seguro dos tokens e escopo de pastas; só homologar após credenciais de teste e política de revogação.
+7. **Continuidade:** executar backup manual, validar hash e descriptografia, restaurar em projeto separado e só então ativar a agenda semanal.
+8. **Comercial/produção:** escolher gateway e regras comerciais; implementar webhooks idempotentes; definir domínio, ambientes, LGPD, contrato, suporte, SLA e monitoramento.
+
+**Gate atual:** NO-GO para dados reais e comercialização. Os checks de código estão verdes, mas faltam e-mail externo comprovado, duas Secretarias reais de homologação, GED autenticado, backup restaurável, E2E de navegador, domínio, integração de cobrança e revisão jurídica.
