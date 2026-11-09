@@ -10,11 +10,7 @@ function normalizeWebOrigin(value: string | null | undefined): string | null {
     const url = new URL(value.trim());
     if (url.username || url.password) return null;
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (
-      url.protocol === "http:" &&
-      url.hostname !== "localhost" &&
-      url.hostname !== "127.0.0.1"
-    ) {
+    if (url.protocol === "http:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
       return null;
     }
     return url.origin;
