@@ -94,6 +94,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const carregar = useCallback(async () => {
     if (!session?.user.id) {
       setTenants([]);
+      setSupportAccess(null);
       setLoading(false);
       return;
     }
