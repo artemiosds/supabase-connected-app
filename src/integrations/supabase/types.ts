@@ -1435,19 +1435,61 @@ export type Database = {
     };
     Functions: {
       is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      register_platform_support_agent: { Args: { p_user_id: string; p_display_name: string; p_tenant_id: string; p_can_view_suppliers?: boolean; p_can_create_suppliers?: boolean; p_can_update_suppliers?: boolean }; Returns: undefined };
-      activate_my_platform_support_agent: { Args: Record<PropertyKey, never>; Returns: boolean };
-      get_my_platform_support_status: { Args: Record<PropertyKey, never>; Returns: { is_agent: boolean; agent_status: string | null; is_platform_admin: boolean; session_id: string | null; tenant_id: string | null; tenant_name: string | null; expires_at: string | null; allowed_actions: string[] | null }[] };
-      set_platform_support_agent_status: { Args: { p_user_id: string; p_status: string }; Returns: undefined };
-      set_platform_support_assignment: { Args: { p_agent_user_id: string; p_tenant_id: string; p_is_active: boolean; p_can_view_suppliers?: boolean; p_can_create_suppliers?: boolean; p_can_update_suppliers?: boolean }; Returns: undefined };
-      list_platform_support_team: { Args: Record<PropertyKey, never>; Returns: { user_id: string; email: string; display_name: string; status: string; assignment_count: number }[] };
-      list_platform_support_assignments: { Args: { p_agent_user_id: string }; Returns: { tenant_id: string; tenant_name: string; is_active: boolean; can_view_suppliers: boolean; can_create_suppliers: boolean; can_update_suppliers: boolean }[] };
-      list_my_platform_support_tenants_safe: { Args: Record<PropertyKey, never>; Returns: { id: string; name: string; slug: string; status: string }[] };
-      start_platform_support_session: { Args: { p_tenant_id: string; p_reason: string }; Returns: { session_id: string; expires_at: string }[] };
+      is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      list_platform_support_candidates: {
+        Args: Record<PropertyKey, never>;
+        Returns: { user_id: string; email: string; display_name: string }[];
+      };
+      list_platform_support_team: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          user_id: string;
+          email: string;
+          display_name: string;
+          status: string;
+          assignment_count: number;
+        }[];
+      };
+      list_platform_support_assignments: {
+        Args: { p_agent_user_id: string };
+        Returns: {
+          tenant_id: string;
+          tenant_name: string;
+          is_active: boolean;
+          can_view_suppliers: boolean;
+          can_create_suppliers: boolean;
+          can_update_suppliers: boolean;
+        }[];
+      };
+      list_my_platform_support_tenants_safe: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: string; name: string; slug: string; status: string }[];
+      };
+      add_platform_support_agent: {
+        Args: { p_user_id: string; p_display_name: string };
+        Returns: undefined;
+      };
+      set_platform_support_agent_status: {
+        Args: { p_user_id: string; p_status: string };
+        Returns: undefined;
+      };
+      set_platform_support_assignment: {
+        Args: {
+          p_agent_user_id: string;
+          p_tenant_id: string;
+          p_is_active: boolean;
+          p_can_view_suppliers?: boolean;
+          p_can_create_suppliers?: boolean;
+          p_can_update_suppliers?: boolean;
+        };
+        Returns: undefined;
+      };
+      start_platform_support_session: {
+        Args: { p_tenant_id: string; p_reason: string };
+        Returns: { session_id: string; expires_at: string }[];
+      };
       end_platform_support_session: { Args: { p_session_id: string }; Returns: undefined };
       accept_my_tenant_invitations: { Args: Record<PropertyKey, never>; Returns: number };
-
-      accept_my_tenant_invitations: { Args: never; Returns: number };
       add_tenant_member: {
         Args: { p_role_id: string; p_tenant_id: string; p_user_id: string };
         Returns: string;
