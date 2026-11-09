@@ -122,8 +122,9 @@ function LayoutAutenticado() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-14 items-center justify-between gap-4 border-b bg-card px-4 md:px-6">
             <SeletorOrganizacao />
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
               <SinoAlertas />
+              <AtalhoCentralSuporte />
             </div>
             <Button
               variant="ghost"
@@ -141,6 +142,19 @@ function LayoutAutenticado() {
         </div>
       </div>
     </TenantProvider>
+  );
+}
+
+function AtalhoCentralSuporte() {
+  const { supportAccess } = useTenant();
+  if (!supportAccess?.is_agent && !supportAccess?.session_id) return null;
+
+  return (
+    <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
+      <Link to="/suporte">
+        {supportAccess.session_id ? "Sessão de suporte" : "Central de Suporte"}
+      </Link>
+    </Button>
   );
 }
 
