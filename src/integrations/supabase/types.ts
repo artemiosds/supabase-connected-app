@@ -1469,7 +1469,6 @@ export type Database = {
         }[];
       };
       is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       list_platform_support_candidates: {
         Args: Record<PropertyKey, never>;
         Returns: { user_id: string; email: string; display_name: string }[];
