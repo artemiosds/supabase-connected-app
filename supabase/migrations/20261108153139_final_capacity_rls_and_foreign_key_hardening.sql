@@ -142,7 +142,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_guard_tenant_user_limit_update()
  RETURNS trigger
@@ -178,7 +178,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 REVOKE ALL ON FUNCTION public.fn_guard_tenant_user_limit_update() FROM PUBLIC, anon, authenticated, service_role;
 DROP TRIGGER IF EXISTS trg_guard_tenant_user_limit_update ON public.tenants;
 CREATE TRIGGER trg_guard_tenant_user_limit_update BEFORE UPDATE OF max_users ON public.tenants
@@ -276,7 +276,7 @@ EXCEPTION
   WHEN unique_violation THEN
     RAISE EXCEPTION 'Já existe um convite pendente para este e-mail nesta Secretaria.';
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION app_auth.accept_my_tenant_invitations()
  RETURNS integer
@@ -437,7 +437,7 @@ BEGIN
 
   RETURN v_accepted;
 END;
-$function$
+$function$;
 
 COMMENT ON FUNCTION app_auth.create_tenant_invitation(uuid,text,uuid) IS
 'Creates a tenant invitation under a tenant row lock, reserving a seat and preventing concurrent overbooking.';
