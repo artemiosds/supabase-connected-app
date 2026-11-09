@@ -43,9 +43,10 @@ function CentralSuporte() {
   useEffect(() => {
     if (supportAccess?.session_id && supportAccess.tenant_id) {
       setTenantId(supportAccess.tenant_id);
-    } else if (!tenantId && (selecionado?.id || tenants[0]?.id)) {
-      setTenantId(selecionado?.id ?? tenants[0].id);
+      return;
     }
+    const fallbackTenantId = selecionado?.id ?? tenants[0]?.id;
+    if (!tenantId && fallbackTenantId) setTenantId(fallbackTenantId);
   }, [supportAccess?.session_id, supportAccess?.tenant_id, selecionado?.id, tenants, tenantId]);
 
   const isAuthorized =
