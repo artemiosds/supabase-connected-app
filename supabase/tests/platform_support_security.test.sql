@@ -8,7 +8,7 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(30);
+SELECT extensions.plan(35);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.platform_support_agents') IS NOT NULL,
@@ -34,6 +34,18 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid='public.platform_support_sessions'::regclass),
   'support sessions has RLS enabled'
+);
+SELECT extensions.ok(
+  (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid='public.platform_support_agents'::regclass),
+  'support agents enforces RLS even for table owners without BYPASSRLS'
+);
+SELECT extensions.ok(
+  (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid='public.platform_support_assignments'::regclass),
+  'support assignments enforces RLS even for table owners without BYPASSRLS'
+);
+SELECT extensions.ok(
+  (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid='public.platform_support_sessions'::regclass),
+  'support sessions enforces RLS even for table owners without BYPASSRLS'
 );
 
 SELECT extensions.ok(
@@ -80,6 +92,16 @@ SELECT extensions.ok(
   NOT has_function_privilege('anon',
     'public.register_platform_support_agent(uuid,text,text,uuid,boolean,boolean,boolean)','EXECUTE'),
   'anonymous users cannot register support accounts'
+);
+SELECT extensions.ok(
+  NOT has_function_privilege('authenticated','public.list_my_platform_support_tenants()','EXECUTE'),
+  'technical accounts cannot read tenant billing and commercial fields'
+);
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef(p.oid) ILIKE '%email_confirmed_at%'
+   FROM pg_catalog.pg_proc p
+   WHERE p.oid='public.set_platform_support_agent_status(uuid,text)'::regprocedure),
+  'Master cannot activate a technician before email confirmation'
 );
 
 SELECT extensions.ok(
