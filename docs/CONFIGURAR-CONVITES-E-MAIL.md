@@ -2,7 +2,15 @@
 
 A funcionalidade de convite está implementada no projeto e a Edge Function `invite-tenant-user` está publicada no Supabase SMS2 com verificação JWT obrigatória.
 
-## O que o fluxo faz
+## Provisionamento inicial e convites são etapas diferentes
+
+1. Antes de criar uma Secretaria, o futuro administrador municipal precisa ter uma conta Supabase Auth cadastrada e com e-mail confirmado.
+2. O Administrador Master abre **Organizações**, escolhe essa conta elegível e usa o provisionamento para criar a Secretaria e seu primeiro vínculo de administrador.
+3. Depois que a Secretaria existe, seu administrador municipal pode convidar outros usuários em **Usuários → Convidar por e-mail**.
+
+O cadastro/convite do primeiro administrador municipal não é enviado pela função `invite-tenant-user`; ele depende de uma conta confirmada já disponível para seleção no painel Master.
+
+## O que o fluxo de convite faz
 
 1. O administrador municipal informa nome, e-mail e papel na tela **Usuários → Convidar por e-mail**.
 2. A aplicação chama a Edge Function com a sessão autenticada.
@@ -65,12 +73,13 @@ Não grave `SUPABASE_SERVICE_ROLE_KEY` no frontend, em arquivos `.env` publicado
 ## Estado observado em 09/11/2026
 
 - O Supabase SMS2 está ativo e saudável.
-- Há dois usuários Auth confirmados: o Administrador Master e uma segunda conta cadastrada.
+- Há dois usuários Auth confirmados: o Administrador Master e uma segunda conta cadastrada. Essa segunda conta é a única elegível hoje para ser o primeiro administrador de uma Secretaria.
 - Ainda não existem Secretarias, vínculos municipais ou convites pendentes no banco.
 - A Edge Function de convites está ativa na versão 6; o código foi implantado, mas isso não comprova entrega de e-mail.
-- Para homologar duas Secretarias com administradores independentes, ainda são necessárias contas municipais distintas e controladas. Não use a mesma conta nas duas Secretarias como prova de isolamento.
+- Para homologar duas Secretarias com administradores independentes, falta cadastrar e confirmar pelo menos mais uma conta municipal controlada. Não use a mesma conta nas duas Secretarias como prova de isolamento.
+- Para provar também o envio de convite, será necessário ao menos um endereço de teste adicional, diferente dos administradores municipais, para receber o e-mail de convite.
 - Não foi possível configurar SMTP nesta etapa: o acesso administrativo de configuração e as credenciais do provedor não estão disponíveis nesta conexão. Cadastre essas credenciais diretamente em Supabase → Authentication → SMTP Settings; não as envie em mensagens.
 
 ## Homologação necessária
 
-Ainda é necessário executar o roteiro com uma Secretaria de teste, duas contas controladas e SMTP real. A Edge Function está publicada, mas nenhum e-mail foi disparado nesta implantação porque o SMS2 ainda não possui uma Secretaria municipal nem destinatários de teste cadastrados.
+Ainda é necessário executar o roteiro com duas Secretarias de teste, dois administradores municipais independentes, pelo menos um destinatário novo de convite e SMTP real. A Edge Function está publicada, mas nenhum e-mail foi disparado nesta implantação porque o SMS2 ainda não possui uma Secretaria municipal nem destinatários de teste cadastrados.
