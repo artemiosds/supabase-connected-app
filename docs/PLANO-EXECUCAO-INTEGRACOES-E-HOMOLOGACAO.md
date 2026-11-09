@@ -19,7 +19,7 @@ O trabalho passa a ser orientado a evidências: integração de serviços extern
 - 24/24 tabelas públicas com RLS; 13/24 com FORCE RLS.
 - 2 identidades Auth: Administrador Master ativo e outra conta; ainda não há Secretaria municipal, vínculo municipal, convite enviado ou dado operacional.
 - Bucket `gfs-private-documents` privado, limite 20 MiB e tipos PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; nenhum objeto persistido no Storage.
-- Duas Edge Functions ativas: `invite-tenant-user` v6 e `platform-billing-config` v4. Não há Edge Function de alertas nem integração OAuth/sincronização Drive publicada.
+- Duas Edge Functions ativas: `invite-tenant-user` v9 e `platform-billing-config` v7, ambas com JWT obrigatório. A validação de origens é compartilhada em `supabase/functions/_shared/origins.ts`; quando `APP_URL` está configurada, preview e localhost deixam de ser aceitos implicitamente. Não há Edge Function de alertas nem integração OAuth/sincronização Drive publicada.
 - `pg_cron` e `pg_net` não estão instalados; a relação `cron.job` não existe no banco consultado.
 - Advisor de segurança: um aviso externo `auth_leaked_password_protection`; Health Advisor sem alertas; Performance Advisor com 56 observações INFO de índices não utilizados. Não remover índices sem carga real e benchmark.
 - Na sequência de release, Validate application #229 e Format procurement module #111 passaram no commit `475416eada470da8d47d86731b09f89b68040690` ([validação](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555328009), [formatação](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555327981)). Esses checks não substituem E2E autenticado no navegador.
@@ -41,6 +41,12 @@ Ajuste implementado neste ciclo (commit `5e88b13c11f98dd899b86234ed98adac9411408
 4. Restringir bypass administrativo a uma exceção deliberada e auditada; não permitir que um workflow de CI faça push direto em `main).
 
 **Aceite:** PR de teste executa ambos os checks; merge é bloqueado quando um check falha; workflow de formatação não escreve no repositório.
+
+### Automação de publicação das Edge Functions
+
+O workflow `.github/workflows/deploy-supabase-functions.yml` foi versionado. Ele publica `invite-tenant-user` e `platform-billing-config` quando há alteração no código das funções e a variável `SUPABASE_EDGE_DEPLOY_ENABLED=true`, ou por execução manual. O primeiro disparo após a criação do workflow foi **skipped**, pois a variável de habilitação não está configurada — comportamento intencional para evitar publicação automática antes da decisão do proprietário.
+
+Para habilitar deploy automatizado posteriormente, cadastrar `SUPABASE_ACCESS_TOKEN` como GitHub Actions Repository Secret e, depois de aprovar a automação, definir `SUPABASE_EDGE_DEPLOY_ENABLED=true` como Repository Variable. A execução manual também exige o secret. Nunca inserir o token em arquivo do repositório.
 
 ### Etapa 1 — Auth, SMTP e convites
 
