@@ -1,6 +1,6 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-Atualizado em **08/11/2026**, com conferência direta do repositório GitHub main, do Supabase SMS2 e das execuções de validação do commit `5b9da605e534711ef092c130362cd34b7adc68f9`.
+Atualizado em **09/11/2026**, com conferência direta do repositório GitHub main, do Supabase SMS2 e das execuções de validação do commit `5b9da605e534711ef092c130362cd34b7adc68f9`.
 
 ## Estado real verificado
 
@@ -86,7 +86,7 @@ Cadastro seguro de conta de gateway e guarda de credenciais no Vault estão impl
 
 ## Qualidade e liberação
 
-- No commit atual `5b9da605e534711ef092c130362cd34b7adc68f9`, o workflow **Validate application #225** terminou com sucesso ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008518)) e **Format procurement module #107** também terminou com sucesso ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008620)). A validação executa Vitest, build, TypeScript e lint; isso não equivale a E2E autenticado no navegador com duas Secretarias.
+- Na sequência de release, o workflow **Validate application #229** terminou com sucesso no commit `475416eada470da8d47d86731b09f89b68040690` ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555328009)) e **Format procurement module #111** também terminou com sucesso no mesmo commit ([execução](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555327981)). A validação executa Vitest, build, TypeScript e lint; isso não equivale a E2E autenticado no navegador com duas Secretarias.
 - O cliente genérico dbFase3 foi removido; Processos, Contratos, Fornecedores e Documentos usam o cliente Supabase tipado. O parser monetário comum aceita formatos brasileiros e internacionais e é usado nos formulários de compras, contratos e aditivos; a suíte possui 14 testes para as regras de contratação e conversão.
 - A paginação compartilhada foi aplicada às listas de fornecedores, documentos, processos, modelos, contratos, itens, cotações e dotações; cotações no detalhe de processo são carregadas apenas para os itens selecionados, em blocos de até 100 IDs.
 - Um smoke test transacional validou fornecedor, processo, checklist de 11 etapas, item, cotação selecionada, dotação, contrato, aditivo, documento de fornecedor, modelo, documento gerado, assinatura simples e convite. A cotação com frete totalizou R$ 40,00 e o custo unitário estimado foi R$ 20,00 para duas unidades; a seleção da referência foi retestada com troca de cotação. Os aditivos de valor e prazo foram testados com cenários válidos e inválidos. Tudo terminou em ROLLBACK e a consulta posterior confirmou o banco sem dados fictícios.
@@ -101,7 +101,7 @@ Cadastro seguro de conta de gateway e guarda de credenciais no Vault estão impl
 
 ## Próxima trilha — integrações, homologação e liberação comercial
 
-Não reabrir a construção das Fases 1 e 2 nem criar tabelas por precaução. A próxima entrega deve fechar integrações e evidências de funcionamento real, seguindo a ordem e os critérios de aceite descritos em [docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md](docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md).
+Não reabrir a construção das Fases 1 e 2 nem criar tabelas por precaução. A próxima entrega deve fechar integrações e evidências de funcionamento real, seguindo a ordem e os critérios de aceite descritos em [docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md](docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md). O workflow de formatação agora valida PRs sem escrever no repositório; a proteção da branch ainda depende de configuração em GitHub Settings.
 
 1. **Controle de release:** proteger a branch principal e exigir validação antes de aceitar mudanças. Antes de tornar os workflows checks obrigatórios, ajustar o workflow de formatação que atualmente pode fazer commit automático.
 2. **E-mail/Auth:** configurar SMTP de domínio verificado, DNS SPF/DKIM/DMARC, URLs de Auth e origens permitidas; homologar cadastro, recuperação e convite com endereços controlados.
