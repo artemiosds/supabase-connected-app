@@ -258,6 +258,9 @@ BEGIN
   JOIN public.platform_support_agents sa ON sa.user_id=a.agent_user_id AND sa.status='active'
   WHERE a.agent_user_id=v_actor AND a.tenant_id=p_tenant_id AND a.is_active;
   IF v_actions IS NULL THEN RAISE EXCEPTION 'Você não possui atribuição ativa para esta organização.' USING ERRCODE='42501'; END IF;
+  IF COALESCE(pg_catalog.cardinality(v_actions),0)=0 THEN
+   RAISE EXCEPTION 'Sua atribuição não possui ações de suporte habilitadas.' USING ERRCODE='42501';
+  END IF;
  END IF;
  IF NOT EXISTS(SELECT 1 FROM public.tenants t WHERE t.id=p_tenant_id AND t.status='active'
   AND app_auth.is_tenant_in_good_standing(t.id) AND app_auth.is_tenant_module_enabled(t.id,'fornecedores')) THEN

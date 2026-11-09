@@ -235,7 +235,7 @@ CREATE POLICY gfs_private_supplier_documents_orphan_delete
       WHERE d.storage_path = storage.objects.name
     )
     AND CASE
-      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
       THEN
         (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:create'))
         AND (SELECT app_auth.is_tenant_in_good_standing(split_part(name, '/', 1)::uuid))
@@ -254,23 +254,26 @@ COMMENT ON COLUMN public.supplier_documents.file_size IS
 COMMENT ON TABLE public.supplier_documents IS
   'Metadados dos documentos de fornecedores: link externo, Google Drive ou arquivo privado no Supabase Storage.';
 
-COMMIT;
-      THEN
-        (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:create'))
-        AND (SELECT app_auth.is_tenant_in_good_standing(split_part(name, '/', 1)::uuid))
-        AND (SELECT app_auth.is_tenant_module_enabled(split_part(name, '/', 1)::uuid, 'documentos'))
-        AND (SELECT app_auth.is_tenant_module_enabled(split_part(name, '/', 1)::uuid, 'fornecedores'))
-      ELSE false
-    END
-  );
 
-COMMENT ON COLUMN public.supplier_documents.storage_path IS
-  'Caminho privado no bucket gfs-private-documents, particionado por Secretaria/fornecedor/documento.';
-COMMENT ON COLUMN public.supplier_documents.file_name IS
-  'Nome original do arquivo privado para exibicao na interface.';
-COMMENT ON COLUMN public.supplier_documents.file_size IS
-  'Tamanho original em bytes; limite de bucket e banco: 20 MiB.';
-COMMENT ON TABLE public.supplier_documents IS
-  'Metadados dos documentos de fornecedores: link externo, Google Drive ou arquivo privado no Supabase Storage.';
+-- Required by Phase 5.2 procurement row-identity triggers.
+-- Restore the shared tenant-row identity trigger function before Phase 5.2 attaches it.
+-- The function rejects tenant reassignment and mutation of creation metadata.
+CREATE OR REPLACE FUNCTION public.fn_protect_tenant_row_identity()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=''
+AS $function$
+BEGIN
+  IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+     OR NEW.created_by IS DISTINCT FROM OLD.created_by
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'Não é permitido alterar organização, autoria ou data de criação.';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.fn_protect_tenant_row_identity()
+  FROM PUBLIC,anon,authenticated,service_role;
 
 COMMIT;

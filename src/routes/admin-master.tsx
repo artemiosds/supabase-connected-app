@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
+import { AdminMasterSupport } from "@/components/admin-master-support";
 import {
   usePlatformAdmin,
   type AdminCandidate,
@@ -591,6 +592,10 @@ function AdminMaster() {
               <FileClock className="mr-2 h-4 w-4" />
               Auditoria global
             </TabsTrigger>
+            <TabsTrigger value="suporte">
+              <Users className="mr-2 h-4 w-4" />
+              Equipe de Suporte
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="visao-geral" className="space-y-6">
@@ -978,6 +983,10 @@ function AdminMaster() {
                 </Table>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="suporte" className="space-y-6">
+            <AdminMasterSupport tenants={tenants} />
           </TabsContent>
         </Tabs>
       </main>

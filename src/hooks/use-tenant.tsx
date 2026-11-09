@@ -28,6 +28,25 @@ type TenantRow = {
   enabled_modules: unknown;
 };
 
+export type PlatformSupportAccess = {
+  is_agent: boolean;
+  agent_status: string | null;
+  is_platform_admin: boolean;
+  session_id: string | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  reason: string | null;
+  expires_at: string | null;
+  allowed_actions: string[] | null;
+};
+
+type PlatformSupportTenantRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+};
+
 type TenantContextValue = {
   tenants: Tenant[];
   selecionado: Tenant | null;
@@ -35,6 +54,7 @@ type TenantContextValue = {
   loading: boolean;
   erro: string | null;
   bancoPendente: boolean;
+  supportAccess: PlatformSupportAccess | null;
   recarregar: () => void;
 };
 
@@ -69,10 +89,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [bancoPendente, setBancoPendente] = useState(false);
+  const [supportAccess, setSupportAccess] = useState<PlatformSupportAccess | null>(null);
 
   const carregar = useCallback(async () => {
     if (!session?.user.id) {
       setTenants([]);
+      setSupportAccess(null);
       setLoading(false);
       return;
     }
@@ -94,6 +116,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       const tenantSelect =
         "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules, monthly_fee";
+      let resolvedTenants: Tenant[] = [];
 
       if (adminResult.data) {
         const { data, error } = await db
@@ -101,10 +124,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           .select(tenantSelect)
           .order("name", { ascending: true });
         if (error) throw error;
-        setTenants(((data ?? []) as TenantRow[]).map(mapTenant));
+        resolvedTenants = ((data ?? []) as TenantRow[]).map(mapTenant);
       } else {
-        // Convites só são aceitos aqui depois que o usuário entrou com o e-mail confirmado.
-        // A função também respeita a validade do convite, o limite de usuários e o tenant ativo.
+        // Convites municipais continuam sendo aceitos pelo fluxo original.
         const { error: invitationError } = await db.rpc("accept_my_tenant_invitations");
         if (invitationError) throw invitationError;
 
@@ -115,15 +137,47 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
 
         const registros = (data ?? []) as unknown as { tenant: TenantRow | null }[];
-        setTenants(
-          registros
-            .map(({ tenant }) => (tenant ? mapTenant(tenant) : null))
-            .filter((tenant): tenant is Tenant => tenant !== null),
-        );
+        resolvedTenants = registros
+          .map(({ tenant }) => (tenant ? mapTenant(tenant) : null))
+          .filter((tenant): tenant is Tenant => tenant !== null);
+
+        // Conta exclusivamente de suporte não recebe associação nem papel municipal.
+        if (resolvedTenants.length === 0) {
+          const { data: activated, error: activationError } = await db.rpc(
+            "activate_my_platform_support_agent",
+          );
+          if (activationError) throw activationError;
+          if (activated === true) {
+            const { data: assigned, error: supportTenantsError } = await db.rpc(
+              "list_my_platform_support_tenants_safe",
+            );
+            if (supportTenantsError) throw supportTenantsError;
+            resolvedTenants = ((assigned ?? []) as PlatformSupportTenantRow[]).map((row) => ({
+              id: row.id,
+              nome: row.name,
+              slug: row.slug,
+              status: row.status,
+              commercial_status: "active",
+              plan_tier: "profissional",
+              monthly_fee: 0,
+              trial_starts_at: null,
+              trial_ends_at: null,
+              enabled_modules: { fornecedores: true },
+            }));
+          }
+        }
       }
+
+      const { data: supportStatus, error: supportStatusError } = await db.rpc(
+        "get_my_platform_support_status",
+      );
+      if (supportStatusError) throw supportStatusError;
+      setSupportAccess(supportStatus?.[0] ?? null);
+      setTenants(resolvedTenants);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setTenants([]);
+      setSupportAccess(null);
       if (bancoNaoConfigurado(message)) setBancoPendente(true);
       else setErro(message);
     } finally {
@@ -152,7 +206,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const selecionado = tenants.find((tenant) => tenant.id === selecionadoId) ?? tenants[0] ?? null;
+  const selectedForSupportSession = supportAccess?.session_id
+    ? tenants.find((tenant) => tenant.id === supportAccess.tenant_id)
+    : undefined;
+  const selecionado =
+    selectedForSupportSession ??
+    tenants.find((tenant) => tenant.id === selecionadoId) ??
+    tenants[0] ??
+    null;
 
   const recarregar = useCallback(() => {
     void carregar();
@@ -160,7 +221,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   return (
     <TenantContext.Provider
-      value={{ tenants, selecionado, selecionar, loading, erro, bancoPendente, recarregar }}
+      value={{
+        tenants,
+        selecionado,
+        selecionar,
+        loading,
+        erro,
+        bancoPendente,
+        supportAccess,
+        recarregar,
+      }}
     >
       {children}
     </TenantContext.Provider>

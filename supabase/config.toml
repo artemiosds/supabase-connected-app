@@ -2,5 +2,8 @@ project_id = "rwbbznqtocunzrpcvjvk"
 [functions.invite-tenant-user]
 verify_jwt = true
 
+[functions.invite-platform-support-agent]
+verify_jwt = true
+
 [functions.platform-billing-config]
 verify_jwt = true
