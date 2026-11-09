@@ -6,15 +6,18 @@ SET LOCAL statement_timeout='60s';
 
 DO $constraints$
 BEGIN
- IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid='public.procurement_items'::regclass AND conname='procurement_items_process_tenant_fk') THEN
+ IF pg_catalog.to_regclass('public.procurement_items') IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid=pg_catalog.to_regclass('public.procurement_items') AND conname='procurement_items_process_tenant_fk') THEN
   ALTER TABLE public.procurement_items ADD CONSTRAINT procurement_items_process_tenant_fk
    FOREIGN KEY (tenant_id,process_id) REFERENCES public.procurement_processes(tenant_id,id) ON DELETE RESTRICT;
  END IF;
- IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid='public.procurement_budget_allocations'::regclass AND conname='procurement_budget_allocations_process_tenant_fk') THEN
+ IF pg_catalog.to_regclass('public.procurement_budget_allocations') IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid=pg_catalog.to_regclass('public.procurement_budget_allocations') AND conname='procurement_budget_allocations_process_tenant_fk') THEN
   ALTER TABLE public.procurement_budget_allocations ADD CONSTRAINT procurement_budget_allocations_process_tenant_fk
    FOREIGN KEY (tenant_id,process_id) REFERENCES public.procurement_processes(tenant_id,id) ON DELETE RESTRICT;
  END IF;
- IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid='public.generated_documents'::regclass AND conname='generated_documents_process_tenant_fk') THEN
+ IF pg_catalog.to_regclass('public.generated_documents') IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid=pg_catalog.to_regclass('public.generated_documents') AND conname='generated_documents_process_tenant_fk') THEN
   ALTER TABLE public.generated_documents ADD CONSTRAINT generated_documents_process_tenant_fk
    FOREIGN KEY (process_id,tenant_id) REFERENCES public.procurement_processes(id,tenant_id) ON DELETE RESTRICT;
  END IF;
