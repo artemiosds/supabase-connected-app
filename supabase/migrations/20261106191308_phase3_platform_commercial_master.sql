@@ -170,22 +170,31 @@ REVOKE ALL ON FUNCTION public.fn_enforce_tenant_user_limit() FROM PUBLIC, anon, 
 DROP TRIGGER IF EXISTS trg_enforce_tenant_user_limit ON public.tenant_memberships;
 CREATE TRIGGER trg_enforce_tenant_user_limit BEFORE INSERT OR UPDATE OF status, tenant_id ON public.tenant_memberships FOR EACH ROW EXECUTE FUNCTION public.fn_enforce_tenant_user_limit();
 
-DROP TRIGGER IF EXISTS trg_commercial_guard_suppliers ON public.suppliers;
-CREATE TRIGGER trg_commercial_guard_suppliers BEFORE INSERT OR UPDATE OR DELETE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_supplier_documents ON public.supplier_documents;
-CREATE TRIGGER trg_commercial_guard_supplier_documents BEFORE INSERT OR UPDATE OR DELETE ON public.supplier_documents FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_procurement_processes ON public.procurement_processes;
-CREATE TRIGGER trg_commercial_guard_procurement_processes BEFORE INSERT OR UPDATE OR DELETE ON public.procurement_processes FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_process_items ON public.process_items;
-CREATE TRIGGER trg_commercial_guard_process_items BEFORE INSERT OR UPDATE OR DELETE ON public.process_items FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_contracts ON public.contracts;
-CREATE TRIGGER trg_commercial_guard_contracts BEFORE INSERT OR UPDATE OR DELETE ON public.contracts FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_contract_amendments ON public.contract_amendments;
-CREATE TRIGGER trg_commercial_guard_contract_amendments BEFORE INSERT OR UPDATE OR DELETE ON public.contract_amendments FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_document_templates ON public.document_templates;
-CREATE TRIGGER trg_commercial_guard_document_templates BEFORE INSERT OR UPDATE OR DELETE ON public.document_templates FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
-DROP TRIGGER IF EXISTS trg_commercial_guard_generated_documents ON public.generated_documents;
-CREATE TRIGGER trg_commercial_guard_generated_documents BEFORE INSERT OR UPDATE OR DELETE ON public.generated_documents FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write();
+DO $commercial_triggers$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT * FROM (VALUES
+    ('suppliers','trg_commercial_guard_suppliers'),
+    ('supplier_documents','trg_commercial_guard_supplier_documents'),
+    ('procurement_processes','trg_commercial_guard_procurement_processes'),
+    ('process_items','trg_commercial_guard_process_items'),
+    ('contracts','trg_commercial_guard_contracts'),
+    ('contract_amendments','trg_commercial_guard_contract_amendments'),
+    ('document_templates','trg_commercial_guard_document_templates'),
+    ('generated_documents','trg_commercial_guard_generated_documents')
+  ) AS x(table_name,trigger_name)
+  LOOP
+    IF pg_catalog.to_regclass(pg_catalog.format('public.%I',r.table_name)) IS NULL THEN
+      CONTINUE;
+    END IF;
+    EXECUTE pg_catalog.format('DROP TRIGGER IF EXISTS %I ON public.%I',r.trigger_name,r.table_name);
+    EXECUTE pg_catalog.format(
+      'CREATE TRIGGER %I BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.fn_guard_tenant_commercial_write()',
+      r.trigger_name,r.table_name
+    );
+  END LOOP;
+END
+$commercial_triggers$;
 
 DO $policies$
 DECLARE r record; v_table text; v_module text;
@@ -198,6 +207,9 @@ BEGIN
   ) AS x(table_name,module_name)
   LOOP
     v_table := r.table_name; v_module := r.module_name;
+    IF pg_catalog.to_regclass(pg_catalog.format('public.%I',v_table)) IS NULL THEN
+      CONTINUE;
+    END IF;
     EXECUTE format('DROP POLICY IF EXISTS p_master_support_read_%I ON public.%I',v_table,v_table);
     EXECUTE format('CREATE POLICY p_master_support_read_%I ON public.%I FOR SELECT TO authenticated USING ((SELECT app_auth.is_platform_admin()))',v_table,v_table);
     EXECUTE format('DROP POLICY IF EXISTS p_commercial_select_%I ON public.%I',v_table,v_table);
