@@ -15,15 +15,15 @@ O trabalho passa a ser orientado a evidências: integração de serviços extern
 
 ## Fotografia técnica conferida
 
-- 47 migrations registradas no Supabase e correspondência anterior de 47 arquivos SQL no repositório.
+- 47 migrations registradas no Supabase e 47 arquivos SQL correspondentes no repositório.
 - 24/24 tabelas públicas com RLS; 13/24 com FORCE RLS.
 - 2 identidades Auth: Administrador Master ativo e outra conta; ainda não há Secretaria municipal, vínculo municipal, convite enviado ou dado operacional.
 - Bucket `gfs-private-documents` privado, limite 20 MiB e tipos PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; nenhum objeto persistido no Storage.
 - Duas Edge Functions ativas: `invite-tenant-user` v6 e `platform-billing-config` v4. Não há Edge Function de alertas nem integração OAuth/sincronização Drive publicada.
 - `pg_cron` e `pg_net` não estão instalados; a relação `cron.job` não existe no banco consultado.
 - Advisor de segurança: um aviso externo `auth_leaked_password_protection`; Health Advisor sem alertas; Performance Advisor com 56 observações INFO de índices não utilizados. Não remover índices sem carga real e benchmark.
-- CI no commit `5b9da605e534711ef092c130362cd34b7adc68f9`: Validate application #225 e Format procurement module #107 aprovados. Esses checks não substituem E2E autenticado no navegador.
-- Branch `main) estava sem proteção e sem status checks obrigatórios. A configuração de proteção deve ser concluída em GitHub Settings após validar os nomes dos checks.
+- Na sequência de release, Validate application #229 e Format procurement module #111 passaram no commit `475416eada470da8d47d86731b09f89b68040690` ([validação](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555328009), [formatação](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555327981)). Esses checks não substituem E2E autenticado no navegador.
+- A branch `main` estava sem proteção e sem status checks obrigatórios. A configuração de proteção deve ser concluída em GitHub Settings após validar os nomes dos checks.
 - O backup lógico está versionado, mas não há prova de execução, descriptografia e restauração num projeto separado.
 
 ## Ordem de execução
@@ -32,7 +32,7 @@ O trabalho passa a ser orientado a evidências: integração de serviços extern
 
 **Objetivo:** impedir que uma alteração entre na branch principal sem validação.
 
-Ajuste implementado neste ciclo: o workflow `.github/workflows/format-procurement.yml` foi alterado para rodar também em Pull Requests, executar `prettier --check` e operar com `contents: read`. A etapa de commit/push automático foi removida.
+Ajuste implementado neste ciclo (commit `5e88b13c11f98dd899b86234ed98adac9411408b`): o workflow `.github/workflows/format-procurement.yml` foi alterado para rodar também em Pull Requests, executar `prettier --check` e operar com `contents: read`. A etapa de commit/push automático foi removida.
 
 **Ações restantes no GitHub:**
 1. Aguardar e conferir os dois workflows no commit desta alteração.
