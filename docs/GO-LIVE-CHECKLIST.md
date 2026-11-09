@@ -2,7 +2,7 @@
 
 Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em uso real por Secretarias. Estrutura de banco e CI verdes não substituem homologação autenticada, restauração testada, revisão jurídica e configuração de serviços externos.
 
-## Situação técnica conferida em 08/11/2026
+## Situação técnica conferida em 09/11/2026
 
 - Supabase SMS2: **47 migrations registradas**; última 20261108211206_guard_contract_amendment_value_and_dates. As 47 versões estão sincronizadas com 47 arquivos SQL no GitHub.
 - **24 tabelas públicas da aplicação com RLS**; **13 tabelas com FORCE RLS**; 18 permissões cadastradas.
@@ -12,9 +12,13 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 - Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
 - Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo. A RPC de seleção de cotação inclui frete no custo unitário de referência e foi testada com duas cotações; o custo unitário estimado foi R$ 20,00 (R$ 40,00 totais com frete ÷ 2 unidades), e o total do item foi R$ 40,00. A troca de referência preservou exatamente uma cotação selecionada. Aditivos testados: acréscimo R$ 20 → total R$ 120; supressão R$ 30 → total R$ 90; supressão acima do saldo, sinal errado e prorrogação sem extensão foram bloqueadas.
 - Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado. O parser de valores monetários brasileiros/internacionais é compartilhado e tem testes de formatos e rejeição de entradas inválidas.
-- Workflow de formatação/validação aprovou testes, build, TypeScript e lint após formatar os arquivos reportados pelo ESLint/Prettier; a validação integral do commit final está aprovada em [GitHub Actions #42524213830](https://github.com/artemiosds/supabase-connected-app/actions/runs/42524213830); a rotina de formatação também passou em [GitHub Actions #42524213844](https://github.com/artemiosds/supabase-connected-app/actions/runs/42524213844).
+- No commit `5b9da605e534711ef092c130362cd34b7adc68f9`, **Validate application #225** passou ([GitHub Actions](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008518)) e **Format procurement module #107** passou ([GitHub Actions](https://github.com/artemiosds/supabase-connected-app/actions/runs/42542008620)). Esses workflows cobrem testes automatizados, build, TypeScript, lint e formatação; não equivalem à homologação autenticada no navegador.
 - Smoke test transacional validou fornecedor, processo/checklist atômico, item, cotação, dotação, contrato, aditivo, documento, modelo, documento gerado, assinatura simples e convite/limite. Todos os dados foram revertidos com ROLLBACK.
 - A rotina Encrypted SMS2 backup não possui execução registrada; nenhum artefato criptografado ou restore foi comprovado.
+- Duas Edge Functions estão ativas: `invite-tenant-user` v6 e `platform-billing-config` v4. Não há Edge Function de alertas de vencimento nem OAuth/sincronização Drive implantados.
+- `pg_cron` e `pg_net` não estão instalados no projeto; `cron.job` não existe. Nenhum agendamento de alertas foi comprovado.
+- A branch `main` está sem proteção e sem status checks obrigatórios. O workflow de formatação foi convertido para `prettier --check`, sem commit/push automático, e agora também roda em Pull Requests; ainda falta configurar a proteção da branch no GitHub.
+- Security Advisor: um aviso `auth_leaked_password_protection` (proteção contra senhas vazadas desativada). Health Advisor sem alertas. Performance Advisor: 56 índices `unused_index` em nível INFO; não remover sem dados reais e benchmark.
 
 ## Bloqueadores antes de produção
 
@@ -25,7 +29,7 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 - [ ] Configurar APP_URL e INVITE_ALLOWED_ORIGINS na Edge Function para o domínio real.
 - [ ] Testar cadastro, confirmação, recuperação de senha, convite, definição de senha, aceite, revogação e expiração com endereços controlados.
 - [ ] Definir política de senha com comprimento mínimo de pelo menos 8 caracteres e requisitos adequados.
-- [ ] Decidir se o projeto será mantido no Free ou migrado para Pro. A proteção contra senhas vazadas é recurso Pro ou superior e está desativada no SMS2 Free.
+- [ ] Confirmar no plano e nas opções atuais do projeto como habilitar a proteção contra senhas vazadas (`auth_leaked_password_protection`) e aplicá-la; não assumir upgrade ou custo sem aprovação.
 
 ### 2. Onboarding e isolamento municipal
 - [ ] Criar uma Secretaria de homologação com dados fictícios pelo fluxo normal de provisionamento.
@@ -85,3 +89,8 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 ## Limites conhecidos do backup
 
 O workflow do repositório exporta schema, dados e roles dos schemas da aplicação, além dos objetos do bucket GED, e criptografa o pacote com age. O Supabase CLI exclui os schemas gerenciados auth e storage; portanto, o artefato não contém senhas/identidades Auth, metadados de Storage, configurações completas do projeto, secrets de Edge Functions, SMTP nem logs gerenciados. Não é backup integral ou ponto-no-tempo do projeto. O procedimento está em docs/ROTINA-DE-BACKUP.md; ainda falta comprovar descriptografia e restauração em projeto separado.
+
+
+## Próxima trilha de execução
+
+Não reconstruir tabelas nem reiniciar as Fases 1 e 2. A sequência operacional, dependências externas e critérios de aceite estão detalhados em [docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md](PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md). A liberação permanece NO-GO até evidência de Auth/SMTP, duas Secretarias isoladas, GED autenticado, backup restaurado, E2E no navegador e requisitos comerciais/jurídicos.
