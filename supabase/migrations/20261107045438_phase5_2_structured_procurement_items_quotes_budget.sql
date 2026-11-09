@@ -19,9 +19,7 @@ CREATE TABLE IF NOT EXISTS public.procurement_items (
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  CONSTRAINT procurement_items_tenant_id_unique UNIQUE(tenant_id,id),
- CONSTRAINT procurement_items_line_number_unique UNIQUE(tenant_id,process_id,line_number),
- CONSTRAINT procurement_items_process_tenant_fk FOREIGN KEY(tenant_id,process_id)
-  REFERENCES public.procurement_processes(tenant_id,id) ON DELETE RESTRICT
+ CONSTRAINT procurement_items_line_number_unique UNIQUE(tenant_id,process_id,line_number)
 );
 
 CREATE TABLE IF NOT EXISTS public.procurement_price_quotes (
@@ -71,9 +69,7 @@ CREATE TABLE IF NOT EXISTS public.procurement_budget_allocations (
  updated_by uuid NOT NULL REFERENCES auth.users(id),
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
- CONSTRAINT procurement_budget_allocations_tenant_id_unique UNIQUE(tenant_id,id),
- CONSTRAINT procurement_budget_allocations_process_tenant_fk FOREIGN KEY(tenant_id,process_id)
-  REFERENCES public.procurement_processes(tenant_id,id) ON DELETE RESTRICT
+ CONSTRAINT procurement_budget_allocations_tenant_id_unique UNIQUE(tenant_id,id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_procurement_items_process_active

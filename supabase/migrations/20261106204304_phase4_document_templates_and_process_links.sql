@@ -19,7 +19,8 @@ ALTER TABLE public.generated_documents
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.document_templates'::regclass AND conname='document_templates_id_tenant_unique') THEN
   ALTER TABLE public.document_templates ADD CONSTRAINT document_templates_id_tenant_unique UNIQUE(id,tenant_id); END IF;
- IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.procurement_processes'::regclass AND conname='procurement_processes_id_tenant_unique') THEN
+ IF pg_catalog.to_regclass('public.procurement_processes') IS NOT NULL
+    AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid=pg_catalog.to_regclass('public.procurement_processes') AND conname='procurement_processes_id_tenant_unique') THEN
   ALTER TABLE public.procurement_processes ADD CONSTRAINT procurement_processes_id_tenant_unique UNIQUE(id,tenant_id); END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.document_templates'::regclass AND conname='document_templates_type_check') THEN
   ALTER TABLE public.document_templates ADD CONSTRAINT document_templates_type_check CHECK(template_type IN('dfd','etp','risk_analysis','risk_matrix','tr','custom')); END IF;
@@ -114,12 +115,13 @@ CREATE TRIGGER trg_document_templates_version_bump BEFORE UPDATE ON public.docum
 DROP TRIGGER IF EXISTS trg_document_templates_version_history ON public.document_templates;
 CREATE TRIGGER trg_document_templates_version_history AFTER INSERT OR UPDATE ON public.document_templates FOR EACH ROW EXECUTE FUNCTION app_auth.archive_document_template_version();
 
-DO $$ BEGIN
- IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.generated_documents'::regclass AND conname='generated_documents_process_tenant_fk') THEN
+DO $ BEGIN
+ IF pg_catalog.to_regclass('public.procurement_processes') IS NOT NULL
+    AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid=pg_catalog.to_regclass('public.generated_documents') AND conname='generated_documents_process_tenant_fk') THEN
   ALTER TABLE public.generated_documents ADD CONSTRAINT generated_documents_process_tenant_fk
   FOREIGN KEY(process_id,tenant_id) REFERENCES public.procurement_processes(id,tenant_id) ON DELETE RESTRICT;
  END IF;
-END $$;
+END $;
 CREATE OR REPLACE FUNCTION public.fn_guard_generated_document_process_link() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $f$
 BEGIN
  IF TG_OP='UPDATE' AND (NEW.process_id IS DISTINCT FROM OLD.process_id OR NEW.document_type IS DISTINCT FROM OLD.document_type
