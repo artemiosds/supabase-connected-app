@@ -8,7 +8,7 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(35);
+SELECT extensions.plan(40);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.platform_support_agents') IS NOT NULL,
@@ -176,6 +176,45 @@ SELECT extensions.ok(
     AND NOT has_table_privilege('authenticated','public.platform_support_sessions','UPDATE')
     AND NOT has_table_privilege('authenticated','public.platform_support_sessions','DELETE'),
   'clients cannot mutate support sessions directly outside controlled RPCs'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid='public.tenant_memberships'::regclass
+      AND tgname='trg_prevent_support_tenant_membership_overlap'
+      AND NOT tgisinternal
+  ),
+  'support accounts cannot be assigned municipal tenant memberships'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid='public.platform_admins'::regclass
+      AND tgname='trg_prevent_support_master_role_overlap'
+      AND NOT tgisinternal
+  ),
+  'support accounts cannot be promoted to platform Master'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid='public.platform_support_agents'::regclass
+      AND tgname='trg_prevent_support_agent_role_overlap'
+      AND NOT tgisinternal
+  ),
+  'municipal and Master accounts cannot be enrolled as support technicians'
+);
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef(p.oid) ILIKE '%platform_support_agents%'
+   FROM pg_catalog.pg_proc p
+   WHERE p.oid='public.list_tenant_admin_candidates()'::regprocedure),
+  'Master candidate list excludes existing support technicians'
+);
+SELECT extensions.ok(
+  (SELECT p.prosecdef AND COALESCE(array_to_string(p.proconfig,','),'') ILIKE '%search_path=%'
+   FROM pg_catalog.pg_proc p
+   WHERE p.oid='public.fn_prevent_platform_support_role_overlap()'::regprocedure),
+  'role-separation trigger is SECURITY DEFINER with pinned search_path'
 );
 
 -- Switch to a synthetic, unrelated authenticated identity. No Auth rows are created.
