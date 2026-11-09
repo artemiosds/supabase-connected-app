@@ -150,9 +150,17 @@ function AtalhoCentralSuporte() {
   if (!supportAccess?.is_agent && !supportAccess?.session_id) return null;
 
   return (
-    <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-      <Link to="/suporte">
-        {supportAccess.session_id ? "Sessão de suporte" : "Central de Suporte"}
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className="inline-flex h-9 w-9 p-0 sm:w-auto sm:px-3"
+    >
+      <Link to="/suporte" aria-label="Abrir Central de Suporte">
+        <ShieldCheck className="h-4 w-4 sm:mr-2" aria-hidden />
+        <span className="hidden sm:inline">
+          {supportAccess.session_id ? "Sessão de suporte" : "Central de Suporte"}
+        </span>
       </Link>
     </Button>
   );
