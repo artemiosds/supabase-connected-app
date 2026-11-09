@@ -6,8 +6,8 @@ Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em
 
 - Supabase SMS2: **47 migrations registradas**; última 20261108211206_guard_contract_amendment_value_and_dates. As 47 versões estão sincronizadas com 47 arquivos SQL no GitHub.
 - **24 tabelas públicas da aplicação com RLS**; **13 tabelas com FORCE RLS**; 18 permissões cadastradas.
-- Administrador Master ativo e confirmado; há dois usuários Auth no total.
-- Banco sem Secretarias, vínculos municipais, fornecedores, convites, documentos, processos, itens/cotações, orçamento, contratos, aditivos ou arquivos GED. Cinco modelos globais existem no catálogo, mas nenhum está instalado numa Secretaria.
+- Administrador Master ativo e confirmado; há dois usuários Auth no total. Uma Secretaria ativa (Secretaria Municipal de Saúde de Oriximiná) possui um vínculo municipal ativo com papel `admin`.
+- Há uma Secretaria ativa e um vínculo municipal ativo; não há fornecedores, documentos, convites, processos, itens/cotações, orçamento, contratos, aditivos nem objetos GED. Cinco modelos globais existem no catálogo, mas nenhum está instalado na Secretaria.
 - GED gfs-private-documents: bucket privado, limite 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; ainda sem objetos.
 - Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
 - Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo. A RPC de seleção de cotação inclui frete no custo unitário de referência e foi testada com duas cotações; o custo unitário estimado foi R$ 20,00 (R$ 40,00 totais com frete ÷ 2 unidades), e o total do item foi R$ 40,00. A troca de referência preservou exatamente uma cotação selecionada. Aditivos testados: acréscimo R$ 20 → total R$ 120; supressão R$ 30 → total R$ 90; supressão acima do saldo, sinal errado e prorrogação sem extensão foram bloqueadas.
