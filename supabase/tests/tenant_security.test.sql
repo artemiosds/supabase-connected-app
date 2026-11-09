@@ -97,8 +97,8 @@ SELECT extensions.is(
    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
    WHERE p.schemaname = 'public' AND n.nspname = 'public'
      AND c.relkind = 'r' AND a.attname = 'tenant_id' AND NOT a.attisdropped
-     AND (coalesce(p.qual, '') ~* '^[[:space:]]*\\(?[[:space:]]*true[[:space:]]*\\)?[[:space:]]*
-       OR coalesce(p.with_check, '') ~* '^\\s*\\(?\\s*true\\s*\\)?\\s*$')),
+     AND (coalesce(p.qual, '') ~* '^[[:space:]]*\(?[[:space:]]*true[[:space:]]*\)?[[:space:]]*
+       OR coalesce(p.with_check, '') ~* '^\s*\(?\s*true\s*\)?\s*$')),
   0,
   'tenant-scoped policies do not use unconditional TRUE predicates'
 );
@@ -250,7 +250,7 @@ SELECT extensions.is(
 SELECT * FROM extensions.finish();
 ROLLBACK;
 
-       OR coalesce(p.with_check, '') ~* '^[[:space:]]*\\(?[[:space:]]*true[[:space:]]*\\)?[[:space:]]*)),
+       OR coalesce(p.with_check, '') ~* '^[[:space:]]*\(?[[:space:]]*true[[:space:]]*\)?[[:space:]]*)),
   0,
   'tenant-scoped policies do not use unconditional TRUE predicates'
 );
