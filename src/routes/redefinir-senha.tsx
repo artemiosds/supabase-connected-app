@@ -30,9 +30,10 @@ export const Route = createFileRoute("/redefinir-senha")({
 
 function RedefinirSenha() {
   const { session, loading, updatePassword } = useAuth();
-  const convite =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("convite") === "1";
+  const parametrosConvite =
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const convite = parametrosConvite?.get("convite") === "1";
+  const conviteSuporte = convite && parametrosConvite?.get("tipo") === "suporte";
   const navigate = useNavigate();
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
@@ -60,7 +61,7 @@ function RedefinirSenha() {
   if (loading) {
     return (
       <AuthShell
-        title={convite ? "Definir senha do convite" : "Redefinir senha"}
+        title={conviteSuporte ? "Definir senha do suporte" : convite ? "Definir senha do convite" : "Redefinir senha"}
         subtitle="Verificando seu link seguro…"
       >
         <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
@@ -87,11 +88,13 @@ function RedefinirSenha() {
 
   return (
     <AuthShell
-      title={convite ? "Crie sua senha de acesso" : "Redefinir senha"}
+      title={conviteSuporte ? "Crie sua senha de suporte" : convite ? "Crie sua senha de acesso" : "Redefinir senha"}
       subtitle={
-        convite
-          ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
-          : "Defina a nova senha da sua conta."
+        conviteSuporte
+          ? "Seu e-mail foi confirmado. Defina uma senha para ativar sua conta técnica e acessar a Central de Suporte."
+          : convite
+            ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
+            : "Defina a nova senha da sua conta."
       }
     >
       <form onSubmit={aoEnviar} className="space-y-4">
