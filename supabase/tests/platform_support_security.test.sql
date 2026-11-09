@@ -8,7 +8,7 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(40);
+SELECT extensions.plan(41);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.platform_support_agents') IS NOT NULL,
@@ -143,6 +143,12 @@ SELECT extensions.ok(
    FROM pg_catalog.pg_proc p
    WHERE p.oid='app_auth.has_supplier_permission(uuid,text)'::regprocedure),
   'supplier authorization preserves municipal memberships and adds scoped sessions'
+);
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef(p.oid) ILIKE '%cardinality(v_actions)%'
+   FROM pg_catalog.pg_proc p
+   WHERE p.oid='public.start_platform_support_session(uuid,text)'::regprocedure),
+  'a technician cannot start an empty session with no enabled support actions'
 );
 
 SELECT extensions.ok(
