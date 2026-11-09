@@ -80,13 +80,13 @@ Não grave `SUPABASE_SERVICE_ROLE_KEY` no frontend, em arquivos `.env` publicado
 ## Estado observado em 09/11/2026
 
 - O Supabase SMS2 está ativo e saudável.
-- Há dois usuários Auth confirmados: o Administrador Master e uma segunda conta cadastrada. Essa segunda conta é a única elegível hoje para ser o primeiro administrador de uma Secretaria.
-- Ainda não existem Secretarias, vínculos municipais ou convites pendentes no banco.
+- Há dois usuários Auth confirmados: o Administrador Master e uma conta municipal já vinculada como administradora da Secretaria Municipal de Saúde de Oriximiná.
+- Existe uma Secretaria ativa, com um vínculo municipal de administrador e nenhum convite pendente.
 - A Edge Function de convites está ativa na versão 9 e a função administrativa de cobrança na versão 7; ambas exigem JWT. O código está implantado, mas isso não comprova entrega de e-mail.
-- Para homologar duas Secretarias com administradores independentes, falta cadastrar e confirmar pelo menos mais uma conta municipal controlada. Não use a mesma conta nas duas Secretarias como prova de isolamento.
+- Para homologar isolamento entre duas Secretarias, falta provisionar uma segunda Secretaria com outro administrador municipal confirmado. Não reutilize a conta atual como prova de isolamento.
 - Para provar também o envio de convite, será necessário ao menos um endereço de teste adicional, diferente dos administradores municipais, para receber o e-mail de convite.
 - Não foi possível configurar SMTP nesta etapa: o acesso administrativo de configuração e as credenciais do provedor não estão disponíveis nesta conexão. Cadastre essas credenciais diretamente em Supabase → Authentication → SMTP Settings; não as envie em mensagens.
 
 ## Homologação necessária
 
-Ainda é necessário executar o roteiro com duas Secretarias de teste, dois administradores municipais independentes, pelo menos um destinatário novo de convite e SMTP real. A Edge Function está publicada, mas nenhum e-mail foi disparado nesta implantação porque o SMS2 ainda não possui uma Secretaria municipal nem destinatários de teste cadastrados.
+Ainda é necessário executar o roteiro com uma segunda Secretaria de homologação, outro administrador municipal independente, pelo menos um destinatário novo de convite e SMTP real. A Edge Function está publicada, mas nenhum envio externo foi comprovado.
