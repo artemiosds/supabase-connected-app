@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
+import { useTenant } from "@/hooks/use-tenant";
 import type { MasterTenant } from "@/hooks/use-platform-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ const EMPTY_PERMISSION: PermissionDraft = {
 
 export function AdminMasterSupport({ tenants }: Props) {
   const navigate = useNavigate();
+  const { selecionar, recarregar } = useTenant();
   const [team, setTeam] = useState<SupportAgent[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState("");
@@ -255,6 +257,8 @@ export function AdminMasterSupport({ tenants }: Props) {
         p_reason: supportReason.trim(),
       });
       if (error) throw error;
+      selecionar(masterTenantId);
+      recarregar();
       toast.success("Modo de suporte iniciado. A sessão expira automaticamente em 60 minutos.");
       await navigate({ to: "/fornecedores" });
     } catch (cause) {
