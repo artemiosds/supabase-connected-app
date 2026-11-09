@@ -235,26 +235,7 @@ CREATE POLICY gfs_private_supplier_documents_orphan_delete
       WHERE d.storage_path = storage.objects.name
     )
     AND CASE
-      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
-      THEN
-        (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:create'))
-        AND (SELECT app_auth.is_tenant_in_good_standing(split_part(name, '/', 1)::uuid))
-        AND (SELECT app_auth.is_tenant_module_enabled(split_part(name, '/', 1)::uuid, 'documentos'))
-        AND (SELECT app_auth.is_tenant_module_enabled(split_part(name, '/', 1)::uuid, 'fornecedores'))
-      ELSE false
-    END
-  );
-
-COMMENT ON COLUMN public.supplier_documents.storage_path IS
-  'Caminho privado no bucket gfs-private-documents, particionado por Secretaria/fornecedor/documento.';
-COMMENT ON COLUMN public.supplier_documents.file_name IS
-  'Nome original do arquivo privado para exibicao na interface.';
-COMMENT ON COLUMN public.supplier_documents.file_size IS
-  'Tamanho original em bytes; limite de bucket e banco: 20 MiB.';
-COMMENT ON TABLE public.supplier_documents IS
-  'Metadados dos documentos de fornecedores: link externo, Google Drive ou arquivo privado no Supabase Storage.';
-
-COMMIT;
+      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
       THEN
         (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:create'))
         AND (SELECT app_auth.is_tenant_in_good_standing(split_part(name, '/', 1)::uuid))
