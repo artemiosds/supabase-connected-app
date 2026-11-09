@@ -178,7 +178,7 @@ function MenuLateral() {
 
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-      {isPlatformAdmin && (
+      {isPlatformAdmin && !supportAccess?.session_id && (
         <Link
           to="/admin-master"
           className={cn(
