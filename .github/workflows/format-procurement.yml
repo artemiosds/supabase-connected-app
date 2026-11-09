@@ -1,0 +1,33 @@
+name: Format procurement module
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: format-procurement-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check formatting without modifying files
+        run: bunx prettier --check src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts

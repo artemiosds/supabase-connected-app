@@ -1,0 +1,88 @@
+name: Encrypted SMS2 backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.SUPABASE_BACKUP_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Storage backup utility
+        run: python -m unittest discover -s scripts -p "test_backup_supabase_storage.py" -v
+
+      - name: Validate backup configuration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo "::error::Configure the SUPABASE_DB_URL GitHub secret."; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::Configure the SUPABASE_SERVICE_ROLE_KEY GitHub secret."; exit 1; }
+          test -n "$AGE_RECIPIENT" || { echo "::error::Configure the AGE_RECIPIENT GitHub variable."; exit 1; }
+
+      - name: Install Supabase CLI v2
+        uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+
+      - name: Install age
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y age
+
+      - name: Export database schema, application data and roles
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup/database backup/storage
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file backup/database/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --file backup/database/data.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only --file backup/database/roles.sql
+
+      - name: Export private GED objects
+        env:
+          SUPABASE_URL: https://rwbbznqtocunzrpcvjvk.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/backup_supabase_storage.py --bucket gfs-private-documents --output-dir backup/storage/gfs-private-documents
+
+      - name: Encrypt backup before artifact upload
+        env:
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          cat > backup/RESTORE-NOTES.txt <<'EOF'
+          Encrypted SMS2 logical backup.
+          Includes custom database schema, application table data, cluster roles, and files from gfs-private-documents.
+          Supabase-managed auth/storage schemas, Auth passwords/identities, project settings, Edge Function secrets and email provider settings are not included.
+          Recreate the private bucket and Auth users/roles as part of recovery. This is not a full point-in-time Supabase project restore.
+          Keep the matching age private identity offline and separate from GitHub.
+          EOF
+          tar -czf sms2-backup.tar.gz -C backup .
+          age -r "$AGE_RECIPIENT" -o sms2-backup.tar.gz.age sms2-backup.tar.gz
+          sha256sum sms2-backup.tar.gz.age > sms2-backup.tar.gz.age.sha256
+          rm -f sms2-backup.tar.gz
+          test -s sms2-backup.tar.gz.age
+
+      - name: Upload encrypted backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sms2-encrypted-backup-${{ github.run_id }}
+          path: |
+            sms2-backup.tar.gz.age
+            sms2-backup.tar.gz.age.sha256
+          if-no-files-found: error
+          retention-days: 90

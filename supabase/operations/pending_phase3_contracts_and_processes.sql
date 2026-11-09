@@ -1,0 +1,8 @@
+-- OBSOLETO — NÃO EXECUTAR.
+-- O script original continha CREATE TABLE e CREATE POLICY não idempotentes.
+-- Para uma instalação NOVA, use a baseline revisada:
+--   supabase/operations/baseline_phase3_process_contracts.sql
+-- Execute-a somente após as migrations da Fase 1 e Fase 2 e antes das migrations
+-- comerciais da Fase 3, conforme docs/INSTALACAO-BASELINE.md.
+-- NÃO execute no Supabase SMS2 atual: as tabelas procurement_processes,
+-- process_items, contracts e contract_amendments já existem nesse projeto.
