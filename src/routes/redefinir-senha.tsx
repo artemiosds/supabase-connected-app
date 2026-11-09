@@ -80,9 +80,11 @@ function RedefinirSenha() {
       <AuthShell
         title="Link inválido"
         subtitle={
-          convite
-            ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
-            : "Este link de redefinição expirou ou já foi usado."
+          conviteSuporte
+            ? "Este convite de suporte expirou ou já foi utilizado. Solicite um novo convite ao Administrador Master."
+            : convite
+              ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
+              : "Este link de redefinição expirou ou já foi usado."
         }
       >
         <Button asChild className="w-full">
