@@ -1440,6 +1440,96 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_my_platform_staff: { Args: never; Returns: boolean }
+      can_manage_platform_staff: { Args: never; Returns: boolean }
+      can_invite_platform_staff: { Args: { p_email: string }; Returns: boolean }
+      can_manage_platform_support_team: { Args: never; Returns: boolean }
+      get_my_platform_staff_access: {
+        Args: never
+        Returns: {
+          is_staff: boolean
+          staff_status: string | null
+          display_name: string | null
+          role_names: string[]
+          permission_codes: string[]
+        }[]
+      }
+      get_platform_staff_metrics: { Args: never; Returns: Json }
+      list_platform_staff: {
+        Args: never
+        Returns: {
+          user_id: string
+          email: string
+          display_name: string
+          status: string
+          created_at: string
+          activated_at: string | null
+          role_ids: string[]
+          role_names: string[]
+        }[]
+      }
+      list_platform_staff_audit_events: {
+        Args: { p_limit?: number }
+        Returns: {
+          id: string
+          action: string
+          entity: string
+          entity_id: string | null
+          created_at: string
+          actor_email: string | null
+          tenant_name: string | null
+        }[]
+      }
+      list_platform_staff_roles: {
+        Args: never
+        Returns: {
+          id: string
+          slug: string
+          name: string
+          description: string | null
+          is_system: boolean
+          is_active: boolean
+          permission_codes: string[]
+          staff_count: number
+        }[]
+      }
+      list_platform_staff_tenants: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          status: string
+          commercial_status: string
+          plan_tier: string
+          monthly_fee: number | null
+          municipality: string | null
+          state: string | null
+          created_at: string
+        }[]
+      }
+      register_platform_staff: {
+        Args: { p_user_id: string; p_email: string; p_display_name: string; p_role_ids: string[] }
+        Returns: undefined
+      }
+      save_platform_staff_role: {
+        Args: {
+          p_role_id: string | null
+          p_slug: string
+          p_name: string
+          p_description: string
+          p_permission_codes: string[]
+        }
+        Returns: string
+      }
+      set_platform_staff_roles: {
+        Args: { p_user_id: string; p_role_ids: string[] }
+        Returns: undefined
+      }
+      set_platform_staff_status: {
+        Args: { p_user_id: string; p_status: string }
+        Returns: undefined
+      }
       accept_my_tenant_invitations: { Args: never; Returns: number }
       add_tenant_member: {
         Args: { p_role_id: string; p_tenant_id: string; p_user_id: string }

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ function RedefinirSenha() {
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const convite = parametrosConvite?.get("convite") === "1";
   const conviteSuporte = convite && parametrosConvite?.get("tipo") === "suporte";
+  const conviteInterno = convite && parametrosConvite?.get("tipo") === "interno";
   const navigate = useNavigate();
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
@@ -54,6 +56,16 @@ function RedefinirSenha() {
       setErro(erroAtualizacao);
       return;
     }
+    if (conviteInterno) {
+      const { data: activated, error: activationError } = await db.rpc("activate_my_platform_staff");
+      if (activationError || activated !== true) {
+        setErro(activationError?.message ?? "O convite interno não pôde ser ativado. Solicite ao Administrador Master que verifique a situação do convite.");
+        return;
+      }
+      toast.success("Senha definida e acesso interno ativado.");
+      navigate({ to: "/admin-master" });
+      return;
+    }
     toast.success("Senha atualizada com sucesso.");
     navigate({ to: "/painel" });
   }
@@ -64,9 +76,11 @@ function RedefinirSenha() {
         title={
           conviteSuporte
             ? "Definir senha do suporte"
-            : convite
-              ? "Definir senha do convite"
-              : "Redefinir senha"
+            : conviteInterno
+              ? "Definir senha interna"
+              : convite
+                ? "Definir senha do convite"
+                : "Redefinir senha"
         }
         subtitle="Verificando seu link seguro…"
       >
@@ -82,9 +96,11 @@ function RedefinirSenha() {
         subtitle={
           conviteSuporte
             ? "Este convite de suporte expirou ou já foi utilizado. Solicite um novo convite ao Administrador Master."
-            : convite
-              ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
-              : "Este link de redefinição expirou ou já foi usado."
+            : conviteInterno
+              ? "Este convite interno expirou ou já foi utilizado. Solicite um novo convite ao Administrador Master."
+              : convite
+                ? "Este convite expirou ou já foi utilizado. Solicite um novo convite à Secretaria."
+                : "Este link de redefinição expirou ou já foi usado."
         }
       >
         <Button asChild className="w-full">
@@ -99,16 +115,20 @@ function RedefinirSenha() {
       title={
         conviteSuporte
           ? "Crie sua senha de suporte"
-          : convite
-            ? "Crie sua senha de acesso"
-            : "Redefinir senha"
+          : conviteInterno
+            ? "Crie sua senha de colaborador interno"
+            : convite
+              ? "Crie sua senha de acesso"
+              : "Redefinir senha"
       }
       subtitle={
         conviteSuporte
           ? "Seu e-mail foi confirmado. Defina uma senha para ativar sua conta técnica e acessar a Central de Suporte."
-          : convite
-            ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
-            : "Defina a nova senha da sua conta."
+          : conviteInterno
+            ? "Seu e-mail foi confirmado. Defina uma senha para ativar sua conta profissional no portal interno da plataforma."
+            : convite
+              ? "Seu e-mail foi confirmado. Defina uma senha para concluir o acesso à Secretaria."
+              : "Defina a nova senha da sua conta."
       }
     >
       <form onSubmit={aoEnviar} className="space-y-4">

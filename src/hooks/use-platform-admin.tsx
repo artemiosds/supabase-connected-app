@@ -4,6 +4,12 @@ import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 
 export type MasterTenant = Tables<"tenants">;
+export type PlatformStaffAccess = {
+  displayName: string;
+  status: string;
+  roleNames: string[];
+  permissionCodes: string[];
+};
 export type MasterMetrics = {
   mrr_estimated: number;
   active_clients: number;
@@ -89,6 +95,8 @@ function parseMetrics(value: Json | null): MasterMetrics {
 export function usePlatformAdmin() {
   const { session, loading: authLoading } = useAuth();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [staffAccess, setStaffAccess] = useState<PlatformStaffAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tenants, setTenants] = useState<MasterTenant[]>([]);
@@ -99,6 +107,8 @@ export function usePlatformAdmin() {
   const load = useCallback(async () => {
     if (!session?.user.id) {
       setAuthorized(false);
+      setIsPlatformAdmin(false);
+      setStaffAccess(null);
       setLoading(false);
       setTenants([]);
       return;
@@ -121,8 +131,32 @@ export function usePlatformAdmin() {
     }
 
     const isAdmin = adminResult.data?.user_id === session.user.id;
+    setIsPlatformAdmin(isAdmin);
     setAuthorized(isAdmin);
     if (!isAdmin) {
+      const staffResult = await db.rpc("get_my_platform_staff_access");
+      if (!staffResult.error && staffResult.data?.[0]) {
+        const staff = staffResult.data[0];
+        const access = {
+          displayName: staff.display_name ?? session.user.email ?? "Colaborador",
+          status: staff.staff_status ?? "invited",
+          roleNames: staff.role_names ?? [],
+          permissionCodes: staff.permission_codes ?? [],
+        };
+        setStaffAccess(access);
+        if (staff.is_staff && staff.staff_status === "active") {
+          setAuthorized(true);
+          setTenants([]);
+          setMetrics(METRICS_EMPTY);
+          setCandidates([]);
+          setAuditEvents([]);
+          setLoading(false);
+          return;
+        }
+      } else {
+        setStaffAccess(null);
+      }
+      setAuthorized(false);
       void db.rpc("log_platform_admin_access_attempt", { p_route: "/admin-master" });
       setTenants([]);
       setMetrics(METRICS_EMPTY);
@@ -132,6 +166,7 @@ export function usePlatformAdmin() {
       return;
     }
 
+    setStaffAccess(null);
     const [tenantResult, metricsResult, candidatesResult, auditResult] = await Promise.all([
       db.from("tenants").select("*").order("name", { ascending: true }),
       db.rpc("get_platform_master_metrics"),
@@ -209,6 +244,8 @@ export function usePlatformAdmin() {
   return {
     session,
     authorized,
+    isPlatformAdmin,
+    staffAccess,
     loading: authLoading || loading,
     error,
     tenants,

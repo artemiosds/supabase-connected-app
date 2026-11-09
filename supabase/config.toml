@@ -7,3 +7,6 @@ verify_jwt = true
 
 [functions.platform-billing-config]
 verify_jwt = true
+
+[functions.invite-platform-staff]
+verify_jwt = true

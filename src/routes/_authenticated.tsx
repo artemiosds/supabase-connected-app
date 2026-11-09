@@ -169,27 +169,45 @@ function AtalhoCentralSuporte() {
 function MenuLateral() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { session } = useAuth();
+  const navigate = useNavigate();
   const { selecionado, supportAccess } = useTenant();
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [isPlatformStaff, setIsPlatformStaff] = useState(false);
 
   useEffect(() => {
     let current = true;
     if (!session?.user.id) {
       setIsPlatformAdmin(false);
+      setIsPlatformStaff(false);
       return;
     }
-    db.from("platform_admins")
-      .select("user_id")
-      .eq("user_id", session.user.id)
-      .eq("is_active", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (current) setIsPlatformAdmin(!!data);
-      });
+    async function checkPlatformAccess() {
+      const { data: admin } = await db
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", session.user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!current) return;
+      setIsPlatformAdmin(!!admin);
+      if (admin) {
+        setIsPlatformStaff(false);
+        return;
+      }
+      const { data: staff } = await db.rpc("get_my_platform_staff_access");
+      if (current) {
+        const activeStaff = staff?.[0]?.is_staff === true && staff[0]?.staff_status === "active";
+        setIsPlatformStaff(activeStaff);
+        if (activeStaff && pathname === "/painel") {
+          void navigate({ to: "/admin-master", replace: true });
+        }
+      }
+    }
+    void checkPlatformAccess();
     return () => {
       current = false;
     };
-  }, [session?.user.id]);
+  }, [session?.user.id, pathname, navigate]);
 
   const supportOnly = !!supportAccess?.is_agent || !!supportAccess?.session_id;
   const allowedItems = itensMenu.filter((item) => {
@@ -200,7 +218,7 @@ function MenuLateral() {
 
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-      {isPlatformAdmin && !supportAccess?.session_id && (
+      {(isPlatformAdmin || isPlatformStaff) && !supportAccess?.session_id && (
         <Link
           to="/admin-master"
           className={cn(
@@ -209,7 +227,7 @@ function MenuLateral() {
           )}
         >
           <ShieldCheck className="h-4 w-4" aria-hidden />
-          Painel Master
+          {isPlatformStaff && !isPlatformAdmin ? "Portal Interno" : "Painel Master"}
         </Link>
       )}
       {(supportAccess?.is_agent || supportAccess?.is_platform_admin) && (
