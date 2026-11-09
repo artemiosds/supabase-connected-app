@@ -436,6 +436,7 @@ export function AdminMasterSupport({ tenants }: Props) {
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={agent.status !== "active"}
                             onClick={() => setSelectedAgentId(agent.user_id)}
                           >
                             Gerenciar acesso
