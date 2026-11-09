@@ -1,6 +1,6 @@
 # Configuração de convites por e-mail
 
-A funcionalidade de convite está implementada no projeto e a Edge Function `invite-tenant-user` está publicada no Supabase SMS2 com verificação JWT obrigatória.
+A funcionalidade de convite está implementada no projeto e a Edge Function `invite-tenant-user` está publicada no Supabase SMS2, versão **9**, com verificação JWT obrigatória. A Edge Function administrativa `platform-billing-config` está na versão **7**, também com JWT obrigatório.
 
 ## Provisionamento inicial e convites são etapas diferentes
 
@@ -52,7 +52,14 @@ Não publique o sistema com o domínio de produção ausente da lista de URLs pe
 
 ### 3. Origem permitida na Edge Function
 
-A função aceita o preview atual e o endereço local de desenvolvimento. Ao configurar o domínio definitivo, cadastre as origens adicionais como secrets da Edge Function:
+A validação de origem é compartilhada pelas duas Edge Functions e está versionada em `supabase/functions/_shared/origins.ts`.
+
+- Enquanto `APP_URL` estiver ausente, o modo de desenvolvimento aceita o preview Lovable atual e `http://localhost:5173`, além das origens explicitamente listadas.
+- Quando `APP_URL` estiver configurada, a função aceita somente a origem canônica e as origens em `INVITE_ALLOWED_ORIGINS`; preview e localhost deixam de ser aceitos implicitamente.
+- URL inválida em `APP_URL` resulta em lista vazia de origens (falha fechada).
+- Ambas as funções continuam exigindo JWT; a regra de CORS não substitui autenticação nem autorização.
+
+Ao configurar o domínio definitivo, cadastre as origens adicionais como secrets da Edge Function:
 
 - `APP_URL`: origem canônica, sem caminho.
 - `INVITE_ALLOWED_ORIGINS`: lista separada por vírgulas de origens permitidas, sem caminhos, por exemplo `https://app.seudominio.gov.br,https://homolog.seudominio.gov.br`.
@@ -75,7 +82,7 @@ Não grave `SUPABASE_SERVICE_ROLE_KEY` no frontend, em arquivos `.env` publicado
 - O Supabase SMS2 está ativo e saudável.
 - Há dois usuários Auth confirmados: o Administrador Master e uma segunda conta cadastrada. Essa segunda conta é a única elegível hoje para ser o primeiro administrador de uma Secretaria.
 - Ainda não existem Secretarias, vínculos municipais ou convites pendentes no banco.
-- A Edge Function de convites está ativa na versão 6; o código foi implantado, mas isso não comprova entrega de e-mail.
+- A Edge Function de convites está ativa na versão 9 e a função administrativa de cobrança na versão 7; ambas exigem JWT. O código está implantado, mas isso não comprova entrega de e-mail.
 - Para homologar duas Secretarias com administradores independentes, falta cadastrar e confirmar pelo menos mais uma conta municipal controlada. Não use a mesma conta nas duas Secretarias como prova de isolamento.
 - Para provar também o envio de convite, será necessário ao menos um endereço de teste adicional, diferente dos administradores municipais, para receber o e-mail de convite.
 - Não foi possível configurar SMTP nesta etapa: o acesso administrativo de configuração e as credenciais do provedor não estão disponíveis nesta conexão. Cadastre essas credenciais diretamente em Supabase → Authentication → SMTP Settings; não as envie em mensagens.
