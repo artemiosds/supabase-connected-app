@@ -50,7 +50,10 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Serviço de convites não configurado no servidor." }, 503, origin);
   }
 
-  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
+  const token = request.headers
+    .get("Authorization")
+    ?.replace(/^Bearer\s+/i, "")
+    .trim();
   if (!token) {
     return jsonResponse({ error: "Sessão autenticada obrigatória." }, 401, origin);
   }
@@ -96,8 +99,17 @@ Deno.serve(async (request: Request) => {
     global: { headers: { Authorization: "Bearer " + token } },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser(token);
-  if (authError || !authData.user || authData.user.is_anonymous || !authData.user.email_confirmed_at) {
-    return jsonResponse({ error: "Sua sessão expirou ou seu e-mail ainda não foi confirmado." }, 401, origin);
+  if (
+    authError ||
+    !authData.user ||
+    authData.user.is_anonymous ||
+    !authData.user.email_confirmed_at
+  ) {
+    return jsonResponse(
+      { error: "Sua sessão expirou ou seu e-mail ainda não foi confirmado." },
+      401,
+      origin,
+    );
   }
 
   // This table has a self-only SELECT policy: no user-editable metadata is trusted for authorization.
@@ -108,25 +120,36 @@ Deno.serve(async (request: Request) => {
     .eq("is_active", true)
     .maybeSingle();
   if (masterError || master?.user_id !== authData.user.id) {
-    return jsonResponse({ error: "Apenas o Administrador Master pode convidar técnicos." }, 403, origin);
+    return jsonResponse(
+      { error: "Apenas o Administrador Master pode convidar técnicos." },
+      403,
+      origin,
+    );
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
   const redirectTo = new URL("/redefinir-senha?convite=1&tipo=suporte", origin).toString();
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: { full_name: displayName, display_name: displayName },
-  });
+  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+    email,
+    {
+      redirectTo,
+      data: { full_name: displayName, display_name: displayName },
+    },
+  );
   if (inviteError || !inviteData.user) {
-    const throttled = inviteError?.status === 429 ||
-      inviteError?.message.toLowerCase().includes("rate limit");
-    return jsonResponse({
-      error: throttled
-        ? "O serviço de e-mail atingiu o limite de envio. Aguarde e tente novamente."
-        : "O convite não foi enviado. Verifique se o e-mail já possui conta e as configurações SMTP do Supabase.",
-    }, throttled ? 429 : 502, origin);
+    const throttled =
+      inviteError?.status === 429 || inviteError?.message.toLowerCase().includes("rate limit");
+    return jsonResponse(
+      {
+        error: throttled
+          ? "O serviço de e-mail atingiu o limite de envio. Aguarde e tente novamente."
+          : "O convite não foi enviado. Verifique se o e-mail já possui conta e as configurações SMTP do Supabase.",
+      },
+      throttled ? 429 : 502,
+      origin,
+    );
   }
 
   const { error: registerError } = await userClient.rpc("register_platform_support_agent", {
@@ -142,17 +165,30 @@ Deno.serve(async (request: Request) => {
   if (registerError) {
     const { error: cleanupError } = await adminClient.auth.admin.deleteUser(inviteData.user.id);
     if (cleanupError) {
-      console.error("Falha ao limpar conta após rejeição do cadastro de suporte.", cleanupError.message);
+      console.error(
+        "Falha ao limpar conta após rejeição do cadastro de suporte.",
+        cleanupError.message,
+      );
     }
     console.error("Falha ao registrar técnico convidado.", registerError.message);
-    return jsonResponse({
-      error: "O convite não foi concluído. A conta não recebeu acesso de suporte; verifique a organização e tente novamente.",
-    }, 409, origin);
+    return jsonResponse(
+      {
+        error:
+          "O convite não foi concluído. A conta não recebeu acesso de suporte; verifique a organização e tente novamente.",
+      },
+      409,
+      origin,
+    );
   }
 
-  return jsonResponse({
-    status: "invited",
-    email,
-    message: "Convite enviado. O acesso só será ativado após a confirmação do e-mail e o primeiro login.",
-  }, 200, origin);
+  return jsonResponse(
+    {
+      status: "invited",
+      email,
+      message:
+        "Convite enviado. O acesso só será ativado após a confirmação do e-mail e o primeiro login.",
+    },
+    200,
+    origin,
+  );
 });

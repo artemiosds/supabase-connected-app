@@ -111,7 +111,8 @@ export function AdminMasterSupport({ tenants }: Props) {
       setAssignments(rows);
       const firstTenant = rows[0]?.tenant_id ?? tenants[0]?.id ?? "";
       setAssignmentTenantId((current) =>
-        current && (rows.some((row) => row.tenant_id === current) || tenants.some((t) => t.id === current))
+        current &&
+        (rows.some((row) => row.tenant_id === current) || tenants.some((t) => t.id === current))
           ? current
           : firstTenant,
       );
@@ -229,7 +230,11 @@ export function AdminMasterSupport({ tenants }: Props) {
         p_status: nextStatus,
       });
       if (error) throw error;
-      toast.success(nextStatus === "suspended" ? "Técnico suspenso e sessões encerradas." : "Técnico reativado.");
+      toast.success(
+        nextStatus === "suspended"
+          ? "Técnico suspenso e sessões encerradas."
+          : "Técnico reativado.",
+      );
       await loadTeam();
       if (selectedAgentId) await loadAssignments(selectedAgentId);
     } catch (cause) {
@@ -264,7 +269,8 @@ export function AdminMasterSupport({ tenants }: Props) {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Equipe de Suporte</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Técnicos independentes dos administradores municipais, com acesso temporário e limitado por organização.
+          Técnicos independentes dos administradores municipais, com acesso temporário e limitado
+          por organização.
         </p>
       </div>
 
@@ -272,7 +278,8 @@ export function AdminMasterSupport({ tenants }: Props) {
         <CardHeader>
           <CardTitle>Convidar técnico</CardTitle>
           <CardDescription>
-            O convite cria uma conta exclusiva de suporte. O acesso só é ativado depois da confirmação do e-mail.
+            O convite cria uma conta exclusiva de suporte. O acesso só é ativado depois da
+            confirmação do e-mail.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -280,38 +287,89 @@ export function AdminMasterSupport({ tenants }: Props) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="support-invite-name">Nome completo</Label>
-                <Input id="support-invite-name" value={inviteName} onChange={(event) => setInviteName(event.target.value)} maxLength={120} required />
+                <Input
+                  id="support-invite-name"
+                  value={inviteName}
+                  onChange={(event) => setInviteName(event.target.value)}
+                  maxLength={120}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="support-invite-email">E-mail</Label>
-                <Input id="support-invite-email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} maxLength={254} required />
+                <Input
+                  id="support-invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  maxLength={254}
+                  required
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Primeira organização atribuída</Label>
                 <Select value={inviteTenantId} onValueChange={setInviteTenantId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione uma Secretaria" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma Secretaria" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {tenants.map((tenant) => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name}</SelectItem>)}
+                    {tenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="flex flex-wrap gap-5 rounded-lg border p-3">
               <div className="flex items-center gap-2">
-                <Switch id="support-invite-view" checked={invitePermissions.can_view_suppliers} onCheckedChange={(checked) => setInvitePermissions((current) => ({ ...current, can_view_suppliers: checked, can_create_suppliers: checked && current.can_create_suppliers, can_update_suppliers: checked && current.can_update_suppliers }))} />
+                <Switch
+                  id="support-invite-view"
+                  checked={invitePermissions.can_view_suppliers}
+                  onCheckedChange={(checked) =>
+                    setInvitePermissions((current) => ({
+                      ...current,
+                      can_view_suppliers: checked,
+                      can_create_suppliers: checked && current.can_create_suppliers,
+                      can_update_suppliers: checked && current.can_update_suppliers,
+                    }))
+                  }
+                />
                 <Label htmlFor="support-invite-view">Consultar fornecedores</Label>
               </div>
               <div className="flex items-center gap-2">
-                <Switch id="support-invite-create" checked={invitePermissions.can_create_suppliers} onCheckedChange={(checked) => setInvitePermissions((current) => ({ ...current, can_view_suppliers: checked || current.can_view_suppliers, can_create_suppliers: checked }))} />
+                <Switch
+                  id="support-invite-create"
+                  checked={invitePermissions.can_create_suppliers}
+                  onCheckedChange={(checked) =>
+                    setInvitePermissions((current) => ({
+                      ...current,
+                      can_view_suppliers: checked || current.can_view_suppliers,
+                      can_create_suppliers: checked,
+                    }))
+                  }
+                />
                 <Label htmlFor="support-invite-create">Cadastrar fornecedores</Label>
               </div>
               <div className="flex items-center gap-2">
-                <Switch id="support-invite-update" checked={invitePermissions.can_update_suppliers} onCheckedChange={(checked) => setInvitePermissions((current) => ({ ...current, can_view_suppliers: checked || current.can_view_suppliers, can_update_suppliers: checked }))} />
+                <Switch
+                  id="support-invite-update"
+                  checked={invitePermissions.can_update_suppliers}
+                  onCheckedChange={(checked) =>
+                    setInvitePermissions((current) => ({
+                      ...current,
+                      can_view_suppliers: checked || current.can_view_suppliers,
+                      can_update_suppliers: checked,
+                    }))
+                  }
+                />
                 <Label htmlFor="support-invite-update">Editar fornecedores</Label>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Técnicos não recebem permissão para excluir ou inativar fornecedores, alterar usuários, acessar documentos ou administrar a Secretaria.
+              Técnicos não recebem permissão para excluir ou inativar fornecedores, alterar
+              usuários, acessar documentos ou administrar a Secretaria.
             </p>
             <Button type="submit" disabled={sendingInvite || tenants.length === 0}>
               {sendingInvite ? "Enviando convite..." : "Enviar convite de suporte"}
@@ -323,7 +381,9 @@ export function AdminMasterSupport({ tenants }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Equipe cadastrada</CardTitle>
-          <CardDescription>Contas, situação dos convites e quantidade de organizações atribuídas.</CardDescription>
+          <CardDescription>
+            Contas, situação dos convites e quantidade de organizações atribuídas.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {loadingTeam ? (
@@ -349,15 +409,40 @@ export function AdminMasterSupport({ tenants }: Props) {
                         <p className="text-xs text-muted-foreground">{agent.email}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={agent.status === "active" ? "default" : agent.status === "suspended" ? "destructive" : "secondary"}>
-                          {agent.status === "active" ? "Ativo" : agent.status === "suspended" ? "Suspenso" : "Convite pendente"}
+                        <Badge
+                          variant={
+                            agent.status === "active"
+                              ? "default"
+                              : agent.status === "suspended"
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {agent.status === "active"
+                            ? "Ativo"
+                            : agent.status === "suspended"
+                              ? "Suspenso"
+                              : "Convite pendente"}
                         </Badge>
                       </TableCell>
                       <TableCell>{agent.assignment_count}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => setSelectedAgentId(agent.user_id)}>Gerenciar acesso</Button>
-                          <Button type="button" variant="ghost" size="sm" disabled={agent.status === "invited"} onClick={() => void toggleAgentStatus(agent)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedAgentId(agent.user_id)}
+                          >
+                            Gerenciar acesso
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={agent.status === "invited"}
+                            onClick={() => void toggleAgentStatus(agent)}
+                          >
                             {agent.status === "active" ? "Suspender" : "Reativar"}
                           </Button>
                         </div>
@@ -375,7 +460,9 @@ export function AdminMasterSupport({ tenants }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>Permissões por organização</CardTitle>
-            <CardDescription>Altere apenas o escopo do técnico selecionado. Mudanças são auditadas no banco.</CardDescription>
+            <CardDescription>
+              Altere apenas o escopo do técnico selecionado. Mudanças são auditadas no banco.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={saveAssignment} className="space-y-4">
@@ -383,50 +470,113 @@ export function AdminMasterSupport({ tenants }: Props) {
                 <div className="space-y-2">
                   <Label>Técnico</Label>
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um técnico" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um técnico" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {team.map((agent) => <SelectItem key={agent.user_id} value={agent.user_id}>{agent.display_name} · {agent.email}</SelectItem>)}
+                      {team.map((agent) => (
+                        <SelectItem key={agent.user_id} value={agent.user_id}>
+                          {agent.display_name} · {agent.email}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Organização</Label>
                   <Select value={assignmentTenantId} onValueChange={setAssignmentTenantId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione uma Secretaria" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma Secretaria" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {tenants.map((tenant) => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name}</SelectItem>)}
+                      {tenants.map((tenant) => (
+                        <SelectItem key={tenant.id} value={tenant.id}>
+                          {tenant.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              {loadingAssignments ? <p className="text-sm text-muted-foreground">Carregando permissões...</p> : (
+              {loadingAssignments ? (
+                <p className="text-sm text-muted-foreground">Carregando permissões...</p>
+              ) : (
                 <div className="space-y-4 rounded-lg border p-4">
                   <div className="flex items-center justify-between gap-4">
-                    <div><Label htmlFor="support-assignment-active">Atribuição ativa</Label><p className="text-xs text-muted-foreground">Desativar encerra qualquer sessão desse técnico nesta organização.</p></div>
-                    <Switch id="support-assignment-active" checked={permissionDraft.is_active} onCheckedChange={(checked) => setPermissionDraft((current) => ({ ...current, is_active: checked }))} />
+                    <div>
+                      <Label htmlFor="support-assignment-active">Atribuição ativa</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Desativar encerra qualquer sessão desse técnico nesta organização.
+                      </p>
+                    </div>
+                    <Switch
+                      id="support-assignment-active"
+                      checked={permissionDraft.is_active}
+                      onCheckedChange={(checked) =>
+                        setPermissionDraft((current) => ({ ...current, is_active: checked }))
+                      }
+                    />
                   </div>
                   <div className="flex flex-wrap gap-5">
                     <div className="flex items-center gap-2">
-                      <Switch id="support-assignment-view" checked={permissionDraft.can_view_suppliers} onCheckedChange={(checked) => setPermissionDraft((current) => ({ ...current, can_view_suppliers: checked, can_create_suppliers: checked && current.can_create_suppliers, can_update_suppliers: checked && current.can_update_suppliers }))} />
+                      <Switch
+                        id="support-assignment-view"
+                        checked={permissionDraft.can_view_suppliers}
+                        onCheckedChange={(checked) =>
+                          setPermissionDraft((current) => ({
+                            ...current,
+                            can_view_suppliers: checked,
+                            can_create_suppliers: checked && current.can_create_suppliers,
+                            can_update_suppliers: checked && current.can_update_suppliers,
+                          }))
+                        }
+                      />
                       <Label htmlFor="support-assignment-view">Consultar</Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch id="support-assignment-create" checked={permissionDraft.can_create_suppliers} onCheckedChange={(checked) => setPermissionDraft((current) => ({ ...current, can_view_suppliers: checked || current.can_view_suppliers, can_create_suppliers: checked }))} />
+                      <Switch
+                        id="support-assignment-create"
+                        checked={permissionDraft.can_create_suppliers}
+                        onCheckedChange={(checked) =>
+                          setPermissionDraft((current) => ({
+                            ...current,
+                            can_view_suppliers: checked || current.can_view_suppliers,
+                            can_create_suppliers: checked,
+                          }))
+                        }
+                      />
                       <Label htmlFor="support-assignment-create">Cadastrar</Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch id="support-assignment-update" checked={permissionDraft.can_update_suppliers} onCheckedChange={(checked) => setPermissionDraft((current) => ({ ...current, can_view_suppliers: checked || current.can_view_suppliers, can_update_suppliers: checked }))} />
+                      <Switch
+                        id="support-assignment-update"
+                        checked={permissionDraft.can_update_suppliers}
+                        onCheckedChange={(checked) =>
+                          setPermissionDraft((current) => ({
+                            ...current,
+                            can_view_suppliers: checked || current.can_view_suppliers,
+                            can_update_suppliers: checked,
+                          }))
+                        }
+                      />
                       <Label htmlFor="support-assignment-update">Editar</Label>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Não há permissão de exclusão/inativação nesta equipe.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Não há permissão de exclusão/inativação nesta equipe.
+                  </p>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={savingAssignment || loadingAssignments || !assignmentTenantId}>
+                <Button
+                  type="submit"
+                  disabled={savingAssignment || loadingAssignments || !assignmentTenantId}
+                >
                   {savingAssignment ? "Salvando..." : "Salvar atribuição"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setSelectedAgentId("")}>Fechar</Button>
+                <Button type="button" variant="outline" onClick={() => setSelectedAgentId("")}>
+                  Fechar
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -437,7 +587,8 @@ export function AdminMasterSupport({ tenants }: Props) {
         <CardHeader>
           <CardTitle>Modo de suporte do Administrador Master</CardTitle>
           <CardDescription>
-            Abra uma sessão temporária para operar Fornecedores em uma organização. Todas as ações ficam registradas.
+            Abra uma sessão temporária para operar Fornecedores em uma organização. Todas as ações
+            ficam registradas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -445,20 +596,40 @@ export function AdminMasterSupport({ tenants }: Props) {
             <div className="space-y-2">
               <Label>Organização de atendimento</Label>
               <Select value={masterTenantId} onValueChange={setMasterTenantId}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma Secretaria" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma Secretaria" />
+                </SelectTrigger>
                 <SelectContent>
-                  {tenants.map((tenant) => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name}</SelectItem>)}
+                  {tenants.map((tenant) => (
+                    <SelectItem key={tenant.id} value={tenant.id}>
+                      {tenant.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="master-support-reason">Motivo obrigatório do acesso</Label>
-              <Textarea id="master-support-reason" value={supportReason} onChange={(event) => setSupportReason(event.target.value)} minLength={10} maxLength={500} rows={3} placeholder="Descreva o chamado, solicitação ou tarefa que exige acesso..." />
+              <Textarea
+                id="master-support-reason"
+                value={supportReason}
+                onChange={(event) => setSupportReason(event.target.value)}
+                minLength={10}
+                maxLength={500}
+                rows={3}
+                placeholder="Descreva o chamado, solicitação ou tarefa que exige acesso..."
+              />
             </div>
-            <Button type="submit" disabled={startingSession || !masterTenantId || supportReason.trim().length < 10}>
+            <Button
+              type="submit"
+              disabled={startingSession || !masterTenantId || supportReason.trim().length < 10}
+            >
               {startingSession ? "Iniciando sessão..." : "Entrar no modo de suporte"}
             </Button>
-            <p className="text-xs text-muted-foreground">Sessão de 60 minutos. O escopo fica limitado ao módulo Fornecedores, sem exclusão ou inativação.</p>
+            <p className="text-xs text-muted-foreground">
+              Sessão de 60 minutos. O escopo fica limitado ao módulo Fornecedores, sem exclusão ou
+              inativação.
+            </p>
           </form>
         </CardContent>
       </Card>

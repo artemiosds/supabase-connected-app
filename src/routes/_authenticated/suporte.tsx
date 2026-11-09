@@ -110,10 +110,14 @@ function CentralSuporte() {
       <Card className="mx-auto max-w-xl">
         <CardHeader>
           <CardTitle>Acesso restrito</CardTitle>
-          <CardDescription>Esta central é exclusiva da equipe técnica de suporte e do Administrador Master.</CardDescription>
+          <CardDescription>
+            Esta central é exclusiva da equipe técnica de suporte e do Administrador Master.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={() => void navigate({ to: "/painel" })}>Voltar ao painel</Button>
+          <Button variant="outline" onClick={() => void navigate({ to: "/painel" })}>
+            Voltar ao painel
+          </Button>
         </CardContent>
       </Card>
     );
@@ -125,7 +129,8 @@ function CentralSuporte() {
         <AlertTriangle className="h-4 w-4" aria-hidden />
         <AlertTitle>Conta de suporte indisponível</AlertTitle>
         <AlertDescription>
-          O convite precisa ser confirmado e ativado ou a conta foi suspensa. Entre em contato com o Administrador Master.
+          O convite precisa ser confirmado e ativado ou a conta foi suspensa. Entre em contato com o
+          Administrador Master.
         </AlertDescription>
       </Alert>
     );
@@ -150,25 +155,32 @@ function CentralSuporte() {
               <CardTitle>Sessão de suporte em andamento</CardTitle>
               <Badge variant="default">Acesso temporário ativo</Badge>
             </div>
-            <CardDescription>{supportAccess?.tenant_name ?? "Organização selecionada"}</CardDescription>
+            <CardDescription>
+              {supportAccess?.tenant_name ?? "Organização selecionada"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg border p-4">
               <p className="text-sm font-medium">Motivo registrado</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{supportAccess?.reason}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                {supportAccess?.reason}
+              </p>
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock3 className="h-4 w-4" aria-hidden />
                 Expira em {dataHora(supportAccess?.expires_at ?? null)}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void navigate({ to: "/fornecedores" })}>Abrir fornecedores</Button>
+              <Button onClick={() => void navigate({ to: "/fornecedores" })}>
+                Abrir fornecedores
+              </Button>
               <Button variant="outline" onClick={() => void endSession()} disabled={ending}>
                 {ending ? "Encerrando..." : "Encerrar sessão"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              A autorização é validada novamente no banco em cada operação. Suspensão do técnico ou da atribuição revoga imediatamente o acesso.
+              A autorização é validada novamente no banco em cada operação. Suspensão do técnico ou
+              da atribuição revoga imediatamente o acesso.
             </p>
           </CardContent>
         </Card>
@@ -177,7 +189,8 @@ function CentralSuporte() {
           <CardHeader>
             <CardTitle>Iniciar atendimento</CardTitle>
             <CardDescription>
-              Escolha apenas uma Secretaria autorizada e informe o motivo. O acesso expira automaticamente em 60 minutos.
+              Escolha apenas uma Secretaria autorizada e informe o motivo. O acesso expira
+              automaticamente em 60 minutos.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -185,7 +198,8 @@ function CentralSuporte() {
               <Alert>
                 <AlertTitle>Nenhuma organização atribuída</AlertTitle>
                 <AlertDescription>
-                  Solicite ao Administrador Master uma atribuição ativa com permissão de consulta de fornecedores.
+                  Solicite ao Administrador Master uma atribuição ativa com permissão de consulta de
+                  fornecedores.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -193,10 +207,14 @@ function CentralSuporte() {
                 <div className="space-y-2">
                   <Label>Organização autorizada</Label>
                   <Select value={tenantId} onValueChange={setTenantId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione uma Secretaria" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma Secretaria" />
+                    </SelectTrigger>
                     <SelectContent>
                       {tenants.map((tenant) => (
-                        <SelectItem key={tenant.id} value={tenant.id}>{tenant.nome}</SelectItem>
+                        <SelectItem key={tenant.id} value={tenant.id}>
+                          {tenant.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -225,7 +243,9 @@ function CentralSuporte() {
       <Alert>
         <AlertTitle>Limites desta conta</AlertTitle>
         <AlertDescription>
-          A equipe técnica atua somente no módulo Fornecedores, conforme a permissão atribuída. Não recebe perfil municipal, não altera usuários, planos, cobranças ou módulos e não pode excluir ou inativar fornecedores.
+          A equipe técnica atua somente no módulo Fornecedores, conforme a permissão atribuída. Não
+          recebe perfil municipal, não altera usuários, planos, cobranças ou módulos e não pode
+          excluir ou inativar fornecedores.
         </AlertDescription>
       </Alert>
       <p className="text-xs text-muted-foreground">Conta autenticada: {session?.user.email}</p>

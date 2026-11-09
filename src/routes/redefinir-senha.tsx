@@ -61,7 +61,13 @@ function RedefinirSenha() {
   if (loading) {
     return (
       <AuthShell
-        title={conviteSuporte ? "Definir senha do suporte" : convite ? "Definir senha do convite" : "Redefinir senha"}
+        title={
+          conviteSuporte
+            ? "Definir senha do suporte"
+            : convite
+              ? "Definir senha do convite"
+              : "Redefinir senha"
+        }
         subtitle="Verificando seu link seguro…"
       >
         <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
@@ -88,7 +94,13 @@ function RedefinirSenha() {
 
   return (
     <AuthShell
-      title={conviteSuporte ? "Crie sua senha de suporte" : convite ? "Crie sua senha de acesso" : "Redefinir senha"}
+      title={
+        conviteSuporte
+          ? "Crie sua senha de suporte"
+          : convite
+            ? "Crie sua senha de acesso"
+            : "Redefinir senha"
+      }
       subtitle={
         conviteSuporte
           ? "Seu e-mail foi confirmado. Defina uma senha para ativar sua conta técnica e acessar a Central de Suporte."
