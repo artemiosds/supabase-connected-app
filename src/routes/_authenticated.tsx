@@ -147,7 +147,7 @@ function LayoutAutenticado() {
 function MenuLateral() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { session } = useAuth();
-  const { selecionado } = useTenant();
+  const { selecionado, supportAccess } = useTenant();
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
@@ -169,7 +169,9 @@ function MenuLateral() {
     };
   }, [session?.user.id]);
 
+  const supportOnly = !!supportAccess?.is_agent || !!supportAccess?.session_id;
   const allowedItems = itensMenu.filter((item) => {
+    if (supportOnly) return !!supportAccess?.session_id && item.para === "/fornecedores";
     if (!item.module || !selecionado) return true;
     return selecionado.enabled_modules[item.module] === true;
   });
@@ -186,6 +188,20 @@ function MenuLateral() {
         >
           <ShieldCheck className="h-4 w-4" aria-hidden />
           Painel Master
+        </Link>
+      )}
+      {(supportAccess?.is_agent || supportAccess?.is_platform_admin) && (
+        <Link
+          to="/suporte"
+          className={cn(
+            "mb-2 flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors",
+            pathname === "/suporte"
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-transparent text-muted-foreground hover:bg-sidebar-accent/60",
+          )}
+        >
+          <ShieldCheck className="h-4 w-4" aria-hidden />
+          Central de Suporte
         </Link>
       )}
       {allowedItems.map(({ para, rotulo, icone: Icone }) => {
@@ -211,8 +227,9 @@ function MenuLateral() {
 }
 
 function ConteudoPortal() {
-  const { selecionado, loading } = useTenant();
+  const { selecionado, loading, supportAccess } = useTenant();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const supportOnly = !!supportAccess?.is_agent || !!supportAccess?.session_id;
 
   if (loading) {
     return (
@@ -222,6 +239,41 @@ function ConteudoPortal() {
     );
   }
 
+  if (supportOnly && supportAccess?.is_agent && !supportAccess.session_id && pathname !== "/suporte") {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center">
+        <div className="w-full rounded-xl border bg-card p-6 text-center sm:p-8">
+          <ShieldCheck className="mx-auto h-8 w-8 text-primary" aria-hidden />
+          <h1 className="mt-4 text-xl font-semibold">Inicie um atendimento autorizado</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sua conta técnica não possui uma sessão temporária aberta. Acesse a central, selecione uma Secretaria atribuída e informe o motivo do atendimento.
+          </p>
+          <Button asChild className="mt-4"><Link to="/suporte">Abrir Central de Suporte</Link></Button>
+        </div>
+      </div>
+    );
+  }
+  if (supportOnly && pathname !== "/suporte" && pathname !== "/fornecedores") {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center">
+        <div className="w-full rounded-xl border bg-card p-6 text-center sm:p-8">
+          <LockKeyhole className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
+          <h1 className="mt-4 text-xl font-semibold">Acesso limitado ao suporte</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Durante uma sessão, esta conta só pode acessar a Central de Suporte e o módulo Fornecedores da organização atendida.
+          </p>
+          <Button asChild className="mt-4" variant="outline"><Link to="/suporte">Ver sessão de suporte</Link></Button>
+        </div>
+      </div>
+    );
+  }
+  if (supportOnly && pathname === "/fornecedores" && !supportAccess?.session_id) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <Button asChild variant="outline"><Link to="/suporte">Iniciar sessão de suporte</Link></Button>
+      </div>
+    );
+  }
   if (!selecionado) return <Outlet />;
 
   const accessState = getTenantAccessState(selecionado);
@@ -302,8 +354,18 @@ function ConteudoPortal() {
 }
 
 function SeletorOrganizacao() {
-  const { tenants, selecionado, selecionar, loading, bancoPendente } = useTenant();
+  const { tenants, selecionado, selecionar, loading, bancoPendente, supportAccess } = useTenant();
 
+  if (supportAccess?.session_id) {
+    return (
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">Atendimento temporário</p>
+        <p className="max-w-[280px] truncate text-sm font-semibold" title={supportAccess.tenant_name ?? undefined}>
+          {supportAccess.tenant_name ?? selecionado?.nome ?? "Organização"}
+        </p>
+      </div>
+    );
+  }
   if (bancoPendente)
     return (
       <span className="text-sm text-muted-foreground">
