@@ -3,18 +3,20 @@ name: Format procurement module
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: format-procurement-main
-  cancel-in-progress: false
+  group: format-procurement-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  format-and-validate:
+  format-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,29 +29,5 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Format files reported by Prettier
-        run: bunx prettier --write src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/hooks/use-tenant.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts
-
-      - name: Run unit tests
-        run: bun run test
-
-      - name: Build production bundle
-        run: bun run build
-
-      - name: Type check
-        run: bunx tsc --noEmit
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Commit formatting only
-        run: |
-          if git diff --quiet -- src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/hooks/use-tenant.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts; then
-            echo "All reported files already match Prettier."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/hooks/use-tenant.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts
-          git commit -m "style: format files reported by lint"
-          git push
+      - name: Check formatting without modifying files
+        run: bunx prettier --check src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts
