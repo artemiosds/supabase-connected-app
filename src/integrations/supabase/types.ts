@@ -1434,6 +1434,40 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_platform_support_agent: {
+        Args: { p_user_id: string; p_display_name: string };
+        Returns: undefined;
+      };
+      register_platform_support_agent: {
+        Args: {
+          p_user_id: string;
+          p_email: string;
+          p_display_name: string;
+          p_tenant_id: string;
+          p_can_view_suppliers?: boolean;
+          p_can_create_suppliers?: boolean;
+          p_can_update_suppliers?: boolean;
+        };
+        Returns: undefined;
+      };
+      activate_my_platform_support_agent: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      get_my_platform_support_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          is_agent: boolean;
+          agent_status: string | null;
+          is_platform_admin: boolean;
+          session_id: string | null;
+          tenant_id: string | null;
+          tenant_name: string | null;
+          reason: string | null;
+          expires_at: string | null;
+          allowed_actions: string[] | null;
+        }[];
+      };
       is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_my_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       list_platform_support_candidates: {
