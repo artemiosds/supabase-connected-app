@@ -1498,10 +1498,7 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: { id: string; name: string; slug: string; status: string }[];
       };
-      add_platform_support_agent: {
-        Args: { p_user_id: string; p_display_name: string };
-        Returns: undefined;
-      };
+
       set_platform_support_agent_status: {
         Args: { p_user_id: string; p_status: string };
         Returns: undefined;
