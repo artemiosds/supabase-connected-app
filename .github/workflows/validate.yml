@@ -48,3 +48,24 @@ jobs:
 
       - name: Lint
         run: bun run lint
+
+  database-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Apply migrations to disposable local database
+        run: supabase db reset --local
+
+      - name: Run database security regression tests
+        run: supabase test db
