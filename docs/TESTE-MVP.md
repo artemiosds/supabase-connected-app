@@ -6,11 +6,12 @@ Este roteiro é para testar o sistema com contas e registros de teste reais, sem
 
 O SMS2 já possui um administrador global ativo e confirmado. **Não execute novamente** `supabase/operations/bootstrap_first_platform_admin.sql`; esse script é reservado a uma instalação nova, sem administrador global.
 
-1. Acesse `/cadastro` em uma janela anônima e crie uma segunda conta com um e-mail que você controla.
-2. Confirme o e-mail pelo link recebido.
-3. Volte à conta de administrador global e abra **Organizações**.
-4. Crie uma Secretaria de teste e escolha a segunda conta como administrador municipal.
-5. Entre com a conta municipal. A conta global é administrativa da plataforma e não recebe acesso operacional automático à Secretaria.
+1. Confirme que há uma segunda conta municipal controlada e com e-mail confirmado. No estado atual do SMS2, existe uma única conta elegível além do Master.
+2. Para a segunda Secretaria, configure primeiro o SMTP próprio e então acesse `/cadastro` em janela anônima com outro endereço controlado; confirme o e-mail recebido.
+3. Volte à conta de Administrador Master e abra **Organizações**.
+4. Crie a Secretaria A e escolha a primeira conta municipal como administrador.
+5. Crie a Secretaria B e escolha a segunda conta municipal, diferente da primeira.
+6. Entre em cada Secretaria com seu administrador próprio. A conta global é administrativa da plataforma e não recebe acesso operacional automático.
 
 ## 2. Validar fornecedores
 
@@ -65,7 +66,7 @@ O SMS2 já possui um administrador global ativo e confirmado. **Não execute nov
 
 Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homologação em **Authentication → URL Configuration**. Consulte `docs/CONFIGURAR-CONVITES-E-MAIL.md`.
 
-1. Com um administrador municipal, convide um endereço de e-mail novo e selecione o papel Operador.
+1. Com o administrador municipal da Secretaria A, convide um endereço de e-mail novo, diferente dos dois administradores municipais, e selecione o papel Operador. O SMTP próprio deve estar ativo antes do envio.
 2. Confirme a entrega da mensagem, abra o link, confirme o endereço e defina uma senha.
 3. Entre com a conta convidada e confira que o vínculo foi criado somente na Secretaria que enviou o convite e com o papel selecionado.
 4. Tente aceitar o mesmo convite novamente; não deve criar vínculo duplicado.
@@ -88,7 +89,7 @@ Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homol
 
 ## 9. Validar separação entre Secretarias
 
-1. Crie uma segunda Secretaria de teste com outra conta municipal.
+1. Use a Secretaria B já provisionada com o administrador municipal distinto; não reutilize a conta da Secretaria A.
 2. Cadastre fornecedores e documentos em ambas.
 3. Entre em cada conta e confira que somente os registros da própria Secretaria aparecem.
 4. Tente usar IDs de registros da outra Secretaria em operações diretas; o banco deve negar a leitura e a alteração.
@@ -108,7 +109,7 @@ Antes do teste, configure SMTP próprio no Supabase e inclua o domínio de homol
 - Alertas de vencimento são exibidos no painel e na listagem; envio automático de e-mail/WhatsApp ainda precisa de um provedor e configuração.
 - A proteção de senhas vazadas do Supabase Auth deve ser ativada antes de produção.
 
-Não use dados pessoais reais nos primeiros testes. Prefira fornecedores e documentos fictícios de homologação.
+Não use dados pessoais reais nos primeiros testes. Prefira fornecedores e documentos fictícios de homologação. Não considere convite validado somente pela linha `pending`: confirme recebimento do e-mail, abertura do link, definição de senha, primeiro login e criação do vínculo.
 
 
 ## 11. Validar contratos e aditivos
