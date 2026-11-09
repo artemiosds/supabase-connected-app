@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
 import { AdminMasterSupport } from "@/components/admin-master-support";
+import { TenantProvider } from "@/hooks/use-tenant";
 import {
   usePlatformAdmin,
   type AdminCandidate,
@@ -75,7 +76,7 @@ export const Route = createFileRoute("/admin-master")({
       },
     ],
   }),
-  component: AdminMaster,
+  component: AdminMasterPage,
 });
 
 const MODULES = [
@@ -1354,5 +1355,13 @@ function AdminMaster() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function AdminMasterPage() {
+  return (
+    <TenantProvider>
+      <AdminMaster />
+    </TenantProvider>
   );
 }

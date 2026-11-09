@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { db, bancoNaoConfigurado } from "@/lib/db";
+import { supportRpc } from "@/lib/support-rpc";
 import { useAuth } from "@/hooks/use-auth";
 
 export type Tenant = {
@@ -143,12 +144,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
         // Conta exclusivamente de suporte não recebe associação nem papel municipal.
         if (resolvedTenants.length === 0) {
-          const { data: activated, error: activationError } = await db.rpc(
+          const { data: activated, error: activationError } = await supportRpc(
             "activate_my_platform_support_agent",
           );
           if (activationError) throw activationError;
           if (activated === true) {
-            const { data: assigned, error: supportTenantsError } = await db.rpc(
+            const { data: assigned, error: supportTenantsError } = await supportRpc(
               "list_my_platform_support_tenants_safe",
             );
             if (supportTenantsError) throw supportTenantsError;
@@ -168,7 +169,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const { data: supportStatus, error: supportStatusError } = await db.rpc(
+      const { data: supportStatus, error: supportStatusError } = await supportRpc(
         "get_my_platform_support_status",
       );
       if (supportStatusError) throw supportStatusError;

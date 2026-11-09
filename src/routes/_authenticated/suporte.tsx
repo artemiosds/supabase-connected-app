@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { db } from "@/lib/db";
+import { supportRpc } from "@/lib/support-rpc";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,7 @@ function CentralSuporte() {
     }
     setSaving(true);
     try {
-      const { data, error } = await db.rpc("start_platform_support_session", {
+      const { data, error } = await supportRpc("start_platform_support_session", {
         p_tenant_id: tenantId,
         p_reason: reason.trim(),
       });
@@ -82,7 +83,7 @@ function CentralSuporte() {
     if (!supportAccess?.session_id) return;
     setEnding(true);
     try {
-      const { error } = await db.rpc("end_platform_support_session", {
+      const { error } = await supportRpc("end_platform_support_session", {
         p_session_id: supportAccess.session_id,
       });
       if (error) throw error;

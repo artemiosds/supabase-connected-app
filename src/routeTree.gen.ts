@@ -24,8 +24,8 @@ import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOrganizacoesRouteImport } from './routes/_authenticated/organizacoes'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedProcessosRouteImport } from './routes/_authenticated/processos'
-import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedSuporteRouteImport } from './routes/_authenticated/suporte'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -104,14 +104,14 @@ const AuthenticatedProcessosRoute = AuthenticatedProcessosRouteImport.update({
   path: '/processos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedSuporteRoute = AuthenticatedSuporteRouteImport.update({
   id: '/suporte',
   path: '/suporte',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
@@ -130,8 +130,8 @@ export interface FileRoutesByFullPath {
   '/organizacoes': typeof AuthenticatedOrganizacoesRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/processos': typeof AuthenticatedProcessosRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/suporte': typeof AuthenticatedSuporteRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -148,6 +148,7 @@ export interface FileRoutesByTo {
   '/organizacoes': typeof AuthenticatedOrganizacoesRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/processos': typeof AuthenticatedProcessosRoute
+  '/suporte': typeof AuthenticatedSuporteRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
@@ -167,6 +168,7 @@ export interface FileRoutesById {
   '/_authenticated/organizacoes': typeof AuthenticatedOrganizacoesRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/processos': typeof AuthenticatedProcessosRoute
+  '/_authenticated/suporte': typeof AuthenticatedSuporteRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
@@ -186,6 +188,7 @@ export interface FileRouteTypes {
     | '/organizacoes'
     | '/painel'
     | '/processos'
+    | '/suporte'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -203,6 +206,7 @@ export interface FileRouteTypes {
     | '/organizacoes'
     | '/painel'
     | '/processos'
+    | '/suporte'
     | '/usuarios'
   id:
     | '__root__'
@@ -221,8 +225,8 @@ export interface FileRouteTypes {
     | '/_authenticated/organizacoes'
     | '/_authenticated/painel'
     | '/_authenticated/processos'
-    | '/_authenticated/usuarios'
     | '/_authenticated/suporte'
+    | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -342,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProcessosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/suporte': {
+      id: '/_authenticated/suporte'
+      path: '/suporte'
+      fullPath: '/suporte'
+      preLoaderRoute: typeof AuthenticatedSuporteRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -361,8 +372,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOrganizacoesRoute: typeof AuthenticatedOrganizacoesRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
   AuthenticatedProcessosRoute: typeof AuthenticatedProcessosRoute
-  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedSuporteRoute: typeof AuthenticatedSuporteRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -374,8 +385,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOrganizacoesRoute: AuthenticatedOrganizacoesRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRoute,
   AuthenticatedProcessosRoute: AuthenticatedProcessosRoute,
-  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedSuporteRoute: AuthenticatedSuporteRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

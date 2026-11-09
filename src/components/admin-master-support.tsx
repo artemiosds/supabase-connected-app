@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
+import { supportRpc } from "@/lib/support-rpc";
 import { useTenant } from "@/hooks/use-tenant";
 import type { MasterTenant } from "@/hooks/use-platform-admin";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +87,7 @@ export function AdminMasterSupport({ tenants }: Props) {
 
   async function loadTeam() {
     setLoadingTeam(true);
-    const { data, error } = await db.rpc("list_platform_support_team");
+    const { data, error } = await supportRpc("list_platform_support_team");
     if (error) {
       toast.error("Não foi possível carregar a equipe de suporte.");
       setTeam([]);
@@ -102,7 +103,7 @@ export function AdminMasterSupport({ tenants }: Props) {
 
   async function loadAssignments(agentId: string) {
     setLoadingAssignments(true);
-    const { data, error } = await db.rpc("list_platform_support_assignments", {
+    const { data, error } = await supportRpc("list_platform_support_assignments", {
       p_agent_user_id: agentId,
     });
     if (error) {
@@ -201,7 +202,7 @@ export function AdminMasterSupport({ tenants }: Props) {
     }
     setSavingAssignment(true);
     try {
-      const { error } = await db.rpc("set_platform_support_assignment", {
+      const { error } = await supportRpc("set_platform_support_assignment", {
         p_agent_user_id: selectedAgentId,
         p_tenant_id: assignmentTenantId,
         p_is_active: permissionDraft.is_active,
@@ -227,7 +228,7 @@ export function AdminMasterSupport({ tenants }: Props) {
     }
     const nextStatus = agent.status === "active" ? "suspended" : "active";
     try {
-      const { error } = await db.rpc("set_platform_support_agent_status", {
+      const { error } = await supportRpc("set_platform_support_agent_status", {
         p_user_id: agent.user_id,
         p_status: nextStatus,
       });
@@ -252,7 +253,7 @@ export function AdminMasterSupport({ tenants }: Props) {
     }
     setStartingSession(true);
     try {
-      const { error } = await db.rpc("start_platform_support_session", {
+      const { error } = await supportRpc("start_platform_support_session", {
         p_tenant_id: masterTenantId,
         p_reason: supportReason.trim(),
       });
