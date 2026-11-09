@@ -50,7 +50,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Serviço de convites não configurado no servidor." }, 503, origin);
   }
 
-  const token = request.headers.get("Authorization")?.replace(/^Bearer\\s+/i, "").trim();
+  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   if (!token) {
     return jsonResponse({ error: "Sessão autenticada obrigatória." }, 401, origin);
   }
@@ -72,7 +72,7 @@ Deno.serve(async (request: Request) => {
   const email = body.email?.trim().toLowerCase() ?? "";
   const displayName = body.display_name?.trim() ?? "";
   const tenantId = body.tenant_id?.trim() ?? "";
-  const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const canView = body.can_view_suppliers !== false;
   const canCreate = body.can_create_suppliers === true;
