@@ -1,25 +1,5 @@
+import { getAllowedOrigins } from "../_shared/origins.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
-
-const PREVIEW_ORIGIN = "https://id-preview--0f44b9ce-9cdb-4fc9-892b-0bd2cf70b798.lovable.app";
-
-function getAllowedOrigins(): Set<string> {
-  const configured = (Deno.env.get("INVITE_ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const appUrl = Deno.env.get("APP_URL")?.trim();
-  return new Set(
-    [PREVIEW_ORIGIN, "http://localhost:5173", ...(appUrl ? [appUrl] : []), ...configured]
-      .map((value) => {
-        try {
-          return new URL(value).origin;
-        } catch {
-          return "";
-        }
-      })
-      .filter(Boolean),
-  );
-}
 
 function jsonResponse(payload: Record<string, unknown>, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
@@ -44,7 +24,7 @@ Deno.serve(async (request: Request) => {
     origin = "";
   }
 
-  if (!origin || !getAllowedOrigins().has(origin)) {
+  if (!origin || !getAllowedOrigins((name) => Deno.env.get(name)).has(origin)) {
     return new Response("Origin não autorizado.", { status: 403 });
   }
 
