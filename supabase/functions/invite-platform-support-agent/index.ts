@@ -114,7 +114,7 @@ Deno.serve(async (request: Request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
-  const redirectTo = new URL("/redefinir-senha?convite=suporte", origin).toString();
+  const redirectTo = new URL("/redefinir-senha?convite=1&tipo=suporte", origin).toString();
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
     redirectTo,
     data: { full_name: displayName, display_name: displayName },
