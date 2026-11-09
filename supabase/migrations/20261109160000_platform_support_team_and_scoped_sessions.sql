@@ -323,4 +323,23 @@ CREATE POLICY p_suppliers_select ON public.suppliers FOR SELECT TO authenticated
  USING(app_auth.has_supplier_permission(tenant_id,'suppliers:view'));
 DROP POLICY IF EXISTS p_master_support_read_suppliers ON public.suppliers;
 
+
+CREATE OR REPLACE FUNCTION public.list_my_platform_support_tenants_safe()
+RETURNS TABLE(id uuid,name text,slug text,status text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $f$
+ SELECT t.id,t.name,t.slug,t.status
+ FROM public.tenants t
+ JOIN public.platform_support_assignments a ON a.tenant_id=t.id
+  AND a.agent_user_id=(SELECT auth.uid()) AND a.is_active AND a.can_view_suppliers
+ JOIN public.platform_support_agents sa ON sa.user_id=a.agent_user_id AND sa.status='active'
+ JOIN auth.users u ON u.id=sa.user_id AND u.email_confirmed_at IS NOT NULL
+ WHERE t.status='active' AND app_auth.is_tenant_in_good_standing(t.id)
+  AND app_auth.is_tenant_module_enabled(t.id,'fornecedores')
+ ORDER BY t.name;
+$f$;
+REVOKE ALL ON FUNCTION public.list_my_platform_support_tenants_safe() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.list_my_platform_support_tenants_safe() TO authenticated;
+
+
 COMMIT;

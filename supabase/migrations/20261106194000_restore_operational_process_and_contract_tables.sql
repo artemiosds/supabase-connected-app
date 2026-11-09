@@ -32,6 +32,18 @@ CREATE TABLE IF NOT EXISTS public.process_items (
  CONSTRAINT process_items_document_url_check CHECK (document_url IS NULL OR document_url ~* '^https://'),
  CONSTRAINT fk_item_process FOREIGN KEY (tenant_id,process_id) REFERENCES public.procurement_processes(tenant_id,id) ON DELETE RESTRICT
 );
+-- The contract supplier FK must reference a declared tenant-scoped key.
+DO $supplier_key$
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_catalog.pg_constraint
+  WHERE conrelid='public.suppliers'::regclass AND conname='suppliers_tenant_id_unique'
+ ) THEN
+  ALTER TABLE public.suppliers ADD CONSTRAINT suppliers_tenant_id_unique UNIQUE (tenant_id,id);
+ END IF;
+END
+$supplier_key$;
+
 CREATE TABLE IF NOT EXISTS public.contracts (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
  number text NOT NULL, object text NOT NULL, supplier_id uuid, process_id uuid,
