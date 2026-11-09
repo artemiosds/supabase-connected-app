@@ -9,14 +9,14 @@ Atualizado em **09/11/2026**, com conferência direta do repositório GitHub mai
 - **Pré-visualização:** Lovable conectado ao GitHub. O preview pronto e um build verde não substituem homologação autenticada no navegador.
 - **Migrations:** 47 aplicadas no Supabase e 47 arquivos SQL correspondentes em supabase/migrations. Não há migration aplicada ausente no repositório nem arquivo SQL versionado pendente. As três últimas são 20261108200651_create_procurement_process_with_atomic_checklist, 20261108210335_select_procurement_quote_including_delivery_cost e 20261108211206_guard_contract_amendment_value_and_dates.
 - **Banco operacional:** 24 tabelas no schema público; 24/24 com RLS habilitado e 13/24 com FORCE ROW LEVEL SECURITY. Existem 18 permissões cadastradas.
-- **Identidades:** 2 usuários Auth, dos quais 1 é Administrador Master ativo. Há 0 Secretarias, 0 vínculos municipais e 0 convites.
-- **Dados operacionais:** 0 fornecedores, 0 documentos de fornecedor, 0 modelos instalados por Secretaria, 0 processos, 0 itens de processo/checklist, 0 itens de contratação, 0 cotações, 0 dotações, 0 contratos, 0 aditivos e 0 documentos gerados. O catálogo global tem 5 modelos-base.
+- **Identidades e clientes:** 2 usuários Auth; 1 Administrador Master ativo; 1 Secretaria ativa (Secretaria Municipal de Saúde de Oriximiná), com 1 vínculo municipal ativo e papel `admin`; 0 convites pendentes. A Secretaria já existente foi preservada e não foi criada nem alterada por esta rodada.
+- **Dados operacionais:** na Secretaria ativa observada, 0 fornecedores, 0 documentos de fornecedor, 0 modelos instalados, 0 processos, 0 itens de contratação, 0 cotações, 0 dotações, 0 contratos, 0 aditivos e 0 documentos gerados. O catálogo global tem 5 modelos-base.
 - **GED:** bucket gfs-private-documents existe, é privado e tem limite de 20 MiB; 0 objetos armazenados.
 - **Cobrança:** 0 contas de gateway cadastradas; payments_enabled=false. Não existe cobrança real ativa.
 - **Integrações ativas:** duas Edge Functions (`invite-tenant-user` v9 e `platform-billing-config` v7). Não há função publicada de alertas de vencimento nem OAuth/sincronização do Google Drive.
 - **Agendamento:** `pg_cron` e `pg_net` não estão instalados; `cron.job` não existe no projeto. Alertas recorrentes ainda não podem ser considerados configurados.
 - **Proteção do código:** a branch `main` está sem proteção e sem checks obrigatórios, embora a CI do commit atual tenha passado.
-- **Testes reversíveis:** a criação atômica de processo foi testada numa Secretaria temporária dentro de transação com ROLLBACK: 11 itens padrão foram criados; um título inválido foi rejeitado sem deixar processo parcial. A consulta posterior confirmou zero Secretarias e processos persistidos.
+- **Testes reversíveis:** a criação atômica de processo foi testada numa Secretaria temporária dentro de transação com ROLLBACK: 11 itens padrão foram criados; um título inválido foi rejeitado sem deixar processo parcial. A verificação posterior confirmou que os registros do teste foram revertidos; atualmente há 1 Secretaria ativa real, que não foi usada no teste.
 
 ## FASE 1 — Fundação multitenant e segurança
 
@@ -29,7 +29,7 @@ Inclui perfis vinculados ao Supabase Auth; Secretarias e estados operacionais/co
 - As restrições institucionais de validação estão formalmente validadas; não há CHECK constraints pendentes de validação no schema público.
 - Os privilégios internos de autorização são separados; ainda é necessário confirmar no Dashboard que app_auth não aparece em Project Settings → API → Exposed schemas.
 - O Administrador Master já existe e está confirmado. **Não executar novamente o bootstrap inicial** em SMS2.
-- Testes transacionais anteriores validaram provisionamento, regras de papéis e algumas barreiras de isolamento. O cenário completo com dois usuários municipais distintos e duas Secretarias continua pendente de homologação autenticada ponta a ponta.
+- Testes transacionais anteriores validaram provisionamento, regras de papéis e algumas barreiras de isolamento. A homologação ponta a ponta com uma segunda Secretaria e um segundo administrador municipal independente continua pendente.
 - O SMS2 permanece no Free. O Security Advisor aponta `auth_leaked_password_protection`; a proteção contra senhas vazadas está desativada. Nenhum upgrade pago foi feito.
 - O Security Advisor retornou somente esse aviso; o Health Advisor não retornou alertas. O Performance Advisor listou 56 índices não utilizados (INFO), que não devem ser removidos antes de existir carga real e benchmark.
 
