@@ -9,6 +9,8 @@ import {
   expiryAlertIdempotencyKey,
   notificationBatchWindow,
   utcDateOnly,
+  sanitizeEmailSubject,
+  notificationDryRun,
   type ExpiryAlertLevel,
 } from "../_shared/expiry-notification.ts";
 
@@ -97,7 +99,7 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
     ? `<p><strong>Fornecedor:</strong> ${escapeHtml(task.supplierName)}</p>`
     : "";
   const kind = task.entityType === "contract" ? "Contrato" : "Documento do fornecedor";
-  const safeSubjectTitle = task.title.replace(/[\\r\\n]+/g, " ").slice(0, 180);
+  const safeSubjectTitle = sanitizeEmailSubject(task.title);
   const subject = `[Gestão de Fornecedores] ${kind} — ${safeSubjectTitle}`;
   const destination = new URL(
     task.entityType === "contract" ? "/contratos" : "/documentos",
@@ -334,6 +336,7 @@ async function deliverTask(
   try {
     const response = await fetch(RESEND_ENDPOINT, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -426,8 +429,13 @@ Deno.serve(async (request: Request) => {
 
   let batchSize = DEFAULT_BATCH_SIZE;
   let offset = 0;
+  let dryRun = true;
   try {
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
+    }
+    dryRun = notificationDryRun(body.dry_run);
     if (body?.batch_size !== undefined) {
       const value = Number(body.batch_size);
       if (!Number.isInteger(value) || value < 1 || value > MAX_BATCH_SIZE) {
@@ -521,6 +529,20 @@ Deno.serve(async (request: Request) => {
 
     const batchWindow = notificationBatchWindow(tasks.length, offset, batchSize);
     const batchTasks = tasks.slice(batchWindow.start, batchWindow.end);
+    if (dryRun) {
+      return jsonResponse({
+        status: "dry_run",
+        date: today,
+        candidates: tasks.length,
+        processed: batchTasks.length,
+        sent: 0,
+        failed: 0,
+        skipped: 0,
+        uncertain: 0,
+        has_more: batchWindow.hasMore,
+        next_offset: batchWindow.nextOffset,
+      });
+    }
     let sent = 0;
     let failed = 0;
     let skipped = 0;

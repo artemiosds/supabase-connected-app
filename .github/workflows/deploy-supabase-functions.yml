@@ -1,13 +1,13 @@
 name: Deploy Supabase Edge Functions
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "supabase/functions/**"
-      - "supabase/config.toml"
-      - ".github/workflows/deploy-supabase-functions.yml"
   workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: "Publish reviewed functions to SMS2 after homologation approval"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.SUPABASE_EDGE_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_deploy == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

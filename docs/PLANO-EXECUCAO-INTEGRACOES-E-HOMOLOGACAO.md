@@ -33,3 +33,25 @@ Credenciais devem ser inseridas diretamente nos painéis/cofres, nunca pelo chat
 O código estará pronto para homologação quando os PRs e migrations futuras passarem nas suítes locais, as funções tiverem controles server-side e o runbook refletir o estado real. A liberação comercial só acontece após SMTP, duas Secretarias isoladas, GED autenticado, restore comprovado, E2E no navegador, domínio, cobrança e jurídico concluídos.
 
 **Status atual: NO-GO para produção comercial.**
+
+## Preparação de código — continuação em 10/11/2026
+
+O escopo atual é concluir código e estrutura, com homologação real posterior.
+Nenhuma alteração desta etapa deve aplicar migrations, publicar funções ou enviar e-mails.
+
+### Entrega preparada: alertas
+- Chamadas sem `dry_run: false` são simulações: calculam contadores sem gravar outbox nem chamar o provedor. O endpoint mantém autenticação por segredo e exige configuração do servidor.
+- O scheduler informa explicitamente `dry_run: false` somente no fluxo de envio já condicionado à ativação/confirmação.
+- Falhas e resultados incertos tornam o workflow malsucedido; não são apresentados como envio concluído.
+- Chamadas ao provedor têm timeout de 15 segundos; resultado ambíguo permanece para reconciliação manual, preservando prevenção de duplicidade.
+- Assuntos preservam letras e removem quebras de linha reais.
+- Deploy de Edge Functions agora é exclusivamente manual, com `confirm_deploy`, para separar commits de código da implantação.
+
+### Pendências de implementação ainda abertas
+1. Reenvio seguro de convites internos/suporte para identidades Auth existentes.
+2. Google Drive OAuth por Secretaria, armazenamento protegido dos tokens, refresh e revogação.
+3. Adaptador de cobrança e webhooks conforme gateway escolhido; o painel de configuração não equivale a processamento de pagamentos.
+4. PDF server-side, caso exigido, e definição do nível de assinatura.
+5. Homologação de restauração, e-mails, isolamento e experiência mobile/tablet/desktop somente na etapa posterior.
+
+O histórico de migrations permanece com a correspondência documentada no roadmap; nenhuma reconciliação foi executada nesta preparação. Não tratar os itens acima como concluídos apenas por haver telas ou configuração.

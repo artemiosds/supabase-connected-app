@@ -107,3 +107,14 @@ export function notificationBatchWindow(
     nextOffset: hasMore ? end : null,
   };
 }
+
+export function sanitizeEmailSubject(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").slice(0, 180);
+}
+
+export function notificationDryRun(value: unknown): boolean {
+  if (value !== undefined && typeof value !== "boolean") {
+    throw new Error("dry_run must be a boolean");
+  }
+  return value !== false;
+}

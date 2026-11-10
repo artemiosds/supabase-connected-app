@@ -6,6 +6,8 @@ import {
   expiryAlertIdempotencyKey,
   notificationBatchWindow,
   utcDateOnly,
+  sanitizeEmailSubject,
+  notificationDryRun,
 } from "../../supabase/functions/_shared/expiry-notification";
 
 describe("scheduled expiry notification helpers", () => {
@@ -82,5 +84,26 @@ describe("scheduled expiry notification helpers", () => {
     expect(() => notificationBatchWindow(100, -1, 100)).toThrow(
       "Invalid notification batch window",
     );
+  });
+});
+
+describe("email subject safety", () => {
+  it("preserves letters and removes actual header line breaks", () => {
+    expect(sanitizeEmailSubject("Contrato renovado\r\nBcc: outro")).toBe(
+      "Contrato renovado Bcc: outro",
+    );
+    expect(sanitizeEmailSubject("Fornecedor normal")).toBe("Fornecedor normal");
+    expect(sanitizeEmailSubject("a".repeat(200))).toHaveLength(180);
+  });
+});
+
+describe("notification simulation default", () => {
+  it("requires an explicit boolean false to send", () => {
+    expect(notificationDryRun(undefined)).toBe(true);
+    expect(notificationDryRun(true)).toBe(true);
+    expect(notificationDryRun(false)).toBe(false);
+    for (const value of [null, "false", "true", 0, 1, {}, []]) {
+      expect(() => notificationDryRun(value)).toThrow();
+    }
   });
 });
