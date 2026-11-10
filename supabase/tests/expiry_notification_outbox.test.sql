@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(11);
+SELECT extensions.plan(12);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.expiry_notification_deliveries') IS NOT NULL,
@@ -68,5 +68,11 @@ SELECT extensions.ok(
   'delivery completion RPC is SECURITY DEFINER with pinned search_path'
 );
 
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef(p.oid) NOT ILIKE '%locked_at <%'
+   FROM pg_catalog.pg_proc p
+   WHERE p.oid='public.claim_expiry_notification_delivery(uuid)'::regprocedure),
+  'ambiguous sending rows are never reclaimed automatically'
+);
 SELECT * FROM extensions.finish();
 ROLLBACK;
