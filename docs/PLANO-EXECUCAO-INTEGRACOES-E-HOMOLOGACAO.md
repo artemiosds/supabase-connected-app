@@ -8,9 +8,9 @@
 Deixar o código e a estrutura prontos para homologação posterior, sem cadastrar pessoas/dados fictícios no SMS2, enviar convites reais ou alterar migrations remotas durante o ciclo de preparação. O diagnóstico completo está em [docs/DIAGNOSTICO-FASES-2026-11-10.md](DIAGNOSTICO-FASES-2026-11-10.md).
 
 ## Sequência técnica
-1. Fechar PR #9 (alertas de vencimento) com unit tests, build, TypeScript, lint, formato e db reset/pgTAP.
-2. Manter PR #10 já integrado no main: migration adicional de deny-all explícito para as cinco tabelas da Equipe Interna e índices de FKs de suporte. A migration ainda não está aplicada no SMS2; aplicar apenas em janela futura depois de backup e aprovação de implantação.
-3. Completar cancelamento/revogação/reenvio de convites internos e de suporte. Não apagar automaticamente Auth users quando ocorrer falha.
+1. PR #8 (importação DOCX) e PR #9 (alertas visuais de contratos/documentos) já estão integrados ao `main` e passaram CI completo. Homologar a conversão DOCX com modelos de teste; não preserva layout/figuras do Word. O sino não envia e-mail ou WhatsApp.
+2. PR #10 está no `main`: migration adicional para as cinco tabelas da Equipe Interna e índices de FKs de suporte. Ainda não aplicada ao SMS2. O PR #12 reforça as políticas como `AS RESTRICTIVE` e acrescenta 55 assertions pgTAP; aguardar CI e revisão antes de qualquer implantação.
+3. Completar cancelamento/revogação e reenvio de convites internos e de suporte. Não apagar automaticamente Auth users quando ocorrer falha.
 4. Homologar GED, modelos, geração, processos, itens, cotações, orçamento, contratos e aditivos com duas Secretarias em ambiente descartável.
 5. Escolher provedor de e-mail e scheduler; implementar alerta recorrente com idempotência, retentativas, auditoria e isolamento por tenant.
 6. Implementar Google Drive OAuth por Secretaria, com state/PKCE, escopos mínimos, tokens guardados apenas no backend/cofre, refresh e revogação.
