@@ -1695,6 +1695,19 @@ export type Database = {
           can_view: boolean;
         }[];
       };
+      get_tenant_google_drive_status: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          is_connected: boolean;
+          google_email: string | null;
+          root_folder_name: string | null;
+          connected_at: string | null;
+        }[];
+      };
+      disconnect_tenant_google_drive: {
+        Args: { p_tenant_id: string };
+        Returns: boolean;
+      };
       get_tenant_user_capabilities: {
         Args: { p_tenant_id: string };
         Returns: {
