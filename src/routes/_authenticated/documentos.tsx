@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Json, Tables } from "@/integrations/supabase/types";
+import { importarTextoDeModelo } from "@/lib/docx-import";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({ meta: [{ title: "Documentos e vencimentos — Gestão de Fornecedores da Saúde" }] }),
@@ -444,24 +445,22 @@ function Documentos() {
 
   async function importarModelo(file?: File) {
     if (!file) return;
-    if (!/\.(txt|md)$/i.test(file.name)) {
-      toast.error(
-        "Importe um modelo em arquivo .txt ou .md. Arquivos Word precisam ser copiados para o campo de texto.",
-      );
-      return;
-    }
-    if (file.size > 50000) {
-      toast.error("O modelo ultrapassa o limite de 50 KB.");
-      return;
-    }
     try {
-      const text = await file.text();
+      const text = await importarTextoDeModelo(file);
       setConteudoModelo(text);
       if (!tituloModelo.trim())
-        setTituloModelo(file.name.replace(/\.(txt|md)$/i, "").slice(0, 180));
-      toast.success("Texto do modelo importado.");
-    } catch {
-      toast.error("Não foi possível ler o arquivo. Copie e cole o conteúdo no campo de texto.");
+        setTituloModelo(file.name.replace(/\\.(txt|md|docx)$/i, "").slice(0, 180));
+      toast.success(
+        file.name.toLowerCase().endsWith(".docx")
+          ? "Texto do Word importado. Revise tabelas e espaçamentos antes de salvar."
+          : "Texto do modelo importado.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível importar o arquivo. Tente novamente ou cole o texto.",
+      );
     }
   }
 
@@ -1421,15 +1420,21 @@ function Documentos() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="arquivo-modelo">Importar arquivo de texto (.txt ou .md)</Label>
+              <Label htmlFor="arquivo-modelo">Importar modelo (.docx, .txt ou .md)</Label>
               <Input
                 id="arquivo-modelo"
                 type="file"
-                accept=".txt,.md,text/plain,text/markdown"
-                onChange={(e) => void importarModelo(e.target.files?.[0])}
+                accept=".docx,.txt,.md,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(e) => {
+                  void importarModelo(e.target.files?.[0]);
+                  e.currentTarget.value = "";
+                }}
               />
               <p className="text-xs text-muted-foreground">
-                Também é possível copiar e colar o conteúdo de um modelo Word no campo abaixo.
+                No DOCX, parágrafos e tabelas simples são importados como texto editável.
+                <br />
+                Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também é
+                possível copiar e colar o conteúdo no campo abaixo.
               </p>
             </div>
             <div className="space-y-2">
