@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { GoogleDriveIntegrationCard } from "@/components/google-drive-integration";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -319,6 +320,11 @@ function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      <GoogleDriveIntegrationCard
+        tenantId={selecionado?.id}
+        canEdit={podeEditarSecretaria}
+      />
 
       <Card>
         <CardHeader>
