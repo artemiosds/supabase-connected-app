@@ -19,7 +19,11 @@ import type { Database } from "../../../src/integrations/supabase/types.ts";
 
 type AdminClient = SupabaseClient<Database>;
 
-type TenantRow = { id: string; name: string };
+type TenantRow = {
+  id: string;
+  name: string;
+  enabled_modules: { contratos?: boolean; documentos?: boolean };
+};
 type SupplierRow = { legal_name: string | null; trade_name: string | null } | null;
 type ContractRow = {
   id: string;
@@ -92,7 +96,8 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
     ? `<p><strong>Fornecedor:</strong> ${escapeHtml(task.supplierName)}</p>`
     : "";
   const kind = task.entityType === "contract" ? "Contrato" : "Documento do fornecedor";
-  const subject = `[Gestão de Fornecedores] ${kind} — ${task.title}`;
+  const safeSubjectTitle = task.title.replace(/[\\r\\n]+/g, " ").slice(0, 180);
+  const subject = `[Gestão de Fornecedores] ${kind} — ${safeSubjectTitle}`;
   const destination = new URL(
     task.entityType === "contract" ? "/contratos" : "/documentos",
     appUrl,
@@ -273,7 +278,7 @@ async function deliverTask(
   apiKey: string,
   from: string,
   appUrl: string,
-): Promise<"sent" | "failed" | "skipped"> {
+): Promise<"sent" | "failed" | "skipped" | "uncertain"> {
   const uniqueFilter = {
     tenant_id: task.tenantId,
     entity_type: task.entityType,
@@ -343,22 +348,34 @@ async function deliverTask(
 
     const responseBody = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status >= 500) return "uncertain";
       errorCode = `RESEND_HTTP_${response.status}`;
     } else {
       providerMessageId = typeof responseBody?.id === "string" ? responseBody.id : null;
     }
   } catch {
-    errorCode = "RESEND_NETWORK_ERROR";
+    // The provider may have accepted the request before the connection failed.
+    // Do not mark this as retryable; keep the row "sending" for manual reconciliation.
+    return "uncertain";
   }
 
   if (errorCode) {
-    await admin.rpc("finish_expiry_notification_delivery", {
-      p_delivery_id: deliveryId,
-      p_status: "failed",
-      p_provider_message_id: null,
-      p_error_code: errorCode,
-    });
-    return "failed";
+    const { data: markedFailed, error: finishError } = await admin.rpc(
+      "finish_expiry_notification_delivery",
+      {
+        p_delivery_id: deliveryId,
+        p_status: "failed",
+        p_provider_message_id: null,
+        p_error_code: errorCode,
+      },
+    );
+    return finishError || markedFailed !== true ? "uncertain" : "failed";
+  }
+
+  if (!providerMessageId) {
+    // A 2xx without a provider message ID is ambiguous. Keep the row in
+    // "sending" so an operator can reconcile it instead of risking a duplicate.
+    return "uncertain";
   }
 
   const { data: completed, error: completionError } = await admin.rpc(
@@ -370,7 +387,7 @@ async function deliverTask(
       p_error_code: null,
     },
   );
-  return completionError || completed !== true ? "failed" : "sent";
+  return completionError || completed !== true ? "uncertain" : "sent";
 }
 
 Deno.serve(async (request: Request) => {
@@ -443,7 +460,7 @@ Deno.serve(async (request: Request) => {
     for (let offset = 0; ; offset += PAGE_SIZE) {
       const { data, error } = await admin
         .from("tenants")
-        .select("id,name")
+        .select("id,name,enabled_modules")
         .eq("status", "active")
         .in("commercial_status", ["active", "trial"])
         .order("id")
@@ -455,8 +472,12 @@ Deno.serve(async (request: Request) => {
 
     for (const tenant of tenants) {
       const [contracts, documents, recipients] = await Promise.all([
-        fetchContracts(admin, tenant.id, limitDate),
-        fetchDocuments(admin, tenant.id, limitDate),
+        tenant.enabled_modules?.contratos === true
+          ? fetchContracts(admin, tenant.id, limitDate)
+          : Promise.resolve([] as ContractRow[]),
+        tenant.enabled_modules?.documentos === true
+          ? fetchDocuments(admin, tenant.id, limitDate)
+          : Promise.resolve([] as DocumentRow[]),
         fetchRecipients(admin, tenant.id),
       ]);
       if (recipients.length === 0) continue;
@@ -501,11 +522,13 @@ Deno.serve(async (request: Request) => {
     let sent = 0;
     let failed = 0;
     let skipped = 0;
+    let uncertain = 0;
 
     for (const task of batchTasks) {
       const result = await deliverTask(admin, task, resendApiKey, from, appOrigin);
       if (result === "sent") sent += 1;
       else if (result === "failed") failed += 1;
+      else if (result === "uncertain") uncertain += 1;
       else skipped += 1;
     }
 
@@ -519,6 +542,7 @@ Deno.serve(async (request: Request) => {
       sent,
       failed,
       skipped,
+      uncertain,
       has_more: hasMore,
       next_offset: hasMore ? nextOffset : null,
     });
