@@ -48,19 +48,40 @@ async function decompressDeflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
     );
   }
 
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
     const compressed = new Blob([bytes]).stream();
     const decompressed = compressed.pipeThrough(
       new DecompressionStream("deflate-raw" as CompressionFormat),
     );
-    const result = new Uint8Array(await new Response(decompressed).arrayBuffer());
-    if (result.byteLength > MAX_DOCX_XML_BYTES) {
-      throw new Error("O conteúdo interno do DOCX ultrapassa o limite de segurança.");
+    reader = decompressed.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_DOCX_XML_BYTES) {
+        await reader.cancel();
+        throw new Error("O conteúdo interno do DOCX ultrapassa o limite de segurança.");
+      }
+      chunks.push(value);
+    }
+
+    const result = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.byteLength;
     }
     return result;
   } catch (cause) {
     if (cause instanceof Error && cause.message.includes("limite de segurança")) throw cause;
     throw new Error("Não foi possível descompactar o documento Word. O arquivo pode estar corrompido.");
+  } finally {
+    reader?.releaseLock();
   }
 }
 
