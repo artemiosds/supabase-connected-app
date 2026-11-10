@@ -1339,6 +1339,68 @@ export type Database = {
           },
         ];
       };
+      expiry_notification_deliveries: {
+        Row: {
+          alert_level: string;
+          attempts: number;
+          created_at: string;
+          due_on: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          last_error_code: string | null;
+          locked_at: string | null;
+          provider_message_id: string | null;
+          recipient_user_id: string;
+          sent_at: string | null;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          alert_level: string;
+          attempts?: number;
+          created_at?: string;
+          due_on: string;
+          entity_id: string;
+          entity_type: string;
+          id?: string;
+          last_error_code?: string | null;
+          locked_at?: string | null;
+          provider_message_id?: string | null;
+          recipient_user_id: string;
+          sent_at?: string | null;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          alert_level?: string;
+          attempts?: number;
+          created_at?: string;
+          due_on?: string;
+          entity_id?: string;
+          entity_type?: string;
+          id?: string;
+          last_error_code?: string | null;
+          locked_at?: string | null;
+          provider_message_id?: string | null;
+          recipient_user_id?: string;
+          sent_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expiry_notification_deliveries_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           billing_contact: string | null;
@@ -1551,6 +1613,28 @@ export type Database = {
           p_title: string;
         };
         Returns: string;
+      };
+      claim_expiry_notification_delivery: {
+        Args: { p_delivery_id: string };
+        Returns: {
+          id: string;
+          tenant_id: string;
+          entity_type: string;
+          entity_id: string;
+          recipient_user_id: string;
+          alert_level: string;
+          due_on: string;
+          attempts: number;
+        }[];
+      };
+      finish_expiry_notification_delivery: {
+        Args: {
+          p_delivery_id: string;
+          p_status: string;
+          p_provider_message_id?: string | null;
+          p_error_code?: string | null;
+        };
+        Returns: boolean;
       };
       create_tenant_invitation: {
         Args: { p_email: string; p_role_id: string; p_tenant_id: string };
