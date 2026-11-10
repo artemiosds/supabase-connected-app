@@ -640,8 +640,8 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
               </p>
             </form>
           </CardContent>
-        </Card
-      )}>
+        </Card>
+      )}
     </div>
   );
 }
