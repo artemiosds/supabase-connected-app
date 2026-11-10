@@ -7,7 +7,7 @@
 
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(47);
+SELECT extensions.plan(55);
 
 SELECT extensions.ok(pg_catalog.to_regclass('public.platform_staff') IS NOT NULL,'platform staff identity table exists');
 SELECT extensions.ok(pg_catalog.to_regclass('public.platform_staff_roles') IS NOT NULL,'platform staff roles table exists');
@@ -100,6 +100,74 @@ SELECT extensions.ok(
   FROM pg_catalog.pg_proc p
   WHERE p.oid='public.list_platform_support_candidates()'::regprocedure),
  'internal identities are excluded from technical support candidates'
+);
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='platform_staff'
+      AND policyname='p_platform_staff_default_deny'
+      AND permissive='RESTRICTIVE' AND cmd='ALL'
+      AND roles @> ARRAY['anon','authenticated']::name[]
+      AND qual='false' AND with_check='false'
+  ),
+  'internal staff identities have an explicit restrictive API deny policy'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='platform_staff_roles'
+      AND policyname='p_platform_staff_roles_default_deny'
+      AND permissive='RESTRICTIVE' AND cmd='ALL'
+      AND roles @> ARRAY['anon','authenticated']::name[]
+      AND qual='false' AND with_check='false'
+  ),
+  'internal staff roles have an explicit restrictive API deny policy'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='platform_staff_permissions'
+      AND policyname='p_platform_staff_permissions_default_deny'
+      AND permissive='RESTRICTIVE' AND cmd='ALL'
+      AND roles @> ARRAY['anon','authenticated']::name[]
+      AND qual='false' AND with_check='false'
+  ),
+  'internal permission catalog has an explicit restrictive API deny policy'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='platform_staff_role_permissions'
+      AND policyname='p_platform_staff_role_permissions_default_deny'
+      AND permissive='RESTRICTIVE' AND cmd='ALL'
+      AND roles @> ARRAY['anon','authenticated']::name[]
+      AND qual='false' AND with_check='false'
+  ),
+  'internal role permission mappings have an explicit restrictive API deny policy'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='platform_staff_role_assignments'
+      AND policyname='p_platform_staff_role_assignments_default_deny'
+      AND permissive='RESTRICTIVE' AND cmd='ALL'
+      AND roles @> ARRAY['anon','authenticated']::name[]
+      AND qual='false' AND with_check='false'
+  ),
+  'internal role assignments have an explicit restrictive API deny policy'
+);
+SELECT extensions.ok(
+  pg_catalog.to_regclass('public.idx_platform_support_agents_created_by') IS NOT NULL,
+  'support agent creator foreign key has a covering index'
+);
+SELECT extensions.ok(
+  pg_catalog.to_regclass('public.idx_platform_support_assignments_created_by') IS NOT NULL,
+  'support assignment creator foreign key has a covering index'
+);
+SELECT extensions.ok(
+  pg_catalog.to_regclass('public.idx_platform_support_sessions_ended_by') IS NOT NULL,
+  'support session ender foreign key has a covering index'
 );
 
 SET LOCAL ROLE authenticated;
