@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
 import { AdminMasterSupport } from "@/components/admin-master-support";
+import { AdminMasterStaff } from "@/components/admin-master-staff";
+import { PlatformStaffWorkspace } from "@/components/platform-staff-workspace";
 import { TenantProvider } from "@/hooks/use-tenant";
 import {
   usePlatformAdmin,
@@ -242,6 +244,8 @@ function AdminMaster() {
   const navigate = useNavigate();
   const {
     authorized,
+    isPlatformAdmin,
+    staffAccess,
     loading,
     error,
     tenants,
@@ -504,7 +508,11 @@ function AdminMaster() {
 
   if (!session) return null;
 
-  if (!authorized) {
+  if (authorized && !isPlatformAdmin && staffAccess) {
+    return <PlatformStaffWorkspace access={staffAccess} />;
+  }
+
+  if (!authorized || !isPlatformAdmin) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-12">
         <Card className="w-full max-w-lg border-destructive/30">
@@ -592,6 +600,10 @@ function AdminMaster() {
             <TabsTrigger value="auditoria">
               <FileClock className="mr-2 h-4 w-4" />
               Auditoria global
+            </TabsTrigger>
+            <TabsTrigger value="equipe-interna">
+              <Users className="mr-2 h-4 w-4" />
+              Equipe Interna
             </TabsTrigger>
             <TabsTrigger value="suporte">
               <Users className="mr-2 h-4 w-4" />
@@ -984,6 +996,10 @@ function AdminMaster() {
                 </Table>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="equipe-interna" className="space-y-6">
+            <AdminMasterStaff />
           </TabsContent>
 
           <TabsContent value="suporte" className="space-y-6">

@@ -62,9 +62,9 @@ O convite de suporte usa uma nova Edge Function:
 
 `supabase/functions/invite-platform-support-agent/index.ts`
 
-A configuração `verify_jwt = true` está versionada em `supabase/config.toml`. O gateway exige JWT e a função também consulta o usuário autenticado e verifica o registro ativo em `platform_admins` antes de usar o cliente administrativo.
+A configuração `verify_jwt = true` está versionada em `supabase/config.toml`. O gateway exige JWT e a função consulta o usuário autenticado e chama `public.can_manage_platform_support_team()` no banco antes de usar o cliente administrativo. Essa autorização permite ao Administrador Master ou a um colaborador interno ativo com a permissão `support.team.manage` administrar técnicos e atribuições. Ela não permite iniciar sessão de suporte como Master; essa operação continua exclusiva do Administrador Master e do fluxo de técnico com atribuição ativa.
 
-A publicação é uma etapa separada, depois de aplicar as migrations:
+A publicação é uma etapa separada, depois de aplicar as migrations da Equipe de Suporte e a migration `20261109170000_platform_internal_staff_access.sql`, que cria a função de autorização compartilhada:
 
 ```bash
 supabase functions deploy invite-platform-support-agent --project-ref rwbbznqtocunzrpcvjvk

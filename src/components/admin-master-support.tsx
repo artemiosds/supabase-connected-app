@@ -28,7 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type Props = { tenants: MasterTenant[] };
+type SupportTenant = Pick<MasterTenant, "id" | "name">;
+type Props = { tenants: SupportTenant[]; allowMasterSessions?: boolean };
 type SupportAgent = {
   user_id: string;
   email: string;
@@ -59,7 +60,7 @@ const EMPTY_PERMISSION: PermissionDraft = {
   can_update_suppliers: false,
 };
 
-export function AdminMasterSupport({ tenants }: Props) {
+export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Props) {
   const navigate = useNavigate();
   const { selecionar, recarregar } = useTenant();
   const [team, setTeam] = useState<SupportAgent[]>([]);
@@ -589,56 +590,58 @@ export function AdminMasterSupport({ tenants }: Props) {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Modo de suporte do Administrador Master</CardTitle>
-          <CardDescription>
-            Abra uma sessão temporária para operar Fornecedores em uma organização. Todas as ações
-            ficam registradas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={startMasterSupport} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Organização de atendimento</Label>
-              <Select value={masterTenantId} onValueChange={setMasterTenantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma Secretaria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant.id} value={tenant.id}>
-                      {tenant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="master-support-reason">Motivo obrigatório do acesso</Label>
-              <Textarea
-                id="master-support-reason"
-                value={supportReason}
-                onChange={(event) => setSupportReason(event.target.value)}
-                minLength={10}
-                maxLength={500}
-                rows={3}
-                placeholder="Descreva o chamado, solicitação ou tarefa que exige acesso..."
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={startingSession || !masterTenantId || supportReason.trim().length < 10}
-            >
-              {startingSession ? "Iniciando sessão..." : "Entrar no modo de suporte"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Sessão de 60 minutos. O escopo fica limitado ao módulo Fornecedores, sem exclusão ou
-              inativação.
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+      {allowMasterSessions && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Modo de suporte do Administrador Master</CardTitle>
+            <CardDescription>
+              Abra uma sessão temporária para operar Fornecedores em uma organização. Todas as ações
+              ficam registradas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={startMasterSupport} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Organização de atendimento</Label>
+                <Select value={masterTenantId} onValueChange={setMasterTenantId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma Secretaria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="master-support-reason">Motivo obrigatório do acesso</Label>
+                <Textarea
+                  id="master-support-reason"
+                  value={supportReason}
+                  onChange={(event) => setSupportReason(event.target.value)}
+                  minLength={10}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Descreva o chamado, solicitação ou tarefa que exige acesso..."
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={startingSession || !masterTenantId || supportReason.trim().length < 10}
+              >
+                {startingSession ? "Iniciando sessão..." : "Entrar no modo de suporte"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Sessão de 60 minutos. O escopo fica limitado ao módulo Fornecedores, sem exclusão ou
+                inativação.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

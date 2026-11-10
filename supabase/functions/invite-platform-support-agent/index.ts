@@ -113,15 +113,12 @@ Deno.serve(async (request: Request) => {
   }
 
   // This table has a self-only SELECT policy: no user-editable metadata is trusted for authorization.
-  const { data: master, error: masterError } = await userClient
-    .from("platform_admins")
-    .select("user_id")
-    .eq("user_id", authData.user.id)
-    .eq("is_active", true)
-    .maybeSingle();
-  if (masterError || master?.user_id !== authData.user.id) {
+  const { data: canManageSupport, error: accessError } = await userClient.rpc(
+    "can_manage_platform_support_team",
+  );
+  if (accessError || canManageSupport !== true) {
     return jsonResponse(
-      { error: "Apenas o Administrador Master pode convidar técnicos." },
+      { error: "Você não possui permissão para administrar a equipe técnica de suporte." },
       403,
       origin,
     );
@@ -163,18 +160,17 @@ Deno.serve(async (request: Request) => {
   });
 
   if (registerError) {
-    const { error: cleanupError } = await adminClient.auth.admin.deleteUser(inviteData.user.id);
-    if (cleanupError) {
-      console.error(
-        "Falha ao limpar conta após rejeição do cadastro de suporte.",
-        cleanupError.message,
-      );
-    }
-    console.error("Falha ao registrar técnico convidado.", registerError.message);
+    // Não excluir automaticamente uma identidade Auth: uma falha ou corrida de
+    // cadastro pode indicar conta preexistente. Sem registro de suporte, não há
+    // permissão técnica concedida; a situação exige revisão pelo Master.
+    console.error(
+      "Falha ao registrar técnico convidado; nenhum acesso de suporte foi concedido.",
+      registerError.message,
+    );
     return jsonResponse(
       {
         error:
-          "O convite não foi concluído. A conta não recebeu acesso de suporte; verifique a organização e tente novamente.",
+          "O convite foi processado pelo Auth, mas o perfil de suporte não foi registrado. Nenhuma permissão técnica foi concedida; solicite revisão ao Administrador Master antes de tentar novamente.",
       },
       409,
       origin,
