@@ -6,7 +6,7 @@
 -- No Auth user or production row is created.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(21);
+SELECT extensions.plan(23);
 
 SELECT extensions.ok(
   (SELECT pg_catalog.pg_get_constraintdef(oid) ILIKE '%revoked%'
@@ -83,6 +83,17 @@ SELECT extensions.ok(
   (SELECT pg_catalog.pg_get_functiondef('public.revoke_platform_support_invitation(uuid)'::regprocedure)
     ILIKE '%auth_identity_preserved%'),
   'support invitation revocation preserves the Auth identity'
+);
+
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef('public.revoke_platform_staff_invitation(uuid)'::regprocedure)
+    ILIKE '%platform_staff.invitation_revoked%'),
+  'internal invitation revocation writes a dedicated audit event'
+);
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef('public.revoke_platform_support_invitation(uuid)'::regprocedure)
+    ILIKE '%platform_support.invitation_revoked%'),
+  'support invitation revocation writes a dedicated audit event'
 );
 
 SELECT extensions.ok(
