@@ -708,8 +708,9 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
             <AlertDialogDescription>
               {inviteToRevoke
                 ? `O convite de ${inviteToRevoke.display_name} (${inviteToRevoke.email}) será marcado como cancelado e todas as atribuições ficarão inativas. A pessoa não poderá ativar o perfil antigo mesmo que confirme o e-mail. A identidade Auth não será excluída.`
-                : "O convite será cancelado sem excluir a identidade de autenticação."}
-              {" "}Um novo convite no futuro exigirá um endereço exclusivo; o reenvio do mesmo convite ainda não está habilitado.
+                : "O convite será cancelado sem excluir a identidade de autenticação."}{" "}
+              Um novo convite no futuro exigirá um endereço exclusivo; o reenvio do mesmo convite
+              ainda não está habilitado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -727,7 +728,6 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
