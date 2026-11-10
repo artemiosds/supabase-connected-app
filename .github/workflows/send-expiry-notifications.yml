@@ -1,0 +1,66 @@
+name: Send scheduled expiry notifications
+
+on:
+  schedule:
+    # Daily at 09:00 in Brasília time (UTC-3); early morning across Brazilian time zones.
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+    inputs:
+      confirm_send:
+        description: "Confirm that real notification emails may be sent."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-expiry-notifications
+  cancel-in-progress: false
+
+jobs:
+  send:
+    if: ${{ (github.event_name == 'schedule' && vars.EXPIRY_ALERTS_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.confirm_send == true) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate notification secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EXPIRY_ALERTS_CRON_SECRET: ${{ secrets.EXPIRY_ALERTS_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::Missing SUPABASE_URL secret."; exit 1; }
+          test -n "$SUPABASE_ANON_KEY" || { echo "::error::Missing SUPABASE_ANON_KEY secret."; exit 1; }
+          test -n "$EXPIRY_ALERTS_CRON_SECRET" || { echo "::error::Missing EXPIRY_ALERTS_CRON_SECRET secret."; exit 1; }
+
+      - name: Process expiry notification batches
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EXPIRY_ALERTS_CRON_SECRET: ${{ secrets.EXPIRY_ALERTS_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          endpoint="${SUPABASE_URL%/}/functions/v1/send-expiry-notifications"
+          has_more=true
+
+          for batch in $(seq 1 20); do
+            response="$(curl --silent --show-error --fail-with-body \
+              --request POST "$endpoint" \
+              --header "apikey: $SUPABASE_ANON_KEY" \
+              --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              --header "x-expiry-alert-secret: $EXPIRY_ALERTS_CRON_SECRET" \
+              --header "Content-Type: application/json" \
+              --data '{"batch_size":100}')"
+
+            echo "$response" | jq -c '{status,date,candidates,attempted,sent,failed,skipped,has_more}'
+            has_more="$(echo "$response" | jq -r '.has_more // false')"
+            if [ "$has_more" != "true" ]; then
+              exit 0
+            fi
+          done
+
+          echo "::error::Notification batches remain after 20 iterations. Review outbox state and provider rate limits."
+          exit 1
