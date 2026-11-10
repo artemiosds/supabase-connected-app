@@ -50,7 +50,9 @@ async function decompressDeflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
-    const compressed = new Blob([bytes]).stream();
+    const stableBuffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(stableBuffer).set(bytes);
+    const compressed = new Blob([stableBuffer]).stream();
     const decompressed = compressed.pipeThrough(
       new DecompressionStream("deflate-raw" as CompressionFormat),
     );
