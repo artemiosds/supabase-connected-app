@@ -10,12 +10,10 @@ export type DocumentoParaAlerta = {
   id: string;
   title: string;
   expires_at: string | null;
-  suppliers:
-    | {
-        legal_name: string | null;
-        trade_name: string | null;
-      }
-    | null;
+  suppliers: {
+    legal_name: string | null;
+    trade_name: string | null;
+  } | null;
 };
 
 export type AvisoVencimento = {
