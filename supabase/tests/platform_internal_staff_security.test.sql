@@ -118,7 +118,7 @@ SELECT extensions.throws_ok($$SELECT * FROM public.list_platform_staff_tenants()
 SELECT extensions.throws_ok($$SELECT public.get_platform_staff_metrics()$$,'42501',NULL,'identity without metrics permission cannot read metrics');
 SELECT extensions.throws_ok($$SELECT * FROM public.list_platform_staff_audit_events(100)$$,'42501',NULL,'identity without audit permission cannot read audit events');
 SELECT extensions.throws_ok(
- $SELECT public.can_invite_platform_staff('person@example.test')$,
+ $$SELECT public.can_invite_platform_staff('person@example.test')$$,
  '42501',NULL,'non-Master cannot test invitation e-mail availability'
 );
 SELECT extensions.ok(
@@ -127,7 +127,7 @@ SELECT extensions.ok(
  'invitation e-mail preflight is SECURITY DEFINER with pinned search_path'
 );
 SELECT extensions.throws_ok(
- $SELECT public.register_platform_staff('00000000-0000-4000-8000-000000000012'::uuid,'person@example.test','Pessoa Teste',ARRAY['00000000-0000-4000-8000-000000000013'::uuid])$$,
+ $$SELECT public.register_platform_staff('00000000-0000-4000-8000-000000000012'::uuid,'person@example.test','Pessoa Teste',ARRAY['00000000-0000-4000-8000-000000000013'::uuid])$$,
  '42501',NULL,'non-Master cannot invite staff'
 );
 SELECT extensions.throws_ok(
