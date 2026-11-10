@@ -273,10 +273,11 @@ function Processos() {
       {pendente && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Aguardando ativação no banco de dados</AlertTitle>
+          <AlertTitle>Dados de processos indisponíveis</AlertTitle>
           <AlertDescription>
-            A esteira está pronta, mas a estrutura de processos ainda não foi aprovada e aplicada no
-            Supabase SMS2.
+            Não foi possível acessar os dados de processos no momento. A estrutura do módulo já está
+            preparada; verifique a conexão e as permissões de acesso ao banco antes de tentar
+            novamente.
           </AlertDescription>
         </Alert>
       )}
