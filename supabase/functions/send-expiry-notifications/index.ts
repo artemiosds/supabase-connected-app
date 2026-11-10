@@ -15,7 +15,9 @@ const PAGE_SIZE = 500;
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 100;
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
-type AdminClient = SupabaseClient<any>;
+import type { Database } from "../../../src/integrations/supabase/types.ts";
+
+type AdminClient = SupabaseClient<Database>;
 
 type TenantRow = { id: string; name: string };
 type SupplierRow = { legal_name: string | null; trade_name: string | null } | null;
@@ -418,7 +420,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
   }
 
-  const admin: AdminClient = createClient<any>(supabaseUrl, serviceRoleKey, {
+  const admin: AdminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
