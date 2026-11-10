@@ -14,7 +14,7 @@ BEGIN
   ]
   LOOP
     EXECUTE pg_catalog.format(
-      'CREATE POLICY %I ON public.%I FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
+      'CREATE POLICY %I ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
       'p_' || v_table || '_default_deny',
       v_table
     );
