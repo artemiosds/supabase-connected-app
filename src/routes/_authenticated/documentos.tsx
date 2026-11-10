@@ -248,6 +248,8 @@ function Documentos() {
       setLoading(false);
       return;
     }
+    setDriveConnected(false);
+    setStorageProvider("supabase_storage");
     setLoading(true);
     setErro(null);
     try {
@@ -401,17 +403,6 @@ function Documentos() {
     setStorageProvider("supabase_storage");
     setDialogDocumento(true);
   }
-  function extrairDriveFileId(url: string): string | null {
-    try {
-      const parsed = new URL(url);
-      if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname)) return null;
-      const match = parsed.pathname.match(/\/d\/([^/]+)/);
-      return match?.[1] ?? parsed.searchParams.get("id");
-    } catch {
-      return null;
-    }
-  }
-
   async function selecionarArquivoPrivado(file?: File) {
     setArquivoDocumento(null);
     if (!file) return;
