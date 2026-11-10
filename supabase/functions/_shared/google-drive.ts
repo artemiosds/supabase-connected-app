@@ -4,7 +4,7 @@ export const GOOGLE_DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
 ] as const;
 
-export const GOOGLE_DRIVE_MIME_TYPES = {
+const MIME_TYPES_BY_EXTENSION: Record<string, string> = {
   pdf: "application/pdf",
   doc: "application/msword",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -13,16 +13,6 @@ export const GOOGLE_DRIVE_MIME_TYPES = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
-} as const;
-
-const MIME_EXTENSIONS: Record<string, readonly string[]> = {
-  "application/pdf": ["pdf"],
-  "application/msword": ["doc"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
-  "application/vnd.ms-excel": ["xls"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
-  "image/jpeg": ["jpg", "jpeg"],
-  "image/png": ["png"],
 };
 
 export function isUuid(value: string): boolean {
@@ -39,12 +29,17 @@ export async function sha256Hex(value: string): Promise<string> {
 export function sanitizeDriveFileName(value: string): string {
   const normalized = value
     .normalize("NFKC")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, "")
-    .replace(/[\\\\/<>:"|?*]/g, "_")
-    .replace(/\\s+/g, " ")
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/[\\/:<>:"|?*]/g, "_")
+    .replace(/\s+/g, " ")
     .trim()
-    .replace(/^\\.+|\\.+$/g, "");
+    .replace(/^\.+|\.+$/g, "");
   return (normalized || "documento").slice(0, 180);
+}
+
+export function expectedDriveMimeType(fileName: string): string | null {
+  const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_TYPES_BY_EXTENSION[extension] ?? null;
 }
 
 export function validateDriveFileMetadata(
@@ -52,12 +47,12 @@ export function validateDriveFileMetadata(
   mimeType: string,
   size: number,
 ): string | null {
-  const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (!Object.hasOwn(MIME_EXTENSIONS, mimeType)) {
+  const expectedMimeType = expectedDriveMimeType(fileName);
+  if (!expectedMimeType) {
     return "Tipo de arquivo não permitido. Use PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG.";
   }
-  if (!MIME_EXTENSIONS[mimeType]?.includes(extension)) {
-    return "A extensão do arquivo não corresponde ao formato informado.";
+  if (mimeType && mimeType !== "application/octet-stream" && mimeType !== expectedMimeType) {
+    return "O tipo de arquivo informado não corresponde à extensão.";
   }
   if (!Number.isSafeInteger(size) || size < 1 || size > 20 * 1024 * 1024) {
     return "O arquivo deve ter até 20 MB.";
@@ -69,10 +64,14 @@ export async function validateDriveFileContent(file: File): Promise<string | nul
   const metadataError = validateDriveFileMetadata(file.name, file.type, file.size);
   if (metadataError) return metadataError;
 
-  const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-  const startsWith = (...bytes: number[]) => bytes.every((value, index) => header[index] === value);
+  const mimeType = expectedDriveMimeType(file.name);
+  if (!mimeType) return "Tipo de arquivo não permitido.";
 
-  switch (file.type) {
+  const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const startsWith = (...bytes: number[]) =>
+    bytes.every((value, index) => header[index] === value);
+
+  switch (mimeType) {
     case "application/pdf":
       if (!startsWith(0x25, 0x50, 0x44, 0x46)) return "O conteúdo não corresponde a um PDF válido.";
       break;
@@ -112,7 +111,11 @@ export function safeAppUrl(raw: string | undefined): URL | null {
   }
 }
 
-export function redirectWithDriveStatus(appUrl: URL, status: "connected" | "error", reason?: string): URL {
+export function redirectWithDriveStatus(
+  appUrl: URL,
+  status: "connected" | "error",
+  reason?: string,
+): URL {
   const destination = new URL("/configuracoes", appUrl.origin);
   destination.searchParams.set("drive", status);
   if (reason) destination.searchParams.set("drive_reason", reason.slice(0, 40));
