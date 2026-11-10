@@ -1,70 +1,87 @@
-# Implantação — Equipe Interna
+# Equipe Interna — estado e operação
 
-## Objetivo
+## Estado atual no SMS2
 
-Disponibilizar no Painel Master a gestão dos colaboradores da empresa operadora do SaaS, sem transformar essas contas em administradores globais e sem misturá-las com usuários municipais ou técnicos de suporte.
+Atualizado em 10/11/2026 após a implantação controlada.
 
-A implementação contém:
+- A migration `20261110121336_platform_internal_staff_access.sql` está aplicada.
+- As cinco tabelas internas existem com RLS e FORCE RLS ativos.
+- As tabelas internas não concedem SELECT, INSERT, UPDATE ou DELETE direto a `anon` ou `authenticated`; a interface utiliza RPCs protegidas.
+- Existem cinco perfis padrão ativos e sete permissões no catálogo.
+- A função Edge `invite-platform-staff` está ACTIVE, versão 1, com `verify_jwt=true`.
+- A função Edge `invite-platform-support-agent` está ACTIVE, versão 3, com `verify_jwt=true`.
+- Nenhuma conta interna foi criada ainda. Não cadastrar contas fictícias ou reutilizar a conta Master.
+- O histórico de migrações do SMS2 foi alinhado aos prefixos versionados no repositório.
 
-- Convite individual por e-mail, confirmação e criação de senha antes da ativação.
-- Perfis padrão editáveis e perfis personalizados.
-- Matriz de permissões aplicada por funções SQL, não apenas pela interface.
-- Mais de um perfil por colaborador; permissões efetivas são a união dos perfis ativos.
-- Suspensão e reativação auditadas.
-- Área interna separada do Painel Master, com consultas somente leitura para clientes, planos, resumo financeiro, métricas e auditoria, de acordo com o perfil.
-- Acesso da equipe interna à gestão da equipe técnica somente com a permissão `support.team.manage`. Isso não habilita sessão de suporte Master.
-- Contas internas não recebem credenciais privadas de cobrança e não podem ser simultaneamente Master, técnico ou usuário municipal.
+A migração final de Equipe Interna está registrada no SMS2 como `20261110121336`. As migrações de suporte e proteção de identidade aplicadas nesta implantação são:
+
+1. `20261110114727_apply_commercial_guards_after_operational_tables.sql`
+2. `20261110115500_platform_support_team_and_scoped_sessions.sql`
+3. `20261110115627_complete_procurement_relations_and_amendment_trigger.sql`
+4. `20261110115723_revalidate_platform_support_assignments.sql`
+5. `20261110115818_preserve_supplier_permission_path.sql`
+6. `20261110115937_support_invitation_activation_and_session_context.sql`
+7. `20261110115954_harden_support_lifecycle_and_data_minimization.sql`
+8. `20261110120237_enforce_support_identity_separation.sql`
+9. `20261110120321_enforce_support_identity_separation.sql` (marcador da reexecução idempotente)
+10. `20261110121323_enforce_support_identity_separation.sql` (marcador da reexecução idempotente)
+11. `20261110121329_reconcile_tenant_row_identity_helper.sql`
+12. `20261110121336_platform_internal_staff_access.sql`
+
+Os dois marcadores sem SQL adicional preservam as duas reexecuções idempotentes registradas no histórico remoto; o SQL efetivo de proteção de identidade está na versão `20261110120237`.
 
 ## Perfis padrão
 
-| Perfil          | Escopo inicial                                                  |
-| --------------- | --------------------------------------------------------------- |
-| Comercial       | Consultar clientes, planos e métricas                           |
-| Financeiro      | Consultar clientes, valores e métricas financeiras agregadas    |
-| Implantação     | Consultar situação cadastral e implantação                      |
-| Suporte interno | Gerenciar técnicos, convites e atribuições da Equipe de Suporte |
-| Auditoria       | Consultar clientes, métricas e eventos de auditoria             |
+| Perfil | Acesso inicial |
+| --- | --- |
+| Comercial | Clientes, planos e métricas — consulta |
+| Financeiro | Resumo financeiro agregado, clientes e métricas — consulta |
+| Implantação | Dados de clientes necessários à implantação — consulta |
+| Suporte interno | Clientes e gerenciamento da equipe técnica, quando autorizado |
+| Auditoria | Clientes, métricas e eventos de auditoria — consulta |
 
-O Master pode editar as permissões dos perfis padrão e criar perfis adicionais. A permissão-base `dashboard.view` é obrigatória. O catálogo contém somente permissões que já possuem uma operação segura implementada; não conceda poderes de cadastro/edição de clientes, alteração de planos, acesso a segredos ou operações administrativas globais por fora deste catálogo.
+O Master pode alterar permissões e criar perfis personalizados. A permissão `dashboard.view` é obrigatória. O catálogo contém somente operações já implementadas. Não conceder acesso a segredos, chaves de pagamento, alteração de planos ou operações administrativas globais.
 
-## Pré-requisitos e sequência
+## Antes de enviar os primeiros convites
 
-1. Fazer backup verificável do projeto SMS2 e registrar o estado da migration history.
-2. Confirmar que as migrations anteriores da Equipe de Suporte já foram aplicadas; esta migration integra a gestão interna à permissão restrita para administrar técnicos.
-3. Revisar a branch/PR e validar localmente:
-   ```bash
-   supabase start
-   supabase db reset --local
-   supabase test db
-   npm ci
-   npm run lint
-   npm test
-   npm run build
-   ```
-4. Aplicar a migration `20261109170000_platform_internal_staff_access.sql` somente depois do backup e da aprovação do responsável pelo ambiente.
-5. Publicar as Edge Functions `invite-platform-staff` e a versão atualizada de `invite-platform-support-agent`. Ambas usam os secrets padrão do Supabase (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) no servidor. Nunca inserir a service-role key no frontend.
-6. Confirmar que o domínio de produção está em `APP_URL` e/ou `INVITE_ALLOWED_ORIGINS`, para que o link de convite volte ao domínio autorizado.
-7. Fazer homologação com um e-mail de teste controlado: convite, confirmação, senha, portal, permissão permitida, permissão negada, suspensão e reativação.
-8. Só depois de homologado, cadastrar colaboradores reais e atribuir o menor conjunto de permissões necessário.
+A estrutura está criada, mas o fluxo de e-mail ainda precisa ser homologado no domínio real:
 
-## Verificações de segurança
+1. **SMTP próprio:** configurar um provedor de e-mail transacional no Supabase Auth. O SMTP padrão do Supabase é restrito a endereços da equipe do projeto e tem limite baixo; não é adequado para convidar funcionários externos em operação real.
+2. **Domínio do aplicativo:** definir o secret `APP_URL` com a origem HTTPS publicada e, quando necessário, `INVITE_ALLOWED_ORIGINS` com origens adicionais específicas. Não usar curingas.
+3. **Link de convite:** confirmar que o domínio de destino está permitido no Supabase Auth Redirect URLs e que a rota de redefinição de senha/aceite do convite está publicada.
+4. **Homologação:** enviar um convite para um e-mail de teste controlado, confirmar recebimento, aceitar, definir senha e conferir a ativação.
+5. **Teste de autorização:** verificar acesso permitido e negado, suspensão, reativação e trilha de auditoria.
+6. **Cadastro real:** somente depois da homologação, convidar funcionários com e-mails individuais e atribuir o menor conjunto de perfis necessário.
 
-- Tabelas internas com RLS e FORCE ROW LEVEL SECURITY, sem grants diretos para o frontend.
-- Consultas expostas por RPCs com `SECURITY DEFINER`, `search_path` fixo e autorização por `auth.uid()`.
-- Convite somente pelo Master; conta interna inicia como `invited`.
-- A ativação confere e-mail confirmado, usuário autenticado e correspondência com o e-mail cadastrado.
-- Suspensão é verificada pelo banco em cada operação; o token de login não preserva permissões depois da suspensão.
-- Triggers impedem sobreposição entre staff, `platform_admins`, `platform_support_agents` e `tenant_memberships`.
-- A Equipe Interna não tem acesso à função de suporte Master nem à configuração/segredos do provedor de cobrança.
-- A auditoria registra convite, ativação, suspensão/reativação, troca de perfis e edição da matriz.
+Nunca envie senha SMTP, service-role key ou tokens pelo chat, GitHub ou código do navegador. Configure credenciais diretamente no painel seguro do provedor/Supabase.
 
-## Limites conhecidos da entrega
+## Backup e recuperação
 
-- Os perfis Comercial, Financeiro e Implantação são de consulta nesta fase; operações de cadastro/edição de clientes e mudança de plano continuam exclusivas do Master.
-- O perfil Financeiro recebe valores e agregados, mas não configura provedor, não visualiza tokens/chaves e não realiza cobranças.
-- A gestão da Equipe de Suporte permite administrar técnicos e atribuições, mas somente o Master inicia uma sessão de suporte como administrador global.
-- A migration e a Edge Function não são aplicadas automaticamente neste rollout de código. O ambiente SMS2 permanece sem alteração até a execução controlada dos passos acima.
+**Não há backup restaurável verificado desta implantação.** O projeto SMS2 está no plano Free, sem backup diário automático ou PITR gerenciado. O repositório contém o workflow `.github/workflows/backup-sms2.yml`, mas ele só poderá gerar artefatos depois de configurar:
+
+- Secret GitHub `SUPABASE_DB_URL`
+- Secret GitHub `SUPABASE_SERVICE_ROLE_KEY`
+- Variable GitHub `AGE_RECIPIENT`
+- Variable GitHub `SUPABASE_BACKUP_ENABLED=true`
+
+O backup lógico desse workflow inclui schema, dados das tabelas da aplicação, roles e arquivos do bucket privado indicado no próprio workflow. Não inclui identidades/senhas Auth, configurações do projeto, segredos de Edge Functions ou configurações SMTP. A chave privada age correspondente deve ficar offline e separada. O artefato não equivale a uma imagem integral restaurável do projeto; testar restauração em projeto separado antes de depender dele.
+
+## Segurança
+
+- RLS e FORCE RLS nas tabelas internas, sem permissões diretas de tabela para clientes.
+- RPCs com `SECURITY DEFINER`, `search_path` fixo e autorização interna por identidade e perfil.
+- Contas internas separadas de `platform_admins`, `platform_support_agents` e `tenant_memberships`.
+- Convites começam como `invited`; a ativação depende de e-mail confirmado e identidade correspondente.
+- Suspensão e alteração de perfil são verificadas no banco e auditadas.
+- Financeiro vê somente resumos agregados; não vê credenciais privadas de cobrança.
+- Suporte interno pode gerenciar técnicos quando recebe `support.team.manage`, mas não pode abrir sessão de suporte Master.
+
+O Security Advisor também aponta a proteção contra senhas vazadas como desativada. No plano Free essa funcionalidade não está disponível; o Supabase documenta disponibilidade a partir do Pro. Avaliar upgrade antes de colocar o SaaS em operação com equipe externa.
+
+## CI e código
+
+O código está no `main`. A validação de aplicação e a formatação passaram após a integração. O CI de banco completo (reset local e testes pgTAP) passou no commit de validação anterior à conciliação de nomes, com o mesmo conteúdo SQL; a última execução após a simples renomeação dos arquivos ficou aguardando a inicialização do contêiner Supabase no GitHub Actions.
 
 ## Rollback
 
-Não apagar as tabelas nem remover registros de colaboradores depois de utilizar o recurso: os registros referenciam usuários Auth e eventos de auditoria. Em caso de interrupção, suspender os colaboradores pela função administrativa, remover a rota/feature apenas com migration reversível revisada e preservar evidências de auditoria. Não executar rollback destrutivo diretamente em produção.
+Não apagar tabelas nem registros de colaboradores após começar a usar o recurso. Em caso de problema, suspender a conta pela função administrativa, preservar os eventos de auditoria e corrigir por migration forward-only. Não executar reset remoto ou rollback destrutivo no SMS2.
