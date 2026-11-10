@@ -76,6 +76,8 @@ A função estar ativa não comprova entrega de e-mail: SMTP, domínio remetente
 ### Fase 4 — Usuários, Equipe Interna e Suporte
 **Estrutura implantada; convites reais pendentes.** Convites municipais, portal interno RBAC e suporte técnico com escopo por Secretaria estão criados. Nenhuma conta interna ou técnica foi cadastrada. Falta SMTP, domínio/redirects, teste de entrega e fechar o ciclo de convites pendentes: cancelar/revogar, reenviar após expiração e tratar conta Auth não confirmada sem excluir identidades automaticamente.
 
+**Atualização de código:** o PR #13 prepara cancelamento/revogação de convites internos e técnicos, com status terminal `revoked`, RPCs auditadas, desativação de atribuições de suporte e preservação da identidade Auth. A migration `20261110144000` não está aplicada ao SMS2. O reenvio do mesmo endereço permanece pendente da escolha do provedor de e-mail e de um fluxo seguro para Auth users já criados.
+
 ### Fase 5 — Alertas e integrações externas
 **Parcial.** Vencimentos são apresentados nas telas. PR #9 amplia o sino para contratos e documentos e está em validação; até merge, não considerar parte do `main`. Não existe disparo programado e não há scheduler. Google Drive é reconhecido como link, sem OAuth/upload/sync. Não há gateway de cobrança ativo.
 
