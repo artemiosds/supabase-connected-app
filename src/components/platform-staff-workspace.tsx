@@ -84,7 +84,7 @@ export function PlatformStaffWorkspace({ access }: { access: PlatformStaffAccess
       const results: { tenants?: TenantSummary[]; metrics?: Metrics; audit?: AuditRow[] } = {};
       if (canSeeClients) {
         jobs.push(
-          db.rpc("list_platform_staff_tenants").then(({ data, error }) => {
+          Promise.resolve(db.rpc("list_platform_staff_tenants")).then(({ data, error }) => {
             if (error) throw error;
             results.tenants = (data ?? []) as TenantSummary[];
           }),
@@ -92,7 +92,7 @@ export function PlatformStaffWorkspace({ access }: { access: PlatformStaffAccess
       }
       if (canSeeSummary) {
         jobs.push(
-          db.rpc("get_platform_staff_metrics").then(({ data, error }) => {
+          Promise.resolve(db.rpc("get_platform_staff_metrics")).then(({ data, error }) => {
             if (error) throw error;
             results.metrics = data as Metrics;
           }),
@@ -100,7 +100,9 @@ export function PlatformStaffWorkspace({ access }: { access: PlatformStaffAccess
       }
       if (activePermissions.has("audit.view")) {
         jobs.push(
-          db.rpc("list_platform_staff_audit_events", { p_limit: 100 }).then(({ data, error }) => {
+          Promise.resolve(
+            db.rpc("list_platform_staff_audit_events", { p_limit: 100 }),
+          ).then(({ data, error }) => {
             if (error) throw error;
             results.audit = (data ?? []) as AuditRow[];
           }),

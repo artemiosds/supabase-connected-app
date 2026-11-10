@@ -176,7 +176,8 @@ function MenuLateral() {
 
   useEffect(() => {
     let current = true;
-    if (!session?.user.id) {
+    const userId = session?.user.id;
+    if (!userId) {
       setIsPlatformAdmin(false);
       setIsPlatformStaff(false);
       return;
@@ -185,7 +186,7 @@ function MenuLateral() {
       const { data: admin } = await db
         .from("platform_admins")
         .select("user_id")
-        .eq("user_id", session.user.id)
+        .eq("user_id", userId)
         .eq("is_active", true)
         .maybeSingle();
       if (!current) return;
