@@ -351,4 +351,56 @@ $function$;
 REVOKE ALL ON FUNCTION public.revoke_platform_support_invitation(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.revoke_platform_support_invitation(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.get_my_platform_support_status()
+RETURNS TABLE(
+  is_agent boolean,
+  agent_status text,
+  is_platform_admin boolean,
+  session_id uuid,
+  tenant_id uuid,
+  tenant_name text,
+  reason text,
+  expires_at timestamptz,
+  allowed_actions text[]
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path=''
+AS $function$
+  SELECT
+    EXISTS(
+      SELECT 1
+      FROM public.platform_support_agents a
+      WHERE a.user_id=(SELECT auth.uid())
+        AND a.status <> 'revoked'
+    ),
+    (
+      SELECT a.status
+      FROM public.platform_support_agents a
+      WHERE a.user_id=(SELECT auth.uid())
+    ),
+    app_auth.is_platform_admin(),
+    s.id,
+    s.tenant_id,
+    t.name,
+    s.reason,
+    s.expires_at,
+    s.allowed_actions
+  FROM (SELECT (SELECT auth.uid()) AS actor_id) actor
+  LEFT JOIN LATERAL (
+    SELECT ps.id,ps.tenant_id,ps.reason,ps.expires_at,ps.allowed_actions
+    FROM public.platform_support_sessions ps
+    WHERE ps.actor_id=actor.actor_id
+      AND ps.ended_at IS NULL
+      AND ps.expires_at>pg_catalog.now()
+    ORDER BY ps.started_at DESC
+    LIMIT 1
+  ) s ON true
+  LEFT JOIN public.tenants t ON t.id=s.tenant_id
+  WHERE actor.actor_id IS NOT NULL;
+$function$;
+REVOKE ALL ON FUNCTION public.get_my_platform_support_status() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_my_platform_support_status() TO authenticated;
+
 COMMIT;
