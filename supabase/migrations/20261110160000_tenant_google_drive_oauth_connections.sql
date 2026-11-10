@@ -383,8 +383,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.disconnect_tenant_google_drive(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.disconnect_tenant_google_drive(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.disconnect_tenant_google_drive(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.disconnect_tenant_google_drive(uuid) TO service_role;
 
 COMMENT ON TABLE public.tenant_google_drive_connections IS
   'Per-tenant Google Drive connection metadata. OAuth tokens are encrypted in Supabase Vault and never returned to client roles.';
