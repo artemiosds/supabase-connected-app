@@ -4,8 +4,8 @@ import {
   daysUntilDate,
   escapeHtml,
   expiryAlertIdempotencyKey,
-  utcDateOnly,
   notificationBatchWindow,
+  utcDateOnly,
 } from "../../supabase/functions/_shared/expiry-notification";
 
 describe("scheduled expiry notification helpers", () => {
@@ -79,6 +79,8 @@ describe("scheduled expiry notification helpers", () => {
   it("rejects impossible calendar dates and invalid cursors", () => {
     expect(() => daysUntilDate("2026-02-30", "2026-02-01")).toThrow("Invalid calendar date");
     expect(() => notificationBatchWindow(-1, 0, 100)).toThrow("Invalid notification batch window");
-    expect(() => notificationBatchWindow(100, -1, 100)).toThrow("Invalid notification batch window");
+    expect(() => notificationBatchWindow(100, -1, 100)).toThrow(
+      "Invalid notification batch window",
+    );
   });
 });
