@@ -407,6 +407,7 @@ Deno.serve(async (request: Request) => {
   }
 
   let batchSize = DEFAULT_BATCH_SIZE;
+  let offset = 0;
   try {
     const body = await request.json().catch(() => ({}));
     if (body?.batch_size !== undefined) {
@@ -415,6 +416,13 @@ Deno.serve(async (request: Request) => {
         return jsonResponse({ error: "batch_size precisa estar entre 1 e 100." }, 400);
       }
       batchSize = value;
+    }
+    if (body?.offset !== undefined) {
+      const value = Number(body.offset);
+      if (!Number.isSafeInteger(value) || value < 0 || value > 1_000_000) {
+        return jsonResponse({ error: "offset precisa ser um inteiro entre 0 e 1.000.000." }, 400);
+      }
+      offset = value;
     }
   } catch {
     return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
@@ -489,29 +497,30 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    const batchTasks = tasks.slice(offset, offset + batchSize);
     let sent = 0;
     let failed = 0;
     let skipped = 0;
-    let attempted = 0;
-    for (const task of tasks) {
+
+    for (const task of batchTasks) {
       const result = await deliverTask(admin, task, resendApiKey, from, appOrigin);
       if (result === "sent") sent += 1;
       else if (result === "failed") failed += 1;
       else skipped += 1;
-
-      if (result !== "skipped") attempted += 1;
-      if (attempted >= batchSize) break;
     }
 
+    const nextOffset = offset + batchTasks.length;
+    const hasMore = nextOffset < tasks.length;
     return jsonResponse({
       status: "processed",
       date: today,
       candidates: tasks.length,
-      attempted,
+      processed: batchTasks.length,
       sent,
       failed,
       skipped,
-      has_more: attempted >= batchSize && tasks.length > attempted,
+      has_more: hasMore,
+      next_offset: hasMore ? nextOffset : null,
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNEXPECTED_ERROR";
