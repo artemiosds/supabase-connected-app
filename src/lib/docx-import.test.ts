@@ -86,34 +86,20 @@ describe("importação segura de modelos DOCX", () => {
     const archive = createStoredZip("word/document.xml", wordXml);
     const bytes = new Uint8Array(archive);
     const view = new DataView(archive);
-    const localOffset = 0;
     const nameLength = view.getUint16(26, true);
     const dataOffset = 30 + nameLength;
-    const centralOffset = 30 + nameLength + wordXml.length;
-    // Mark the entry as DEFLATE in both the local and central headers.
+    const centralOffset = dataOffset + new TextEncoder().encode(wordXml).length;
+    // Simulate a DEFLATE entry and inject an inflater so this test is deterministic.
     view.setUint16(8, 8, true);
     view.setUint32(18, compressedPlaceholder.length, true);
-    view.setUint32(22, wordXml.length, true);
+    view.setUint32(22, new TextEncoder().encode(wordXml).length, true);
     view.setUint16(centralOffset + 10, 8, true);
     view.setUint32(centralOffset + 20, compressedPlaceholder.length, true);
-    view.setUint32(centralOffset + 24, wordXml.length, true);
+    view.setUint32(centralOffset + 24, new TextEncoder().encode(wordXml).length, true);
     bytes.set(compressedPlaceholder, dataOffset);
-    const compressedArchive = bytes.buffer.slice(0, dataOffset + compressedPlaceholder.length);
-    // Rebuild the central directory at its correct offset after the shorter payload.
-    const rebuilt = createStoredZip("word/document.xml", wordXml);
-    const rebuiltBytes = new Uint8Array(rebuilt);
-    const rebuiltView = new DataView(rebuilt);
-    const rebuiltCentral = 30 + nameLength + wordXml.length;
-    rebuiltView.setUint16(8, 8, true);
-    rebuiltView.setUint32(18, compressedPlaceholder.length, true);
-    rebuiltView.setUint32(22, wordXml.length, true);
-    rebuiltView.setUint16(rebuiltCentral + 10, 8, true);
-    rebuiltView.setUint32(rebuiltCentral + 20, compressedPlaceholder.length, true);
-    rebuiltView.setUint32(rebuiltCentral + 24, wordXml.length, true);
-    rebuiltBytes.set(compressedPlaceholder, dataOffset);
-    void compressedArchive;
+
     await expect(
-      extractDocxDocumentXml(rebuilt, async () => new TextEncoder().encode(wordXml)),
+      extractDocxDocumentXml(archive, async () => new TextEncoder().encode(wordXml)),
     ).resolves.toBe(wordXml);
   });
 
