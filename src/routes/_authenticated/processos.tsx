@@ -548,7 +548,26 @@ type DocumentoVinculado = {
   id: string;
   title: string;
   status: string;
+  document_type: string;
+  template_version: number | null;
   created_at: string;
+};
+
+const TIPOS_DOCUMENTO_PROCESSO = [
+  { value: "dfd", label: "DFD" },
+  { value: "etp", label: "ETP" },
+  { value: "risk_analysis", label: "Análise de riscos" },
+  { value: "risk_matrix", label: "Matriz contratual" },
+  { value: "tr", label: "Termo de Referência" },
+] as const;
+
+const ROTULOS_TIPO_DOCUMENTO: Record<string, string> = {
+  dfd: "DFD",
+  etp: "ETP",
+  risk_analysis: "Análise de riscos",
+  risk_matrix: "Matriz contratual de riscos",
+  tr: "Termo de Referência",
+  custom: "Documento personalizado",
 };
 
 function DocumentosVinculados(props: {
@@ -570,7 +589,7 @@ function DocumentosVinculados(props: {
     setErro(null);
     const { data, error } = await db
       .from("generated_documents")
-      .select("id,title,status,created_at")
+      .select("id,title,status,document_type,template_version,created_at")
       .eq("tenant_id", props.tenantId)
       .eq("process_id", props.processId)
       .order("created_at", { ascending: false })
@@ -608,13 +627,44 @@ function DocumentosVinculados(props: {
             DFD, ETP, Termo de Referência, pareceres e demais documentos deste processo.
           </p>
         </div>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/documentos">
-            Abrir GED <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/documentos">
+              Abrir GED <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </Button>
+        </div>
       </div>
-      <div className="space-y-2 p-4">
+      <div className="space-y-3 p-4">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Gerar documento deste processo
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TIPOS_DOCUMENTO_PROCESSO.map((tipo) => (
+              <Button
+                key={tipo.value}
+                asChild
+                size="sm"
+                variant="outline"
+                className="min-h-9"
+              >
+                <a
+                  href={`/documentos?processo=${encodeURIComponent(props.processId)}&tipo=${tipo.value}`}
+                  aria-label={`Gerar ${tipo.label} para este processo`}
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  {tipo.label}
+                </a>
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A geração exige que o modelo correspondente esteja instalado na Biblioteca-base desta
+            Secretaria e que seu perfil tenha permissão para criar documentos.
+          </p>
+        </div>
+        <div className="border-t pt-3">
         {loading ? (
           <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -638,7 +688,10 @@ function DocumentosVinculados(props: {
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{documento.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Criado em {new Date(documento.created_at).toLocaleString("pt-BR")}
+                  {ROTULOS_TIPO_DOCUMENTO[documento.document_type] ?? documento.document_type}
+                  {documento.template_version ? ` · Modelo v${documento.template_version}` : ""}
+                  {" · "}
+                  {new Date(documento.created_at).toLocaleString("pt-BR")}
                 </p>
               </div>
               <Badge
@@ -655,6 +708,7 @@ function DocumentosVinculados(props: {
             Exibindo os 20 documentos mais recentes. Consulte o GED para acessar o histórico completo.
           </p>
         )}
+        </div>
       </div>
     </Card>
   );
