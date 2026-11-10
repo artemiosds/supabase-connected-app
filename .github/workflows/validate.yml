@@ -54,6 +54,14 @@ jobs:
       - name: Type check scheduled expiry Edge Function
         run: deno check supabase/functions/send-expiry-notifications/index.ts
 
+      - name: Type check Google Drive Edge Functions
+        run: |
+          deno check supabase/functions/google-drive-oauth-start/index.ts
+          deno check supabase/functions/google-drive-oauth-callback/index.ts
+          deno check supabase/functions/google-drive-upload-document/index.ts
+          deno check supabase/functions/google-drive-download-document/index.ts
+          deno check supabase/functions/google-drive-disconnect/index.ts
+
       - name: Lint
         run: bun run lint
 
