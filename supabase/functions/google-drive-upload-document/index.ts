@@ -229,8 +229,8 @@ Deno.serve(async (request: Request) => {
   }
 
   const documentId = crypto.randomUUID();
-  const externalUrl = driveFile.webViewLink ||
-    "https://drive.google.com/file/d/" + encodeURIComponent(driveFile.id) + "/view";
+  // The provider URL is deliberately never returned to tenant users.
+  // All downloads are streamed through the authenticated backend endpoint.
   const { error: insertError } = await admin.from("supplier_documents").insert({
     id: documentId,
     tenant_id: tenantId,
@@ -242,7 +242,7 @@ Deno.serve(async (request: Request) => {
     notes: notes || null,
     storage_provider: "google_drive",
     drive_file_id: driveFile.id,
-    external_url: externalUrl,
+    external_url: null,
     storage_path: null,
     file_name: null,
     mime_type: null,
