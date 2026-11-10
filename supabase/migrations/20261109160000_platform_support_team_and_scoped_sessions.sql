@@ -97,10 +97,10 @@ $f$;
 REVOKE ALL ON FUNCTION app_auth.has_active_supplier_support_session(uuid,text) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION app_auth.has_active_supplier_support_session(uuid,text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION app_auth.has_supplier_permission(p_tenant_id uuid,p_code text)
+CREATE OR REPLACE FUNCTION app_auth.has_supplier_permission(p_tenant_id uuid,p_permission_code text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
 AS $f$
- SELECT app_auth.has_active_supplier_support_session(p_tenant_id,p_code)
+ SELECT app_auth.has_active_supplier_support_session(p_tenant_id,p_permission_code)
  OR (
   NOT app_auth.is_platform_admin()
   AND EXISTS(
@@ -111,7 +111,7 @@ AS $f$
    JOIN public.tenant_role_permissions trp ON trp.role_id=tr.id
    JOIN public.permissions p ON p.id=trp.permission_id
    WHERE tm.tenant_id=p_tenant_id AND tm.user_id=(SELECT auth.uid())
-    AND tm.status='active' AND t.status='active' AND p.code=p_code
+    AND tm.status='active' AND t.status='active' AND p.code=p_permission_code
   )
  );
 $f$;
