@@ -7,7 +7,7 @@
 
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(44);
+SELECT extensions.plan(47);
 
 SELECT extensions.ok(pg_catalog.to_regclass('public.platform_staff') IS NOT NULL,'platform staff identity table exists');
 SELECT extensions.ok(pg_catalog.to_regclass('public.platform_staff_roles') IS NOT NULL,'platform staff roles table exists');
@@ -34,6 +34,18 @@ SELECT extensions.ok(pg_catalog.to_regprocedure('public.get_my_platform_staff_ac
 SELECT extensions.ok(pg_catalog.to_regprocedure('public.register_platform_staff(uuid,text,text,uuid[])') IS NOT NULL,'staff registration RPC exists');
 SELECT extensions.ok(
  (SELECT p.prosecdef AND COALESCE(array_to_string(p.proconfig,','),'') ILIKE '%search_path=%'
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.can_invite_platform_staff(text)'::regprocedure),
+ 'invitation e-mail preflight is SECURITY DEFINER with pinned search_path'
+);
+SELECT extensions.ok(
+ (SELECT pg_catalog.pg_get_functiondef(p.oid) ILIKE '%email_confirmed_at%'
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.register_platform_staff(uuid,text,text,uuid[])'::regprocedure),
+ 'registration rejects an already-confirmed Auth account'
+);
+SELECT extensions.ok(
+ (SELECT p.prosecdef AND COALESCE(array_to_string(p.proconfig,','),'') ILIKE '%search_path=%'
   FROM pg_catalog.pg_proc p WHERE p.oid='app_auth.has_platform_staff_permission(text)'::regprocedure),
  'permission check is SECURITY DEFINER with pinned search_path'
 );
@@ -52,6 +64,12 @@ SELECT extensions.ok(
   WHERE tgname IN ('trg_prevent_platform_staff_overlap','trg_prevent_staff_membership_overlap',
    'trg_prevent_staff_master_overlap','trg_prevent_staff_support_overlap') AND NOT tgisinternal),
  'four identity-separation triggers protect staff, Master, support and tenant identities'
+);
+SELECT extensions.ok(
+ (SELECT (tgtype & 8)=8 FROM pg_catalog.pg_trigger
+  WHERE tgrelid='public.platform_staff'::regclass
+    AND tgname='trg_prevent_platform_staff_overlap'),
+ 'internal staff records cannot be physically deleted'
 );
 SELECT extensions.ok(
  (SELECT pg_catalog.pg_get_functiondef(p.oid) ILIKE '%can_manage_platform_support_team%'
