@@ -643,6 +643,42 @@ function Documentos() {
     setVersoesModelo(data ?? []);
   }
 
+  async function restaurarVersaoModelo(versao: VersaoModelo) {
+    if (!selecionado || !capacidades.can_manage_templates || !modeloHistorico) return;
+    const confirmou = window.confirm(
+      `Restaurar a versão ${versao.version} de "${modeloHistorico.title}"? O conteúdo atual será preservado no histórico e a restauração criará uma nova versão.`,
+    );
+    if (!confirmou) return;
+
+    setCarregandoVersoes(true);
+    const { error: restoreError } = await db
+      .from("document_templates")
+      .update({
+        title: versao.title,
+        description: versao.description,
+        content: versao.content,
+        template_type: versao.template_type,
+        template_code: versao.template_code,
+        legal_basis: versao.legal_basis,
+        source_reference: versao.source_reference,
+        variables_schema: versao.variables_schema,
+        change_summary: `Restauração da versão histórica ${versao.version}.`,
+      })
+      .eq("id", modeloHistorico.id)
+      .eq("tenant_id", selecionado.id);
+
+    if (restoreError) {
+      setCarregandoVersoes(false);
+      toast.error(restoreError.message);
+      return;
+    }
+
+    toast.success("Versão restaurada. Uma nova versão foi registrada no histórico.");
+    setDialogHistoricoModelo(false);
+    setModeloHistorico(null);
+    await carregar();
+  }
+
   async function salvarModelo(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
@@ -1543,7 +1579,7 @@ function Documentos() {
                       {versao.change_summary || "Versão arquivada automaticamente."}
                     </p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <details>
                       <summary className="cursor-pointer text-sm font-medium">
                         Consultar conteúdo desta versão
@@ -1552,6 +1588,20 @@ function Documentos() {
                         {versao.content}
                       </pre>
                     </details>
+                    {capacidades.can_manage_templates && modeloHistorico?.version !== versao.version && (
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={carregandoVersoes}
+                          onClick={() => void restaurarVersaoModelo(versao)}
+                        >
+                          <History className="h-4 w-4" aria-hidden />
+                          Restaurar esta versão
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
