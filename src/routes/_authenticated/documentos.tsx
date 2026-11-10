@@ -1432,9 +1432,10 @@ function Documentos() {
               />
               <p className="text-xs text-muted-foreground">
                 No DOCX, parágrafos e tabelas simples são importados como texto editável.
-                Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também
-                é possível copiar e colar o conteúdo no campo abaixo.
-              </p>
+                <br />
+                Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também é
+                possível copiar e colar o conteúdo no campo abaixo.
+              </p>          </p>
             </div>
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
