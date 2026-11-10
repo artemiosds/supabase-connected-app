@@ -4,6 +4,15 @@ import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type StaffStatus = "invited" | "active" | "suspended";
+type StaffStatus = "invited" | "active" | "suspended" | "revoked";
 type StaffMember = {
   user_id: string;
   email: string;
@@ -98,12 +107,14 @@ const STATUS_LABELS: Record<StaffStatus, string> = {
   invited: "Convite pendente",
   active: "Ativo",
   suspended: "Suspenso",
+  revoked: "Convite cancelado",
 };
 
-const STATUS_VARIANTS: Record<StaffStatus, "secondary" | "default" | "destructive"> = {
+const STATUS_VARIANTS: Record<StaffStatus, "secondary" | "default" | "destructive" | "outline"> = {
   invited: "secondary",
   active: "default",
   suspended: "destructive",
+  revoked: "outline",
 };
 
 export function AdminMasterStaff() {
@@ -122,6 +133,7 @@ export function AdminMasterStaff() {
   const [roleSlug, setRoleSlug] = useState("");
   const [roleDescription, setRoleDescription] = useState("");
   const [rolePermissions, setRolePermissions] = useState<PermissionCode[]>(["dashboard.view"]);
+  const [inviteToRevoke, setInviteToRevoke] = useState<StaffMember | null>(null);
 
   const selectedStaff = useMemo(
     () => staff.find((member) => member.user_id === selectedStaffId) ?? null,
@@ -233,6 +245,27 @@ export function AdminMasterStaff() {
       await load();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar o status.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revokeInvitation(member: StaffMember) {
+    if (member.status !== "invited") return;
+    setBusy(true);
+    try {
+      const { error } = await db.rpc("revoke_platform_staff_invitation", {
+        p_user_id: member.user_id,
+      });
+      if (error) throw error;
+      setInviteToRevoke(null);
+      if (selectedStaffId === member.user_id) setSelectedStaffId("");
+      toast.success(
+        "Convite cancelado. A identidade Auth foi preservada e não poderá ativar este perfil.",
+      );
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível cancelar o convite.");
     } finally {
       setBusy(false);
     }
@@ -422,23 +455,36 @@ export function AdminMasterStaff() {
                               type="button"
                               variant="outline"
                               size="sm"
+                              disabled={member.status === "revoked"}
                               onClick={() => setSelectedStaffId(member.user_id)}
                             >
                               Perfis
                             </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy || member.status === "invited"}
-                              onClick={() => void changeStatus(member)}
-                            >
-                              {member.status === "active"
-                                ? "Suspender"
-                                : member.status === "suspended"
-                                  ? "Reativar"
-                                  : "Pendente"}
-                            </Button>
+                            {member.status === "invited" ? (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                disabled={busy}
+                                onClick={() => setInviteToRevoke(member)}
+                              >
+                                Cancelar convite
+                              </Button>
+                            ) : member.status === "revoked" ? (
+                              <Button type="button" variant="ghost" size="sm" disabled>
+                                Cancelado
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                onClick={() => void changeStatus(member)}
+                              >
+                                {member.status === "active" ? "Suspender" : "Reativar"}
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -624,6 +670,38 @@ export function AdminMasterStaff() {
           ) : null}
         </CardContent>
       </Card>
+      <AlertDialog
+        open={inviteToRevoke !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setInviteToRevoke(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar convite interno?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {inviteToRevoke
+                ? `O convite de ${inviteToRevoke.display_name} (${inviteToRevoke.email}) será marcado como cancelado. A pessoa não poderá ativar este acesso mesmo que confirme o e-mail. A identidade no Auth não será excluída.`
+                : "O convite será cancelado sem excluir a identidade de autenticação."}{" "}
+              Para um novo convite no futuro, será necessário usar um endereço exclusivo; o reenvio
+              do mesmo convite ainda não está habilitado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Manter convite</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy || !inviteToRevoke}
+              onClick={() => {
+                if (inviteToRevoke) void revokeInvitation(inviteToRevoke);
+              }}
+            >
+              {busy ? "Cancelando..." : "Confirmar cancelamento"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

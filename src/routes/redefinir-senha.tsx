@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supportRpc } from "@/lib/support-rpc";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/db";
@@ -69,6 +70,21 @@ function RedefinirSenha() {
       }
       toast.success("Senha definida e acesso interno ativado.");
       navigate({ to: "/admin-master" });
+      return;
+    }
+    if (conviteSuporte) {
+      const { data: activated, error: activationError } = await supportRpc(
+        "activate_my_platform_support_agent",
+      );
+      if (activationError || activated !== true) {
+        setErro(
+          activationError?.message ??
+            "Este convite de suporte foi cancelado ou não está mais disponível. Solicite ao Administrador Master uma nova autorização.",
+        );
+        return;
+      }
+      toast.success("Senha definida e acesso de suporte ativado.");
+      navigate({ to: "/suporte" });
       return;
     }
     toast.success("Senha atualizada com sucesso.");

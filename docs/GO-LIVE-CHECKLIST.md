@@ -28,6 +28,8 @@
 - [ ] `APP_URL` e `INVITE_ALLOWED_ORIGINS` configuradas com origens HTTPS exatas.
 - [ ] Homologar cadastro, confirmação, login, recuperação e convite municipal.
 - [ ] Homologar convite/aceite/senha/suspensão/reativação da Equipe Interna e Suporte.
+- [ ] Após integrar e homologar o PR #13, testar cancelamento de convite pendente e bloqueio de ativação pelo link antigo; a migration `20261110144000` ainda não está aplicada ao SMS2.
+- [ ] Definir e homologar reenvio/recuperação de convite expirado somente após a escolha do provedor SMTP e do fluxo de envio personalizado.
 - [ ] Completar cancelamento/revogação e reenvio de convites pendentes/expirados.
 - [ ] Testar contas existentes, limites, concorrência, convites expirados e revogados.
 - [ ] Rever política de senha e alerta de proteção contra senhas vazadas.

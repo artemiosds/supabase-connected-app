@@ -1524,6 +1524,14 @@ export type Database = {
         Args: { p_user_id: string; p_status: string };
         Returns: undefined;
       };
+      revoke_platform_staff_invitation: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
+      revoke_platform_support_invitation: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
       accept_my_tenant_invitations: { Args: never; Returns: number };
       add_tenant_member: {
         Args: { p_role_id: string; p_tenant_id: string; p_user_id: string };

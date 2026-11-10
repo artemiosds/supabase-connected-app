@@ -52,6 +52,10 @@ export type SupportRpcMap = {
     args: { p_user_id: string; p_status: string };
     returns: null;
   };
+  revoke_platform_support_invitation: {
+    args: { p_user_id: string };
+    returns: null;
+  };
   set_platform_support_assignment: {
     args: {
       p_agent_user_id: string;
