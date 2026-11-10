@@ -19,13 +19,13 @@ export function SinoAlertas() {
 
   useEffect(() => {
     let ativo = true;
-    const tenantId = selecionado?.id;
+    const tenantId = selecionado?.id ?? "";
 
     // Limpa imediatamente os avisos anteriores para não exibir dados
     // da Secretaria anterior durante a troca de contexto.
     setAvisos([]);
     setFalhaParcial(false);
-    if (!tenantId) {
+    if (tenantId.length === 0) {
       setCarregando(false);
       return;
     }
