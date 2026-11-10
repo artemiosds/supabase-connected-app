@@ -1207,7 +1207,6 @@ export type Database = {
           created_at?: string
           created_by: string
           contract_id?: string | null
-          contract_id?: string | null
           delivery_cost?: number
           id?: string
           is_active?: boolean
@@ -1228,6 +1227,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          contract_id?: string | null
           delivery_cost?: number
           id?: string
           is_active?: boolean
