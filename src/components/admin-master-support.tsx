@@ -242,6 +242,7 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
       });
       if (error) throw error;
       setInviteToRevoke(null);
+      if (selectedAgentId === agent.user_id) setSelectedAgentId("");
       toast.success(
         "Convite cancelado. A identidade Auth foi preservada, as atribuições foram desativadas e o acesso não poderá ser ativado.",
       );
