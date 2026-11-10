@@ -201,6 +201,8 @@ function Documentos() {
   const [linkDocumento, setLinkDocumento] = useState("");
   const [observacaoDocumento, setObservacaoDocumento] = useState("");
   const [arquivoDocumento, setArquivoDocumento] = useState<File | null>(null);
+  const [storageProvider, setStorageProvider] = useState<"supabase_storage" | "google_drive">("supabase_storage");
+  const [driveConnected, setDriveConnected] = useState(false);
 
   const [dialogModelo, setDialogModelo] = useState(false);
   const [modeloEditando, setModeloEditando] = useState<Modelo | null>(null);
@@ -241,6 +243,8 @@ function Documentos() {
       setProcessos([]);
       setGerados([]);
       setMunicipioSecretaria("");
+      setDriveConnected(false);
+      setStorageProvider("supabase_storage");
       setLoading(false);
       return;
     }
@@ -256,6 +260,7 @@ function Documentos() {
         tenantData,
         catalogTemplates,
         processRecords,
+        driveStatus,
       ] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
@@ -318,6 +323,7 @@ function Documentos() {
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
+        db.rpc("get_tenant_google_drive_status", { p_tenant_id: selecionado.id }),
       ]);
       for (const result of [cap, tenantData]) if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
@@ -340,6 +346,8 @@ function Documentos() {
       setProcessos(processRecords);
       setGerados(generated);
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
+      setDriveConnected(driveStatus.error ? false : driveStatus.data?.[0]?.is_connected === true);
+      if (driveStatus.error) setStorageProvider("supabase_storage");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
@@ -377,6 +385,7 @@ function Documentos() {
     setLinkDocumento("");
     setObservacaoDocumento("");
     setArquivoDocumento(null);
+    setStorageProvider("supabase_storage");
     setDialogDocumento(true);
   }
   function abrirEdicaoDocumento(d: DocumentoFornecedor) {
@@ -389,6 +398,7 @@ function Documentos() {
     setLinkDocumento(d.external_url ?? "");
     setObservacaoDocumento(d.notes ?? "");
     setArquivoDocumento(null);
+    setStorageProvider("supabase_storage");
     setDialogDocumento(true);
   }
   function extrairDriveFileId(url: string): string | null {
@@ -420,12 +430,48 @@ function Documentos() {
   }
 
   async function abrirArquivoPrivado(documento: DocumentoFornecedor) {
+    if (documento.status !== "active") {
+      toast.error("Este arquivo não está disponível para download.");
+      return;
+    }
+
+    if (documento.storage_provider === "google_drive" && documento.drive_file_id) {
+      const { data, error, response } = await db.functions.invoke<Blob>(
+        "google-drive-download-document",
+        { body: { document_id: documento.id } },
+      );
+      if (error || !(data instanceof Blob)) {
+        toast.error(error?.message ?? "Não foi possível baixar o arquivo do Google Drive.");
+        return;
+      }
+
+      const disposition = response?.headers.get("Content-Disposition") ?? "";
+      const encodedName = disposition.match(/filename\\*=UTF-8''([^;]+)/i)?.[1];
+      let filename = documento.title;
+      if (encodedName) {
+        try {
+          filename = decodeURIComponent(encodedName);
+        } catch {
+          filename = documento.title;
+        }
+      }
+      const objectUrl = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      return;
+    }
+
     if (
       documento.storage_provider !== "supabase_storage" ||
-      !documento.storage_path ||
-      documento.status !== "active"
+      !documento.storage_path
     ) {
-      toast.error("Este arquivo não está disponível para visualização.");
+      toast.error("Este arquivo não está disponível para download.");
       return;
     }
 
@@ -471,6 +517,14 @@ function Documentos() {
       toast.error("A data de vencimento não pode ser anterior à emissão.");
       return;
     }
+    if (storageProvider === "google_drive" && !arquivoDocumento && !documentoEditando) {
+      toast.error("Selecione um arquivo para enviar ao Google Drive.");
+      return;
+    }
+    if (storageProvider === "google_drive" && !driveConnected && !documentoEditando) {
+      toast.error("Conecte o Google Drive da Secretaria antes de enviar arquivos.");
+      return;
+    }
     setSalvandoDocumento(true);
 
     const metadata = {
@@ -483,15 +537,14 @@ function Documentos() {
 
     if (documentoEditando) {
       const payload =
-        documentoEditando.storage_provider === "supabase_storage"
+        documentoEditando.storage_provider === "supabase_storage" ||
+        documentoEditando.storage_provider === "google_drive"
           ? metadata
           : {
               ...metadata,
               external_url: linkDocumento.trim() || null,
-              storage_provider: extrairDriveFileId(linkDocumento.trim())
-                ? "google_drive"
-                : "external_link",
-              drive_file_id: extrairDriveFileId(linkDocumento.trim()),
+              storage_provider: "external_link",
+              drive_file_id: null,
             };
       const { error: updateError } = await db
         .from("supplier_documents")
@@ -504,6 +557,31 @@ function Documentos() {
         return;
       }
       toast.success("Documento atualizado. O arquivo original foi preservado.");
+    } else if (arquivoDocumento && storageProvider === "google_drive") {
+      const form = new FormData();
+      form.set("tenant_id", selecionado.id);
+      form.set("supplier_id", fornecedorId);
+      form.set("title", metadata.title);
+      form.set("document_type", metadata.document_type);
+      form.set("issue_date", metadata.issue_date ?? "");
+      form.set("expires_at", metadata.expires_at ?? "");
+      form.set("notes", metadata.notes ?? "");
+      form.set("file", arquivoDocumento, arquivoDocumento.name);
+      try {
+        const { data, error } = await db.functions.invoke("google-drive-upload-document", {
+          body: form,
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("Documento enviado para a pasta privada do Google Drive da Secretaria.");
+      } catch (error) {
+        setSalvandoDocumento(false);
+        toast.error(
+          error instanceof Error ? error.message : "Não foi possível enviar o documento ao Drive.",
+        );
+        return;
+      }
+      setSalvandoDocumento(false);
     } else if (arquivoDocumento) {
       let validated: { mimeType: string; extension: string };
       try {
@@ -573,8 +651,8 @@ function Documentos() {
         supplier_id: fornecedorId,
         ...metadata,
         external_url: externalUrl || null,
-        storage_provider: extrairDriveFileId(externalUrl) ? "google_drive" : "external_link",
-        drive_file_id: extrairDriveFileId(externalUrl),
+        storage_provider: "external_link",
+        drive_file_id: null,
         status: "active",
       });
       setSalvandoDocumento(false);
@@ -970,7 +1048,8 @@ function Documentos() {
                               </td>
                               <td className="p-3">
                                 <div className="flex justify-end gap-1">
-                                  {d.storage_provider === "supabase_storage" && d.storage_path && (
+                                  {((d.storage_provider === "supabase_storage" && d.storage_path) ||
+                                    (d.storage_provider === "google_drive" && d.drive_file_id)) && (
                                     <Button
                                       size="icon"
                                       variant="ghost"
@@ -980,7 +1059,7 @@ function Documentos() {
                                       <Download className="h-4 w-4" />
                                     </Button>
                                   )}
-                                  {d.external_url && (
+                                  {d.external_url && d.storage_provider === "external_link" && (
                                     <Button size="icon" variant="ghost" asChild>
                                       <a
                                         href={d.external_url}
@@ -1305,34 +1384,68 @@ function Documentos() {
                 />
               </div>
               {!documentoEditando && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Arquivo privado (opcional)</Label>
-                  <Input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
-                    onChange={(event) => void selecionarArquivoPrivado(event.target.files?.[0])}
-                  />
-                  {arquivoDocumento && (
+                <div className="space-y-3 sm:col-span-2 rounded-lg border p-3">
+                  <div className="space-y-2">
+                    <Label>Onde armazenar o arquivo</Label>
+                    <Select
+                      value={storageProvider}
+                      onValueChange={(value) => {
+                        setStorageProvider(value as "supabase_storage" | "google_drive");
+                        setArquivoDocumento(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="supabase_storage">Storage privado do sistema</SelectItem>
+                        {driveConnected && (
+                          <SelectItem value="google_drive">Google Drive da Secretaria</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Arquivo privado (opcional)</Label>
+                    <Input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
+                      onChange={(event) => {
+                        void selecionarArquivoPrivado(event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    {arquivoDocumento && (
+                      <p className="text-xs text-muted-foreground">
+                        Selecionado: {arquivoDocumento.name} ·{" "}
+                        {(arquivoDocumento.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Selecionado: {arquivoDocumento.name} ·{" "}
-                      {(arquivoDocumento.size / (1024 * 1024)).toFixed(2)} MB
+                      PDF, Word, Excel, JPG ou PNG. Limite de 20 MB.{" "}
+                      {storageProvider === "google_drive"
+                        ? "O arquivo será enviado pelo servidor para a pasta privada desta Secretaria no Google Drive."
+                        : "O arquivo ficará no Storage privado do sistema e só poderá ser acessado por usuários autorizados desta Secretaria."}
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    PDF, Word, Excel, JPG ou PNG. Limite de 20 MB. O arquivo ficará em armazenamento
-                    privado e só poderá ser acessado por usuários autorizados desta Secretaria.
-                  </p>
+                  </div>
                 </div>
               )}
-              {documentoEditando?.storage_provider === "supabase_storage" && (
+              {(documentoEditando?.storage_provider === "supabase_storage" ||
+                documentoEditando?.storage_provider === "google_drive") && (
                 <Alert className="sm:col-span-2">
                   <AlertDescription>
-                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O conteúdo é
-                    imutável. Para substituir, cadastre um novo documento e arquive este registro.
+                    {documentoEditando.storage_provider === "google_drive"
+                      ? "Arquivo armazenado no Google Drive da Secretaria."
+                      : `Arquivo privado: ${documentoEditando.file_name ?? "anexo"}.`}{" "}
+                    O conteúdo original é imutável. Para substituir, cadastre um novo documento e
+                    arquive este registro.
                   </AlertDescription>
                 </Alert>
               )}
-              {(!documentoEditando || documentoEditando.storage_provider !== "supabase_storage") &&
+              {(!documentoEditando ||
+                (documentoEditando.storage_provider !== "supabase_storage" &&
+                  documentoEditando.storage_provider !== "google_drive")) &&
+                storageProvider !== "google_drive" &&
                 !arquivoDocumento && (
                   <div className="space-y-2">
                     <Label>Link do arquivo (Drive ou outro)</Label>
