@@ -6,7 +6,7 @@
 -- No Auth user or production row is created.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(20);
+SELECT extensions.plan(21);
 
 SELECT extensions.ok(
   (SELECT pg_catalog.pg_get_constraintdef(oid) ILIKE '%revoked%'
@@ -94,6 +94,12 @@ SELECT extensions.ok(
   (SELECT pg_catalog.pg_get_functiondef('public.set_platform_support_agent_status(uuid,text)'::regprocedure)
     ILIKE '%v_current_status=''revoked''%'),
   'the support status RPC rejects reactivation of revoked invitations'
+);
+
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_functiondef('public.get_my_platform_support_status()'::regprocedure)
+    ILIKE '%a.status <> ''revoked''%'),
+  'revoked support accounts are no longer advertised as technical agents in portal status'
 );
 
 SELECT extensions.ok(
