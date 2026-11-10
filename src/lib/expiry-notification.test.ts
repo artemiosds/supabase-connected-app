@@ -5,6 +5,7 @@ import {
   escapeHtml,
   expiryAlertIdempotencyKey,
   utcDateOnly,
+  notificationBatchWindow,
 } from "../../supabase/functions/_shared/expiry-notification";
 
 describe("scheduled expiry notification helpers", () => {
@@ -50,7 +51,34 @@ describe("scheduled expiry notification helpers", () => {
     );
   });
 
-  it("rejects impossible calendar dates", () => {
+  it("advances through complete batches, including skipped delivery candidates", () => {
+    expect(notificationBatchWindow(245, 0, 100)).toEqual({
+      start: 0,
+      end: 100,
+      processed: 100,
+      hasMore: true,
+      nextOffset: 100,
+    });
+    expect(notificationBatchWindow(245, 100, 100)).toEqual({
+      start: 100,
+      end: 200,
+      processed: 100,
+      hasMore: true,
+      nextOffset: 200,
+    });
+    expect(notificationBatchWindow(245, 200, 100)).toEqual({
+      start: 200,
+      end: 245,
+      processed: 45,
+      hasMore: false,
+      nextOffset: null,
+    });
+    expect(notificationBatchWindow(0, 0, 100).hasMore).toBe(false);
+  });
+
+  it("rejects impossible calendar dates and invalid cursors", () => {
     expect(() => daysUntilDate("2026-02-30", "2026-02-01")).toThrow("Invalid calendar date");
+    expect(() => notificationBatchWindow(-1, 0, 100)).toThrow("Invalid notification batch window");
+    expect(() => notificationBatchWindow(100, -1, 100)).toThrow("Invalid notification batch window");
   });
 });
