@@ -485,7 +485,10 @@ function SeletorOrganizacao() {
 
   return (
     <Select value={selecionado?.id ?? ""} onValueChange={selecionar}>
-      <SelectTrigger className="w-64" aria-label="Organização selecionada">
+      <SelectTrigger
+      className="w-[min(40vw,16rem)] min-w-0 md:w-64"
+      aria-label="Organização selecionada"
+    >
         <SelectValue placeholder="Selecione a organização" />
       </SelectTrigger>
       <SelectContent>
