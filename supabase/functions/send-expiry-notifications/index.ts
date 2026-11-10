@@ -103,9 +103,9 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
     supplier,
     `<p><strong>Vencimento:</strong> ${dateLabel(task.dueOn)}</p>`,
     `<p><strong>Situação:</strong> ${escapeHtml(alertLabel(task.alertLevel, task.daysUntil))}</p>`,
-    '<p>Verifique a documentação e adote as providências administrativas necessárias.</p>',
+    "<p>Verifique a documentação e adote as providências administrativas necessárias.</p>",
     `<p><a href="${escapeHtml(destination)}">Abrir Gestão de Fornecedores</a></p>`,
-    "<hr><p style=\"font-size:12px;color:#64748b\">Mensagem automática da plataforma. Não responda a este e-mail.</p>",
+    '<hr><p style="font-size:12px;color:#64748b">Mensagem automática da plataforma. Não responda a este e-mail.</p>',
     "</body></html>",
   ].join("");
   return { subject, html };
@@ -158,10 +158,7 @@ async function fetchDocuments(
   return rows;
 }
 
-async function fetchRecipients(
-  admin: AdminClient,
-  tenantId: string,
-): Promise<Recipient[]> {
+async function fetchRecipients(admin: AdminClient, tenantId: string): Promise<Recipient[]> {
   const memberships: Array<{ id: string; user_id: string }> = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await admin
@@ -178,7 +175,9 @@ async function fetchRecipients(
 
   if (memberships.length === 0) return [];
   const membershipIds = memberships.map((membership) => membership.id);
-  const userByMembership = new Map(memberships.map((membership) => [membership.id, membership.user_id]));
+  const userByMembership = new Map(
+    memberships.map((membership) => [membership.id, membership.user_id]),
+  );
   const authorizedUserIds = new Set<string>();
 
   for (let offset = 0; offset < membershipIds.length; offset += PAGE_SIZE) {
@@ -191,7 +190,8 @@ async function fetchRecipients(
     if (error) throw new Error("MEMBERSHIP_ROLE_QUERY_FAILED");
 
     for (const link of data ?? []) {
-      const related = link.tenant_roles as unknown as { slug?: string } | { slug?: string }[] | null;
+      const related = link.tenant_roles as unknown as
+        { slug?: string } | { slug?: string }[] | null;
       const role = Array.isArray(related) ? related[0] : related;
       if (role?.slug === "admin" || role?.slug === "manager") {
         const userId = userByMembership.get(link.membership_id);
@@ -206,10 +206,7 @@ async function fetchRecipients(
   const profilesById = new Map<string, string>();
   for (let offset = 0; offset < recipientIds.length; offset += PAGE_SIZE) {
     const batch = recipientIds.slice(offset, offset + PAGE_SIZE);
-    const { data, error } = await admin
-      .from("profiles")
-      .select("id,full_name")
-      .in("id", batch);
+    const { data, error } = await admin.from("profiles").select("id,full_name").in("id", batch);
     if (error) throw new Error("PROFILE_QUERY_FAILED");
     for (const profile of data ?? []) profilesById.set(profile.id, profile.full_name);
   }
@@ -346,8 +343,7 @@ async function deliverTask(
     if (!response.ok) {
       errorCode = `RESEND_HTTP_${response.status}`;
     } else {
-      providerMessageId =
-        typeof responseBody?.id === "string" ? responseBody.id : null;
+      providerMessageId = typeof responseBody?.id === "string" ? responseBody.id : null;
     }
   } catch {
     errorCode = "RESEND_NETWORK_ERROR";
@@ -394,10 +390,7 @@ Deno.serve(async (request: Request) => {
   const from = Deno.env.get("EXPIRY_ALERTS_FROM");
   const appUrl = Deno.env.get("APP_URL");
   if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !from || !appUrl) {
-    return jsonResponse(
-      { error: "Alertas automáticos não configurados no servidor." },
-      503,
-    );
+    return jsonResponse({ error: "Alertas automáticos não configurados no servidor." }, 503);
   }
 
   let appOrigin: string;
