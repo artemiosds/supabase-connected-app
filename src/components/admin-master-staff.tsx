@@ -259,6 +259,7 @@ export function AdminMasterStaff() {
       });
       if (error) throw error;
       setInviteToRevoke(null);
+      if (selectedStaffId === member.user_id) setSelectedStaffId("");
       toast.success(
         "Convite cancelado. A identidade Auth foi preservada e não poderá ativar este perfil.",
       );
@@ -456,6 +457,7 @@ export function AdminMasterStaff() {
                               type="button"
                               variant="outline"
                               size="sm"
+                              disabled={member.status === "revoked"}
                               onClick={() => setSelectedStaffId(member.user_id)}
                             >
                               Perfis
