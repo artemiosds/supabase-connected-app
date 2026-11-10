@@ -202,7 +202,7 @@ function Organizacoes() {
       if (error) {
         if (bancoNaoConfigurado(error.message)) {
           setErroCriacao(
-            "A estrutura da Fase 1 ainda não foi implantada. A migração precisa ser aprovada antes de criar organizações.",
+            "Não foi possível acessar a estrutura de organizações no momento. Verifique a conexão e as permissões do banco antes de tentar novamente.",
           );
         } else {
           setErroCriacao(error.message);
