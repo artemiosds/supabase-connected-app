@@ -103,9 +103,11 @@ export function usePlatformAdmin() {
   const [metrics, setMetrics] = useState<MasterMetrics>(METRICS_EMPTY);
   const [candidates, setCandidates] = useState<AdminCandidate[]>([]);
   const [auditEvents, setAuditEvents] = useState<MasterAuditEvent[]>([]);
+  const userId = session?.user.id;
+  const userEmail = session?.user.email;
 
   const load = useCallback(async () => {
-    if (!session?.user.id) {
+    if (!userId) {
       setAuthorized(false);
       setIsPlatformAdmin(false);
       setStaffAccess(null);
@@ -119,7 +121,7 @@ export function usePlatformAdmin() {
     const adminResult = await db
       .from("platform_admins")
       .select("user_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .eq("is_active", true)
       .maybeSingle();
 
@@ -130,7 +132,7 @@ export function usePlatformAdmin() {
       return;
     }
 
-    const isAdmin = adminResult.data?.user_id === session.user.id;
+    const isAdmin = adminResult.data?.user_id === userId;
     setIsPlatformAdmin(isAdmin);
     setAuthorized(isAdmin);
     if (!isAdmin) {
@@ -138,7 +140,7 @@ export function usePlatformAdmin() {
       if (!staffResult.error && staffResult.data?.[0]) {
         const staff = staffResult.data[0];
         const access = {
-          displayName: staff.display_name ?? session.user.email ?? "Colaborador",
+          displayName: staff.display_name ?? userEmail ?? "Colaborador",
           status: staff.staff_status ?? "invited",
           roleNames: staff.role_names ?? [],
           permissionCodes: staff.permission_codes ?? [],
@@ -189,7 +191,7 @@ export function usePlatformAdmin() {
     setCandidates((candidatesResult.data ?? []) as AdminCandidate[]);
     setAuditEvents((auditResult.data ?? []) as MasterAuditEvent[]);
     setLoading(false);
-  }, [session?.user.id]);
+  }, [userId, userEmail]);
 
   useEffect(() => {
     if (authLoading) return;
