@@ -126,10 +126,11 @@ export function GoogleDriveIntegrationCard({ tenantId, canEdit }: Props) {
     if (!confirmed) return;
     setBusy(true);
     try {
-      const { error } = await db.rpc("disconnect_tenant_google_drive", {
-        p_tenant_id: tenantId,
+      const { data, error } = await db.functions.invoke("google-drive-disconnect", {
+        body: { tenant_id: tenantId },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success("Google Drive desconectado. Os tokens locais foram removidos do Vault.");
       await load();
     } catch (cause) {
