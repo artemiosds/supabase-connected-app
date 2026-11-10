@@ -1,96 +1,85 @@
-# Checklist de liberação do SaaS — Gestão de Fornecedores da Saúde
+# Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-Este documento é o critério de **GO / NO-GO** antes de colocar a plataforma em uso real por Secretarias. Estrutura de banco e CI verdes não substituem homologação autenticada, restauração testada, revisão jurídica e configuração de serviços externos.
+**Verificação:** 10/11/2026  
+**Supabase:** SMS2, projeto `rwbbznqtocunzrpcvjvk`.
 
-## Situação técnica conferida em 09/11/2026
+## Estado técnico verificado
+- 59 migrations aplicadas no SMS2. O `main` contém uma migration futura adicional `20261110143000`, ainda não aplicada.
+- 32 tabelas públicas; RLS em 32; FORCE RLS em 21; 114 políticas.
+- 1 Secretaria e 1 vínculo municipal ativo; 1 Master; 2 contas Auth.
+- Equipe Interna: 5 perfis padrão, 7 permissões, 0 contas.
+- Equipe de Suporte: 0 técnicos, 0 atribuições, 0 sessões.
+- Edge Functions ativas com JWT: `invite-tenant-user` v12, `platform-billing-config` v10, `invite-platform-support-agent` v3, `invite-platform-staff` v1.
+- 5 modelos globais; 0 modelos instalados na Secretaria.
+- 0 fornecedores/documentos/processos/itens/cotações/dotações/contratos/aditivos/documentos gerados.
+- Bucket GED `gfs-private-documents` privado, 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; sem objetos.
+- `pg_cron`/`pg_net` não instalados. Não há envio agendado de vencimentos; apenas alertas visuais.
+- Cobrança desabilitada; nenhum gateway operacional.
+- Google Drive OAuth não implementado.
+- PR #8 DOCX foi integrado e passou CI completo, incluindo reset de migrations e pgTAP em banco local descartável.
+- PR #9 alertas visuais foi integrado e passou CI completo; cobre contratos e documentos de fornecedores, sem e-mail agendado.
+- PR #10 contém migration de RLS explícito e índices no main, ainda não aplicada ao SMS2; PR #12 reforça as políticas como restritivas e adiciona cobertura pgTAP, aguardando CI.
+- Não há backup com restore comprovado; domínio/publicação final ainda não confirmados.
 
-- Supabase SMS2: **47 migrations registradas**; última 20261108211206_guard_contract_amendment_value_and_dates. As 47 versões estão sincronizadas com 47 arquivos SQL no GitHub.
-- **24 tabelas públicas da aplicação com RLS**; **13 tabelas com FORCE RLS**; 18 permissões cadastradas.
-- Administrador Master ativo e confirmado; há dois usuários Auth no total. Uma Secretaria ativa (Secretaria Municipal de Saúde de Oriximiná) possui um vínculo municipal ativo com papel `admin`.
-- Há uma Secretaria ativa e um vínculo municipal ativo; não há fornecedores, documentos, convites, processos, itens/cotações, orçamento, contratos, aditivos nem objetos GED. Cinco modelos globais existem no catálogo, mas nenhum está instalado na Secretaria.
-- GED gfs-private-documents: bucket privado, limite 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; ainda sem objetos.
-- Cobrança: cadastro de conta e armazenamento de credenciais no Vault preparados, mas zero integrações cadastradas e payments_enabled=false. Nenhum adaptador de pagamento está ativo.
-- Nova RPC de processo cria processo e 11 itens padrão do checklist numa transação. Um teste controlado confirmou 11 itens, rejeição de título inválido sem processo parcial e ROLLBACK completo. A RPC de seleção de cotação inclui frete no custo unitário de referência e foi testada com duas cotações; o custo unitário estimado foi R$ 20,00 (R$ 40,00 totais com frete ÷ 2 unidades), e o total do item foi R$ 40,00. A troca de referência preservou exatamente uma cotação selecionada. Aditivos testados: acréscimo R$ 20 → total R$ 120; supressão R$ 30 → total R$ 90; supressão acima do saldo, sinal errado e prorrogação sem extensão foram bloqueadas.
-- Cliente Supabase genérico dbFase3 removido; telas de Processos e Contratos usam o cliente tipado. O parser de valores monetários brasileiros/internacionais é compartilhado e tem testes de formatos e rejeição de entradas inválidas.
-- Na sequência de release, **Validate application #229** passou no commit `475416eada470da8d47d86731b09f89b68040690` ([GitHub Actions](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555328009)) e **Format procurement module #111** passou no mesmo commit ([GitHub Actions](https://github.com/artemiosds/supabase-connected-app/actions/runs/42555327981)). Esses workflows cobrem testes automatizados, build, TypeScript, lint e formatação; não equivalem à homologação autenticada no navegador.
-- Smoke test transacional validou fornecedor, processo/checklist atômico, item, cotação, dotação, contrato, aditivo, documento, modelo, documento gerado, assinatura simples e convite/limite. Todos os dados foram revertidos com ROLLBACK.
-- A rotina Encrypted SMS2 backup não possui execução registrada; nenhum artefato criptografado ou restore foi comprovado.
-- Duas Edge Functions estão ativas: `invite-tenant-user` v9 e `platform-billing-config` v7, ambas com JWT obrigatório. A validação de origens é compartilhada em `supabase/functions/_shared/origins.ts`; com `APP_URL` definida, preview e localhost deixam de ser aceitos implicitamente. Não há Edge Function de alertas de vencimento nem OAuth/sincronização Drive implantados.
-- `pg_cron` e `pg_net` não estão instalados no projeto; `cron.job` não existe. Nenhum agendamento de alertas foi comprovado.
-- A branch `main` está sem proteção e sem status checks obrigatórios. O workflow de formatação foi convertido para `prettier --check`, sem commit/push automático, e agora também roda em Pull Requests; ainda falta configurar a proteção da branch no GitHub.
-- Security Advisor: um aviso `auth_leaked_password_protection` (proteção contra senhas vazadas desativada). Health Advisor sem alertas. Performance Advisor: 56 índices `unused_index` em nível INFO; não remover sem dados reais e benchmark.
+## Gate 1 — Auth, equipe e e-mail
+- [ ] SMTP transacional configurado com domínio próprio verificado.
+- [ ] SPF/DKIM/DMARC publicados e verificados.
+- [ ] Supabase Auth Site URL e Redirect URLs configurados.
+- [ ] `APP_URL` e `INVITE_ALLOWED_ORIGINS` configuradas com origens HTTPS exatas.
+- [ ] Homologar cadastro, confirmação, login, recuperação e convite municipal.
+- [ ] Homologar convite/aceite/senha/suspensão/reativação da Equipe Interna e Suporte.
+- [ ] Completar cancelamento/revogação e reenvio de convites pendentes/expirados.
+- [ ] Testar contas existentes, limites, concorrência, convites expirados e revogados.
+- [ ] Rever política de senha e alerta de proteção contra senhas vazadas.
 
-## Bloqueadores antes de produção
+## Gate 2 — Duas Secretarias e isolamento
+- [ ] Criar duas Secretarias de homologação pelo fluxo normal.
+- [ ] Criar usuários e administradores diferentes em cada uma.
+- [ ] Testar leitura/escrita cruzada em fornecedores, documentos, Storage, modelos, processos, cotações, orçamento, contratos, aditivos e auditoria.
+- [ ] Testar tenant suspenso, bloqueio comercial, módulo desativado e permissões insuficientes.
+- [ ] Validar no navegador autenticado, não apenas por SQL/CI.
 
-### 1. Identidade, Auth e e-mail
-- [ ] Escolher e configurar provedor SMTP com domínio verificado.
-- [ ] Configurar SPF, DKIM e DMARC no domínio remetente.
-- [ ] Configurar Supabase Auth Site URL e allowlist de URLs de redirecionamento.
-- [ ] Configurar APP_URL e INVITE_ALLOWED_ORIGINS na Edge Function para o domínio real.
-- [ ] Testar cadastro, confirmação, recuperação de senha, convite, definição de senha, aceite, revogação e expiração com endereços controlados.
-- [ ] Definir política de senha com comprimento mínimo de pelo menos 8 caracteres e requisitos adequados.
-- [ ] Confirmar no plano e nas opções atuais do projeto como habilitar a proteção contra senhas vazadas (`auth_leaked_password_protection`) e aplicá-la; não assumir upgrade ou custo sem aprovação.
+## Gate 3 — GED, modelos e documentos
+- [ ] Testar upload/download autenticado, URLs assinadas, expiração e bloqueio após arquivamento.
+- [ ] Testar isolamento do Storage entre tenants.
+- [ ] Testar MIME, tamanho acima de 20 MiB, arquivo inválido e substituição.
+- [ ] Homologar importação TXT/MD/DOCX; DOCX importa texto e tabelas simples, não o layout original.
+- [ ] Testar versionamento, snapshots, campos obrigatórios, geração, impressão e auditoria.
+- [ ] Definir retenção, PDF server-side e nível jurídico de assinatura.
 
-### 2. Onboarding e isolamento municipal
-- [ ] Criar uma Secretaria de homologação com dados fictícios pelo fluxo normal de provisionamento.
-- [ ] Confirmar administrador municipal por e-mail.
-- [ ] Habilitar somente os módulos contratados e atribuir permissões necessárias.
-- [ ] Criar segunda Secretaria de teste, com usuário e papel distintos.
-- [ ] Comprovar isolamento de fornecedores, documentos, processos, itens, cotações, orçamento, contratos, aditivos, GED e auditoria.
-- [ ] Testar bloqueio por Secretaria suspensa, bloqueio comercial, módulo desabilitado e limite de usuários.
-- [ ] Testar reservas de convites e operações simultâneas no limite do plano.
-- [ ] Executar o fluxo num navegador autenticado, não apenas por SQL ou CI.
+## Gate 4 — Processos e contratos
+- [ ] Testar processo/checklist atômico.
+- [ ] Testar itens e três cotações, frete, seleção de referência e dotações.
+- [ ] Testar contrato, aditivos de prazo/valor, limites e autorização.
+- [ ] Validar auditoria, isolamento e desempenho com carga representativa.
 
-### 3. GED, compras e documentos
-- [ ] Fazer upload e download de PDF e de cada tipo de arquivo permitido com usuário municipal.
-- [ ] Confirmar URLs assinadas temporárias, arquivo privado, bloqueio após arquivamento e isolamento entre duas Secretarias.
-- [ ] Testar fornecedor, certidões, vencimentos e arquivamento.
-- [ ] Cadastrar itens, pelo menos três cotações, selecionar uma referência, vincular dotação e conferir cálculos.
-- [ ] Instalar e personalizar DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR.
-- [ ] Conferir snapshots, versionamento, campos obrigatórios, impressão e auditoria.
-- [ ] Testar contratos e aditivos de prazo e valor, inclusive limites e autorização.
-- [ ] Decidir se PDF server-side e armazenamento das vias finais são obrigatórios para o contrato comercial.
-- [ ] Decidir qual nível de assinatura é necessário. A assinatura atual é eletrônica simples e não ICP-Brasil.
+## Gate 5 — Alertas e Drive
+- [x] Integrar PR #9 de alertas visuais — concluído; não equivale ao envio programado de e-mails.
+- [ ] Definir regras, antecedência, destinatários, frequência, fuso e idempotência.
+- [ ] Implementar envio no servidor e scheduler protegido.
+- [ ] Implementar OAuth Drive por Secretaria, tokens protegidos, refresh e revogação.
+- [ ] Manter GED Supabase como fallback até homologação do Drive.
 
-### 4. Backup, segurança e continuidade
-- [ ] Gerar identidade age e guardar a chave privada offline; cadastrar somente a chave pública em AGE_RECIPIENT.
-- [ ] Cadastrar SUPABASE_DB_URL e SUPABASE_SERVICE_ROLE_KEY como GitHub Secrets.
-- [ ] Executar manualmente Encrypted SMS2 backup e conferir dump, Storage, criptografia, artefato e hash.
-- [ ] Descriptografar o artefato com a identidade privada correspondente e listar o TAR.
-- [ ] Restaurar em projeto Supabase separado e validar schema, dados, Auth reconstruído, papéis, bucket, políticas, login e downloads GED.
-- [ ] Somente após o teste, definir SUPABASE_BACKUP_ENABLED=true para habilitar o agendamento semanal.
-- [ ] Definir estratégia adicional para Auth identities/passwords, configuração do projeto, secrets, SMTP, funções, logs e recuperação integral; o dump lógico exclui schemas gerenciados Auth/Storage.
-- [ ] Definir retenção, responsável, monitoração, RPO/RTO e procedimento de incidente.
-- [ ] Avaliar upgrade Supabase para backups diários gerenciados e proteção contra senhas vazadas; nenhum upgrade foi feito.
+## Gate 6 — Backup e continuidade
+- [ ] Gerar chave age e manter a chave privada offline.
+- [ ] Configurar GitHub Secrets e variables exigidas pelo workflow.
+- [ ] Executar backup manual, conferir dump, Storage, hash e criptografia.
+- [ ] Descriptografar e restaurar em projeto separado.
+- [ ] Validar schema, RLS, funções, Auth reconstruído, login e download GED.
+- [ ] Documentar RPO/RTO, retenção, responsáveis e recuperação.
+- [ ] Só então habilitar agendamento automático.
 
-### 5. Cobrança, LGPD e operação
-- [ ] Escolher gateway (Mercado Pago, Stripe ou outro) e abrir conta comercial.
-- [ ] Definir planos, preços, trial, limites, tributos, faturas, cancelamento, estorno, inadimplência e conciliação.
-- [ ] Implementar adaptador do gateway, validação de credenciais, webhooks assinados, idempotência, retentativas, logs e conciliação.
-- [ ] Testar em Sandbox antes de permitir ativação real de pagamentos.
-- [ ] Definir controlador e operador de dados, finalidades, bases legais, retenção, direitos dos titulares e resposta a incidentes.
-- [ ] Revisar termos de uso, privacidade, contrato de tratamento de dados e cláusulas com cada município com assessoria jurídica.
-- [ ] Definir suporte, SLA, canal de incidentes, monitoramento e continuidade.
+O backup lógico não é backup integral: não inclui senhas/identidades Auth, configuração completa do projeto, secrets das Edge Functions e SMTP.
 
-### 6. Infraestrutura e publicação
-- [ ] Definir domínio oficial e DNS.
-- [ ] Configurar TLS, redirects Auth, CORS/origens e secrets de produção.
-- [ ] Separar ambientes de homologação e produção.
-- [ ] Definir atualização, janela de manutenção, rollback e política de release.
-- [ ] Fazer validação visual e funcional autenticada no domínio real.
-- [ ] Aprovar formalmente o GO para produção após concluir os testes.
+## Gate 7 — Comercial e produção
+- [ ] Escolher gateway, conta comercial, planos, preço, trial, limites, tributos, inadimplência e cancelamento.
+- [ ] Implementar adaptador e webhooks assinados/idempotentes.
+- [ ] Testar em Sandbox; manter pagamento real desativado até aprovação.
+- [ ] Revisar termos, privacidade, DPA/LGPD e contrato com assessoria jurídica.
+- [ ] Definir domínio, DNS, TLS, ambientes, monitoramento, SLA, suporte e incidentes.
+- [ ] Proteger `main` e exigir CI.
+- [ ] Publicar frontend no domínio oficial, testar E2E e obter aceite do piloto.
 
-## Critério de decisão
-
-**NO-GO:** qualquer item obrigatório acima sem evidência, especialmente SMTP, backup restaurável, isolamento entre duas Secretarias, GED, cobranças, termos/contratos, domínio e homologação autenticada.
-
-**GO controlado:** somente após concluir segurança, backup, onboarding, GED e conformidade e uma Secretaria piloto aprovar a operação.
-
-## Limites conhecidos do backup
-
-O workflow do repositório exporta schema, dados e roles dos schemas da aplicação, além dos objetos do bucket GED, e criptografa o pacote com age. O Supabase CLI exclui os schemas gerenciados auth e storage; portanto, o artefato não contém senhas/identidades Auth, metadados de Storage, configurações completas do projeto, secrets de Edge Functions, SMTP nem logs gerenciados. Não é backup integral ou ponto-no-tempo do projeto. O procedimento está em docs/ROTINA-DE-BACKUP.md; ainda falta comprovar descriptografia e restauração em projeto separado.
-
-
-## Próxima trilha de execução
-
-Não reconstruir tabelas nem reiniciar as Fases 1 e 2. A sequência operacional, dependências externas e critérios de aceite estão detalhados em [docs/PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md](PLANO-EXECUCAO-INTEGRACOES-E-HOMOLOGACAO.md). A liberação permanece NO-GO até evidência de Auth/SMTP, duas Secretarias isoladas, GED autenticado, backup restaurado, E2E no navegador e requisitos comerciais/jurídicos.
+## Critério
+**NO-GO** enquanto SMTP, isolamento entre duas Secretarias, GED autenticado, backup restaurado, E2E, domínio, cobrança e jurídico estiverem sem evidência.  
+**GO controlado** somente após os gates concluídos e aceite formal do piloto.
