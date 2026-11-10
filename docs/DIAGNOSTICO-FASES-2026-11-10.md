@@ -7,7 +7,7 @@
 
 ## Resumo executivo
 
-A fundação multitenant e os principais módulos de fornecedores, documentos, processos, compras e contratos já estão estruturados. O portal de Equipe Interna e a Equipe de Suporte foram implementados e suas migrations foram implantadas no SMS2. A importação de modelos DOCX como texto já está no `main`.
+A fundação multitenant e os principais módulos de fornecedores, documentos, processos, compras e contratos já estão estruturados. O portal de Equipe Interna e a Equipe de Suporte foram implementados e suas migrations foram implantadas no SMS2. A importação de modelos DOCX como texto e o sino de alertas visuais para contratos/documentos já estão no `main`.
 
 O sistema ainda não está pronto para uso comercial com dados reais. O trabalho restante concentra-se em: homologar o fluxo com duas Secretarias; fechar o ciclo operacional dos convites; validar GED em navegador autenticado; completar alertas automáticos, Drive OAuth e cobrança; comprovar backup/restauração; e finalizar domínio, jurídico, suporte e operação.
 
@@ -87,11 +87,11 @@ A função estar ativa não comprova entrega de e-mail: SMTP, domínio remetente
 
 ## Alterações recentes no código
 
-- **PR #8 — DOCX:** integrado ao `main`; CI passou em testes unitários, build, TypeScript, lint, formatação e reset/testes pgTAP em banco local descartável.
-- **PR #9 — alertas:** em validação; combina vencimentos de contratos e documentos, pagina consultas, limita ao tenant selecionado e trata falhas parciais. Não envia e-mail/WhatsApp.
-- **PR #10 — RLS e índices:** integrado ao `main`; adiciona uma nova migration forward-only e testes pgTAP. Ainda não aplicado ao SMS2.
+- **PR #8 — DOCX:** integrado ao `main`; CI passou em testes unitários, build, TypeScript, lint, formatação e reset/testes pgTAP em banco local descartável. Importa texto e tabelas simples, sem preservar o layout visual do Word.
+- **PR #9 — alertas:** integrado ao `main`; combina vencimentos de contratos e documentos, pagina consultas, limita ao tenant selecionado e trata falhas parciais. Não envia e-mail/WhatsApp.
+- **PR #10 — RLS e índices:** migration forward-only no `main`, ainda não aplicada ao SMS2. O PR #12 reforça o deny-all como política restritiva e amplia os testes para 55 assertions; aguardando CI.
   
-A próxima migration nova é código preparado, não alteração de produção. O SMS2 continua com 59 migrations aplicadas até `20261110121336`; o repositório contém a migration adicional `20261110143000` aguardando revisão/homologação futura.
+A próxima migration nova é código preparado, não alteração de produção. O SMS2 continua com 59 migrations aplicadas até `20261110121336`; a migration `20261110143000` permanece pendente no código e aguarda CI/aprovação antes de qualquer janela futura de implantação.
 
 ## Próxima sequência recomendada
 
