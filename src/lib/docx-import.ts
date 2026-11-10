@@ -226,9 +226,7 @@ function textFromWordNode(node: Node): string {
 }
 
 function paragraphText(paragraph: Element): string {
-  return textFromWordNode(paragraph)
-    .replaceAll(String.fromCharCode(0), "")
-    .replace(/\r\n?/g, "\n");
+  return textFromWordNode(paragraph).replaceAll(String.fromCharCode(0), "").replace(/\r\n?/g, "\n");
 }
 
 /**
