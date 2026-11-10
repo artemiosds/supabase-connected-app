@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Loader2,
   LogOut,
+  Menu,
   Settings,
   ShieldCheck,
   Users,
@@ -29,6 +30,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import {
@@ -74,6 +82,7 @@ export const Route = createFileRoute("/_authenticated")({
 function LayoutAutenticado() {
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/entrar", replace: true });
@@ -120,22 +129,59 @@ function LayoutAutenticado() {
           </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 items-center justify-between gap-4 border-b bg-card px-4 md:px-6">
-            <SeletorOrganizacao />
-            <div className="ml-auto flex items-center gap-2">
-              <SinoAlertas />
-              <AtalhoCentralSuporte />
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => void signOut()}
-              aria-label="Sair"
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
-            </Button>
-          </header>
+          <Sheet open={menuMobileAberto} onOpenChange={setMenuMobileAberto}>
+            <header className="flex h-14 items-center justify-between gap-2 border-b bg-card px-3 md:gap-4 md:px-6">
+              <div className="flex min-w-0 items-center gap-2">
+                <SheetTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 md:hidden"
+                    aria-label="Abrir menu de navegação"
+                  >
+                    <Menu className="h-5 w-5" aria-hidden />
+                  </Button>
+                </SheetTrigger>
+                <SeletorOrganizacao />
+              </div>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <SinoAlertas />
+                <AtalhoCentralSuporte />
+              </div>
+            </header>
+            <SheetContent side="left" className="flex w-[min(84vw,18rem)] flex-col gap-0 p-0">
+              <SheetHeader className="border-b px-5 py-4 text-left">
+                <SheetTitle className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                    <HeartPulse className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">Gestão de Fornecedores</span>
+                    <span className="block text-xs font-normal text-muted-foreground">da Saúde</span>
+                  </span>
+                </SheetTitle>
+              </SheetHeader>
+              <MenuLateral onNavigate={() => setMenuMobileAberto(false)} />
+              <div className="border-t p-3">
+                <p
+                  className="truncate px-2 text-sm font-medium text-foreground"
+                  title={session.user.email ?? undefined}
+                >
+                  {session.user.email}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 w-full justify-start text-muted-foreground"
+                  onClick={() => void signOut()}
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  Sair
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
           <main className="flex-1 p-4 md:p-8">
             <ConteudoPortal />
           </main>
@@ -166,7 +212,7 @@ function AtalhoCentralSuporte() {
   );
 }
 
-function MenuLateral() {
+function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -223,6 +269,7 @@ function MenuLateral() {
       {(isPlatformAdmin || isPlatformStaff) && !supportAccess?.session_id && (
         <Link
           to="/admin-master"
+          onClick={onNavigate}
           className={cn(
             "mb-3 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10",
             pathname.startsWith("/admin-master") && "bg-primary/10",
@@ -235,6 +282,7 @@ function MenuLateral() {
       {(supportAccess?.is_agent || supportAccess?.is_platform_admin) && (
         <Link
           to="/suporte"
+          onClick={onNavigate}
           className={cn(
             "mb-2 flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors",
             pathname === "/suporte"
@@ -252,6 +300,7 @@ function MenuLateral() {
           <Link
             key={para}
             to={para as never}
+            onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               ativo
