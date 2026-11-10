@@ -46,6 +46,14 @@ jobs:
       - name: Type check
         run: bunx tsc --noEmit
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type check scheduled expiry Edge Function
+        run: deno check supabase/functions/send-expiry-notifications/index.ts
+
       - name: Lint
         run: bun run lint
 

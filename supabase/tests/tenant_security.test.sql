@@ -84,9 +84,14 @@ SELECT extensions.is(
    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
    WHERE p.schemaname = 'public' AND n.nspname = 'public'
      AND c.relkind = 'r' AND a.attname = 'tenant_id' AND NOT a.attisdropped
-     AND p.roles && ARRAY['anon'::name, 'public'::name]),
+     AND p.roles && ARRAY['anon'::name, 'public'::name]
+     AND NOT (
+       p.permissive = 'RESTRICTIVE'
+       AND btrim(replace(replace(lower(coalesce(p.qual, '')), '(', ''), ')', '')) = 'false'
+       AND btrim(replace(replace(lower(coalesce(p.with_check, '')), '(', ''), ')', '')) = 'false'
+     )),
   0,
-  'tenant-scoped RLS policies never target anon or PUBLIC'
+  'tenant-scoped permissive policies never grant access to anon or PUBLIC; explicit restrictive deny-all policies are allowed'
 );
 
 SELECT extensions.is(

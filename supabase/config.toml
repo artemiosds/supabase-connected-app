@@ -10,3 +10,7 @@ verify_jwt = true
 
 [functions.invite-platform-staff]
 verify_jwt = true
+
+[functions.send-expiry-notifications]
+# GitHub Actions authenticates this endpoint with x-expiry-alert-secret.
+verify_jwt = false
