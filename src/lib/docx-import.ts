@@ -81,7 +81,9 @@ async function decompressDeflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
     return result;
   } catch (cause) {
     if (cause instanceof Error && cause.message.includes("limite de segurança")) throw cause;
-    throw new Error("Não foi possível descompactar o documento Word. O arquivo pode estar corrompido.");
+    throw new Error(
+      "Não foi possível descompactar o documento Word. O arquivo pode estar corrompido.",
+    );
   } finally {
     reader?.releaseLock();
   }
@@ -124,7 +126,13 @@ export async function extractDocxDocumentXml(
 
   let cursor = centralOffset;
   let documentEntry:
-    | { flags: number; method: number; compressedSize: number; uncompressedSize: number; localOffset: number }
+    | {
+        flags: number;
+        method: number;
+        compressedSize: number;
+        uncompressedSize: number;
+        localOffset: number;
+      }
     | undefined;
 
   for (let index = 0; index < entryCount; index += 1) {
@@ -147,7 +155,9 @@ export async function extractDocxDocumentXml(
       throw new Error("A lista interna de arquivos do DOCX está incompleta.");
     }
 
-    const fileName = new TextDecoder("utf-8").decode(bytes.subarray(nameStart, nameStart + fileNameLength));
+    const fileName = new TextDecoder("utf-8").decode(
+      bytes.subarray(nameStart, nameStart + fileNameLength),
+    );
     if (fileName === "word/document.xml") {
       if (documentEntry) {
         throw new Error("O documento Word contém mais de um arquivo principal.");
@@ -172,10 +182,7 @@ export async function extractDocxDocumentXml(
   }
 
   const localOffset = documentEntry.localOffset;
-  if (
-    readUint32(view, localOffset) !== ZIP_LOCAL_SIGNATURE ||
-    localOffset + 30 > view.byteLength
-  ) {
+  if (readUint32(view, localOffset) !== ZIP_LOCAL_SIGNATURE || localOffset + 30 > view.byteLength) {
     throw new Error("O conteúdo principal do DOCX está corrompido.");
   }
   const localNameLength = readUint16(view, localOffset + 26);
@@ -187,8 +194,7 @@ export async function extractDocxDocumentXml(
   }
 
   const compressedBytes = bytes.slice(dataStart, dataEnd);
-  const xmlBytes =
-    documentEntry.method === 0 ? compressedBytes : await inflateRaw(compressedBytes);
+  const xmlBytes = documentEntry.method === 0 ? compressedBytes : await inflateRaw(compressedBytes);
   if (xmlBytes.byteLength !== documentEntry.uncompressedSize) {
     throw new Error("O tamanho do conteúdo Word não corresponde ao arquivo.");
   }
@@ -219,13 +225,9 @@ function textFromWordNode(node: Node): string {
   }
 }
 
-function elementChildrenByName(parent: Element, name: string): Element[] {
-  return Array.from(parent.children).filter((child) => child.localName === name);
-}
-
 function paragraphText(paragraph: Element): string {
   return textFromWordNode(paragraph)
-    .replace(/\u0000/g, "")
+    .replaceAll(String.fromCharCode(0), "")
     .replace(/\r\n?/g, "\n");
 }
 
