@@ -192,7 +192,8 @@ Deno.serve(async (request: Request) => {
   return new Response(driveResponse.body, {
     status: 200,
     headers: {
-      "Content-Type": mimeType,
+      "Content-Type": "application/octet-stream",
+      "X-File-Content-Type": mimeType,
       "Content-Disposition": "attachment; filename=\"documento\"; filename*=UTF-8''" + encodeURIComponent(safeName),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
