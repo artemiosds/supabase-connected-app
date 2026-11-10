@@ -1,4 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
 import {
   alertLevelForDays,
   daysUntilDate,
@@ -12,6 +15,7 @@ const PAGE_SIZE = 500;
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 100;
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
+type AdminClient = SupabaseClient<any>;
 
 type TenantRow = { id: string; name: string };
 type SupplierRow = { legal_name: string | null; trade_name: string | null } | null;
@@ -108,7 +112,7 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
 }
 
 async function fetchContracts(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   tenantId: string,
   limitDate: string,
 ): Promise<ContractRow[]> {
@@ -131,7 +135,7 @@ async function fetchContracts(
 }
 
 async function fetchDocuments(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   tenantId: string,
   limitDate: string,
 ): Promise<DocumentRow[]> {
@@ -155,7 +159,7 @@ async function fetchDocuments(
 }
 
 async function fetchRecipients(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   tenantId: string,
 ): Promise<Recipient[]> {
   const memberships: Array<{ id: string; user_id: string }> = [];
@@ -265,7 +269,7 @@ function addCandidateTasks(
 }
 
 async function deliverTask(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   task: ExpiryTask,
   apiKey: string,
   from: string,
@@ -421,7 +425,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin: AdminClient = createClient<any>(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
