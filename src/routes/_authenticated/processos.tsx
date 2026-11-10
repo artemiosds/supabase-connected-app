@@ -122,6 +122,10 @@ function Processos() {
   const [novo, setNovo] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [dadosAbertos, setDadosAbertos] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
+  const [filtroEtapa, setFiltroEtapa] = useState<"todas" | EtapaId>("todas");
+  const [filtroModalidade, setFiltroModalidade] = useState("todas");
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
@@ -179,6 +183,42 @@ function Processos() {
       ? Math.round((lista.filter((x) => x.is_done).length / lista.length) * 100)
       : 0;
   };
+
+  const termoBusca = busca.trim().toLocaleLowerCase("pt-BR");
+  const processosFiltrados = processos.filter((processo) => {
+    const correspondeBusca =
+      !termoBusca ||
+      [
+        processo.number,
+        processo.title,
+        processo.description,
+        processo.requesting_unit,
+        processo.responsible_name,
+      ]
+        .filter(Boolean)
+        .some((valor) => String(valor).toLocaleLowerCase("pt-BR").includes(termoBusca));
+    const correspondeStatus =
+      filtroStatus === "todos" ||
+      (filtroStatus === "concluido"
+        ? processo.status === "concluido"
+        : processo.status !== "concluido");
+    const correspondeEtapa = filtroEtapa === "todas" || processo.stage === filtroEtapa;
+    const correspondeModalidade =
+      filtroModalidade === "todas" || processo.modality === filtroModalidade;
+    return (
+      correspondeBusca &&
+      correspondeStatus &&
+      correspondeEtapa &&
+      correspondeModalidade
+    );
+  });
+  const etapasVisiveis =
+    filtroEtapa === "todas" ? ETAPAS : ETAPAS.filter((etapa) => etapa.id === filtroEtapa);
+  const filtrosAtivos =
+    !!busca.trim() ||
+    filtroStatus !== "todos" ||
+    filtroEtapa !== "todas" ||
+    filtroModalidade !== "todas";
 
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
     if (!destino) return;
@@ -288,12 +328,91 @@ function Processos() {
         </Alert>
       )}
 
+      <div className="space-y-3 rounded-lg border bg-card p-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(14rem,1fr)_auto_auto_auto_auto]">
+          <div className="relative min-w-0">
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              placeholder="Buscar número, objeto, setor ou responsável"
+              aria-label="Buscar processos de contratação"
+              className="pl-9"
+            />
+          </div>
+          <select
+            value={filtroStatus}
+            onChange={(event) => setFiltroStatus(event.target.value as typeof filtroStatus)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="Filtrar processos por situação"
+          >
+            <option value="todos">Todas as situações</option>
+            <option value="em_andamento">Em andamento</option>
+            <option value="concluido">Concluídos</option>
+          </select>
+          <select
+            value={filtroEtapa}
+            onChange={(event) => setFiltroEtapa(event.target.value as typeof filtroEtapa)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="Filtrar processos por etapa"
+          >
+            <option value="todas">Todas as etapas</option>
+            {ETAPAS.map((etapa) => (
+              <option key={etapa.id} value={etapa.id}>
+                {etapa.nome}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroModalidade}
+            onChange={(event) => setFiltroModalidade(event.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            aria-label="Filtrar processos por modalidade"
+          >
+            <option value="todas">Todas as modalidades</option>
+            {Object.entries(MODALIDADES).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!filtrosAtivos}
+            onClick={() => {
+              setBusca("");
+              setFiltroStatus("todos");
+              setFiltroEtapa("todas");
+              setFiltroModalidade("todas");
+            }}
+          >
+            Limpar filtros
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          Exibindo {processosFiltrados.length} de {processos.length} processo(s).
+        </p>
+      </div>
+
       {loading ? (
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      ) : processosFiltrados.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            {processos.length === 0
+              ? "Nenhum processo cadastrado."
+              : "Nenhum processo corresponde aos filtros selecionados."}
+          </CardContent>
+        </Card>
       ) : visao === "kanban" ? (
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {ETAPAS.map((e, idx) => {
-            const daEtapa = processos.filter((p) => p.stage === e.id);
+          {etapasVisiveis.map((e, idx) => {
+            const daEtapa = processosFiltrados.filter((p) => p.stage === e.id);
             return (
               <div key={e.id} className="w-64 shrink-0 rounded-lg bg-muted/50 p-3">
                 <p className="text-sm font-semibold">
@@ -302,23 +421,21 @@ function Processos() {
                 </p>
                 <p className="mb-3 text-xs text-muted-foreground">{e.descricao}</p>
                 <div className="space-y-2">
-                  {daEtapa.map((p) => (
-                    <CartaoProcesso key={p.id} p={p} />
-                  ))}
+                  {daEtapa.length === 0 ? (
+                    <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                      Nenhum processo nesta etapa.
+                    </p>
+                  ) : (
+                    daEtapa.map((p) => <CartaoProcesso key={p.id} p={p} />)
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
-      ) : processos.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Nenhum processo cadastrado.
-          </CardContent>
-        </Card>
       ) : (
         <div className="grid gap-2">
-          {processos.map((p) => (
+          {processosFiltrados.map((p) => (
             <CartaoProcesso key={p.id} p={p} />
           ))}
         </div>
