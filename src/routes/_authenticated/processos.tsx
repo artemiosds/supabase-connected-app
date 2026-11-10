@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -12,6 +12,8 @@ import {
   ClipboardList,
   Coins,
   Search,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
@@ -494,6 +496,11 @@ function Processos() {
                   );
                 })}
               </div>
+              <DocumentosVinculados
+                aberto={!!aberto}
+                tenantId={selecionado.id}
+                processId={aberto.id}
+              />
               <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setDadosAbertos(true)}>
                   <ClipboardList className="h-4 w-4" /> Itens, preços e orçamento
@@ -533,6 +540,123 @@ function Processos() {
         />
       )}
     </div>
+  );
+}
+
+
+type DocumentoVinculado = {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+};
+
+function DocumentosVinculados(props: {
+  aberto: boolean;
+  tenantId: string;
+  processId: string;
+}) {
+  const [documentos, setDocumentos] = useState<DocumentoVinculado[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    if (!props.aberto) {
+      setDocumentos([]);
+      return;
+    }
+
+    setLoading(true);
+    setErro(null);
+    const { data, error } = await db
+      .from("generated_documents")
+      .select("id,title,status,created_at")
+      .eq("tenant_id", props.tenantId)
+      .eq("process_id", props.processId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      setDocumentos([]);
+      setErro("Não foi possível carregar os documentos vinculados a este processo.");
+    } else {
+      setDocumentos((data ?? []) as DocumentoVinculado[]);
+    }
+    setLoading(false);
+  }, [props.aberto, props.tenantId, props.processId]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  const statusLabel: Record<string, string> = {
+    draft: "Rascunho",
+    signed: "Assinado",
+    cancelled: "Cancelado",
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <FileText className="h-4 w-4 text-primary" aria-hidden />
+            Documentos vinculados
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            DFD, ETP, Termo de Referência, pareceres e demais documentos deste processo.
+          </p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/documentos">
+            Abrir GED <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </Button>
+      </div>
+      <div className="space-y-2 p-4">
+        {loading ? (
+          <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Carregando documentos…
+          </div>
+        ) : erro ? (
+          <p role="status" className="text-sm text-destructive">
+            {erro}
+          </p>
+        ) : documentos.length === 0 ? (
+          <p className="py-2 text-sm text-muted-foreground">
+            Nenhum documento foi gerado ou vinculado a este processo. Use o GED para escolher um
+            modelo e gerar o primeiro documento.
+          </p>
+        ) : (
+          documentos.map((documento) => (
+            <div
+              key={documento.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{documento.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Criado em {new Date(documento.created_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <Badge
+                variant={documento.status === "signed" ? "default" : "secondary"}
+                className="shrink-0"
+              >
+                {statusLabel[documento.status] ?? documento.status}
+              </Badge>
+            </div>
+          ))
+        )}
+        {documentos.length === 20 && (
+          <p className="text-xs text-muted-foreground">
+            Exibindo os 20 documentos mais recentes. Consulte o GED para acessar o histórico completo.
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }
 
