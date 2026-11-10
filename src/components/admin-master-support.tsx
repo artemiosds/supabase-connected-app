@@ -8,6 +8,15 @@ import type { MasterTenant } from "@/hooks/use-platform-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -34,7 +43,7 @@ type SupportAgent = {
   user_id: string;
   email: string;
   display_name: string;
-  status: string;
+  status: "invited" | "active" | "suspended" | "revoked";
   assignment_count: number;
 };
 type Assignment = {
@@ -81,6 +90,8 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
     can_update_suppliers: false,
   });
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteToRevoke, setInviteToRevoke] = useState<SupportAgent | null>(null);
+  const [revokingInvite, setRevokingInvite] = useState(false);
 
   const [masterTenantId, setMasterTenantId] = useState("");
   const [supportReason, setSupportReason] = useState("");
@@ -222,11 +233,34 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
     }
   }
 
+  async function revokeInvitation(agent: SupportAgent) {
+    if (agent.status !== "invited") return;
+    setRevokingInvite(true);
+    try {
+      const { error } = await supportRpc("revoke_platform_support_invitation", {
+        p_user_id: agent.user_id,
+      });
+      if (error) throw error;
+      setInviteToRevoke(null);
+      toast.success(
+        "Convite cancelado. A identidade Auth foi preservada, as atribuições foram desativadas e o acesso não poderá ser ativado.",
+      );
+      await loadTeam();
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível cancelar o convite de suporte.",
+      );
+    } finally {
+      setRevokingInvite(false);
+    }
+  }
+
   async function toggleAgentStatus(agent: SupportAgent) {
     if (agent.status === "invited") {
       toast.info("O técnico ainda precisa aceitar o convite e confirmar o e-mail.");
       return;
     }
+    if (agent.status === "revoked") return;
     const nextStatus = agent.status === "active" ? "suspended" : "active";
     try {
       const { error } = await supportRpc("set_platform_support_agent_status", {
@@ -421,14 +455,18 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
                               ? "default"
                               : agent.status === "suspended"
                                 ? "destructive"
-                                : "secondary"
+                                : agent.status === "revoked"
+                                  ? "outline"
+                                  : "secondary"
                           }
                         >
                           {agent.status === "active"
                             ? "Ativo"
                             : agent.status === "suspended"
                               ? "Suspenso"
-                              : "Convite pendente"}
+                              : agent.status === "revoked"
+                                ? "Convite cancelado"
+                                : "Convite pendente"}
                         </Badge>
                       </TableCell>
                       <TableCell>{agent.assignment_count}</TableCell>
@@ -443,15 +481,30 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
                           >
                             Gerenciar acesso
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={agent.status === "invited"}
-                            onClick={() => void toggleAgentStatus(agent)}
-                          >
-                            {agent.status === "active" ? "Suspender" : "Reativar"}
-                          </Button>
+                          {agent.status === "invited" ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={revokingInvite}
+                              onClick={() => setInviteToRevoke(agent)}
+                            >
+                              Cancelar convite
+                            </Button>
+                          ) : agent.status === "revoked" ? (
+                            <Button type="button" variant="ghost" size="sm" disabled>
+                              Cancelado
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void toggleAgentStatus(agent)}
+                            >
+                              {agent.status === "active" ? "Suspender" : "Reativar"}
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -642,6 +695,38 @@ export function AdminMasterSupport({ tenants, allowMasterSessions = true }: Prop
           </CardContent>
         </Card>
       )}
+      <AlertDialog
+        open={inviteToRevoke !== null}
+        onOpenChange={(open) => {
+          if (!open && !revokingInvite) setInviteToRevoke(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar convite de suporte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {inviteToRevoke
+                ? `O convite de ${inviteToRevoke.display_name} (${inviteToRevoke.email}) será marcado como cancelado e todas as atribuições ficarão inativas. A pessoa não poderá ativar o perfil antigo mesmo que confirme o e-mail. A identidade Auth não será excluída.`
+                : "O convite será cancelado sem excluir a identidade de autenticação."}
+              {" "}Um novo convite no futuro exigirá um endereço exclusivo; o reenvio do mesmo convite ainda não está habilitado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revokingInvite}>Manter convite</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={revokingInvite || !inviteToRevoke}
+              onClick={() => {
+                if (inviteToRevoke) void revokeInvitation(inviteToRevoke);
+              }}
+            >
+              {revokingInvite ? "Cancelando..." : "Confirmar cancelamento"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
