@@ -1435,7 +1435,7 @@ function Documentos() {
                 <br />
                 Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também é
                 possível copiar e colar o conteúdo no campo abaixo.
-              </p>          </p>
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
