@@ -224,10 +224,22 @@ function Processos() {
 
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
     if (!destino) return;
+
+    const pendentes = itens.filter(
+      (item) => item.process_id === p.id && item.stage === p.stage && !item.is_done,
+    );
+    if (destino !== etapaAnterior(p.stage) && pendentes.length > 0) {
+      toast.error(
+        `Conclua os ${pendentes.length} item(ns) pendente(s) de "${ETAPAS.find((e) => e.id === p.stage)?.nome}" antes de avançar.`,
+      );
+      return;
+    }
+
     const { error } = await db
       .from("procurement_processes")
       .update({ stage: destino, updated_by: userId })
-      .eq("id", p.id);
+      .eq("id", p.id)
+      .eq("tenant_id", selecionado?.id ?? "");
     if (error) {
       toast.error(error.message);
       return;
@@ -249,10 +261,19 @@ function Processos() {
   }
 
   async function concluir(p: Processo) {
+    const pendentes = itens.filter((item) => item.process_id === p.id && !item.is_done);
+    if (pendentes.length > 0) {
+      toast.error(
+        `Não é possível concluir: ainda existem ${pendentes.length} item(ns) pendente(s) no checklist.`,
+      );
+      return;
+    }
+
     const { error } = await db
       .from("procurement_processes")
       .update({ status: "concluido", updated_by: userId })
-      .eq("id", p.id);
+      .eq("id", p.id)
+      .eq("tenant_id", selecionado?.id ?? "");
     if (error) {
       toast.error(error.message);
       return;
