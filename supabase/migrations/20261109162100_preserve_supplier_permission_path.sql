@@ -5,7 +5,7 @@ SET LOCAL statement_timeout='60s';
 
 CREATE OR REPLACE FUNCTION app_auth.has_supplier_permission(
   p_tenant_id uuid,
-  p_code text
+  p_permission_code text
 )
 RETURNS boolean
 LANGUAGE sql
@@ -14,7 +14,7 @@ SECURITY DEFINER
 SET search_path=''
 AS $function$
   SELECT
-    app_auth.has_active_supplier_support_session(p_tenant_id,p_code)
+    app_auth.has_active_supplier_support_session(p_tenant_id,p_permission_code)
     OR (
       NOT app_auth.is_platform_admin()
       AND EXISTS (
@@ -31,7 +31,7 @@ AS $function$
           AND tm.user_id=(SELECT auth.uid())
           AND tm.status='active'
           AND t.status='active'
-          AND p.code=p_code
+          AND p.code=p_permission_code
       )
     );
 $function$;
