@@ -797,6 +797,7 @@ function DadosEstruturados(props: {
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [quoteTarget, setQuoteTarget] = useState<string | null>(null);
   const [budgetFormOpen, setBudgetFormOpen] = useState(false);
+  const [mapaAberto, setMapaAberto] = useState(false);
 
   const emptyItem = {
     description: "",
@@ -1168,7 +1169,8 @@ function DadosEstruturados(props: {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="items" className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="outline" onClick={() => setMapaAberto(true)} disabled={quotes.length === 0}>Mapa comparativo ({quotes.length})</Button>
                 <Button onClick={() => setItemFormOpen((value) => !value)} variant="outline">
                   <Plus className="h-4 w-4" /> Adicionar item
                 </Button>
@@ -1691,11 +1693,26 @@ function DadosEstruturados(props: {
             </TabsContent>
           </Tabs>
         )}
-        <DialogFooter>
-          <Button variant="outline" onClick={props.onFechar}>
-            Fechar
-          </Button>
-        </DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={props.onFechar}>Fechar</Button></DialogFooter>
+        <Dialog open={mapaAberto} onOpenChange={setMapaAberto}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+            <DialogHeader><DialogTitle>Mapa comparativo de preços — {props.processNumber}</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">Comparação das cotações ativas por item, com preço unitário, frete e total informado.</p>
+            {items.map((item) => {
+              const rows = quotes.filter((q) => q.procurement_item_id === item.id && q.is_active).sort((a,b) => Number(a.total_price ?? 0) - Number(b.total_price ?? 0));
+              if (!rows.length) return null;
+              return <section key={item.id} className="space-y-2 rounded-lg border p-3">
+                <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{item.line_number}. {item.description}</h3><Badge variant="outline">{rows.length} cotação(ões)</Badge></div>
+                <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm">
+                  <thead className="text-left text-muted-foreground"><tr><th className="p-2">Fornecedor / fonte</th><th className="p-2">Data</th><th className="p-2 text-right">Unitário</th><th className="p-2 text-right">Frete</th><th className="p-2 text-right">Total</th><th className="p-2">Fonte</th></tr></thead>
+                  <tbody>{rows.map((q) => <tr key={q.id} className="border-t"><td className="p-2">{q.source_name}{q.selected_for_estimate && <Badge className="ml-2" variant="secondary">Selecionada</Badge>}</td><td className="p-2">{formatarData(q.quoted_at)}</td><td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td><td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td><td className="p-2 text-right font-medium">{formatarMoeda(q.total_price ?? 0)}</td><td className="p-2">{q.reference_url ? <a className="text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">Consultar</a> : "—"}</td></tr>)}</tbody>
+                </table></div>
+                <p className="text-xs text-muted-foreground">Menor total informado: {formatarMoeda(rows[0].total_price ?? 0)} · Referência escolhida: {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}</p>
+              </section>;
+            })}
+            <DialogFooter><Button variant="outline" onClick={() => setMapaAberto(false)}>Fechar mapa</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
