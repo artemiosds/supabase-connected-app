@@ -1185,6 +1185,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          contract_id: string | null
           delivery_cost: number
           id: string
           is_active: boolean
@@ -1205,6 +1206,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          contract_id?: string | null
+          contract_id?: string | null
           delivery_cost?: number
           id?: string
           is_active?: boolean
@@ -1879,6 +1882,11 @@ export type Database = {
         }
         Returns: string
       }
+      get_document_workflow_capabilities: { Args: { p_tenant_id: string }; Returns: { can_approve: boolean; can_submit: boolean }[] }
+      get_tenant_role_management_capability: { Args: { p_tenant_id: string }; Returns: boolean }
+      list_generated_document_workflows: { Args: { p_tenant_id: string }; Returns: { decided_at: string | null; decided_by: string | null; decision_comment: string | null; document_id: string; events: Json; status: string; submitted_at: string | null; submitted_by: string | null }[] }
+      transition_generated_document_workflow: { Args: { p_action: string; p_comment?: string | null; p_document_id: string; p_tenant_id: string }; Returns: string }
+      save_tenant_role_with_permissions: { Args: { p_description: string | null; p_name: string; p_permission_ids: string[]; p_role_id: string | null; p_slug: string; p_tenant_id: string }; Returns: string }
       get_document_capabilities: {
         Args: { p_tenant_id: string }
         Returns: {
