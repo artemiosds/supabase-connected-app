@@ -69,10 +69,10 @@ BEGIN
       updated_at=pg_catalog.now()
   WHERE d.id=p_delivery_id
     AND d.attempts < 5
-    AND (
-      d.status IN ('pending','failed')
-      OR (d.status='sending' AND d.locked_at < pg_catalog.now()-interval '15 minutes')
-    )
+    -- A stuck "sending" record is intentionally not reclaimed automatically:
+    -- the provider may have accepted the email before the worker lost its response.
+    -- Manual reconciliation is safer than sending a possible duplicate.
+    AND d.status IN ('pending','failed')
   RETURNING d.id,d.tenant_id,d.entity_type,d.entity_id,
     d.recipient_user_id,d.alert_level,d.due_on,d.attempts;
 END;
