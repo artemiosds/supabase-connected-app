@@ -71,3 +71,40 @@ export function escapeHtml(value: string): string {
     }
   });
 }
+
+
+export type NotificationBatchWindow = {
+  start: number;
+  end: number;
+  processed: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+};
+
+export function notificationBatchWindow(
+  total: number,
+  offset: number,
+  batchSize: number,
+): NotificationBatchWindow {
+  if (
+    !Number.isSafeInteger(total) ||
+    !Number.isSafeInteger(offset) ||
+    !Number.isSafeInteger(batchSize) ||
+    total < 0 ||
+    offset < 0 ||
+    batchSize < 1
+  ) {
+    throw new Error("Invalid notification batch window.");
+  }
+
+  const start = Math.min(offset, total);
+  const end = Math.min(start + batchSize, total);
+  const hasMore = end < total;
+  return {
+    start,
+    end,
+    processed: end - start,
+    hasMore,
+    nextOffset: hasMore ? end : null,
+  };
+}
