@@ -470,7 +470,7 @@ function NovoContrato(props: {
     }
 
     setSalvando(true);
-    const { error } = await db.from("contracts").insert({
+    const { data: createdContract, error } = await db.from("contracts").insert({
       tenant_id: props.tenantId,
       number: f.number.trim(),
       object: f.object.trim(),
@@ -485,13 +485,25 @@ function NovoContrato(props: {
       ordinance: f.ordinance.trim() || null,
       created_by: props.userId,
       updated_by: props.userId,
-    });
-    setSalvando(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    }).select("id").single();
+    if (error) { setSalvando(false); toast.error(error.message); return; }
+    let linkedQuotes = 0;
+    if (createdContract?.id && f.process_id && f.supplier_id) {
+      const { data: processItems, error: itemError } = await db.from("procurement_items").select("id")
+        .eq("tenant_id", props.tenantId).eq("process_id", f.process_id);
+      if (!itemError && processItems?.length) {
+        const { data: linked, error: linkError } = await db.from("procurement_price_quotes")
+          .update({ contract_id: createdContract.id, updated_by: props.userId })
+          .eq("tenant_id", props.tenantId).eq("supplier_id", f.supplier_id)
+          .eq("selected_for_estimate", true).eq("is_active", true)
+          .in("procurement_item_id", processItems.map((item) => item.id))
+          .is("contract_id", null).select("id");
+        if (!linkError) linkedQuotes = linked?.length ?? 0;
+        else toast.warning("Contrato salvo, mas não foi possível vincular as cotações selecionadas: " + linkError.message);
+      }
     }
-    toast.success("Contrato cadastrado.");
+    setSalvando(false);
+    toast.success(linkedQuotes ? "Contrato cadastrado e " + linkedQuotes + " cotação(ões) de referência vinculada(s)." : "Contrato cadastrado.");
     setF(vazio);
     props.onFechar();
     props.onSalvo();
