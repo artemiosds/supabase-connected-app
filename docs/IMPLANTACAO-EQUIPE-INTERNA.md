@@ -11,6 +11,8 @@ Atualizado em 10/11/2026 após a implantação controlada.
 - A função Edge `invite-platform-staff` está ACTIVE, versão 1, com `verify_jwt=true`.
 - A função Edge `invite-platform-support-agent` está ACTIVE, versão 3, com `verify_jwt=true`.
 - Nenhuma conta interna foi criada ainda. Não cadastrar contas fictícias ou reutilizar a conta Master.
+- A revogação segura de convites pendentes está preparada no PR #13, com migration `20261110144000`; ainda não está integrada ao `main` nem aplicada ao SMS2.
+- Após integração, o cancelamento marca o perfil como `revoked`, preserva a identidade Auth e bloqueia a ativação pelo link antigo. O reenvio do mesmo e-mail não faz parte desta etapa.
 - O histórico de migrações do SMS2 foi alinhado aos prefixos versionados no repositório.
 
 A migração final de Equipe Interna está registrada no SMS2 como `20261110121336`. As migrações de suporte e proteção de identidade aplicadas nesta implantação são:
