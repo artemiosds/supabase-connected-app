@@ -170,10 +170,11 @@ function Contratos() {
       {pendente && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Aguardando ativação no banco de dados</AlertTitle>
+          <AlertTitle>Dados de contratos indisponíveis</AlertTitle>
           <AlertDescription>
-            A tela está pronta, mas a estrutura de contratos ainda não foi aprovada e aplicada no
-            Supabase SMS2. Depois da aprovação, os cadastros funcionarão aqui.
+            Não foi possível acessar os dados de contratos no momento. A estrutura do módulo já está
+            preparada; verifique a conexão e as permissões de acesso ao banco antes de tentar
+            novamente.
           </AlertDescription>
         </Alert>
       )}
