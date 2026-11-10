@@ -57,9 +57,14 @@ function RedefinirSenha() {
       return;
     }
     if (conviteInterno) {
-      const { data: activated, error: activationError } = await db.rpc("activate_my_platform_staff");
+      const { data: activated, error: activationError } = await db.rpc(
+        "activate_my_platform_staff",
+      );
       if (activationError || activated !== true) {
-        setErro(activationError?.message ?? "O convite interno não pôde ser ativado. Solicite ao Administrador Master que verifique a situação do convite.");
+        setErro(
+          activationError?.message ??
+            "O convite interno não pôde ser ativado. Solicite ao Administrador Master que verifique a situação do convite.",
+        );
         return;
       }
       toast.success("Senha definida e acesso interno ativado.");

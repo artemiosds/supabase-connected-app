@@ -163,7 +163,10 @@ Deno.serve(async (request: Request) => {
     // Não excluir automaticamente uma identidade Auth: uma falha ou corrida de
     // cadastro pode indicar conta preexistente. Sem registro de suporte, não há
     // permissão técnica concedida; a situação exige revisão pelo Master.
-    console.error("Falha ao registrar técnico convidado; nenhum acesso de suporte foi concedido.", registerError.message);
+    console.error(
+      "Falha ao registrar técnico convidado; nenhum acesso de suporte foi concedido.",
+      registerError.message,
+    );
     return jsonResponse(
       {
         error:

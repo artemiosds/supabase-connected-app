@@ -17,13 +17,13 @@ A implementação contém:
 
 ## Perfis padrão
 
-| Perfil | Escopo inicial |
-|---|---|
-| Comercial | Consultar clientes, planos e métricas |
-| Financeiro | Consultar clientes, valores e métricas financeiras agregadas |
-| Implantação | Consultar situação cadastral e implantação |
+| Perfil          | Escopo inicial                                                  |
+| --------------- | --------------------------------------------------------------- |
+| Comercial       | Consultar clientes, planos e métricas                           |
+| Financeiro      | Consultar clientes, valores e métricas financeiras agregadas    |
+| Implantação     | Consultar situação cadastral e implantação                      |
 | Suporte interno | Gerenciar técnicos, convites e atribuições da Equipe de Suporte |
-| Auditoria | Consultar clientes, métricas e eventos de auditoria |
+| Auditoria       | Consultar clientes, métricas e eventos de auditoria             |
 
 O Master pode editar as permissões dos perfis padrão e criar perfis adicionais. A permissão-base `dashboard.view` é obrigatória. O catálogo contém somente permissões que já possuem uma operação segura implementada; não conceda poderes de cadastro/edição de clientes, alteração de planos, acesso a segredos ou operações administrativas globais por fora deste catálogo.
 
