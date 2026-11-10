@@ -32,13 +32,13 @@ Os dois marcadores sem SQL adicional preservam as duas reexecuções idempotente
 
 ## Perfis padrão
 
-| Perfil | Acesso inicial |
-| --- | --- |
-| Comercial | Clientes, planos e métricas — consulta |
-| Financeiro | Resumo financeiro agregado, clientes e métricas — consulta |
-| Implantação | Dados de clientes necessários à implantação — consulta |
+| Perfil          | Acesso inicial                                                |
+| --------------- | ------------------------------------------------------------- |
+| Comercial       | Clientes, planos e métricas — consulta                        |
+| Financeiro      | Resumo financeiro agregado, clientes e métricas — consulta    |
+| Implantação     | Dados de clientes necessários à implantação — consulta        |
 | Suporte interno | Clientes e gerenciamento da equipe técnica, quando autorizado |
-| Auditoria | Clientes, métricas e eventos de auditoria — consulta |
+| Auditoria       | Clientes, métricas e eventos de auditoria — consulta          |
 
 O Master pode alterar permissões e criar perfis personalizados. A permissão `dashboard.view` é obrigatória. O catálogo contém somente operações já implementadas. Não conceder acesso a segredos, chaves de pagamento, alteração de planos ou operações administrativas globais.
 
