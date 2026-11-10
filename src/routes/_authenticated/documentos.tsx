@@ -684,15 +684,59 @@ function Documentos() {
     await carregar();
   }
 
-  function iniciarGeracao() {
+  function iniciarGeracao(processoId = "") {
     setModeloSelecionado("");
-    setProcessoGeracao("");
+    setProcessoGeracao(processoId);
     setCamposComplementares({});
     setFornecedorGeracao("nenhum");
     setTituloGerado("");
     setConteudoGerado("");
     setDialogGerar(true);
   }
+
+  useEffect(() => {
+    if (loading || !selecionado?.id || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const processoId = params.get("processo");
+    const tipoSolicitado = params.get("tipo");
+    if (!processoId || !tipoSolicitado) return;
+
+    const processoExiste = processos.some((processo) => processo.id === processoId);
+    if (!processoExiste) {
+      toast.error("O processo solicitado não está disponível nesta Secretaria.");
+      params.delete("processo");
+      params.delete("tipo");
+      const query = params.toString();
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+      );
+      return;
+    }
+
+    iniciarGeracao(processoId);
+    const modelo = modelos.find(
+      (item) => item.is_active && item.template_type === tipoSolicitado,
+    );
+    if (modelo) {
+      setModeloSelecionado(modelo.id);
+      setTituloGerado(modelo.title);
+      setConteudoGerado(modelo.content);
+    } else {
+      toast.info("Instale o modelo correspondente na Biblioteca-base para gerar este documento.");
+    }
+
+    params.delete("processo");
+    params.delete("tipo");
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+    );
+  }, [loading, selecionado?.id, processos, modelos]);
+
   function selecionarModelo(id: string) {
     setModeloSelecionado(id);
     setCamposComplementares({});
