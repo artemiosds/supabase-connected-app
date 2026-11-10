@@ -7,6 +7,7 @@ import {
   daysUntilDate,
   escapeHtml,
   expiryAlertIdempotencyKey,
+  notificationBatchWindow,
   utcDateOnly,
   type ExpiryAlertLevel,
 } from "../_shared/expiry-notification.ts";
@@ -518,7 +519,8 @@ Deno.serve(async (request: Request) => {
       }
     }
 
-    const batchTasks = tasks.slice(offset, offset + batchSize);
+    const batchWindow = notificationBatchWindow(tasks.length, offset, batchSize);
+    const batchTasks = tasks.slice(batchWindow.start, batchWindow.end);
     let sent = 0;
     let failed = 0;
     let skipped = 0;
@@ -532,8 +534,6 @@ Deno.serve(async (request: Request) => {
       else skipped += 1;
     }
 
-    const nextOffset = offset + batchTasks.length;
-    const hasMore = nextOffset < tasks.length;
     return jsonResponse({
       status: "processed",
       date: today,
@@ -543,8 +543,8 @@ Deno.serve(async (request: Request) => {
       failed,
       skipped,
       uncertain,
-      has_more: hasMore,
-      next_offset: hasMore ? nextOffset : null,
+      has_more: batchWindow.hasMore,
+      next_offset: batchWindow.nextOffset,
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNEXPECTED_ERROR";
