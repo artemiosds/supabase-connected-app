@@ -49,3 +49,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy platform-billing-config --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy internal platform support invitation function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy invite-platform-support-agent --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy internal platform staff invitation function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy invite-platform-staff --project-ref rwbbznqtocunzrpcvjvk
