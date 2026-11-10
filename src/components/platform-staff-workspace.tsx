@@ -100,12 +100,12 @@ export function PlatformStaffWorkspace({ access }: { access: PlatformStaffAccess
       }
       if (activePermissions.has("audit.view")) {
         jobs.push(
-          Promise.resolve(
-            db.rpc("list_platform_staff_audit_events", { p_limit: 100 }),
-          ).then(({ data, error }) => {
-            if (error) throw error;
-            results.audit = (data ?? []) as AuditRow[];
-          }),
+          Promise.resolve(db.rpc("list_platform_staff_audit_events", { p_limit: 100 })).then(
+            ({ data, error }) => {
+              if (error) throw error;
+              results.audit = (data ?? []) as AuditRow[];
+            },
+          ),
         );
       }
       try {
