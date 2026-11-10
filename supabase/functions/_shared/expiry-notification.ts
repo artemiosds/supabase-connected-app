@@ -72,7 +72,6 @@ export function escapeHtml(value: string): string {
   });
 }
 
-
 export type NotificationBatchWindow = {
   start: number;
   end: number;
