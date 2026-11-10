@@ -61,6 +61,7 @@ type ProcessoContratacao = Pick<
 >;
 type CampoComplementar = { key: string; label: string; required?: boolean; source?: string };
 type DocumentoGerado = Tables<"generated_documents">;
+type FluxoDocumento = { document_id:string; status:string; submitted_by:string|null; submitted_at:string|null; decided_by:string|null; decided_at:string|null; decision_comment:string|null; events:Json };
 
 const LIMITE_ARQUIVO_PRIVADO = 20 * 1024 * 1024;
 const TIPOS_ARQUIVO_PRIVADO: Record<string, string> = {
@@ -179,6 +180,10 @@ function Documentos() {
   const [catalogo, setCatalogo] = useState<ModeloCatalogo[]>([]);
   const [processos, setProcessos] = useState<ProcessoContratacao[]>([]);
   const [gerados, setGerados] = useState<DocumentoGerado[]>([]);
+  const [fluxosGerados, setFluxosGerados] = useState<FluxoDocumento[]>([]);
+  const [podeEnviarAprovacao, setPodeEnviarAprovacao] = useState(false);
+  const [podeAprovarDocumento, setPodeAprovarDocumento] = useState(false);
+  const fluxoPorDocumento = useMemo(() => new Map(fluxosGerados.map((f) => [f.document_id, f])), [fluxosGerados]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("vencimentos");
@@ -240,6 +245,9 @@ function Documentos() {
       setCatalogo([]);
       setProcessos([]);
       setGerados([]);
+      setFluxosGerados([]);
+      setPodeEnviarAprovacao(false);
+      setPodeAprovarDocumento(false);
       setMunicipioSecretaria("");
       setLoading(false);
       return;
@@ -256,6 +264,8 @@ function Documentos() {
         tenantData,
         catalogTemplates,
         processRecords,
+        workflowCapabilities,
+        workflowRecords,
       ] = await Promise.all([
         db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
@@ -318,8 +328,10 @@ function Documentos() {
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
+        db.rpc("get_document_workflow_capabilities", { p_tenant_id: selecionado.id }),
+        db.rpc("list_generated_document_workflows", { p_tenant_id: selecionado.id }),
       ]);
-      for (const result of [cap, tenantData]) if (result.error) throw result.error;
+      for (const result of [cap, tenantData, workflowCapabilities, workflowRecords]) if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
         can_view: false,
         can_create: false,
@@ -339,6 +351,9 @@ function Documentos() {
       setCatalogo(catalogTemplates);
       setProcessos(processRecords);
       setGerados(generated);
+      setFluxosGerados((workflowRecords.data ?? []) as unknown as FluxoDocumento[]);
+      setPodeEnviarAprovacao(Boolean(workflowCapabilities.data?.[0]?.can_submit));
+      setPodeAprovarDocumento(Boolean(workflowCapabilities.data?.[0]?.can_approve));
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -347,6 +362,9 @@ function Documentos() {
       setCatalogo([]);
       setProcessos([]);
       setGerados([]);
+      setFluxosGerados([]);
+      setPodeEnviarAprovacao(false);
+      setPodeAprovarDocumento(false);
     } finally {
       setLoading(false);
     }
@@ -869,8 +887,24 @@ function Documentos() {
       .map((m) => m.catalog_template_id as string),
   );
 
+  async function tramitarDocumento(d: DocumentoGerado, action: "submit" | "approve" | "reject") {
+    if (!selecionado) return;
+    const comment = action === "reject" ? window.prompt("Informe o motivo da devolução para correção:") : null;
+    if (action === "reject" && (!comment || comment.trim().length < 5)) {
+      if (comment !== null) toast.error("Informe um motivo com pelo menos 5 caracteres.");
+      return;
+    }
+    const { data, error } = await db.rpc("transition_generated_document_workflow", {
+      p_tenant_id: selecionado.id, p_document_id: d.id, p_action: action, p_comment: comment?.trim() ?? null,
+    });
+    if (error) { toast.error(error.message); return; }
+    const labels: Record<string,string> = { pending_approval:"Documento enviado para aprovação.", approved:"Documento aprovado.", rejected:"Documento devolvido para correção." };
+    toast.success(labels[String(data)] ?? "Tramitação registrada.");
+    await carregar();
+  }
+
   async function assinarDocumento(d: DocumentoGerado) {
-    if (!selecionado || !capacidades.can_sign) return;
+    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved") return;
     const confirmou = window.confirm(
       "Confirma a assinatura eletrônica simples deste documento? A assinatura ficará registrada com sua conta, nome e data, e o conteúdo será bloqueado.",
     );
@@ -1283,11 +1317,21 @@ function Documentos() {
                                 >
                                   <Printer className="h-4 w-4" />
                                 </Button>
-                                {d.status === "draft" && capacidades.can_sign && (
-                                  <Button size="sm" onClick={() => void assinarDocumento(d)}>
-                                    <CheckCircle2 className="h-4 w-4" /> Assinar
-                                  </Button>
-                                )}
+                                {(() => {
+                                  const workflow = fluxoPorDocumento.get(d.id);
+                                  const status = workflow?.status ?? "draft";
+                                  const labels: Record<string,string> = { draft:"Em elaboração", pending_approval:"Aguardando aprovação", approved:"Aprovado", rejected:"Devolvido para correção", signed:"Assinado", cancelled:"Cancelado" };
+                                  return <div className="flex flex-wrap items-center justify-end gap-1">
+                                    <Badge variant={status === "approved" ? "secondary" : "outline"}>{labels[status] ?? status}</Badge>
+                                    {d.status === "draft" && status !== "pending_approval" && podeEnviarAprovacao && <Button size="sm" variant="outline" onClick={() => void tramitarDocumento(d,"submit")}>Enviar para aprovação</Button>}
+                                    {d.status === "draft" && status === "pending_approval" && podeAprovarDocumento && <>
+                                      <Button size="sm" onClick={() => void tramitarDocumento(d,"approve")}>Aprovar</Button>
+                                      <Button size="sm" variant="outline" onClick={() => void tramitarDocumento(d,"reject")}>Devolver</Button>
+                                    </>}
+                                    {d.status === "draft" && capacidades.can_sign && status === "approved" && <Button size="sm" onClick={() => void assinarDocumento(d)}><CheckCircle2 className="h-4 w-4" /> Assinar</Button>}
+                                    {workflow?.decision_comment && <span className="basis-full text-right text-xs text-muted-foreground">Observação: {workflow.decision_comment}</span>}
+                                  </div>;
+                                })()}
                                 {d.status !== "signed" &&
                                   d.status !== "cancelled" &&
                                   capacidades.can_update && (
