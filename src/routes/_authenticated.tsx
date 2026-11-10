@@ -182,11 +182,12 @@ function MenuLateral() {
       setIsPlatformStaff(false);
       return;
     }
+    const authenticatedUserId: string = userId;
     async function checkPlatformAccess() {
       const { data: admin } = await db
         .from("platform_admins")
         .select("user_id")
-        .eq("user_id", userId)
+        .eq("user_id", authenticatedUserId)
         .eq("is_active", true)
         .maybeSingle();
       if (!current) return;
