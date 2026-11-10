@@ -52,22 +52,28 @@ describe("alertas de vencimento", () => {
   });
 
   it("usa a razão social quando o nome fantasia não existe", () => {
-    const avisos = calcularAvisosVencimento([], [
-      {
-        id: "d1",
-        title: "FGTS",
-        expires_at: "2026-12-10",
-        suppliers: { legal_name: "Fornecedor Ltda.", trade_name: null },
-      },
-    ], hoje);
+    const avisos = calcularAvisosVencimento(
+      [],
+      [
+        {
+          id: "d1",
+          title: "FGTS",
+          expires_at: "2026-12-10",
+          suppliers: { legal_name: "Fornecedor Ltda.", trade_name: null },
+        },
+      ],
+      hoje,
+    );
 
     expect(avisos[0]?.complemento).toBe("Fornecedor: Fornecedor Ltda.");
   });
 
   it("não cria alerta para documento sem vencimento", () => {
-    const avisos = calcularAvisosVencimento([], [
-      { id: "d1", title: "Cadastro", expires_at: null, suppliers: null },
-    ], hoje);
+    const avisos = calcularAvisosVencimento(
+      [],
+      [{ id: "d1", title: "Cadastro", expires_at: null, suppliers: null }],
+      hoje,
+    );
 
     expect(avisos).toEqual([]);
   });
