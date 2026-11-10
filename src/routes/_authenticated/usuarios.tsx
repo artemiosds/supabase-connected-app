@@ -127,6 +127,9 @@ function Usuarios() {
     }
     setLoading(true);
     setErro(null);
+    setCanManageRoles(false);
+    setPermissionCatalog([]);
+    setRolePermissionRows([]);
     try {
       const [cap, membershipResult, roleResult, invitationResult] = await Promise.all([
         db.rpc("get_tenant_user_capabilities", { p_tenant_id: selecionado.id }),
@@ -192,6 +195,9 @@ function Usuarios() {
       setMembros([]);
       setPapeis([]);
       setConvites([]);
+      setCanManageRoles(false);
+      setPermissionCatalog([]);
+      setRolePermissionRows([]);
     } finally {
       setLoading(false);
     }
