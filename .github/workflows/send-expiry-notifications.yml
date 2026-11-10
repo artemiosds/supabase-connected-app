@@ -44,23 +44,31 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="${SUPABASE_URL%/}/functions/v1/send-expiry-notifications"
-          has_more=true
+          offset=0
 
-          for batch in $(seq 1 20); do
+          for batch in $(seq 1 100); do
+            request_body="$(jq -n --argjson batch_size 100 --argjson offset "$offset" '{batch_size:$batch_size,offset:$offset}')"
             response="$(curl --silent --show-error --fail-with-body \
               --request POST "$endpoint" \
               --header "apikey: $SUPABASE_ANON_KEY" \
               --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
               --header "x-expiry-alert-secret: $EXPIRY_ALERTS_CRON_SECRET" \
               --header "Content-Type: application/json" \
-              --data '{"batch_size":100}')"
+              --data "$request_body")"
 
-            echo "$response" | jq -c '{status,date,candidates,attempted,sent,failed,skipped,has_more}'
+            echo "$response" | jq -c '{status,date,candidates,processed,sent,failed,skipped,has_more}'
             has_more="$(echo "$response" | jq -r '.has_more // false')"
             if [ "$has_more" != "true" ]; then
               exit 0
             fi
+
+            next_offset="$(echo "$response" | jq -r '.next_offset // empty')"
+            if ! [[ "$next_offset" =~ ^[0-9]+$ ]] || [ "$next_offset" -le "$offset" ]; then
+              echo "::error::Invalid notification batch cursor. Stopping to prevent an infinite loop."
+              exit 1
+            fi
+            offset="$next_offset"
           done
 
-          echo "::error::Notification batches remain after 20 iterations. Review outbox state and provider rate limits."
+          echo "::error::More than 10,000 notification deliveries remain. Increase the controlled batch window after reviewing provider limits."
           exit 1
