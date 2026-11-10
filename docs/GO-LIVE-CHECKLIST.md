@@ -13,11 +13,12 @@
 - 5 modelos globais; 0 modelos instalados na Secretaria.
 - 0 fornecedores/documentos/processos/itens/cotações/dotações/contratos/aditivos/documentos gerados.
 - Bucket GED `gfs-private-documents` privado, 20 MiB, PDF/DOC/DOCX/XLS/XLSX/JPG/PNG; sem objetos.
-- `pg_cron`/`pg_net` não instalados. Não há envio agendado de vencimentos.
+- `pg_cron`/`pg_net` não instalados. Não há envio agendado de vencimentos; apenas alertas visuais.
 - Cobrança desabilitada; nenhum gateway operacional.
 - Google Drive OAuth não implementado.
-- PR #8 DOCX foi integrado e passou CI completo, incluindo migration reset e pgTAP em banco local descartável.
-- PR #9 alertas visuais está em validação; PR #10 RLS explícito/índices está no main, ainda não aplicado ao SMS2.
+- PR #8 DOCX foi integrado e passou CI completo, incluindo reset de migrations e pgTAP em banco local descartável.
+- PR #9 alertas visuais foi integrado e passou CI completo; cobre contratos e documentos de fornecedores, sem e-mail agendado.
+- PR #10 contém migration de RLS explícito e índices no main, ainda não aplicada ao SMS2; PR #12 reforça as políticas como restritivas e adiciona cobertura pgTAP, aguardando CI.
 - Não há backup com restore comprovado; domínio/publicação final ainda não confirmados.
 
 ## Gate 1 — Auth, equipe e e-mail
@@ -53,7 +54,7 @@
 - [ ] Validar auditoria, isolamento e desempenho com carga representativa.
 
 ## Gate 5 — Alertas e Drive
-- [ ] Integrar PR #9 após CI verde.
+- [x] Integrar PR #9 de alertas visuais — concluído; não equivale ao envio programado de e-mails.
 - [ ] Definir regras, antecedência, destinatários, frequência, fuso e idempotência.
 - [ ] Implementar envio no servidor e scheduler protegido.
 - [ ] Implementar OAuth Drive por Secretaria, tokens protegidos, refresh e revogação.
