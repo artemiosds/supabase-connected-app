@@ -265,9 +265,7 @@ export function AdminMasterStaff() {
       );
       await load();
     } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Não foi possível cancelar o convite.",
-      );
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível cancelar o convite.");
     } finally {
       setBusy(false);
     }
@@ -684,8 +682,9 @@ export function AdminMasterStaff() {
             <AlertDialogDescription>
               {inviteToRevoke
                 ? `O convite de ${inviteToRevoke.display_name} (${inviteToRevoke.email}) será marcado como cancelado. A pessoa não poderá ativar este acesso mesmo que confirme o e-mail. A identidade no Auth não será excluída.`
-                : "O convite será cancelado sem excluir a identidade de autenticação."}
-              {" "}Para um novo convite no futuro, será necessário usar um endereço exclusivo; o reenvio do mesmo convite ainda não está habilitado.
+                : "O convite será cancelado sem excluir a identidade de autenticação."}{" "}
+              Para um novo convite no futuro, será necessário usar um endereço exclusivo; o reenvio
+              do mesmo convite ainda não está habilitado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -703,7 +702,6 @@ export function AdminMasterStaff() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
