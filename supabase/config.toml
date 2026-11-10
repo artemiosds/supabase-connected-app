@@ -14,3 +14,19 @@ verify_jwt = true
 [functions.send-expiry-notifications]
 # GitHub Actions authenticates this endpoint with x-expiry-alert-secret.
 verify_jwt = false
+
+[functions.google-drive-oauth-start]
+verify_jwt = true
+
+[functions.google-drive-oauth-callback]
+# Google redirects the browser here; single-use OAuth state is validated by the callback.
+verify_jwt = false
+
+[functions.google-drive-upload-document]
+verify_jwt = true
+
+[functions.google-drive-download-document]
+verify_jwt = true
+
+[functions.google-drive-disconnect]
+verify_jwt = true
