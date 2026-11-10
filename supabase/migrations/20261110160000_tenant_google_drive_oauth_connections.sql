@@ -2,7 +2,7 @@
 -- This migration is code-only until separately reviewed and approved for deployment.
 
 CREATE TABLE public.tenant_google_drive_connections (
-  tenant_id uuid PRIMARY KEY REFERENCES public.tenants(id) ON DELETE CASCADE,
+  tenant_id uuid PRIMARY KEY REFERENCES public.tenants(id) ON DELETE RESTRICT,
   google_email text NOT NULL CHECK (length(google_email) BETWEEN 3 AND 254),
   google_subject text NOT NULL CHECK (length(google_subject) BETWEEN 1 AND 255),
   granted_scopes text[] NOT NULL DEFAULT ARRAY[]::text[],
@@ -18,7 +18,7 @@ CREATE TABLE public.tenant_google_drive_connections (
 
 CREATE TABLE public.tenant_google_drive_oauth_states (
   state_hash text PRIMARY KEY CHECK (state_hash ~ '^[0-9a-f]{64}$'),
-  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
   actor_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   expires_at timestamptz NOT NULL,
   used_at timestamptz,
@@ -75,12 +75,6 @@ AS $function$
     )
     AND (
       EXISTS (
-        SELECT 1
-        FROM public.platform_admins pa
-        WHERE pa.user_id=p_actor_user_id
-          AND pa.is_active
-      )
-      OR EXISTS (
         SELECT 1
         FROM public.tenant_memberships tm
         JOIN public.membership_roles mr
