@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  extractDocxDocumentXml,
-  extractWordDocumentText,
-} from "./docx-import";
+import { extractDocxDocumentXml, extractWordDocumentText } from "./docx-import";
 
 const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
