@@ -1,6 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FilePlus2, Loader2, Plus, ScrollText } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  FilePlus2,
+  History,
+  Loader2,
+  Plus,
+  ScrollText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
@@ -56,6 +65,7 @@ type Contrato = {
   number: string;
   object: string;
   supplier_id: string | null;
+  process_id: string | null;
   modality: string;
   total_value: number;
   start_date: string;
@@ -64,6 +74,24 @@ type Contrato = {
   inspector_name: string | null;
   ordinance: string | null;
   status: string;
+};
+
+type Aditivo = {
+  id: string;
+  contract_id: string;
+  number: string;
+  kind: string;
+  new_end_date: string | null;
+  value_change: number;
+  notes: string | null;
+  signed_at: string;
+  created_at: string;
+};
+
+type ProcessoOpcao = {
+  id: string;
+  number: string;
+  title: string;
 };
 
 const corAlerta: Record<NivelAlerta, string> = {
@@ -80,6 +108,9 @@ function Contratos() {
   const { session } = useAuth();
   const [lista, setLista] = useState<Contrato[]>([]);
   const [fornecedores, setFornecedores] = useState<{ id: string; legal_name: string }[]>([]);
+  const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
+  const [aditivos, setAditivos] = useState<Aditivo[]>([]);
+  const [historicosAbertos, setHistoricosAbertos] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, setPendente] = useState(false);
@@ -91,6 +122,9 @@ function Contratos() {
     if (!selecionado?.id) {
       setLista([]);
       setFornecedores([]);
+      setProcessos([]);
+      setAditivos([]);
+      setHistoricosAbertos({});
       setLoading(false);
       return;
     }
@@ -98,8 +132,8 @@ function Contratos() {
     setLoading(true);
     setErro(null);
     try {
-      const [contratosRows, fornecedoresRows] = await Promise.all([
-        carregarTodasAsPaginas((inicio, fim) =>
+      const [contratosRows, fornecedoresRows, processosRows, aditivosRows] = await Promise.all([
+        carregarTodasAsPaginas<Contrato>((inicio, fim) =>
           db
             .from("contracts")
             .select("*")
@@ -117,13 +151,36 @@ function Contratos() {
             .order("id")
             .range(inicio, fim),
         ),
+        carregarTodasAsPaginas<ProcessoOpcao>((inicio, fim) =>
+          db
+            .from("procurement_processes")
+            .select("id,number,title")
+            .eq("tenant_id", selecionado.id)
+            .neq("status", "arquivado")
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
+          db
+            .from("contract_amendments")
+            .select("id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at")
+            .eq("tenant_id", selecionado.id)
+            .order("signed_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
       ]);
       setPendente(false);
       setLista(contratosRows);
       setFornecedores(fornecedoresRows);
+      setProcessos(processosRows);
+      setAditivos(aditivosRows);
     } catch (error) {
       setLista([]);
       setFornecedores([]);
+      setProcessos([]);
+      setAditivos([]);
       const message = error instanceof Error ? error.message : String(error);
       if (bancoNaoConfigurado(message)) setPendente(true);
       else setErro(message);
@@ -148,6 +205,16 @@ function Contratos() {
   const exibidos = filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
   const nomeFornecedor = (id: string | null) =>
     fornecedores.find((f) => f.id === id)?.legal_name ?? "—";
+  const nomeProcesso = (id: string | null) => {
+    const processo = processos.find((item) => item.id === id);
+    return processo ? `${processo.number} — ${processo.title}` : null;
+  };
+  const rotuloTipoAditivo: Record<string, string> = {
+    prorrogacao: "Prorrogação de prazo",
+    acrescimo: "Acréscimo de valor",
+    supressao: "Supressão de valor",
+    outro: "Outro",
+  };
 
   if (!selecionado) {
     return <p className="text-muted-foreground">Selecione uma organização no topo da tela.</p>;
@@ -246,6 +313,11 @@ function Contratos() {
                 <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                   <span>Fornecedor: {nomeFornecedor(c.supplier_id)}</span>
                   <span>Modalidade: {MODALIDADES[c.modality] ?? c.modality}</span>
+                  {c.process_id && (
+                    <span className="sm:col-span-2">
+                      Processo vinculado: {nomeProcesso(c.process_id) ?? "Processo associado"}
+                    </span>
+                  )}
                   <span>Valor: {formatarMoeda(Number(c.total_value))}</span>
                   <span>
                     Vigência: {formatarData(c.start_date)} a {formatarData(c.end_date)}
@@ -261,9 +333,78 @@ function Contratos() {
                     {ORIENTACAO_ALERTA[c.nivel]}
                   </p>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setAditivoDe(c)}>
-                  <FilePlus2 className="h-4 w-4" /> Registrar aditivo
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setAditivoDe(c)}>
+                    <FilePlus2 className="h-4 w-4" /> Registrar aditivo
+                  </Button>
+                  {c.process_id && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to="/processos">Abrir processo relacionado</Link>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-expanded={historicosAbertos[c.id] === true}
+                    aria-controls={`historico-aditivos-${c.id}`}
+                    onClick={() =>
+                      setHistoricosAbertos((current) => ({
+                        ...current,
+                        [c.id]: !current[c.id],
+                      }))
+                    }
+                  >
+                    <History className="h-4 w-4" />
+                    Histórico ({aditivos.filter((item) => item.contract_id === c.id).length})
+                    {historicosAbertos[c.id] ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {historicosAbertos[c.id] && (
+                  <div
+                    id={`historico-aditivos-${c.id}`}
+                    className="space-y-2 rounded-lg border bg-muted/20 p-3"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Histórico de aditivos do contrato
+                    </p>
+                    {aditivos.filter((item) => item.contract_id === c.id).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum aditivo foi registrado para este contrato.
+                      </p>
+                    ) : (
+                      <ol className="space-y-3">
+                        {aditivos
+                          .filter((item) => item.contract_id === c.id)
+                          .map((item) => (
+                            <li key={item.id} className="border-l-2 border-primary/30 pl-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-medium">{item.number}</p>
+                                <Badge variant="outline">
+                                  {rotuloTipoAditivo[item.kind] ?? item.kind}
+                                </Badge>
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {new Date(item.signed_at).toLocaleDateString("pt-BR")}
+                                {item.new_end_date
+                                  ? ` · Nova vigência até ${formatarData(item.new_end_date)}`
+                                  : ""}
+                                {Number(item.value_change) !== 0
+                                  ? ` · Alteração: ${formatarMoeda(Number(item.value_change))}`
+                                  : ""}
+                              </p>
+                              {item.notes && (
+                                <p className="mt-1 whitespace-pre-wrap text-sm">{item.notes}</p>
+                              )}
+                            </li>
+                          ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -276,6 +417,7 @@ function Contratos() {
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
         fornecedores={fornecedores}
+        processos={processos}
         onSalvo={carregar}
       />
       <NovoAditivo
@@ -295,12 +437,14 @@ function NovoContrato(props: {
   tenantId: string;
   userId: string;
   fornecedores: { id: string; legal_name: string }[];
+  processos: ProcessoOpcao[];
   onSalvo: () => void;
 }) {
   const vazio = {
     number: "",
     object: "",
     supplier_id: "",
+    process_id: "",
     modality: "pregao",
     total_value: "",
     start_date: "",
@@ -331,6 +475,7 @@ function NovoContrato(props: {
       number: f.number.trim(),
       object: f.object.trim(),
       supplier_id: f.supplier_id || null,
+      process_id: f.process_id || null,
       modality: f.modality,
       total_value: totalValue,
       start_date: f.start_date,
@@ -391,6 +536,20 @@ function NovoContrato(props: {
               />
             </Campo>
           </div>
+          <Campo label="Processo de contratação">
+            <Select value={f.process_id} onValueChange={set("process_id")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Vincular a um processo (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {props.processos.map((processo) => (
+                  <SelectItem key={processo.id} value={processo.id}>
+                    {processo.number} — {processo.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Campo>
           <Campo label="Fornecedor">
             <Select value={f.supplier_id} onValueChange={set("supplier_id")}>
               <SelectTrigger>
@@ -465,6 +624,7 @@ function NovoAditivo(props: {
   const [tipo, setTipo] = useState("prorrogacao");
   const [novaData, setNovaData] = useState("");
   const [valor, setValor] = useState("");
+  const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   async function salvar(e: React.FormEvent) {
@@ -494,6 +654,7 @@ function NovoAditivo(props: {
       kind: tipo,
       new_end_date: tipo === "prorrogacao" ? novaData || null : null,
       value_change: tipo === "supressao" ? -Math.abs(v) : tipo === "acrescimo" ? Math.abs(v) : 0,
+      notes: observacoes.trim() || null,
       created_by: props.userId,
       updated_by: props.userId,
     });
@@ -506,6 +667,7 @@ function NovoAditivo(props: {
     setNumero("");
     setNovaData("");
     setValor("");
+    setObservacoes("");
     props.onFechar();
     props.onSalvo();
   }
@@ -558,6 +720,15 @@ function NovoAditivo(props: {
               />
             </Campo>
           )}
+          <Campo label="Observações e justificativa do aditivo">
+            <Textarea
+              rows={3}
+              maxLength={2000}
+              value={observacoes}
+              onChange={(event) => setObservacoes(event.target.value)}
+              placeholder="Informe a justificativa, referência do processo e observações relevantes."
+            />
+          </Campo>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={props.onFechar}>
               Cancelar
