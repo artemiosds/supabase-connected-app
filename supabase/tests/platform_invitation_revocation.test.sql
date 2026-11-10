@@ -6,7 +6,7 @@
 -- No Auth user or production row is created.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(16);
+SELECT extensions.plan(18);
 
 SELECT extensions.ok(
   (SELECT pg_catalog.pg_get_constraintdef(oid) ILIKE '%revoked%'
