@@ -229,6 +229,10 @@ function Documentos() {
   const [conteudoGerado, setConteudoGerado] = useState("");
   const [salvandoGerado, setSalvandoGerado] = useState(false);
   const [documentoImpressao, setDocumentoImpressao] = useState<DocumentoGerado | null>(null);
+  const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(null);
+  const [tituloEdicaoGerado, setTituloEdicaoGerado] = useState("");
+  const [conteudoEdicaoGerado, setConteudoEdicaoGerado] = useState("");
+  const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
@@ -887,6 +891,31 @@ function Documentos() {
       .map((m) => m.catalog_template_id as string),
   );
 
+  function abrirEdicaoGerado(documento: DocumentoGerado) {
+    setDocumentoGeradoEditando(documento);
+    setTituloEdicaoGerado(documento.title);
+    setConteudoEdicaoGerado(documento.content_snapshot);
+  }
+
+  async function salvarEdicaoGerado(event: FormEvent) {
+    event.preventDefault();
+    if (!selecionado || !documentoGeradoEditando || !capacidades.can_update || salvandoEdicaoGerado) return;
+    if (tituloEdicaoGerado.trim().length < 2 || !conteudoEdicaoGerado.trim()) {
+      toast.error("Informe título e conteúdo do documento.");
+      return;
+    }
+    setSalvandoEdicaoGerado(true);
+    const { error } = await db.from("generated_documents").update({
+      title: tituloEdicaoGerado.trim(),
+      content_snapshot: conteudoEdicaoGerado,
+    }).eq("id", documentoGeradoEditando.id).eq("tenant_id", selecionado.id);
+    setSalvandoEdicaoGerado(false);
+    if (error) { toast.error(error.message); return; }
+    setDocumentoGeradoEditando(null);
+    toast.success("Rascunho atualizado. O histórico de aprovação anterior foi preservado.");
+    await carregar();
+  }
+
   async function tramitarDocumento(d: DocumentoGerado, action: "submit" | "approve" | "reject") {
     if (!selecionado) return;
     const comment = action === "reject" ? window.prompt("Informe o motivo da devolução para correção:") : null;
@@ -1323,6 +1352,9 @@ function Documentos() {
                                   const labels: Record<string,string> = { draft:"Em elaboração", pending_approval:"Aguardando aprovação", approved:"Aprovado", rejected:"Devolvido para correção", signed:"Assinado", cancelled:"Cancelado" };
                                   return <div className="flex flex-wrap items-center justify-end gap-1">
                                     <Badge variant={status === "approved" ? "secondary" : "outline"}>{labels[status] ?? status}</Badge>
+                                    {d.status === "draft" && ["draft","rejected"].includes(status) && capacidades.can_update && (
+                                      <Button size="sm" variant="outline" onClick={() => abrirEdicaoGerado(d)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+                                    )}
                                     {d.status === "draft" && status !== "pending_approval" && podeEnviarAprovacao && <Button size="sm" variant="outline" onClick={() => void tramitarDocumento(d,"submit")}>Enviar para aprovação</Button>}
                                     {d.status === "draft" && status === "pending_approval" && podeAprovarDocumento && <>
                                       <Button size="sm" onClick={() => void tramitarDocumento(d,"approve")}>Aprovar</Button>
@@ -1826,6 +1858,27 @@ function Documentos() {
                   <FilePlus2 className="h-4 w-4" />
                 )}{" "}
                 Gerar rascunho
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!documentoGeradoEditando} onOpenChange={(open) => !salvandoEdicaoGerado && !open && setDocumentoGeradoEditando(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader><DialogTitle>Editar rascunho documental</DialogTitle></DialogHeader>
+          <form onSubmit={salvarEdicaoGerado} className="space-y-4">
+            <div className="space-y-1"><Label>Título do documento *</Label>
+              <Input required minLength={2} maxLength={180} value={tituloEdicaoGerado} onChange={(event) => setTituloEdicaoGerado(event.target.value)} />
+            </div>
+            <div className="space-y-1"><Label>Conteúdo *</Label>
+              <Textarea required rows={18} maxLength={100000} value={conteudoEdicaoGerado} onChange={(event) => setConteudoEdicaoGerado(event.target.value)} />
+              <p className="text-xs text-muted-foreground">A edição só fica disponível enquanto o documento não estiver aguardando aprovação, aprovado ou assinado.</p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDocumentoGeradoEditando(null)} disabled={salvandoEdicaoGerado}>Cancelar</Button>
+              <Button type="submit" disabled={salvandoEdicaoGerado || !tituloEdicaoGerado.trim() || !conteudoEdicaoGerado.trim()}>
+                {salvandoEdicaoGerado ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Salvar alterações
               </Button>
             </DialogFooter>
           </form>
