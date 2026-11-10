@@ -347,7 +347,10 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_tenant_google_drive_status(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_tenant_google_drive_status(uuid) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.disconnect_tenant_google_drive(p_tenant_id uuid)
+CREATE OR REPLACE FUNCTION public.disconnect_tenant_google_drive(
+  p_tenant_id uuid,
+  p_actor_user_id uuid
+)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -356,9 +359,13 @@ AS $function$
 DECLARE
   v_connection public.tenant_google_drive_connections%ROWTYPE;
 BEGIN
-  IF NOT app_auth.has_tenant_permission(p_tenant_id,'org:edit') THEN
-    RAISE EXCEPTION 'Sem permissão para desconectar o Google Drive.' USING ERRCODE='42501';
+  IF (SELECT auth.role()) IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Service role required.' USING ERRCODE='42501';
   END IF;
+  IF NOT public.is_tenant_google_drive_oauth_actor_authorized(p_tenant_id,p_actor_user_id) THEN
+    RAISE EXCEPTION 'The tenant administrator no longer has permission to disconnect Google Drive.' USING ERRCODE='42501';
+  END IF;
+
   SELECT * INTO v_connection
   FROM public.tenant_google_drive_connections
   WHERE tenant_id=p_tenant_id
@@ -375,7 +382,7 @@ BEGIN
 
   INSERT INTO public.audit_events(actor_id,tenant_id,action,entity,entity_id,details)
   VALUES(
-    (SELECT auth.uid()),p_tenant_id,'tenant.google_drive.disconnected',
+    p_actor_user_id,p_tenant_id,'tenant.google_drive.disconnected',
     'tenant_google_drive_connections',p_tenant_id::text,
     pg_catalog.jsonb_build_object('google_email',v_connection.google_email)
   );
@@ -383,8 +390,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.disconnect_tenant_google_drive(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.disconnect_tenant_google_drive(uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.disconnect_tenant_google_drive(uuid,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.disconnect_tenant_google_drive(uuid,uuid) TO service_role;
 
 COMMENT ON TABLE public.tenant_google_drive_connections IS
   'Per-tenant Google Drive connection metadata. OAuth tokens are encrypted in Supabase Vault and never returned to client roles.';
