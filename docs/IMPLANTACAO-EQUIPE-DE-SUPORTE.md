@@ -8,6 +8,8 @@ Atualizado em 10/11/2026 após a implantação controlada.
 - A função Edge `invite-platform-support-agent` está ACTIVE, versão 3, com `verify_jwt=true`.
 - A autorização compartilhada `can_manage_platform_support_team()` permite ao Master ou a colaborador interno ativo com `support.team.manage` administrar técnicos e atribuições.
 - Nenhum técnico, atribuição ou sessão de suporte foi criado. Não reutilizar conta Master ou municipal.
+- A revogação de convite pendente está preparada no PR #13, com migration `20261110144000`; permanece fora do SMS2 até futura homologação e implantação.
+- O cancelamento marca o técnico como `revoked`, desativa atribuições, preserva a identidade Auth e bloqueia ativação pelo link antigo. Reenvio do mesmo endereço ainda não está habilitado.
 - As regras impedem sobreposição entre contas técnicas, equipe interna, Masters e usuários municipais.
 
 ## Sequência de migrações aplicada
