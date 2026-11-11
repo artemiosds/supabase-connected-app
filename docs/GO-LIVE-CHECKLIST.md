@@ -1,6 +1,6 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `07af1ade09f7ca6fc3d2fc2b5936040097e80298`:
+> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `49ec420f4d202dc040ae893b606e50b7f5050e06`:
 > - O schema `public` tem 35 tabelas e todas estão com RLS habilitada. Há 68 versões de migration registradas, até `20261111021946` (`link_generated_documents_to_contracts`). O repositório tem 69 arquivos SQL; `20261106194000` não tem versão correspondente no histórico remoto. Alguns arquivos foram registrados sob versões/timestamps diferentes; não executar `db push` ou reparo do histórico sem comparar cada migration.
 > - Há 1 Secretaria e 1 vínculo municipal; 2 perfis; nenhum fornecedor, documento operacional, processo, contrato, aditivo ou documento gerado. Catálogo global contém 5 modelos. Outbox de notificações está vazia.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. As quatro primeiras exigem JWT; a última usa `verify_jwt = false` e autenticação por segredo de servidor. Ativa não significa que e-mail real ou scheduler esteja homologado.
@@ -11,7 +11,10 @@
 **Verificação:** 10/11/2026  
 **Supabase:** SMS2, projeto `rwbbznqtocunzrpcvjvk`.
 
-## Estado técnico verificado
+## Registro histórico — estado técnico de 10/11/2026
+
+Os números e versões deste bloco são uma fotografia anterior. Para o estado atual, use o resumo verificado no início deste documento.
+
 - 59 migrations aplicadas no SMS2. O `main` contém uma migration futura adicional `20261110143000`, ainda não aplicada.
 - 32 tabelas públicas; RLS em 32; FORCE RLS em 21; 114 políticas.
 - 1 Secretaria e 1 vínculo municipal ativo; 1 Master; 2 contas Auth.
@@ -36,9 +39,9 @@
 - [ ] `APP_URL` e `INVITE_ALLOWED_ORIGINS` configuradas com origens HTTPS exatas.
 - [ ] Homologar cadastro, confirmação, login, recuperação e convite municipal.
 - [ ] Homologar convite/aceite/senha/suspensão/reativação da Equipe Interna e Suporte.
-- [ ] Após integrar e homologar o PR #13, testar cancelamento de convite pendente e bloqueio de ativação pelo link antigo; a migration `20261110144000` ainda não está aplicada ao SMS2.
+- [ ] Homologar o cancelamento de convite pendente e confirmar que link revogado não concede acesso, depois da reconciliação segura do histórico remoto de migrations.
 - [ ] Definir e homologar reenvio/recuperação de convite expirado somente após a escolha do provedor SMTP e do fluxo de envio personalizado.
-- [ ] Completar cancelamento/revogação e reenvio de convites pendentes/expirados.
+- [x] Implementado cancelamento/revogação de convite pendente. A tela também identifica expirados pela data; reenvio e contas Auth já existentes ainda dependem da configuração e homologação do provedor SMTP.
 - [ ] Testar contas existentes, limites, concorrência, convites expirados e revogados.
 - [ ] Rever política de senha e alerta de proteção contra senhas vazadas.
 
@@ -66,7 +69,7 @@
 ## Gate 5 — Alertas e Drive
 - [x] Integrar PR #9 de alertas visuais — concluído; não equivale ao envio programado de e-mails.
 - [ ] Definir regras, antecedência, destinatários, frequência, fuso e idempotência.
-- [ ] Implementar envio no servidor e scheduler protegido.
+- [x] Código da Edge Function de alertas e workflow agendado existem. [ ] Configurar secrets e regras; comprovar envio idempotente antes de habilitar o schedule.
 - [ ] Implementar OAuth Drive por Secretaria, tokens protegidos, refresh e revogação.
 - [ ] Manter GED Supabase como fallback até homologação do Drive.
 

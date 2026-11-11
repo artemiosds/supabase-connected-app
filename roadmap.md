@@ -1,6 +1,6 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `07af1ade09f7ca6fc3d2fc2b5936040097e80298`:
+> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `49ec420f4d202dc040ae893b606e50b7f5050e06`:
 > - O schema `public` tem 35 tabelas e todas estão com RLS habilitada. Há 68 versões de migration registradas, até `20261111021946` (`link_generated_documents_to_contracts`). O repositório tem 69 arquivos SQL; `20261106194000` não tem versão correspondente no histórico remoto. Alguns arquivos foram registrados sob versões/timestamps diferentes; não executar `db push` ou reparo do histórico sem comparar cada migration.
 > - Há 1 Secretaria e 1 vínculo municipal; 2 perfis; nenhum fornecedor, documento operacional, processo, contrato, aditivo ou documento gerado. Catálogo global contém 5 modelos. Outbox de notificações está vazia.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. As quatro primeiras exigem JWT; a última usa `verify_jwt = false` e autenticação por segredo de servidor. Ativa não significa que e-mail real ou scheduler esteja homologado.
@@ -10,8 +10,11 @@
 
 Atualizado em **10/11/2026** após integração da importação DOCX e dos alertas visuais. A análise detalhada está em [docs/DIAGNOSTICO-FASES-2026-11-10.md](docs/DIAGNOSTICO-FASES-2026-11-10.md).
 
-## Fotografia atual
-- SMS2 tem **59 migrations aplicadas** até `20261110121336`.
+## Registro histórico — fotografia anterior a 11/11/2026
+
+O bloco abaixo registra o estado anterior e não deve orientar alterações no SMS2. Para o estado atual, use o resumo verificado no início deste documento.
+
+- SMS2 tinha **59 migrations aplicadas** até `20261110121336`.
 - Repositório `main` tem a migration adicional `20261110143000` para explicitar negação RLS e indexar FKs de suporte; já está no código, mas ainda não foi aplicada ao SMS2. O PR #12 prepara a política restritiva e amplia testes; aguarda CI.
 - 32 tabelas públicas, todas com RLS; 21 com FORCE RLS; 114 políticas.
 - 1 Secretaria, 1 vínculo municipal, 1 Master, 2 contas Auth.
