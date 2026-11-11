@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Building2,
-  HeartPulse,
-  Layers3,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, Building2, HeartPulse, Layers3, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type PortalEntrada = "master" | "secretaria" | "suporte";
@@ -154,9 +147,7 @@ export function PortalAuthShell({
           </p>
         </div>
 
-        <footer className="text-center text-xs text-muted-foreground">
-          Gestão de Fornecedores da Saúde
-        </footer>
+        <footer className="text-center text-xs text-muted-foreground">Gestão de Fornecedores da Saúde</footer>
       </section>
     </main>
   );
