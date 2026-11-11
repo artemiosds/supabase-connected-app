@@ -7,7 +7,9 @@ import {
   ClipboardCheck,
   FileClock,
   FileText,
+  Building2,
   HeartPulse,
+  LayoutDashboard,
   LockKeyhole,
   ShieldCheck,
   Truck,
@@ -35,6 +37,28 @@ const features = [
     title: "Processos conectados",
     description:
       "Acompanhe etapas, itens, cotações, orçamento, contratos e aditivos no mesmo ambiente.",
+  },
+];
+
+
+const accessPortals = [
+  {
+    icon: LayoutDashboard,
+    title: "Painel Master",
+    description: "Administração global da plataforma e gestão das Secretarias.",
+    action: "Entrar no Master",
+  },
+  {
+    icon: Building2,
+    title: "Portal da Secretaria",
+    description: "Fornecedores, documentos, processos, contratos e histórico da organização.",
+    action: "Entrar na Secretaria",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Central de Suporte",
+    description: "Atendimento técnico autorizado, com acesso controlado por organização.",
+    action: "Acessar suporte",
   },
 ];
 
@@ -300,6 +324,52 @@ export function SiteHome() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="portais" className="scroll-mt-12 border-y bg-primary/[0.035]">
+        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-16">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+              Acesso por ambiente
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Escolha por onde você trabalha.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+              Cada perfil tem um espaço próprio para as tarefas que realiza na plataforma.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-3 md:grid-cols-3">
+            {accessPortals.map(({ icon: Icon, title, description, action }) => (
+              <Link
+                key={title}
+                to="/entrar"
+                className="group flex min-h-52 flex-col rounded-2xl border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-6"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="mt-4 text-base font-semibold tracking-tight">{title}</span>
+                <span className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
+                  {description}
+                </span>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                  {action}
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                    aria-hidden
+                  />
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+            O acesso usa uma única tela de login. As permissões da conta determinam quais ambientes
+            e recursos ficam disponíveis.
+          </p>
         </div>
       </section>
 
