@@ -659,9 +659,12 @@ function Usuarios() {
               </p>
             </div>
             <Badge variant="outline">
-              {convites.filter(
-                (convite) => convite.status === "pending" && !conviteExpirado(convite),
-              ).length} pendentes
+              {
+                convites.filter(
+                  (convite) => convite.status === "pending" && !conviteExpirado(convite),
+                ).length
+              }{" "}
+              pendentes
             </Badge>
           </div>
           {convites.length === 0 ? (
