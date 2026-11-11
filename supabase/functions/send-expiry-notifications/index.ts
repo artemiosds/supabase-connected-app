@@ -369,7 +369,6 @@ async function deliverTask(
       {
         p_delivery_id: deliveryId,
         p_status: "failed",
-        p_provider_message_id: null,
         p_error_code: errorCode,
       },
     );
@@ -388,7 +387,6 @@ async function deliverTask(
       p_delivery_id: deliveryId,
       p_status: "sent",
       p_provider_message_id: providerMessageId,
-      p_error_code: null,
     },
   );
   return completionError || completed !== true ? "uncertain" : "sent";
