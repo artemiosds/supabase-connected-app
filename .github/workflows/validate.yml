@@ -51,8 +51,11 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Type check scheduled expiry Edge Function
-        run: deno check supabase/functions/send-expiry-notifications/index.ts
+      - name: Type check Supabase Edge Functions
+        run: |
+          for function in supabase/functions/*/index.ts; do
+            deno check "$function"
+          done
 
       - name: Lint
         run: bun run lint

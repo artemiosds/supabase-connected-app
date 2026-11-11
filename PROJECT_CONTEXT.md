@@ -53,7 +53,7 @@ Ainda dependem de integração/configuração ou homologação: Google Drive OAu
 - Alterações de schema somente por nova migration timestampada e revisão da história remota; não reescrever migration aplicada nem alterar o banco manualmente.
 - Preservar tipos gerados, cliente Supabase tipado, paginação e separação de identidade. Preferir arquivamento a exclusão física.
 - Não deixar dados fictícios no SMS2. Fixtures de banco devem rodar em transação e terminar em `ROLLBACK`; validar RLS localmente/CI com papéis representativos.
-- Verificações disponíveis no CI: `bun run test`, `bun run build`, `bunx tsc --noEmit`, `bun run lint`, `deno check` da Edge Function e testes `supabase test db` em banco local descartável.
+- Verificações disponíveis no CI: `bun run test`, `bun run build`, `bunx tsc --noEmit`, `bun run lint`, `deno check` de todas as Edge Functions e testes `supabase test db` em banco local descartável.
 - `supabase start -x inbucket` é suficiente para o job de migrations/pgTAP e evita a porta Mailpit `54324`; nenhum teste de entrega de e-mail é feito nesse job.
 - CI verde não comprova E2E autenticado, interface em mobile/tablet/desktop, envio externo, restauração ou prontidão para venda.
 
