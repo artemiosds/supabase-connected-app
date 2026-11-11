@@ -6,6 +6,7 @@ import {
   ChevronUp,
   FilePlus2,
   History,
+  Pencil,
   Loader2,
   Plus,
   ScrollText,
@@ -74,6 +75,39 @@ type Contrato = {
   inspector_name: string | null;
   ordinance: string | null;
   status: string;
+  notes: string | null;
+};
+
+type ContratoForm = {
+  number: string;
+  object: string;
+  supplier_id: string;
+  process_id: string;
+  modality: string;
+  total_value: string;
+  start_date: string;
+  end_date: string;
+  manager_name: string;
+  inspector_name: string;
+  ordinance: string;
+  status: string;
+  notes: string;
+};
+
+const CONTRATO_FORM_VAZIO: ContratoForm = {
+  number: "",
+  object: "",
+  supplier_id: "",
+  process_id: "",
+  modality: "pregao",
+  total_value: "",
+  start_date: "",
+  end_date: "",
+  manager_name: "",
+  inspector_name: "",
+  ordinance: "",
+  status: "vigente",
+  notes: "",
 };
 
 type Aditivo = {
@@ -115,6 +149,7 @@ function Contratos() {
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, setPendente] = useState(false);
   const [novoAberto, setNovoAberto] = useState(false);
+  const [contratoEditando, setContratoEditando] = useState<Contrato | null>(null);
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "alerta">("todos");
 
@@ -231,7 +266,13 @@ function Contratos() {
             Régua de alertas: 120, 90, 60 e 30 dias antes do fim da vigência.
           </p>
         </div>
-        <Button onClick={() => setNovoAberto(true)} disabled={pendente}>
+        <Button
+          onClick={() => {
+            setContratoEditando(null);
+            setNovoAberto(true);
+          }}
+          disabled={pendente}
+        >
           <Plus className="h-4 w-4" /> Novo contrato
         </Button>
       </div>
@@ -336,6 +377,17 @@ function Contratos() {
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={c.status === "arquivado"}
+                    onClick={() => {
+                      setContratoEditando(c);
+                      setNovoAberto(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" /> Editar contrato
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setAditivoDe(c)}>
                     <FilePlus2 className="h-4 w-4" /> Registrar aditivo
                   </Button>
@@ -415,7 +467,12 @@ function Contratos() {
 
       <NovoContrato
         aberto={novoAberto}
-        onFechar={() => setNovoAberto(false)}
+        contrato={contratoEditando}
+        hasAditivos={!!contratoEditando && aditivos.some((item) => item.contract_id === contratoEditando.id)}
+        onFechar={() => {
+          setNovoAberto(false);
+          setContratoEditando(null);
+        }}
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
         fornecedores={fornecedores}
@@ -435,6 +492,8 @@ function Contratos() {
 
 function NovoContrato(props: {
   aberto: boolean;
+  contrato: Contrato | null;
+  hasAditivos: boolean;
   onFechar: () => void;
   tenantId: string;
   userId: string;
@@ -442,25 +501,40 @@ function NovoContrato(props: {
   processos: ProcessoOpcao[];
   onSalvo: () => void;
 }) {
-  const vazio = {
-    number: "",
-    object: "",
-    supplier_id: "",
-    process_id: "",
-    modality: "pregao",
-    total_value: "",
-    start_date: "",
-    end_date: "",
-    manager_name: "",
-    inspector_name: "",
-    ordinance: "",
-  };
-  const [f, setF] = useState(vazio);
+  const [f, setF] = useState<ContratoForm>(CONTRATO_FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const set = (k: keyof typeof vazio) => (v: string) => setF((s) => ({ ...s, [k]: v }));
+  const set = (k: keyof ContratoForm) => (v: string) => setF((current) => ({ ...current, [k]: v }));
+
+  useEffect(() => {
+    if (!props.aberto) return;
+    const contrato = props.contrato;
+    setF(
+      contrato
+        ? {
+            number: contrato.number,
+            object: contrato.object,
+            supplier_id: contrato.supplier_id ?? "",
+            process_id: contrato.process_id ?? "",
+            modality: contrato.modality,
+            total_value: String(Number(contrato.total_value)),
+            start_date: contrato.start_date,
+            end_date: contrato.end_date,
+            manager_name: contrato.manager_name ?? "",
+            inspector_name: contrato.inspector_name ?? "",
+            ordinance: contrato.ordinance ?? "",
+            status: contrato.status,
+            notes: contrato.notes ?? "",
+          }
+        : CONTRATO_FORM_VAZIO,
+    );
+  }, [props.aberto, props.contrato]);
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
+    if (!props.userId) {
+      toast.error("Não foi possível identificar o usuário da sessão.");
+      return;
+    }
     if (f.end_date < f.start_date) {
       toast.error("A data final deve ser igual ou posterior à data inicial.");
       return;
@@ -470,25 +544,63 @@ function NovoContrato(props: {
       toast.error("Informe um valor global válido e não negativo.");
       return;
     }
+    if (
+      props.contrato &&
+      props.hasAditivos &&
+      (totalValue !== Number(props.contrato.total_value) ||
+        f.end_date !== props.contrato.end_date)
+    ) {
+      toast.error("Com aditivos registrados, alterações de valor e vigência devem ser feitas por novo aditivo.");
+      return;
+    }
 
     setSalvando(true);
+    const dadosContrato = {
+      number: f.number.trim(),
+      object: f.object.trim(),
+      supplier_id: f.supplier_id || null,
+      process_id: f.process_id || null,
+      modality: f.modality,
+      total_value: totalValue,
+      start_date: f.start_date,
+      end_date: f.end_date,
+      manager_name: f.manager_name.trim() || null,
+      inspector_name: f.inspector_name.trim() || null,
+      ordinance: f.ordinance.trim() || null,
+      status: f.status,
+      notes: f.notes.trim() || null,
+      updated_by: props.userId,
+    };
+
+    if (props.contrato) {
+      const { data: updated, error } = await db
+        .from("contracts")
+        .update(dadosContrato)
+        .eq("tenant_id", props.tenantId)
+        .eq("id", props.contrato.id)
+        .select("id")
+        .maybeSingle();
+      setSalvando(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (!updated) {
+        toast.error("Contrato não encontrado ou sem permissão para atualização.");
+        return;
+      }
+      toast.success("Contrato atualizado. As alterações foram registradas no histórico.");
+      props.onFechar();
+      props.onSalvo();
+      return;
+    }
+
     const { data: createdContract, error } = await db
       .from("contracts")
       .insert({
         tenant_id: props.tenantId,
-        number: f.number.trim(),
-        object: f.object.trim(),
-        supplier_id: f.supplier_id || null,
-        process_id: f.process_id || null,
-        modality: f.modality,
-        total_value: totalValue,
-        start_date: f.start_date,
-        end_date: f.end_date,
-        manager_name: f.manager_name.trim() || null,
-        inspector_name: f.inspector_name.trim() || null,
-        ordinance: f.ordinance.trim() || null,
+        ...dadosContrato,
         created_by: props.userId,
-        updated_by: props.userId,
       })
       .select("id")
       .single();
@@ -497,6 +609,7 @@ function NovoContrato(props: {
       toast.error(error.message);
       return;
     }
+
     let linkedQuotes = 0;
     if (createdContract?.id && f.process_id && f.supplier_id) {
       const { data: processItems, error: itemError } = await db
@@ -532,21 +645,21 @@ function NovoContrato(props: {
         ? "Contrato cadastrado e " + linkedQuotes + " cotação(ões) de referência vinculada(s)."
         : "Contrato cadastrado.",
     );
-    setF(vazio);
     props.onFechar();
     props.onSalvo();
   }
 
   return (
-    <Dialog open={props.aberto} onOpenChange={(o) => !o && props.onFechar()}>
+    <Dialog open={props.aberto} onOpenChange={(open) => !open && props.onFechar()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Novo contrato</DialogTitle>
+          <DialogTitle>{props.contrato ? "Editar contrato" : "Novo contrato"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={salvar} className="grid gap-4 sm:grid-cols-2">
           <Campo label="Número/ano *">
             <Input
               required
+              maxLength={60}
               value={f.number}
               onChange={(e) => set("number")(e.target.value)}
               placeholder="042/2026"
@@ -571,17 +684,22 @@ function NovoContrato(props: {
               <Textarea
                 required
                 minLength={3}
+                maxLength={500}
                 value={f.object}
                 onChange={(e) => set("object")(e.target.value)}
               />
             </Campo>
           </div>
           <Campo label="Processo de contratação">
-            <Select value={f.process_id} onValueChange={set("process_id")}>
+            <Select
+              value={f.process_id || "sem_processo"}
+              onValueChange={(value) => set("process_id")(value === "sem_processo" ? "" : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Vincular a um processo (opcional)" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="sem_processo">Sem processo vinculado</SelectItem>
                 {props.processos.map((processo) => (
                   <SelectItem key={processo.id} value={processo.id}>
                     {processo.number} — {processo.title}
@@ -591,14 +709,18 @@ function NovoContrato(props: {
             </Select>
           </Campo>
           <Campo label="Fornecedor">
-            <Select value={f.supplier_id} onValueChange={set("supplier_id")}>
+            <Select
+              value={f.supplier_id || "sem_fornecedor"}
+              onValueChange={(value) => set("supplier_id")(value === "sem_fornecedor" ? "" : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
-                {props.fornecedores.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.legal_name}
+                <SelectItem value="sem_fornecedor">Sem fornecedor vinculado</SelectItem>
+                {props.fornecedores.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id}>
+                    {supplier.legal_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -608,6 +730,7 @@ function NovoContrato(props: {
             <Input
               inputMode="decimal"
               value={f.total_value}
+              disabled={!!props.contrato && props.hasAditivos}
               onChange={(e) => set("total_value")(e.target.value)}
             />
           </Campo>
@@ -624,27 +747,78 @@ function NovoContrato(props: {
               type="date"
               required
               value={f.end_date}
+              disabled={!!props.contrato && props.hasAditivos}
               onChange={(e) => set("end_date")(e.target.value)}
             />
           </Campo>
           <Campo label="Gestor do contrato">
-            <Input value={f.manager_name} onChange={(e) => set("manager_name")(e.target.value)} />
+            <Input
+              maxLength={180}
+              value={f.manager_name}
+              onChange={(e) => set("manager_name")(e.target.value)}
+            />
           </Campo>
           <Campo label="Fiscal do contrato">
             <Input
+              maxLength={180}
               value={f.inspector_name}
               onChange={(e) => set("inspector_name")(e.target.value)}
             />
           </Campo>
           <Campo label="Portaria de designação">
-            <Input value={f.ordinance} onChange={(e) => set("ordinance")(e.target.value)} />
+            <Input
+              maxLength={120}
+              value={f.ordinance}
+              onChange={(e) => set("ordinance")(e.target.value)}
+            />
           </Campo>
+          {props.contrato && (
+            <Campo label="Situação">
+              <Select value={f.status} onValueChange={set("status")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vigente">Vigente</SelectItem>
+                  <SelectItem value="encerrado">Encerrado</SelectItem>
+                  <SelectItem value="rescindido">Rescindido</SelectItem>
+                  <SelectItem value="arquivado">Arquivado</SelectItem>
+                </SelectContent>
+              </Select>
+            </Campo>
+          )}
+          <div className="sm:col-span-2">
+            <Campo label="Observações">
+              <Textarea
+                rows={3}
+                maxLength={5000}
+                value={f.notes}
+                onChange={(e) => set("notes")(e.target.value)}
+              />
+            </Campo>
+          </div>
+          {props.contrato && props.hasAditivos && (
+            <Alert className="sm:col-span-2">
+              <AlertTitle>Contrato com aditivos registrados</AlertTitle>
+              <AlertDescription>
+                Valor global e fim de vigência são controlados pelo histórico de aditivos. Registre
+                essas alterações pelo botão “Registrar aditivo”.
+              </AlertDescription>
+            </Alert>
+          )}
+          {props.contrato && (
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              Fornecedor e processo não podem ser trocados enquanto existirem cotações ou documentos
+              vinculados a este contrato. O banco preserva esses vínculos e registra cada alteração.
+            </p>
+          )}
           <DialogFooter className="sm:col-span-2">
             <Button type="button" variant="outline" onClick={props.onFechar}>
               Cancelar
             </Button>
             <Button type="submit" disabled={salvando}>
-              {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar contrato
+              {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+              {props.contrato ? "Salvar alterações" : "Salvar contrato"}
             </Button>
           </DialogFooter>
         </form>
