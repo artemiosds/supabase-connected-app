@@ -2130,7 +2130,7 @@ export type Database = {
           p_description: string
           p_name: string
           p_permission_codes: string[]
-          p_role_id: string
+          p_role_id: string | null
           p_slug: string
         }
         Returns: string
