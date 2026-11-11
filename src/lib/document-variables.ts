@@ -206,21 +206,21 @@ export function buildDocumentTemplateSchema(
   for (const candidate of existingEntries) {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) continue;
     const entry = candidate as Record<string, unknown>;
-    if (typeof entry.key === "string") existingByKey.set(entry.key.toLowerCase(), entry);
+    if (typeof entry['key'] === "string") existingByKey.set(entry['key'].toLowerCase(), entry);
   }
 
   return extractDocumentTemplateVariables(content).map((key) => {
     const existing = existingByKey.get(key);
     const definition = VARIABLES_BY_KEY.get(key);
     const label =
-      typeof existing?.label === "string" && existing.label.trim()
-        ? existing.label.trim()
+      typeof existing?.['label'] === "string" && existing['label'].trim()
+        ? existing['label'].trim()
         : definition?.label ?? key;
     const required =
-      typeof existing?.required === "boolean" ? existing.required : true;
+      typeof existing?.['required'] === "boolean" ? existing['required'] : true;
     const source =
-      typeof existing?.source === "string"
-        ? (existing.source as DocumentVariableSource)
+      typeof existing?.['source'] === "string"
+        ? (existing['source'] as DocumentVariableSource)
         : definition?.source ?? "manual";
     return { key, label, required, source };
   });
