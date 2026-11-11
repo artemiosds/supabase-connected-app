@@ -11,7 +11,8 @@
 ## Estrutura do código
 
 - `src/routes`: páginas TanStack Router; área autenticada em `_authenticated`.
-- `src/components` e `src/components/ui`: componentes da aplicação e primitives visuais.
+- `src/components` e `src/components/ui`: componentes da aplicação e primitives visuais. A aba
+  Configuração técnica no Painel Master documenta ajustes manuais sem armazenar segredos.
 - `src/hooks`: estado de autenticação, tenant, permissões e responsividade.
 - `src/lib`: regras de negócio, validação, consultas e utilitários.
 - `src/integrations/supabase`: cliente Supabase tipado e tipos gerados; `src/lib/db.ts` concentra o acesso tipado e paginação.
@@ -40,6 +41,8 @@ Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com
 ## Módulos e limites confirmados
 
 Autenticação e recuperação; administração e provisionamento de Secretarias; fornecedores; GED privado no Supabase Storage; templates e documentos gerados; usuários e permissões; equipe interna e suporte; processos de contratação, cotações, orçamento, contratos e aditivos.
+
+O Painel Master tem uma aba Configuração técnica com instruções para SMTP, alertas, backup e cobrança, além dos limites atuais de Drive, PDF e assinatura. A tela não coleta segredos nem confirma configuração externa.
 
 Ainda dependem de integração/configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples. A tabela de integração de pagamento não significa que processamento esteja ativo.
 

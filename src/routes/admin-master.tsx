@@ -17,6 +17,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Settings2,
   Users,
   Wallet,
   XCircle,
@@ -26,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
 import { AdminMasterSupport } from "@/components/admin-master-support";
 import { AdminMasterStaff } from "@/components/admin-master-staff";
+import { AdminMasterConfiguration } from "@/components/admin-master-configuration";
 import { PlatformStaffWorkspace } from "@/components/platform-staff-workspace";
 import { TenantProvider } from "@/hooks/use-tenant";
 import {
@@ -593,6 +595,10 @@ function AdminMaster() {
               <CreditCard className="mr-2 h-4 w-4" />
               Cobrança
             </TabsTrigger>
+            <TabsTrigger value="configuracoes">
+              <Settings2 className="mr-2 h-4 w-4" />
+              Configuração técnica
+            </TabsTrigger>
             <TabsTrigger value="metricas">
               <Activity className="mr-2 h-4 w-4" />
               Métricas
@@ -879,6 +885,10 @@ function AdminMaster() {
 
           <TabsContent value="cobranca" className="space-y-6">
             <MasterBillingSettings />
+          </TabsContent>
+
+          <TabsContent value="configuracoes" className="space-y-6">
+            <AdminMasterConfiguration onOpenBilling={() => setTab("cobranca")} />
           </TabsContent>
 
           <TabsContent value="metricas" className="space-y-6">
