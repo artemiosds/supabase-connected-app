@@ -81,7 +81,7 @@ describe("preenchimento de modelos documentais", () => {
 
     expect(result.content).toContain("Secretaria Municipal de Saúde");
     expect(result.content).toContain("042/2026");
-    expect(result.content).toContain("Aquisição de materiais hospitalares");
+    expect(result.content).toContain("Fornecimento de materiais");
     expect(result.content).toContain("R$");
     expect(result.content).toContain("17/2026");
     expect(result.content).toContain("João de Souza");
