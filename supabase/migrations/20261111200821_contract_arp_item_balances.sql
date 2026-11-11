@@ -222,20 +222,12 @@ BEGIN
     RAISE EXCEPTION 'Contrato ou Ata não encontrada nesta Secretaria.';
   END IF;
 
-  IF TG_OP = 'INSERT' THEN
-    SELECT COALESCE(pg_catalog.sum(i.total_value), 0)
-      INTO v_other_items_total
-    FROM public.contract_items i
-    WHERE i.tenant_id = NEW.tenant_id
-      AND i.contract_id = NEW.contract_id;
-  ELSE
-    SELECT COALESCE(pg_catalog.sum(i.total_value), 0)
-      INTO v_other_items_total
-    FROM public.contract_items i
-    WHERE i.tenant_id = NEW.tenant_id
-      AND i.contract_id = NEW.contract_id
-      AND i.id <> NEW.id;
-  END IF;
+  SELECT COALESCE(pg_catalog.sum(i.total_value), 0)
+    INTO v_other_items_total
+  FROM public.contract_items i
+  WHERE i.tenant_id = NEW.tenant_id
+    AND i.contract_id = NEW.contract_id
+    AND (TG_OP = 'INSERT' OR i.id <> NEW.id);
 
   IF v_other_items_total + pg_catalog.round(NEW.quantity_total * NEW.unit_value, 2) > v_contract_total THEN
     RAISE EXCEPTION 'A soma dos itens não pode superar o valor total do instrumento.';
@@ -252,6 +244,14 @@ BEGIN
 
     IF NEW.quantity_total < v_used_quantity THEN
       RAISE EXCEPTION 'A quantidade total não pode ficar abaixo do saldo já consumido.';
+    END IF;
+
+    IF NEW.unit_value IS DISTINCT FROM OLD.unit_value
+       AND EXISTS (
+         SELECT 1 FROM public.contract_item_movements m
+         WHERE m.tenant_id = OLD.tenant_id AND m.contract_item_id = OLD.id
+       ) THEN
+      RAISE EXCEPTION 'O valor unitário não pode ser alterado após a primeira movimentação.';
     END IF;
   END IF;
 

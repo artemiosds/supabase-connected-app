@@ -12,6 +12,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,6 +69,7 @@ type Contrato = {
   supplier_id: string | null;
   process_id: string | null;
   modality: string;
+  instrument_type: string;
   total_value: number;
   start_date: string;
   end_date: string;
@@ -84,6 +86,7 @@ type ContratoForm = {
   supplier_id: string;
   process_id: string;
   modality: string;
+  instrument_type: string;
   total_value: string;
   start_date: string;
   end_date: string;
@@ -100,6 +103,7 @@ const CONTRATO_FORM_VAZIO: ContratoForm = {
   supplier_id: "",
   process_id: "",
   modality: "pregao",
+  instrument_type: "contrato",
   total_value: "",
   start_date: "",
   end_date: "",
@@ -360,6 +364,7 @@ function Contratos() {
                 <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                   <span>Fornecedor: {nomeFornecedor(c.supplier_id)}</span>
                   <span>Modalidade: {MODALIDADES[c.modality] ?? c.modality}</span>
+                  <span>Instrumento: {c.instrument_type === "ata_registro_precos" ? "Ata de Registro de Preços" : "Contrato"}</span>
                   {c.process_id && (
                     <span className="sm:col-span-2">
                       Processo vinculado: {nomeProcesso(c.process_id) ?? "Processo associado"}
@@ -421,6 +426,11 @@ function Contratos() {
                     )}
                   </Button>
                 </div>
+                <ContractItemsBalance
+                  contract={c}
+                  tenantId={selecionado.id}
+                  userId={session?.user.id ?? ""}
+                />
                 {historicosAbertos[c.id] && (
                   <div
                     id={`historico-aditivos-${c.id}`}
@@ -522,6 +532,7 @@ function NovoContrato(props: {
             supplier_id: contrato.supplier_id ?? "",
             process_id: contrato.process_id ?? "",
             modality: contrato.modality,
+            instrument_type: contrato.instrument_type,
             total_value: String(Number(contrato.total_value)),
             start_date: contrato.start_date,
             end_date: contrato.end_date,
@@ -568,6 +579,7 @@ function NovoContrato(props: {
       supplier_id: f.supplier_id || null,
       process_id: f.process_id || null,
       modality: f.modality,
+      instrument_type: f.instrument_type,
       total_value: totalValue,
       start_date: f.start_date,
       end_date: f.end_date,
@@ -671,6 +683,17 @@ function NovoContrato(props: {
               onChange={(e) => set("number")(e.target.value)}
               placeholder="042/2026"
             />
+          </Campo>
+          <Campo label="Tipo de instrumento">
+            <Select value={f.instrument_type} onValueChange={set("instrument_type")}>
+              <SelectTrigger aria-label="Tipo de instrumento">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contrato">Contrato</SelectItem>
+                <SelectItem value="ata_registro_precos">Ata de Registro de Preços (ARP)</SelectItem>
+              </SelectContent>
+            </Select>
           </Campo>
           <Campo label="Modalidade">
             <Select value={f.modality} onValueChange={set("modality")}>
