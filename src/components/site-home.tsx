@@ -44,21 +44,21 @@ const features = [
 const accessPortals = [
   {
     icon: LayoutDashboard,
-    portal: "master",
+    portal: "master" as const,
     title: "Painel Master",
     description: "Administração global da plataforma e gestão das Secretarias.",
     action: "Entrar no Master",
   },
   {
     icon: Building2,
-    portal: "secretaria",
+    portal: "secretaria" as const,
     title: "Portal da Secretaria",
     description: "Fornecedores, documentos, processos, contratos e histórico da organização.",
     action: "Entrar na Secretaria",
   },
   {
     icon: ShieldCheck,
-    portal: "suporte",
+    portal: "suporte" as const,
     title: "Central de Suporte",
     description: "Atendimento técnico autorizado, com acesso controlado por organização.",
     action: "Acessar suporte",
