@@ -1007,7 +1007,7 @@ function Documentos() {
             </Button>
           )}
           {capacidades.can_create && (
-            <Button onClick={iniciarGeracao}>
+            <Button onClick={() => iniciarGeracao()}>
               <FileText className="h-4 w-4" /> Gerar documento
             </Button>
           )}
