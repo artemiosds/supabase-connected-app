@@ -51,7 +51,10 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
 
 type Membership = Tables<"tenant_memberships">;
 type TenantRole = Tables<"tenant_roles">;
-type Convite = Tables<"tenant_invitations">;
+type Convite = Pick<
+  Tables<"tenant_invitations">,
+  "id" | "invited_email" | "role_id" | "status" | "expires_at"
+>;
 type Membro = Membership & {
   profiles?: { full_name: string } | null;
   membership_roles?: { role_id: string; tenant_roles?: { name: string; slug: string } | null }[];
@@ -144,10 +147,14 @@ function Usuarios() {
           )
           .eq("tenant_id", selecionado.id)
           .order("created_at", { ascending: false }),
-        db.from("tenant_roles").select("*").eq("tenant_id", selecionado.id).order("name"),
+        db
+          .from("tenant_roles")
+          .select("id,name,slug,description,is_system,tenant_id,created_at,updated_at")
+          .eq("tenant_id", selecionado.id)
+          .order("name"),
         db
           .from("tenant_invitations")
-          .select("*")
+          .select("id,invited_email,role_id,status,expires_at")
           .eq("tenant_id", selecionado.id)
           .order("created_at", { ascending: false }),
       ]);
