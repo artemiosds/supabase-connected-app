@@ -22,7 +22,11 @@ describe("mapa de pesquisa de preços", () => {
     expect(resumo.menor).toBe(12);
     expect(resumo.media).toBeCloseTo(67 / 3);
     expect(resumo.mediana).toBe(20);
-    expect(resumo.coeficienteVariacao).toBeCloseTo((Math.sqrt(89.5555555556) / (67 / 3)) * 100);
+    const precos = [12, 20, 35];
+    const desvioPadrao = Math.sqrt(
+      precos.reduce((sum, value) => sum + (value - 67 / 3) ** 2, 0) / precos.length,
+    );
+    expect(resumo.coeficienteVariacao).toBeCloseTo((desvioPadrao / (67 / 3)) * 100);
   });
 
   it("exporta CSV compatível com Excel e neutraliza fórmulas em texto", () => {
