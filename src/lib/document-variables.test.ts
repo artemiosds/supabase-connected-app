@@ -51,9 +51,9 @@ const context: DocumentVariableContext = {
 
 describe("preenchimento de modelos documentais", () => {
   it("extrai campos únicos e aceita espaços e diferenças entre maiúsculas/minúsculas", () => {
-    expect(extractDocumentTemplateVariables("{{ objeto }} {{OBJETO}} {{ numero_processo}}")).toEqual(
-      ["objeto", "numero_processo"],
-    );
+    expect(
+      extractDocumentTemplateVariables("{{ objeto }} {{OBJETO}} {{ numero_processo}}"),
+    ).toEqual(["objeto", "numero_processo"]);
   });
 
   it("preserva campos configurados anteriormente ao reconstruir o schema do modelo", () => {

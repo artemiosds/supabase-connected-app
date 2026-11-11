@@ -386,7 +386,11 @@ function Documentos() {
             .order("id", { ascending: false })
             .range(inicio, fim),
         ),
-        db.from("tenants").select("municipality,state,cnpj,ibge_code").eq("id", selecionado.id).maybeSingle(),
+        db
+          .from("tenants")
+          .select("municipality,state,cnpj,ibge_code")
+          .eq("id", selecionado.id)
+          .maybeSingle(),
         carregarTodasAsPaginas<ModeloCatalogo>((inicio, fim) =>
           db
             .from("document_template_catalog")
@@ -400,7 +404,9 @@ function Documentos() {
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
-                .select("id,number,title,description,modality,stage,status,priority,requesting_unit,responsible_name,estimated_value,due_date")
+                .select(
+                  "id,number,title,description,modality,stage,status,priority,requesting_unit,responsible_name,estimated_value,due_date",
+                )
                 .eq("tenant_id", selecionado.id)
                 .neq("status", "arquivado")
                 .order("created_at", { ascending: false })
@@ -412,7 +418,9 @@ function Documentos() {
           ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
               db
                 .from("contracts")
-                .select("id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance")
+                .select(
+                  "id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
+                )
                 .eq("tenant_id", selecionado.id)
                 .order("number")
                 .order("id")
@@ -1017,11 +1025,13 @@ function Documentos() {
 
   const contratoDoGerador = contratos.find((contrato) => contrato.id === contratoGeracao) ?? null;
   const fornecedorIdDoGerador =
-    contratoDoGerador?.supplier_id ??
-    (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao);
-  const fornecedorDoGerador = fornecedores.find((fornecedor) => fornecedor.id === fornecedorIdDoGerador);
+    contratoDoGerador?.supplier_id ?? (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao);
+  const fornecedorDoGerador = fornecedores.find(
+    (fornecedor) => fornecedor.id === fornecedorIdDoGerador,
+  );
   const processoIdDoGerador = contratoDoGerador?.process_id ?? processoGeracao;
-  const processoDoGerador = processos.find((processo) => processo.id === processoIdDoGerador) ?? null;
+  const processoDoGerador =
+    processos.find((processo) => processo.id === processoIdDoGerador) ?? null;
   const contextoVariaveisGeracao: DocumentVariableContext = {
     organization: {
       name: selecionado?.nome ?? null,
@@ -1076,8 +1086,7 @@ function Documentos() {
     (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
   ).filter(
     (campo) =>
-      !campo.source?.startsWith("process.") &&
-      !valoresAutomaticosGeracao[campo.key]?.trim(),
+      !campo.source?.startsWith("process.") && !valoresAutomaticosGeracao[campo.key]?.trim(),
   );
   const modelosInstalados = new Set(
     modelos
@@ -1948,7 +1957,7 @@ function Documentos() {
                       className="justify-start font-mono text-xs"
                       onClick={() => inserirCampoModelo(variable.key)}
                     >
-                      { "{{" + variable.key + "}}" }
+                      {"{{" + variable.key + "}}"}
                       <span className="ml-2 truncate font-sans text-muted-foreground">
                         {variable.label}
                       </span>
@@ -2236,9 +2245,7 @@ function Documentos() {
                           <AlertTitle>Campos que precisam de conferência</AlertTitle>
                           <AlertDescription>
                             {previaGeracao.missingKeys.length > 0 && (
-                              <p>
-                                Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.
-                              </p>
+                              <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
                             )}
                             {previaGeracao.unknownKeys.length > 0 && (
                               <p>

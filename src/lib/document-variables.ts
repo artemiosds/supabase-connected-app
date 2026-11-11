@@ -101,8 +101,16 @@ export const DOCUMENT_TEMPLATE_VARIABLES: readonly DocumentVariableDefinition[] 
   { key: "fiscal_nome", label: "Nome do fiscal do contrato", source: "contract" },
   { key: "fiscal_contrato", label: "Fiscal do contrato", source: "contract" },
   { key: "portaria_fiscal", label: "Portaria de designação do fiscal", source: "contract" },
-  { key: "quantitativos", label: "Itens, quantidades e memória de cálculo", source: "process.items" },
-  { key: "levantamento_mercado", label: "Levantamento de mercado e cotações", source: "process.quotes" },
+  {
+    key: "quantitativos",
+    label: "Itens, quantidades e memória de cálculo",
+    source: "process.items",
+  },
+  {
+    key: "levantamento_mercado",
+    label: "Levantamento de mercado e cotações",
+    source: "process.quotes",
+  },
   { key: "metodo_estimativa", label: "Método da estimativa", source: "process.quotes" },
   { key: "dotacao_orcamentaria", label: "Dotação orçamentária", source: "process.budget" },
   { key: "data", label: "Data de geração", source: "session" },
@@ -206,22 +214,21 @@ export function buildDocumentTemplateSchema(
   for (const candidate of existingEntries) {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) continue;
     const entry = candidate as Record<string, unknown>;
-    if (typeof entry['key'] === "string") existingByKey.set(entry['key'].toLowerCase(), entry);
+    if (typeof entry["key"] === "string") existingByKey.set(entry["key"].toLowerCase(), entry);
   }
 
   return extractDocumentTemplateVariables(content).map((key) => {
     const existing = existingByKey.get(key);
     const definition = VARIABLES_BY_KEY.get(key);
     const label =
-      typeof existing?.['label'] === "string" && existing['label'].trim()
-        ? existing['label'].trim()
-        : definition?.label ?? key;
-    const required =
-      typeof existing?.['required'] === "boolean" ? existing['required'] : true;
+      typeof existing?.["label"] === "string" && existing["label"].trim()
+        ? existing["label"].trim()
+        : (definition?.label ?? key);
+    const required = typeof existing?.["required"] === "boolean" ? existing["required"] : true;
     const source =
-      typeof existing?.['source'] === "string"
-        ? (existing['source'] as DocumentVariableSource)
-        : definition?.source ?? "manual";
+      typeof existing?.["source"] === "string"
+        ? (existing["source"] as DocumentVariableSource)
+        : (definition?.source ?? "manual");
     return { key, label, required, source };
   });
 }

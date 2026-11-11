@@ -79,7 +79,7 @@ function escaparCelulaCsv(value: string | number | boolean | null | undefined): 
   let text = String(value ?? "")
     .replace(/[\r\n]+/g, " ")
     .trim();
-  if (/^[\s\u0000-\u001f]*[=+\-@]/.test(text)) text = "'" + text;
+  if (/^\s*[=+\-@]/.test(text)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
 

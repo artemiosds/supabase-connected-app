@@ -53,7 +53,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { calcularResumoDePrecos, gerarCsvMapaDePrecos, precoUnitarioComFrete, type CotacaoMapa, type ItemMapa } from "@/lib/pesquisa-precos";
+import {
+  calcularResumoDePrecos,
+  gerarCsvMapaDePrecos,
+  precoUnitarioComFrete,
+  type CotacaoMapa,
+  type ItemMapa,
+} from "@/lib/pesquisa-precos";
 
 export const Route = createFileRoute("/_authenticated/processos")({
   head: () => ({
@@ -1708,7 +1714,9 @@ function DadosEstruturados(props: {
                     items as ItemMapa[],
                     quotes.filter((quote) => quote.is_active) as CotacaoMapa[],
                   );
-                  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+                  const url = URL.createObjectURL(
+                    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+                  );
                   const link = document.createElement("a");
                   link.href = url;
                   link.download = `mapa-comparativo-${props.processNumber.replace(/[^a-zA-Z0-9_-]+/g, "-") || "processo"}.csv`;
@@ -1722,7 +1730,10 @@ function DadosEstruturados(props: {
             {items.map((item) => {
               const rows = quotes
                 .filter((q) => q.procurement_item_id === item.id && q.is_active)
-                .sort((a, b) => (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity));
+                .sort(
+                  (a, b) =>
+                    (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity),
+                );
               if (!rows.length) return null;
               const resumo = calcularResumoDePrecos(rows);
               return (
@@ -1768,10 +1779,17 @@ function DadosEstruturados(props: {
                             </td>
                             <td className="p-2">
                               {q.reference_url ? (
-                                <a className="text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">
+                                <a
+                                  className="text-primary underline"
+                                  href={q.reference_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
                                   Consultar
                                 </a>
-                              ) : "—"}
+                              ) : (
+                                "—"
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1779,14 +1797,34 @@ function DadosEstruturados(props: {
                     </table>
                   </div>
                   <dl className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                    <div><dt className="text-muted-foreground">Menor unitário c/ frete</dt><dd className="font-semibold">{formatarMoeda(resumo.menor)}</dd></div>
-                    <div><dt className="text-muted-foreground">Média</dt><dd className="font-semibold">{formatarMoeda(resumo.media)}</dd></div>
-                    <div><dt className="text-muted-foreground">Mediana</dt><dd className="font-semibold">{formatarMoeda(resumo.mediana)}</dd></div>
-                    <div><dt className="text-muted-foreground">Coeficiente de variação</dt><dd className="font-semibold">{resumo.coeficienteVariacao === null ? "Não calculável" : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(resumo.coeficienteVariacao) + "%"}</dd></div>
+                    <div>
+                      <dt className="text-muted-foreground">Menor unitário c/ frete</dt>
+                      <dd className="font-semibold">{formatarMoeda(resumo.menor)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Média</dt>
+                      <dd className="font-semibold">{formatarMoeda(resumo.media)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Mediana</dt>
+                      <dd className="font-semibold">{formatarMoeda(resumo.mediana)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Coeficiente de variação</dt>
+                      <dd className="font-semibold">
+                        {resumo.coeficienteVariacao === null
+                          ? "Não calculável"
+                          : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(
+                              resumo.coeficienteVariacao,
+                            ) + "%"}
+                      </dd>
+                    </div>
                   </dl>
                   <p className="text-xs text-muted-foreground">
-                    Frete rateado pela quantidade cotada. O mapa não exclui valores automaticamente; a análise e justificativa permanecem sob responsabilidade da equipe.
-                    Referência escolhida: {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}.
+                    Frete rateado pela quantidade cotada. O mapa não exclui valores automaticamente;
+                    a análise e justificativa permanecem sob responsabilidade da equipe. Referência
+                    escolhida:{" "}
+                    {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}.
                   </p>
                 </section>
               );
