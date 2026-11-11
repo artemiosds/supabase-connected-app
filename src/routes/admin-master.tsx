@@ -111,9 +111,9 @@ const MODULES = [
   },
   {
     key: "ged",
-    label: "GED avançado (preparado)",
+    label: "GED avançado",
     description:
-      "Chave comercial registrada; upload e armazenamento de anexos serão conectados na etapa de GED.",
+      "Recursos avançados do GED. Upload e armazenamento privados básicos já estão disponíveis em Documentos.",
   },
   {
     key: "auditoria",
