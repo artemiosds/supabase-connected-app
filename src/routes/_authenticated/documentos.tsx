@@ -543,7 +543,9 @@ function Documentos() {
     const linkInformado = linkDocumento.trim();
     const externalUrl = linkInformado ? normalizeExternalDocumentUrl(linkInformado) : null;
     if (linkInformado && !externalUrl) {
-      toast.error("Informe um link HTTP ou HTTPS válido, sem credenciais e com até 2.048 caracteres.");
+      toast.error(
+        "Informe um link HTTP ou HTTPS válido, sem credenciais e com até 2.048 caracteres.",
+      );
       return;
     }
     setSalvandoDocumento(true);

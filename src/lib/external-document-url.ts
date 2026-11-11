@@ -6,7 +6,10 @@ export function normalizeExternalDocumentUrl(value: string): string | null {
   if (
     candidate.length === 0 ||
     candidate.length > MAX_EXTERNAL_DOCUMENT_URL_LENGTH ||
-    /[\u0000-\u0020\u007f]/u.test(candidate)
+    [...candidate].some((character) => {
+      const codePoint = character.charCodeAt(0);
+      return codePoint < 0x20 || codePoint === 0x7f || /\s/u.test(character);
+    })
   ) {
     return null;
   }
