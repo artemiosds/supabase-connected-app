@@ -27,5 +27,11 @@ describe("status de medidas de fornecedores", () => {
         "2026-11-11",
       ),
     ).toBe("revogada");
+    expect(
+      getSanctionDisplayStatus(
+        { status: "unknown", start_date: "2026-01-01", end_date: null },
+        "2026-11-11",
+      ),
+    ).toBe("encerrada");
   });
 });

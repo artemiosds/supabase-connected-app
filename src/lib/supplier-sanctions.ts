@@ -6,7 +6,8 @@ export function getSanctionDisplayStatus(
   today: string,
 ): SanctionDisplayStatus {
   if (sanction.status === "revoked") return "revogada";
-  if (sanction.status === "completed" || (sanction.end_date !== null && sanction.end_date < today)) {
+  if (sanction.status !== "active") return "encerrada";
+  if (sanction.end_date !== null && sanction.end_date < today) {
     return "encerrada";
   }
   if (sanction.start_date > today) return "programada";
