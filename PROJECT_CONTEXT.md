@@ -20,7 +20,7 @@
 
 ## Banco e relações principais
 
-Schema `public` no SMS2 consultado em 2026-11-11: as 33 tabelas listadas estavam com RLS habilitada. A migração `20261111021946` e as anteriores visíveis no histórico do projeto estão aplicadas; conferir o histórico remoto antes de qualquer nova publicação de schema.
+Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com RLS habilitada. O histórico remoto contém 68 versões até `20261111021946` (`link_generated_documents_to_contracts`). O repositório possui 69 migrations SQL; `20261106194000` não tem versão correspondente no histórico remoto e outras migrations foram registradas com timestamps diferentes. Comparar cuidadosamente histórico e arquivos antes de qualquer nova publicação; não executar `db push` indiscriminadamente.
 
 - Identidade e multitenancy: `profiles`, `tenants`, `tenant_memberships`, `permissions`, `tenant_roles`, `tenant_role_permissions`, `membership_roles`, `platform_admins`, `audit_events`.
 - Fornecedores e documentos: `suppliers`, `supplier_documents`, `document_templates`, `generated_documents`, `document_template_catalog`, `document_template_versions`.
@@ -55,6 +55,5 @@ Ainda dependem de integração/configuração ou homologação: Google Drive OAu
 
 ## Pendências conhecidas
 
-- O CI no commit `25c56d52a7cc426516eb412369536effbb37e36c` teve build, testes unitários, TypeScript e verificação Deno aprovados; o lint falhou por formatação das rotas `contratos.tsx`/`documentos.tsx` fora do Prettier fixo 3.9.6.
-- O job de segurança do banco falhou ao iniciar Inbucket por conflito de bind em `0.0.0.0:54324`; migrations e pgTAP não chegaram a executar nessa tentativa.
+- O CI do commit `07af1ade09f7ca6fc3d2fc2b5936040097e80298` passou em formatação, testes utilitários/unitários, build, TypeScript, Deno, lint e segurança do banco. O job excluiu Inbucket/Mailpit porque o teste não depende de e-mail, evitando conflito na porta `54324`; aplicou as migrations localmente e executou pgTAP.
 - Não liberar comercialmente até terminar a homologação real, revisão operacional/jurídica e gates de e-mail, backup, integrações e isolamento multi-tenant.
