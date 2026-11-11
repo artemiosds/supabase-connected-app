@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/entrar")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    portal: parsePortalEntrada(search.portal),
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Gestão de Fornecedores da Saúde" },
@@ -28,6 +31,7 @@ export const Route = createFileRoute("/entrar")({
 });
 
 function Entrar() {
+  const { portal } = Route.useSearch();
   const { signIn, session, loading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -55,16 +59,26 @@ function Entrar() {
       setErro(erroLogin);
       return;
     }
+    if (portal === "master") {
+      navigate({ to: "/admin-master" });
+      return;
+    }
+    if (portal === "suporte") {
+      navigate({ to: "/suporte" });
+      return;
+    }
     navigate({ to: "/painel" });
   }
 
+  const textoPortal = portal ? PORTAL_TEXTO[portal] : null;
+
   return (
     <AuthShell
-      title="Entrar"
+      title={textoPortal?.title ?? "Entrar"}
       subtitle={
         convitePendente
           ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
-          : "Acesse sua conta para continuar."
+          : (textoPortal?.subtitle ?? "Acesse sua conta para continuar.")
       }
     >
       <form onSubmit={aoEnviar} className="space-y-4">

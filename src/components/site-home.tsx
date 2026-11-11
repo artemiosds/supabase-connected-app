@@ -44,18 +44,21 @@ const features = [
 const accessPortals = [
   {
     icon: LayoutDashboard,
+    portal: "master",
     title: "Painel Master",
     description: "Administração global da plataforma e gestão das Secretarias.",
     action: "Entrar no Master",
   },
   {
     icon: Building2,
+    portal: "secretaria",
     title: "Portal da Secretaria",
     description: "Fornecedores, documentos, processos, contratos e histórico da organização.",
     action: "Entrar na Secretaria",
   },
   {
     icon: ShieldCheck,
+    portal: "suporte",
     title: "Central de Suporte",
     description: "Atendimento técnico autorizado, com acesso controlado por organização.",
     action: "Acessar suporte",
@@ -342,10 +345,11 @@ export function SiteHome() {
           </div>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            {accessPortals.map(({ icon: Icon, title, description, action }) => (
+            {accessPortals.map(({ icon: Icon, portal, title, description, action }) => (
               <Link
                 key={title}
                 to="/entrar"
+                search={{ portal }}
                 className="group flex min-h-52 flex-col rounded-2xl border bg-card p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-6"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
