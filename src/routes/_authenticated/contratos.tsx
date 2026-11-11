@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Download,
   FilePlus2,
   History,
   Pencil,
@@ -15,6 +16,10 @@ import { toast } from "sonner";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  gerarCsvContratosAVencerEm90Dias,
+  selecionarContratosAVencerEm90Dias,
+} from "@/lib/relatorio-contratos";
 import {
   diasAte,
   formatarData,
@@ -242,6 +247,7 @@ function Contratos() {
       }),
     [lista],
   );
+  const vencem90Dias = useMemo(() => selecionarContratosAVencerEm90Dias(lista), [lista]);
   const contagem = (n: NivelAlerta) => comNivel.filter((c) => c.nivel === n).length;
   const exibidos = filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
   const nomeFornecedor = (id: string | null) =>
@@ -250,6 +256,31 @@ function Contratos() {
     const processo = processos.find((item) => item.id === id);
     return processo ? `${processo.number} — ${processo.title}` : null;
   };
+  function exportarVencimentos() {
+    if (!selecionado || loading || erro || vencem90Dias.length === 0) return;
+    const linhas = vencem90Dias.map((contrato) => ({
+      number: contrato.number,
+      object: contrato.object,
+      supplier: nomeFornecedor(contrato.supplier_id),
+      process: nomeProcesso(contrato.process_id) ?? "—",
+      modality: contrato.modality,
+      totalValue: Number(contrato.total_value),
+      endDate: contrato.end_date,
+      manager: contrato.manager_name ?? "—",
+      inspector: contrato.inspector_name ?? "—",
+      daysRemaining: diasAte(contrato.end_date),
+    }));
+    const csv = gerarCsvContratosAVencerEm90Dias(linhas);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "contratos-a-vencer-90-dias.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
   const rotuloTipoAditivo: Record<string, string> = {
     prorrogacao: "Prorrogação de prazo",
     acrescimo: "Acréscimo de valor",
@@ -270,15 +301,25 @@ function Contratos() {
             Régua de alertas: 120, 90, 60 e 30 dias antes do fim da vigência.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setContratoEditando(null);
-            setNovoAberto(true);
-          }}
-          disabled={pendente}
-        >
-          <Plus className="h-4 w-4" /> Novo contrato
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={exportarVencimentos}
+            disabled={loading || pendente || !!erro || vencem90Dias.length === 0}
+            aria-label="Exportar contratos vigentes a vencer em até 90 dias para Excel"
+          >
+            <Download className="h-4 w-4" /> Exportar 90 dias (CSV)
+          </Button>
+          <Button
+            onClick={() => {
+              setContratoEditando(null);
+              setNovoAberto(true);
+            }}
+            disabled={pendente}
+          >
+            <Plus className="h-4 w-4" /> Novo contrato
+          </Button>
+        </div>
       </div>
 
       {pendente && (
