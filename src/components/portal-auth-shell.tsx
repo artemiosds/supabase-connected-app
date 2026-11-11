@@ -100,9 +100,7 @@ export function PortalAuthShell({
           </div>
         </div>
 
-        <p className="relative z-10 text-xs text-white/55">
-          Gestão de Fornecedores da Saúde
-        </p>
+        <p className="relative z-10 text-xs text-white/55">Gestão de Fornecedores da Saúde</p>
       </aside>
 
       <section className="flex min-h-screen flex-col px-5 py-6 sm:px-8 sm:py-8 lg:px-12 xl:px-16">
@@ -147,7 +145,9 @@ export function PortalAuthShell({
           </p>
         </div>
 
-        <footer className="text-center text-xs text-muted-foreground">Gestão de Fornecedores da Saúde</footer>
+        <footer className="text-center text-xs text-muted-foreground">
+          Gestão de Fornecedores da Saúde
+        </footer>
       </section>
     </main>
   );
