@@ -105,6 +105,139 @@ export type Database = {
           },
         ];
       };
+      contract_items: {
+        Row: {
+          contract_id: string;
+          created_at: string;
+          created_by: string;
+          description: string;
+          id: string;
+          line_number: number;
+          notes: string | null;
+          quantity_total: number;
+          specification: string | null;
+          tenant_id: string;
+          total_value: number;
+          unit: string;
+          unit_value: number;
+          updated_at: string;
+          updated_by: string;
+        };
+        Insert: {
+          contract_id: string;
+          created_at?: string;
+          created_by?: string;
+          description: string;
+          id?: string;
+          line_number: number;
+          notes?: string | null;
+          quantity_total: number;
+          specification?: string | null;
+          tenant_id: string;
+          total_value?: number;
+          unit: string;
+          unit_value: number;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Update: {
+          contract_id?: string;
+          created_at?: string;
+          created_by?: string;
+          description?: string;
+          id?: string;
+          line_number?: number;
+          notes?: string | null;
+          quantity_total?: number;
+          specification?: string | null;
+          tenant_id?: string;
+          total_value?: number;
+          unit?: string;
+          unit_value?: number;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contract_items_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_items_contract_fk";
+            columns: ["tenant_id", "contract_id"];
+            isOneToOne: false;
+            referencedRelation: "contracts";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      contract_item_movements: {
+        Row: {
+          contract_item_id: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          movement_type: string;
+          quantity: number;
+          reason: string;
+          reference_number: string | null;
+          reverses_movement_id: string | null;
+          tenant_id: string;
+          unit_value_snapshot: number;
+        };
+        Insert: {
+          contract_item_id: string;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          movement_type: string;
+          quantity: number;
+          reason: string;
+          reference_number?: string | null;
+          reverses_movement_id?: string | null;
+          tenant_id: string;
+          unit_value_snapshot: number;
+        };
+        Update: {
+          contract_item_id?: string;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          movement_type?: string;
+          quantity?: number;
+          reason?: string;
+          reference_number?: string | null;
+          reverses_movement_id?: string | null;
+          tenant_id?: string;
+          unit_value_snapshot?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contract_item_movements_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_item_movements_item_fk";
+            columns: ["tenant_id", "contract_item_id"];
+            isOneToOne: false;
+            referencedRelation: "contract_items";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "contract_item_movements_reversal_fk";
+            columns: ["tenant_id", "reverses_movement_id"];
+            isOneToOne: false;
+            referencedRelation: "contract_item_movements";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
       contracts: {
         Row: {
           created_at: string;
@@ -114,6 +247,7 @@ export type Database = {
           inspector_name: string | null;
           manager_name: string | null;
           modality: string;
+          instrument_type: string;
           notes: string | null;
           number: string;
           object: string;
@@ -135,6 +269,7 @@ export type Database = {
           inspector_name?: string | null;
           manager_name?: string | null;
           modality?: string;
+          instrument_type?: string;
           notes?: string | null;
           number: string;
           object: string;
@@ -156,6 +291,7 @@ export type Database = {
           inspector_name?: string | null;
           manager_name?: string | null;
           modality?: string;
+          instrument_type?: string;
           notes?: string | null;
           number?: string;
           object?: string;
@@ -1976,6 +2112,20 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      record_contract_item_consumption: {
+        Args: {
+          p_contract_item_id: string;
+          p_quantity: number;
+          p_reason: string;
+          p_reference_number?: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      reverse_contract_item_consumption: {
+        Args: { p_movement_id: string; p_reason: string; p_tenant_id: string };
+        Returns: string;
+      };
       accept_my_tenant_invitations: { Args: never; Returns: number };
       activate_my_platform_staff: { Args: never; Returns: boolean };
       activate_my_platform_support_agent: { Args: never; Returns: boolean };

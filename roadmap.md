@@ -75,3 +75,9 @@ A baseline 20261106194000 também continua sem versão correspondente no histór
 Cinco Edge Functions estavam ativas na auditoria, incluindo send-expiry-notifications. Sua dependência de banco foi implantada nesta etapa; envio efetivo, secrets e scheduler ainda não foram homologados. O CI do commit 9dbf29f passou build, testes, tipos, lint e regressões de banco local. A verificação desta implantação foi de catálogo/permissões; não substitui E2E autenticado.
 
 Continuam pendentes: reconciliação do histórico, configuração e entrega de e-mail, homologação com duas Secretarias, GED no navegador, backup/restauração em ambiente separado, domínio/publicação e requisitos comerciais. Nenhum e-mail foi enviado nem dado operacional de teste persistido nesta etapa. NO-GO comercial permanece.
+
+
+## Atualização de construção — saldo de contratos/Atas
+
+- Em preparação: migration versionada para classificar contrato/ARP, registrar itens e controlar consumo com ledger auditável e estorno justificado.
+- A estrutura não foi aplicada ao SMS2. A interface operacional e a homologação por usuários de diferentes perfis ainda estão pendentes.

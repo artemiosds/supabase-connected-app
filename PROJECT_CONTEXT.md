@@ -75,3 +75,11 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 - O CI do commit `ab00a6b53065f205a436a52d57ccd57b60563371` passou em formatação, testes unitários, build, TypeScript, Deno nas cinco Edge Functions, lint, aplicação das migrations em Supabase descartável e pgTAP. Isso não comprova E2E autenticado, inspeção visual da interface em dispositivos nem integrações externas.
 - Não liberar comercialmente até terminar a homologação real, revisão operacional/jurídica e gates de e-mail, backup, integrações e isolamento multi-tenant.
+
+
+## Saldo de contratos e Atas — em construção
+
+- A migration versionada `20261111200821_contract_arp_item_balances.sql` adiciona tipo de instrumento (contrato/ARP), itens com limite financeiro, saldo por item e livro razão imutável de consumo/estorno.
+- RPCs de consumo e estorno validam sessão, Secretaria ativa, módulo habilitado, permissão, vigência, saldo e justificativa; os movimentos não podem ser inseridos ou editados diretamente por usuários autenticados.
+- A migration inclui RLS forçada, chaves compostas com tenant, índices e eventos de auditoria sem gravar valores pessoais nos detalhes.
+- A migration permanece no repositório e **não foi aplicada ao SMS2**. Interface, E2E por papéis e teste visual ainda precisam ser concluídos.
