@@ -331,8 +331,10 @@ function Usuarios() {
   }
 
   function conviteExpirado(convite: Convite) {
-    return convite.status === "expired" ||
-      (convite.status === "pending" && Date.parse(convite.expires_at) <= Date.now());
+    return (
+      convite.status === "expired" ||
+      (convite.status === "pending" && Date.parse(convite.expires_at) <= Date.now())
+    );
   }
 
   function statusConvite(convite: Convite) {
