@@ -30,13 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import {
@@ -158,7 +152,9 @@ function LayoutAutenticado() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold">Gestão de Fornecedores</span>
-                    <span className="block text-xs font-normal text-muted-foreground">da Saúde</span>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      da Saúde
+                    </span>
                   </span>
                 </SheetTitle>
               </SheetHeader>
@@ -486,9 +482,9 @@ function SeletorOrganizacao() {
   return (
     <Select value={selecionado?.id ?? ""} onValueChange={selecionar}>
       <SelectTrigger
-      className="w-[min(40vw,16rem)] min-w-0 md:w-64"
-      aria-label="Organização selecionada"
-    >
+        className="w-[min(40vw,16rem)] min-w-0 md:w-64"
+        aria-label="Organização selecionada"
+      >
         <SelectValue placeholder="Selecione a organização" />
       </SelectTrigger>
       <SelectContent>

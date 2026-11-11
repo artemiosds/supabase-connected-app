@@ -164,7 +164,9 @@ function Contratos() {
         carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
           db
             .from("contract_amendments")
-            .select("id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at")
+            .select(
+              "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
+            )
             .eq("tenant_id", selecionado.id)
             .order("signed_at", { ascending: false })
             .order("id", { ascending: false })
@@ -470,40 +472,66 @@ function NovoContrato(props: {
     }
 
     setSalvando(true);
-    const { data: createdContract, error } = await db.from("contracts").insert({
-      tenant_id: props.tenantId,
-      number: f.number.trim(),
-      object: f.object.trim(),
-      supplier_id: f.supplier_id || null,
-      process_id: f.process_id || null,
-      modality: f.modality,
-      total_value: totalValue,
-      start_date: f.start_date,
-      end_date: f.end_date,
-      manager_name: f.manager_name.trim() || null,
-      inspector_name: f.inspector_name.trim() || null,
-      ordinance: f.ordinance.trim() || null,
-      created_by: props.userId,
-      updated_by: props.userId,
-    }).select("id").single();
-    if (error) { setSalvando(false); toast.error(error.message); return; }
+    const { data: createdContract, error } = await db
+      .from("contracts")
+      .insert({
+        tenant_id: props.tenantId,
+        number: f.number.trim(),
+        object: f.object.trim(),
+        supplier_id: f.supplier_id || null,
+        process_id: f.process_id || null,
+        modality: f.modality,
+        total_value: totalValue,
+        start_date: f.start_date,
+        end_date: f.end_date,
+        manager_name: f.manager_name.trim() || null,
+        inspector_name: f.inspector_name.trim() || null,
+        ordinance: f.ordinance.trim() || null,
+        created_by: props.userId,
+        updated_by: props.userId,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      setSalvando(false);
+      toast.error(error.message);
+      return;
+    }
     let linkedQuotes = 0;
     if (createdContract?.id && f.process_id && f.supplier_id) {
-      const { data: processItems, error: itemError } = await db.from("procurement_items").select("id")
-        .eq("tenant_id", props.tenantId).eq("process_id", f.process_id);
+      const { data: processItems, error: itemError } = await db
+        .from("procurement_items")
+        .select("id")
+        .eq("tenant_id", props.tenantId)
+        .eq("process_id", f.process_id);
       if (!itemError && processItems?.length) {
-        const { data: linked, error: linkError } = await db.from("procurement_price_quotes")
+        const { data: linked, error: linkError } = await db
+          .from("procurement_price_quotes")
           .update({ contract_id: createdContract.id, updated_by: props.userId })
-          .eq("tenant_id", props.tenantId).eq("supplier_id", f.supplier_id)
-          .eq("selected_for_estimate", true).eq("is_active", true)
-          .in("procurement_item_id", processItems.map((item) => item.id))
-          .is("contract_id", null).select("id");
+          .eq("tenant_id", props.tenantId)
+          .eq("supplier_id", f.supplier_id)
+          .eq("selected_for_estimate", true)
+          .eq("is_active", true)
+          .in(
+            "procurement_item_id",
+            processItems.map((item) => item.id),
+          )
+          .is("contract_id", null)
+          .select("id");
         if (!linkError) linkedQuotes = linked?.length ?? 0;
-        else toast.warning("Contrato salvo, mas não foi possível vincular as cotações selecionadas: " + linkError.message);
+        else
+          toast.warning(
+            "Contrato salvo, mas não foi possível vincular as cotações selecionadas: " +
+              linkError.message,
+          );
       }
     }
     setSalvando(false);
-    toast.success(linkedQuotes ? "Contrato cadastrado e " + linkedQuotes + " cotação(ões) de referência vinculada(s)." : "Contrato cadastrado.");
+    toast.success(
+      linkedQuotes
+        ? "Contrato cadastrado e " + linkedQuotes + " cotação(ões) de referência vinculada(s)."
+        : "Contrato cadastrado.",
+    );
     setF(vazio);
     props.onFechar();
     props.onSalvo();

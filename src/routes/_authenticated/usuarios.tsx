@@ -97,8 +97,12 @@ function Usuarios() {
   const [vinculando, setVinculando] = useState(false);
   const [busca, setBusca] = useState("");
   const [canManageRoles, setCanManageRoles] = useState(false);
-  const [permissionCatalog, setPermissionCatalog] = useState<{id:string;code:string;name:string;description:string;module:string}[]>([]);
-  const [rolePermissionRows, setRolePermissionRows] = useState<{role_id:string;permission_id:string}[]>([]);
+  const [permissionCatalog, setPermissionCatalog] = useState<
+    { id: string; code: string; name: string; description: string; module: string }[]
+  >([]);
+  const [rolePermissionRows, setRolePermissionRows] = useState<
+    { role_id: string; permission_id: string }[]
+  >([]);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [roleEditing, setRoleEditing] = useState<TenantRole | null>(null);
   const [roleName, setRoleName] = useState("");
@@ -162,20 +166,29 @@ function Usuarios() {
       setMembros(allowed.can_view ? ((membershipResult.data ?? []) as unknown as Membro[]) : []);
       setPapeis(roleResult.data ?? []);
       setConvites(allowed.can_view ? (invitationResult.data ?? []) : []);
-      const roleManagement = await db.rpc("get_tenant_role_management_capability", { p_tenant_id: selecionado.id });
+      const roleManagement = await db.rpc("get_tenant_role_management_capability", {
+        p_tenant_id: selecionado.id,
+      });
       if (roleManagement.error) throw roleManagement.error;
       const canManage = Boolean(roleManagement.data);
       setCanManageRoles(canManage);
       if (canManage) {
         const [permissionResult, rolePermissionResult] = await Promise.all([
-          db.from("permissions").select("id,code,name,description,module").order("module").order("name"),
+          db
+            .from("permissions")
+            .select("id,code,name,description,module")
+            .order("module")
+            .order("name"),
           db.from("tenant_role_permissions").select("role_id,permission_id"),
         ]);
         if (permissionResult.error) throw permissionResult.error;
         if (rolePermissionResult.error) throw rolePermissionResult.error;
         setPermissionCatalog(permissionResult.data ?? []);
         setRolePermissionRows(rolePermissionResult.data ?? []);
-      } else { setPermissionCatalog([]); setRolePermissionRows([]); }
+      } else {
+        setPermissionCatalog([]);
+        setRolePermissionRows([]);
+      }
       setPapelId((current) =>
         roleResult.data?.some((role) => role.id === current)
           ? current
@@ -360,7 +373,11 @@ function Usuarios() {
     setRoleName(role?.name ?? "");
     setRoleSlug(role?.slug ?? "");
     setRoleDescription(role?.description ?? "");
-    setSelectedPermissionIds(role ? rolePermissionRows.filter((x) => x.role_id === role.id).map((x) => x.permission_id) : []);
+    setSelectedPermissionIds(
+      role
+        ? rolePermissionRows.filter((x) => x.role_id === role.id).map((x) => x.permission_id)
+        : [],
+    );
     setRoleDialogOpen(true);
   }
 
@@ -378,7 +395,9 @@ function Usuarios() {
         p_permission_ids: selectedPermissionIds,
       });
       if (error) throw error;
-      toast.success(roleEditing ? "Perfil atualizado e permissões aplicadas." : "Perfil criado com permissões.");
+      toast.success(
+        roleEditing ? "Perfil atualizado e permissões aplicadas." : "Perfil criado com permissões.",
+      );
       setRoleDialogOpen(false);
       await carregar();
     } catch (cause) {
@@ -465,53 +484,142 @@ function Usuarios() {
         </div>
       </div>
 
-      {canManageRoles && <section className="space-y-3 rounded-lg border bg-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Perfis e permissões</h2>
-            <p className="text-sm text-muted-foreground">Crie perfis personalizados e escolha os acessos de cada função. Perfis nativos permanecem protegidos.</p>
-          </div>
-          <Button onClick={() => abrirEditorPerfil()}><Plus className="h-4 w-4" /> Novo perfil</Button>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {papeis.map((role) => <div key={role.id} className="rounded-md border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium">{role.name}</p>
-                <p className="text-xs text-muted-foreground">{role.slug} · {rolePermissionRows.filter((x) => x.role_id === role.id).length} permissões</p>
-                {role.description && <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>}
-              </div>
-              {role.is_system ? <Badge variant="outline">Nativo protegido</Badge> : <Button size="sm" variant="outline" onClick={() => abrirEditorPerfil(role)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>}
+      {canManageRoles && (
+        <section className="space-y-3 rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Perfis e permissões</h2>
+              <p className="text-sm text-muted-foreground">
+                Crie perfis personalizados e escolha os acessos de cada função. Perfis nativos
+                permanecem protegidos.
+              </p>
             </div>
-          </div>)}
-        </div>
-      </section>}
+            <Button onClick={() => abrirEditorPerfil()}>
+              <Plus className="h-4 w-4" /> Novo perfil
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {papeis.map((role) => (
+              <div key={role.id} className="rounded-md border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium">{role.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {role.slug} · {rolePermissionRows.filter((x) => x.role_id === role.id).length}{" "}
+                      permissões
+                    </p>
+                    {role.description && (
+                      <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>
+                    )}
+                  </div>
+                  {role.is_system ? (
+                    <Badge variant="outline">Nativo protegido</Badge>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => abrirEditorPerfil(role)}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <Dialog open={roleDialogOpen} onOpenChange={(open) => !savingRole && setRoleDialogOpen(open)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader><DialogTitle>{roleEditing ? "Editar perfil personalizado" : "Criar perfil personalizado"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>
+              {roleEditing ? "Editar perfil personalizado" : "Criar perfil personalizado"}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={salvarPerfil} className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1"><Label>Nome do perfil *</Label><Input required minLength={2} maxLength={80} value={roleName} onChange={(e) => setRoleName(e.target.value)} /></div>
-              <div className="space-y-1"><Label>Identificador *</Label><Input required minLength={2} maxLength={60} pattern="[a-z0-9][a-z0-9_-]{1,59}" value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)} placeholder="ex: fiscal_contrato" /></div>
-              <div className="space-y-1 sm:col-span-2"><Label>Descrição</Label><Input maxLength={300} value={roleDescription} onChange={(e) => setRoleDescription(e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label>Nome do perfil *</Label>
+                <Input
+                  required
+                  minLength={2}
+                  maxLength={80}
+                  value={roleName}
+                  onChange={(e) => setRoleName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Identificador *</Label>
+                <Input
+                  required
+                  minLength={2}
+                  maxLength={60}
+                  pattern="[a-z0-9][a-z0-9_-]{1,59}"
+                  value={roleSlug}
+                  onChange={(e) => setRoleSlug(e.target.value)}
+                  placeholder="ex: fiscal_contrato"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>Descrição</Label>
+                <Input
+                  maxLength={300}
+                  value={roleDescription}
+                  onChange={(e) => setRoleDescription(e.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between"><Label>Permissões disponíveis</Label><span className="text-xs text-muted-foreground">{selectedPermissionIds.length} selecionada(s)</span></div>
+              <div className="flex justify-between">
+                <Label>Permissões disponíveis</Label>
+                <span className="text-xs text-muted-foreground">
+                  {selectedPermissionIds.length} selecionada(s)
+                </span>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {permissionCatalog.map((permission) => <label key={permission.id} className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm">
-                  <input type="checkbox" className="mt-1" checked={selectedPermissionIds.includes(permission.id)}
-                    onChange={(e) => setSelectedPermissionIds((current) => e.target.checked ? [...new Set([...current,permission.id])] : current.filter((id) => id !== permission.id))} />
-                  <span>
-                    <span className="block font-medium">{permission.name}</span>
-                    <span className="block text-xs text-muted-foreground">{permission.description}</span>
-                    <span className="block text-[11px] text-muted-foreground">{permission.code}</span>
-                  </span>
-                </label>)}
+                {permissionCatalog.map((permission) => (
+                  <label
+                    key={permission.id}
+                    className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={selectedPermissionIds.includes(permission.id)}
+                      onChange={(e) =>
+                        setSelectedPermissionIds((current) =>
+                          e.target.checked
+                            ? [...new Set([...current, permission.id])]
+                            : current.filter((id) => id !== permission.id),
+                        )
+                      }
+                    />
+                    <span>
+                      <span className="block font-medium">{permission.name}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {permission.description}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {permission.code}
+                      </span>
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setRoleDialogOpen(false)} disabled={savingRole}>Cancelar</Button>
-              <Button type="submit" disabled={savingRole || !selectedPermissionIds.length}>{savingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Salvar perfil</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRoleDialogOpen(false)}
+                disabled={savingRole}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={savingRole || !selectedPermissionIds.length}>
+                {savingRole ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )}{" "}
+                Salvar perfil
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

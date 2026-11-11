@@ -61,7 +61,16 @@ type ProcessoContratacao = Pick<
 >;
 type CampoComplementar = { key: string; label: string; required?: boolean; source?: string };
 type DocumentoGerado = Tables<"generated_documents">;
-type FluxoDocumento = { document_id:string; status:string; submitted_by:string|null; submitted_at:string|null; decided_by:string|null; decided_at:string|null; decision_comment:string|null; events:Json };
+type FluxoDocumento = {
+  document_id: string;
+  status: string;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_comment: string | null;
+  events: Json;
+};
 
 const LIMITE_ARQUIVO_PRIVADO = 20 * 1024 * 1024;
 const TIPOS_ARQUIVO_PRIVADO: Record<string, string> = {
@@ -183,7 +192,10 @@ function Documentos() {
   const [fluxosGerados, setFluxosGerados] = useState<FluxoDocumento[]>([]);
   const [podeEnviarAprovacao, setPodeEnviarAprovacao] = useState(false);
   const [podeAprovarDocumento, setPodeAprovarDocumento] = useState(false);
-  const fluxoPorDocumento = useMemo(() => new Map(fluxosGerados.map((f) => [f.document_id, f])), [fluxosGerados]);
+  const fluxoPorDocumento = useMemo(
+    () => new Map(fluxosGerados.map((f) => [f.document_id, f])),
+    [fluxosGerados],
+  );
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("vencimentos");
@@ -229,7 +241,9 @@ function Documentos() {
   const [conteudoGerado, setConteudoGerado] = useState("");
   const [salvandoGerado, setSalvandoGerado] = useState(false);
   const [documentoImpressao, setDocumentoImpressao] = useState<DocumentoGerado | null>(null);
-  const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(null);
+  const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(
+    null,
+  );
   const [tituloEdicaoGerado, setTituloEdicaoGerado] = useState("");
   const [conteudoEdicaoGerado, setConteudoEdicaoGerado] = useState("");
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
@@ -335,7 +349,8 @@ function Documentos() {
         db.rpc("get_document_workflow_capabilities", { p_tenant_id: selecionado.id }),
         db.rpc("list_generated_document_workflows", { p_tenant_id: selecionado.id }),
       ]);
-      for (const result of [cap, tenantData, workflowCapabilities, workflowRecords]) if (result.error) throw result.error;
+      for (const result of [cap, tenantData, workflowCapabilities, workflowRecords])
+        if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
         can_view: false,
         can_create: false,
@@ -774,9 +789,7 @@ function Documentos() {
     }
 
     iniciarGeracao(processoId);
-    const modelo = modelos.find(
-      (item) => item.is_active && item.template_type === tipoSolicitado,
-    );
+    const modelo = modelos.find((item) => item.is_active && item.template_type === tipoSolicitado);
     if (modelo) {
       setModeloSelecionado(modelo.id);
       setTituloGerado(modelo.title);
@@ -899,18 +912,26 @@ function Documentos() {
 
   async function salvarEdicaoGerado(event: FormEvent) {
     event.preventDefault();
-    if (!selecionado || !documentoGeradoEditando || !capacidades.can_update || salvandoEdicaoGerado) return;
+    if (!selecionado || !documentoGeradoEditando || !capacidades.can_update || salvandoEdicaoGerado)
+      return;
     if (tituloEdicaoGerado.trim().length < 2 || !conteudoEdicaoGerado.trim()) {
       toast.error("Informe título e conteúdo do documento.");
       return;
     }
     setSalvandoEdicaoGerado(true);
-    const { error } = await db.from("generated_documents").update({
-      title: tituloEdicaoGerado.trim(),
-      content_snapshot: conteudoEdicaoGerado,
-    }).eq("id", documentoGeradoEditando.id).eq("tenant_id", selecionado.id);
+    const { error } = await db
+      .from("generated_documents")
+      .update({
+        title: tituloEdicaoGerado.trim(),
+        content_snapshot: conteudoEdicaoGerado,
+      })
+      .eq("id", documentoGeradoEditando.id)
+      .eq("tenant_id", selecionado.id);
     setSalvandoEdicaoGerado(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setDocumentoGeradoEditando(null);
     toast.success("Rascunho atualizado. O histórico de aprovação anterior foi preservado.");
     await carregar();
@@ -918,22 +939,34 @@ function Documentos() {
 
   async function tramitarDocumento(d: DocumentoGerado, action: "submit" | "approve" | "reject") {
     if (!selecionado) return;
-    const comment = action === "reject" ? window.prompt("Informe o motivo da devolução para correção:") : null;
+    const comment =
+      action === "reject" ? window.prompt("Informe o motivo da devolução para correção:") : null;
     if (action === "reject" && (!comment || comment.trim().length < 5)) {
       if (comment !== null) toast.error("Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
     const { data, error } = await db.rpc("transition_generated_document_workflow", {
-      p_tenant_id: selecionado.id, p_document_id: d.id, p_action: action, p_comment: comment?.trim() ?? null,
+      p_tenant_id: selecionado.id,
+      p_document_id: d.id,
+      p_action: action,
+      p_comment: comment?.trim() ?? null,
     });
-    if (error) { toast.error(error.message); return; }
-    const labels: Record<string,string> = { pending_approval:"Documento enviado para aprovação.", approved:"Documento aprovado.", rejected:"Documento devolvido para correção." };
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const labels: Record<string, string> = {
+      pending_approval: "Documento enviado para aprovação.",
+      approved: "Documento aprovado.",
+      rejected: "Documento devolvido para correção.",
+    };
     toast.success(labels[String(data)] ?? "Tramitação registrada.");
     await carregar();
   }
 
   async function assinarDocumento(d: DocumentoGerado) {
-    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved") return;
+    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved")
+      return;
     const confirmou = window.confirm(
       "Confirma a assinatura eletrônica simples deste documento? A assinatura ficará registrada com sua conta, nome e data, e o conteúdo será bloqueado.",
     );
@@ -1349,20 +1382,79 @@ function Documentos() {
                                 {(() => {
                                   const workflow = fluxoPorDocumento.get(d.id);
                                   const status = workflow?.status ?? "draft";
-                                  const labels: Record<string,string> = { draft:"Em elaboração", pending_approval:"Aguardando aprovação", approved:"Aprovado", rejected:"Devolvido para correção", signed:"Assinado", cancelled:"Cancelado" };
-                                  return <div className="flex flex-wrap items-center justify-end gap-1">
-                                    <Badge variant={status === "approved" ? "secondary" : "outline"}>{labels[status] ?? status}</Badge>
-                                    {d.status === "draft" && ["draft","rejected"].includes(status) && capacidades.can_update && (
-                                      <Button size="sm" variant="outline" onClick={() => abrirEdicaoGerado(d)}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
-                                    )}
-                                    {d.status === "draft" && status !== "pending_approval" && podeEnviarAprovacao && <Button size="sm" variant="outline" onClick={() => void tramitarDocumento(d,"submit")}>Enviar para aprovação</Button>}
-                                    {d.status === "draft" && status === "pending_approval" && podeAprovarDocumento && <>
-                                      <Button size="sm" onClick={() => void tramitarDocumento(d,"approve")}>Aprovar</Button>
-                                      <Button size="sm" variant="outline" onClick={() => void tramitarDocumento(d,"reject")}>Devolver</Button>
-                                    </>}
-                                    {d.status === "draft" && capacidades.can_sign && status === "approved" && <Button size="sm" onClick={() => void assinarDocumento(d)}><CheckCircle2 className="h-4 w-4" /> Assinar</Button>}
-                                    {workflow?.decision_comment && <span className="basis-full text-right text-xs text-muted-foreground">Observação: {workflow.decision_comment}</span>}
-                                  </div>;
+                                  const labels: Record<string, string> = {
+                                    draft: "Em elaboração",
+                                    pending_approval: "Aguardando aprovação",
+                                    approved: "Aprovado",
+                                    rejected: "Devolvido para correção",
+                                    signed: "Assinado",
+                                    cancelled: "Cancelado",
+                                  };
+                                  return (
+                                    <div className="flex flex-wrap items-center justify-end gap-1">
+                                      <Badge
+                                        variant={status === "approved" ? "secondary" : "outline"}
+                                      >
+                                        {labels[status] ?? status}
+                                      </Badge>
+                                      {d.status === "draft" &&
+                                        ["draft", "rejected"].includes(status) &&
+                                        capacidades.can_update && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => abrirEdicaoGerado(d)}
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" /> Editar
+                                          </Button>
+                                        )}
+                                      {d.status === "draft" &&
+                                        status !== "pending_approval" &&
+                                        podeEnviarAprovacao && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => void tramitarDocumento(d, "submit")}
+                                          >
+                                            Enviar para aprovação
+                                          </Button>
+                                        )}
+                                      {d.status === "draft" &&
+                                        status === "pending_approval" &&
+                                        podeAprovarDocumento && (
+                                          <>
+                                            <Button
+                                              size="sm"
+                                              onClick={() => void tramitarDocumento(d, "approve")}
+                                            >
+                                              Aprovar
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => void tramitarDocumento(d, "reject")}
+                                            >
+                                              Devolver
+                                            </Button>
+                                          </>
+                                        )}
+                                      {d.status === "draft" &&
+                                        capacidades.can_sign &&
+                                        status === "approved" && (
+                                          <Button
+                                            size="sm"
+                                            onClick={() => void assinarDocumento(d)}
+                                          >
+                                            <CheckCircle2 className="h-4 w-4" /> Assinar
+                                          </Button>
+                                        )}
+                                      {workflow?.decision_comment && (
+                                        <span className="basis-full text-right text-xs text-muted-foreground">
+                                          Observação: {workflow.decision_comment}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
                                 })()}
                                 {d.status !== "signed" &&
                                   d.status !== "cancelled" &&
@@ -1664,20 +1756,21 @@ function Documentos() {
                         {versao.content}
                       </pre>
                     </details>
-                    {capacidades.can_manage_templates && modeloHistorico?.version !== versao.version && (
-                      <div className="flex justify-end">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={carregandoVersoes}
-                          onClick={() => void restaurarVersaoModelo(versao)}
-                        >
-                          <History className="h-4 w-4" aria-hidden />
-                          Restaurar esta versão
-                        </Button>
-                      </div>
-                    )}
+                    {capacidades.can_manage_templates &&
+                      modeloHistorico?.version !== versao.version && (
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={carregandoVersoes}
+                            onClick={() => void restaurarVersaoModelo(versao)}
+                          >
+                            <History className="h-4 w-4" aria-hidden />
+                            Restaurar esta versão
+                          </Button>
+                        </div>
+                      )}
                   </CardContent>
                 </Card>
               ))}
@@ -1864,21 +1957,60 @@ function Documentos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!documentoGeradoEditando} onOpenChange={(open) => !salvandoEdicaoGerado && !open && setDocumentoGeradoEditando(null)}>
+      <Dialog
+        open={!!documentoGeradoEditando}
+        onOpenChange={(open) => !salvandoEdicaoGerado && !open && setDocumentoGeradoEditando(null)}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-          <DialogHeader><DialogTitle>Editar rascunho documental</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Editar rascunho documental</DialogTitle>
+          </DialogHeader>
           <form onSubmit={salvarEdicaoGerado} className="space-y-4">
-            <div className="space-y-1"><Label>Título do documento *</Label>
-              <Input required minLength={2} maxLength={180} value={tituloEdicaoGerado} onChange={(event) => setTituloEdicaoGerado(event.target.value)} />
+            <div className="space-y-1">
+              <Label>Título do documento *</Label>
+              <Input
+                required
+                minLength={2}
+                maxLength={180}
+                value={tituloEdicaoGerado}
+                onChange={(event) => setTituloEdicaoGerado(event.target.value)}
+              />
             </div>
-            <div className="space-y-1"><Label>Conteúdo *</Label>
-              <Textarea required rows={18} maxLength={100000} value={conteudoEdicaoGerado} onChange={(event) => setConteudoEdicaoGerado(event.target.value)} />
-              <p className="text-xs text-muted-foreground">A edição só fica disponível enquanto o documento não estiver aguardando aprovação, aprovado ou assinado.</p>
+            <div className="space-y-1">
+              <Label>Conteúdo *</Label>
+              <Textarea
+                required
+                rows={18}
+                maxLength={100000}
+                value={conteudoEdicaoGerado}
+                onChange={(event) => setConteudoEdicaoGerado(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A edição só fica disponível enquanto o documento não estiver aguardando aprovação,
+                aprovado ou assinado.
+              </p>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDocumentoGeradoEditando(null)} disabled={salvandoEdicaoGerado}>Cancelar</Button>
-              <Button type="submit" disabled={salvandoEdicaoGerado || !tituloEdicaoGerado.trim() || !conteudoEdicaoGerado.trim()}>
-                {salvandoEdicaoGerado ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Salvar alterações
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDocumentoGeradoEditando(null)}
+                disabled={salvandoEdicaoGerado}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  salvandoEdicaoGerado || !tituloEdicaoGerado.trim() || !conteudoEdicaoGerado.trim()
+                }
+              >
+                {salvandoEdicaoGerado ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Pencil className="h-4 w-4" />
+                )}{" "}
+                Salvar alterações
               </Button>
             </DialogFooter>
           </form>
