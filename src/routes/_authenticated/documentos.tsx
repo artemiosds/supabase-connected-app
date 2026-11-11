@@ -59,6 +59,10 @@ type ProcessoContratacao = Pick<
   Tables<"procurement_processes">,
   "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
 >;
+type ContratoGeracao = Pick<
+  Tables<"contracts">,
+  "id" | "number" | "object" | "process_id" | "supplier_id" | "status"
+>;
 type CampoComplementar = { key: string; label: string; required?: boolean; source?: string };
 type DocumentoGerado = Tables<"generated_documents">;
 type FluxoDocumento = {
@@ -188,6 +192,7 @@ function Documentos() {
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [catalogo, setCatalogo] = useState<ModeloCatalogo[]>([]);
   const [processos, setProcessos] = useState<ProcessoContratacao[]>([]);
+  const [contratos, setContratos] = useState<ContratoGeracao[]>([]);
   const [gerados, setGerados] = useState<DocumentoGerado[]>([]);
   const [fluxosGerados, setFluxosGerados] = useState<FluxoDocumento[]>([]);
   const [podeEnviarAprovacao, setPodeEnviarAprovacao] = useState(false);
@@ -234,6 +239,7 @@ function Documentos() {
   const [dialogGerar, setDialogGerar] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("");
   const [processoGeracao, setProcessoGeracao] = useState("");
+  const [contratoGeracao, setContratoGeracao] = useState("");
   const [camposComplementares, setCamposComplementares] = useState<Record<string, string>>({});
   const [instalandoModelo, setInstalandoModelo] = useState<string | null>(null);
   const [fornecedorGeracao, setFornecedorGeracao] = useState("nenhum");
@@ -262,6 +268,7 @@ function Documentos() {
       setModelos([]);
       setCatalogo([]);
       setProcessos([]);
+      setContratos([]);
       setGerados([]);
       setFluxosGerados([]);
       setPodeEnviarAprovacao(false);
@@ -282,6 +289,7 @@ function Documentos() {
         tenantData,
         catalogTemplates,
         processRecords,
+        contractRecords,
         workflowCapabilities,
         workflowRecords,
       ] = await Promise.all([
@@ -346,6 +354,17 @@ function Documentos() {
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
+        selecionado.enabled_modules["contratos"] === true
+          ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
+              db
+                .from("contracts")
+                .select("id,number,object,process_id,supplier_id,status")
+                .eq("tenant_id", selecionado.id)
+                .order("number")
+                .order("id")
+                .range(inicio, fim),
+            )
+          : Promise.resolve([] as ContratoGeracao[]),
         db.rpc("get_document_workflow_capabilities", { p_tenant_id: selecionado.id }),
         db.rpc("list_generated_document_workflows", { p_tenant_id: selecionado.id }),
       ]);
@@ -369,6 +388,7 @@ function Documentos() {
       setModelos(templates);
       setCatalogo(catalogTemplates);
       setProcessos(processRecords);
+      setContratos(contractRecords);
       setGerados(generated);
       setFluxosGerados((workflowRecords.data ?? []) as unknown as FluxoDocumento[]);
       setPodeEnviarAprovacao(Boolean(workflowCapabilities.data?.[0]?.can_submit));
@@ -380,6 +400,7 @@ function Documentos() {
       setModelos([]);
       setCatalogo([]);
       setProcessos([]);
+      setContratos([]);
       setGerados([]);
       setFluxosGerados([]);
       setPodeEnviarAprovacao(false);
@@ -843,10 +864,20 @@ function Documentos() {
         toast.error("Selecione um modelo instalado nesta Secretaria.");
         return;
       }
+      const contratoSelecionado = contratos.find((item) => item.id === contratoGeracao);
+      if (contratoGeracao && contratoSelecionado?.process_id !== processoGeracao) {
+        setSalvandoGerado(false);
+        toast.error("O contrato selecionado não pertence ao processo escolhido.");
+        return;
+      }
+      const overrides = {
+        ...camposComplementares,
+        ...(contratoGeracao ? { contract_id: contratoGeracao } : {}),
+      };
       const { error: rpcError } = await db.rpc("generate_document_from_process", {
         p_process_id: processoGeracao,
         p_template_id: modeloSelecionado,
-        p_overrides: camposComplementares as Json,
+        p_overrides: overrides as Json,
       });
       setSalvandoGerado(false);
       if (rpcError) {
@@ -856,9 +887,13 @@ function Documentos() {
       toast.success("Documento vinculado ao processo e salvo como rascunho.");
     } else {
       const snapshot = preencherModelo();
+      const contratoSelecionado = contratos.find((item) => item.id === contratoGeracao);
       const { error: insertError } = await db.from("generated_documents").insert({
         tenant_id: selecionado.id,
-        supplier_id: fornecedorGeracao === "nenhum" ? null : fornecedorGeracao,
+        process_id: contratoSelecionado?.process_id ?? null,
+        contract_id: contratoSelecionado?.id ?? null,
+        supplier_id: contratoSelecionado?.supplier_id ??
+          (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao),
         template_id: modeloSelecionado || null,
         title: tituloGerado.trim(),
         content_snapshot: snapshot,
@@ -1804,6 +1839,7 @@ function Documentos() {
                       value={processoGeracao || "sem_vinculo"}
                       onValueChange={(value) => {
                         setProcessoGeracao(value === "sem_vinculo" ? "" : value);
+                        setContratoGeracao("");
                         setCamposComplementares({});
                         if (value !== "sem_vinculo") setFornecedorGeracao("nenhum");
                       }}
@@ -1822,6 +1858,46 @@ function Documentos() {
                     </Select>
                   </div>
                 )}
+              {selecionado.enabled_modules["contratos"] === true && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Vincular a contrato (opcional)</Label>
+                  <Select
+                    value={contratoGeracao || "sem_contrato"}
+                    onValueChange={(value) => {
+                      const contratoId = value === "sem_contrato" ? "" : value;
+                      const contrato = contratos.find((item) => item.id === contratoId);
+                      setContratoGeracao(contratoId);
+                      if (contrato) {
+                        setProcessoGeracao(contrato.process_id ?? "");
+                        setFornecedorGeracao(contrato.supplier_id ?? "nenhum");
+                        setCamposComplementares({});
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Documento sem contrato vinculado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem_contrato">Sem contrato</SelectItem>
+                      {contratos
+                        .filter((contrato) => contrato.status !== "arquivado")
+                        .filter(
+                          (contrato) =>
+                            !processoGeracao || contrato.process_id === processoGeracao,
+                        )
+                        .map((contrato) => (
+                          <SelectItem key={contrato.id} value={contrato.id}>
+                            {contrato.number} — {contrato.object}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Ao selecionar um contrato, o sistema vincula também seu processo e fornecedor
+                    cadastrados, quando existirem.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Modelo</Label>
                 <Select value={modeloSelecionado} onValueChange={selecionarModelo}>
@@ -1840,7 +1916,11 @@ function Documentos() {
               {!processoGeracao && (
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
-                  <Select value={fornecedorGeracao} onValueChange={setFornecedorGeracao}>
+                  <Select
+                    value={fornecedorGeracao}
+                    onValueChange={setFornecedorGeracao}
+                    disabled={!!contratoGeracao}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Vincular fornecedor" />
                     </SelectTrigger>
