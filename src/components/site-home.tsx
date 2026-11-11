@@ -40,7 +40,6 @@ const features = [
   },
 ];
 
-
 const accessPortals = [
   {
     icon: LayoutDashboard,
