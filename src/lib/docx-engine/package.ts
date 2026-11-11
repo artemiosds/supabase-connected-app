@@ -77,7 +77,9 @@ export async function openDocx(input: ArrayBuffer | Uint8Array): Promise<JSZip> 
 export function storyPartNames(zip: JSZip): string[] {
   return Object.keys(zip.files)
     .filter((n) => STORY_PART.test(n))
-    .sort((a, b) => (a === "word/document.xml" ? -1 : b === "word/document.xml" ? 1 : a.localeCompare(b)));
+    .sort((a, b) =>
+      a === "word/document.xml" ? -1 : b === "word/document.xml" ? 1 : a.localeCompare(b),
+    );
 }
 
 export async function analyzeDocx(input: ArrayBuffer | Uint8Array | JSZip): Promise<DocxAnalysis> {
@@ -102,13 +104,19 @@ export async function analyzeDocx(input: ArrayBuffer | Uint8Array | JSZip): Prom
     if (wDescendants(doc, "object").length || wDescendants(doc, "altChunk").length)
       warn("embedded", "Objetos incorporados são mantidos no Word, mas não aparecem no PDF.");
     if (wDescendants(doc, "ins").length || wDescendants(doc, "del").length)
-      warn("revisions", "O modelo tem alterações controladas pendentes; aceite-as no Word antes de importar.");
+      warn(
+        "revisions",
+        "O modelo tem alterações controladas pendentes; aceite-as no Word antes de importar.",
+      );
     for (const instr of wDescendants(doc, "instrText")) {
       if ((instr.textContent ?? "").includes("{{"))
         warn("field-code", "Campos dentro de códigos de campo do Word não são substituídos.");
     }
     if (wDescendants(doc, "numPr").length && name === "word/document.xml")
-      warn("numbering", "Listas numeradas são mantidas no Word; no PDF aparecem como parágrafos com recuo.");
+      warn(
+        "numbering",
+        "Listas numeradas são mantidas no Word; no PDF aparecem como parágrafos com recuo.",
+      );
     if (doc.getElementsByTagNameNS(W_NS, "sectPr").length > 1 && name === "word/document.xml")
       warn("sections", "O modelo tem várias seções; o PDF usa as margens do timbrado para todas.");
   }

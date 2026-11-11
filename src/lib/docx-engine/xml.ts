@@ -34,7 +34,9 @@ export function wEl(doc: Document, localName: string): Element {
 export function wChildren(parent: Element, localName: string): Element[] {
   return Array.from(parent.childNodes).filter(
     (n): n is Element =>
-      n.nodeType === 1 && (n as Element).namespaceURI === W_NS && (n as Element).localName === localName,
+      n.nodeType === 1 &&
+      (n as Element).namespaceURI === W_NS &&
+      (n as Element).localName === localName,
   );
 }
 

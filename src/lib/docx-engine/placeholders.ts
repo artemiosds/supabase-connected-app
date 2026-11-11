@@ -1,6 +1,7 @@
 import { W_NS, XML_NS, wAncestor, wDescendants, wEl, wFirst } from "./xml";
 
-export const PLACEHOLDER_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)?)\s*\}\}/g;
+export const PLACEHOLDER_PATTERN =
+  /\{\{\s*([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)?)\s*\}\}/g;
 
 export type Replacement = {
   /** Text to insert. Line breaks become Word line breaks. */

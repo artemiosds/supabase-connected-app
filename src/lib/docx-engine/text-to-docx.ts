@@ -13,12 +13,18 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 function runs(text: string, bold = false): string {
   return text
     .split("\t")
-    .map((part, i) => `${i > 0 ? "<w:r><w:tab/></w:r>" : ""}<w:r>${bold ? "<w:rPr><w:b/></w:rPr>" : ""}<w:t xml:space="preserve">${escapeXml(part)}</w:t></w:r>`)
+    .map(
+      (part, i) =>
+        `${i > 0 ? "<w:r><w:tab/></w:r>" : ""}<w:r>${bold ? "<w:rPr><w:b/></w:rPr>" : ""}<w:t xml:space="preserve">${escapeXml(part)}</w:t></w:r>`,
+    )
     .join("");
 }
 
 function paragraph(text: string, style?: string, align?: string): string {
-  const pPr = style || align ? `<w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}${align ? `<w:jc w:val="${align}"/>` : ""}</w:pPr>` : "";
+  const pPr =
+    style || align
+      ? `<w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}${align ? `<w:jc w:val="${align}"/>` : ""}</w:pPr>`
+      : "";
   return `<w:p>${pPr}${text ? runs(text) : ""}</w:p>`;
 }
 
@@ -64,7 +70,11 @@ export async function buildDocxFromText(text: string, title?: string): Promise<U
       parts.push(table(rows));
       continue;
     }
-    parts.push(isHeading(line) ? paragraph(line.trim(), "Heading1") : paragraph(line, undefined, line.trim() ? "both" : undefined));
+    parts.push(
+      isHeading(line)
+        ? paragraph(line.trim(), "Heading1")
+        : paragraph(line, undefined, line.trim() ? "both" : undefined),
+    );
   }
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1701" w:right="1134" w:bottom="1134" w:left="1701" w:header="709" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
