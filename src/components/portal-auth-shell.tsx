@@ -59,7 +59,7 @@ export function PortalAuthShell({
   portal,
   children,
 }: {
-  portal?: PortalEntrada;
+  portal?: PortalEntrada | undefined;
   children: ReactNode;
 }) {
   const conteudo = CONTEUDO_PORTAL[portal ?? "default"];
