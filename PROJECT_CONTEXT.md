@@ -86,3 +86,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 
 - Validação local do saldo de contratos/Atas: 3 testes unitários passaram; `tsc --noEmit` passou no snapshot local sincronizado com os tipos novos. O build completo, lint e pipeline oficial ainda dependem da execução do CI. A migration continua sem aplicação no SMS2.
+
+
+## Relatórios e exportação
+
+- Fornecedores, processos e contratos/Atas exportam a lista filtrada em CSV UTF-8 com separador regional compatível com Excel. Os arquivos incluem campos operacionais necessários, sem exportar contatos/endereço de fornecedores.
+- A saída neutraliza conteúdo que poderia ser interpretado como fórmula de planilha e sanitiza o nome do arquivo.
+- PDF gerencial, exportação XLSX nativa e validação visual do relatório continuam pendentes; documentos oficiais usam o fluxo documental existente, que ainda depende de homologação do layout.

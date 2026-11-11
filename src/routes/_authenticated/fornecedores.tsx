@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Building2, History, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
+import {
+  Building2,
+  Download,
+  History,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
+import { exportarCsv } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
@@ -510,6 +521,35 @@ function Fornecedores() {
             </p>
           )}
         </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={loading || lista.length === 0}
+          onClick={() =>
+            exportarCsv(
+              `fornecedores-${new Date().toISOString().slice(0, 10)}.csv`,
+              [
+                { header: "CNPJ", value: (item: Fornecedor) => item.cnpj },
+                { header: "Razão social", value: (item: Fornecedor) => item.legal_name },
+                { header: "Nome fantasia", value: (item: Fornecedor) => item.trade_name },
+                {
+                  header: "Categoria",
+                  value: (item: Fornecedor) =>
+                    CATEGORIAS.find((categoria) => categoria.value === item.category)?.label ??
+                    item.category,
+                },
+                {
+                  header: "Status",
+                  value: (item: Fornecedor) => (item.status === "active" ? "Ativo" : "Inativo"),
+                },
+              ],
+              lista,
+            )
+          }
+        >
+          <Download className="h-4 w-4" aria-hidden /> Exportar Excel (CSV)
+        </Button>
         {capacidades.can_create && (
           <Button onClick={abrirNovo} disabled={!selecionado}>
             <Plus className="h-4 w-4" aria-hidden />

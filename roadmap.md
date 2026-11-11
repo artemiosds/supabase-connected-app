@@ -82,3 +82,10 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - Código em `main`: migration versionada para classificar contrato/ARP, registrar itens e controlar consumo por ledger auditável com estorno justificado; tela de saldo integrada ao módulo de contratos.
 - Verificação local: 3 testes unitários do cálculo e TypeScript passaram. CI completo, build/lint remoto e homologação visual/E2E por perfis seguem pendentes.
 - A migration não foi aplicada ao SMS2; nenhum dado de produção foi alterado.
+
+
+## Relatórios gerenciais — atualização
+
+- Fornecedores, processos e contratos/Atas têm exportação da lista e dos filtros ativos em CSV UTF-8 compatível com Excel.
+- O gerador protege campos de texto contra injeção de fórmulas e os testes unitários cobrem codificação, aspas, valores nulos/zero e entradas maliciosas.
+- PDF gerencial e XLSX nativo ainda não foram implementados. CSV não foi apresentado como substituto de arquivo XLSX nativo.
