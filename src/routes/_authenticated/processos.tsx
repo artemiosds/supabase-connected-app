@@ -1707,7 +1707,7 @@ function DadosEstruturados(props: {
                   <thead className="text-left text-muted-foreground"><tr><th className="p-2">Fornecedor / fonte</th><th className="p-2">Data</th><th className="p-2 text-right">Unitário</th><th className="p-2 text-right">Frete</th><th className="p-2 text-right">Total</th><th className="p-2">Fonte</th></tr></thead>
                   <tbody>{rows.map((q) => <tr key={q.id} className="border-t"><td className="p-2">{q.source_name}{q.selected_for_estimate && <Badge className="ml-2" variant="secondary">Selecionada</Badge>}</td><td className="p-2">{formatarData(q.quoted_at)}</td><td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td><td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td><td className="p-2 text-right font-medium">{formatarMoeda(q.total_price ?? 0)}</td><td className="p-2">{q.reference_url ? <a className="text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">Consultar</a> : "—"}</td></tr>)}</tbody>
                 </table></div>
-                <p className="text-xs text-muted-foreground">Menor total informado: {formatarMoeda(rows[0].total_price ?? 0)} · Referência escolhida: {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}</p>
+                <p className="text-xs text-muted-foreground">Menor total informado: {formatarMoeda(rows[0]?.total_price ?? 0)} · Referência escolhida: {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}</p>
               </section>;
             })}
             <DialogFooter><Button variant="outline" onClick={() => setMapaAberto(false)}>Fechar mapa</Button></DialogFooter>
