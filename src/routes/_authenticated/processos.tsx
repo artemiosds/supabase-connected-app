@@ -17,7 +17,8 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { exportarCsv } from "@/lib/csv-export";
+import { ReportExportActions } from "@/components/reports/report-export-actions";
+import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -229,6 +230,27 @@ function Processos() {
     filtroEtapa !== "todas" ||
     filtroModalidade !== "todas";
 
+  const colunasRelatorio: CsvColumn<Processo>[] = [
+    { header: "Número", value: (processo) => processo.number },
+    { header: "Objeto", value: (processo) => processo.title },
+    {
+      header: "Modalidade",
+      value: (processo) => MODALIDADES[processo.modality] ?? processo.modality,
+    },
+    {
+      header: "Etapa",
+      value: (processo) =>
+        ETAPAS.find((etapa) => etapa.id === processo.stage)?.nome ?? processo.stage,
+    },
+    { header: "Status", value: (processo) => processo.status },
+    { header: "Responsável", value: (processo) => processo.responsible_name },
+    { header: "Unidade solicitante", value: (processo) => processo.requesting_unit },
+    { header: "Valor estimado", value: (processo) => processo.estimated_value },
+    { header: "Prazo", value: (processo) => processo.due_date },
+    { header: "Prioridade", value: (processo) => processo.priority },
+    { header: "Progresso (%)", value: (processo) => progresso(processo.id) },
+  ];
+
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
     if (!destino) return;
 
@@ -346,53 +368,13 @@ function Processos() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={loading || processosFiltrados.length === 0}
-            onClick={() =>
-              exportarCsv(
-                `processos-${new Date().toISOString().slice(0, 10)}.csv`,
-                [
-                  { header: "Número", value: (processo: Processo) => processo.number },
-                  { header: "Objeto", value: (processo: Processo) => processo.title },
-                  {
-                    header: "Modalidade",
-                    value: (processo: Processo) =>
-                      MODALIDADES[processo.modality] ?? processo.modality,
-                  },
-                  {
-                    header: "Etapa",
-                    value: (processo: Processo) =>
-                      ETAPAS.find((etapa) => etapa.id === processo.stage)?.nome ?? processo.stage,
-                  },
-                  { header: "Status", value: (processo: Processo) => processo.status },
-                  {
-                    header: "Responsável",
-                    value: (processo: Processo) => processo.responsible_name,
-                  },
-                  {
-                    header: "Unidade solicitante",
-                    value: (processo: Processo) => processo.requesting_unit,
-                  },
-                  {
-                    header: "Valor estimado",
-                    value: (processo: Processo) => processo.estimated_value,
-                  },
-                  { header: "Prazo", value: (processo: Processo) => processo.due_date },
-                  { header: "Prioridade", value: (processo: Processo) => processo.priority },
-                  {
-                    header: "Progresso (%)",
-                    value: (processo: Processo) => progresso(processo.id),
-                  },
-                ],
-                processosFiltrados,
-              )
-            }
-          >
-            <Download className="h-4 w-4" /> Exportar Excel (CSV)
-          </Button>
+          <ReportExportActions
+            title="Processos de contratação"
+            filename={`processos-${new Date().toISOString().slice(0, 10)}.csv`}
+            columns={colunasRelatorio}
+            rows={processosFiltrados}
+            disabled={loading}
+          />
           <Button
             variant="outline"
             size="sm"

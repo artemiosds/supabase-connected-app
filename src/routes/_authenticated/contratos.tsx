@@ -13,7 +13,8 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { exportarCsv } from "@/lib/csv-export";
+import { ReportExportActions } from "@/components/reports/report-export-actions";
+import type { CsvColumn } from "@/lib/csv-export";
 import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
@@ -252,6 +253,27 @@ function Contratos() {
   const exibidos = filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
   const nomeFornecedor = (id: string | null) =>
     fornecedores.find((f) => f.id === id)?.legal_name ?? "—";
+  const colunasRelatorio: CsvColumn<(typeof exibidos)[number]>[] = [
+    { header: "Número", value: (contrato) => contrato.number },
+    {
+      header: "Instrumento",
+      value: (contrato) =>
+        contrato.instrument_type === "ata_registro_precos"
+          ? "Ata de Registro de Preços"
+          : "Contrato",
+    },
+    { header: "Objeto", value: (contrato) => contrato.object },
+    { header: "Fornecedor", value: (contrato) => nomeFornecedor(contrato.supplier_id) },
+    {
+      header: "Modalidade",
+      value: (contrato) => MODALIDADES[contrato.modality] ?? contrato.modality,
+    },
+    { header: "Valor total", value: (contrato) => Number(contrato.total_value) },
+    { header: "Início", value: (contrato) => contrato.start_date },
+    { header: "Fim", value: (contrato) => contrato.end_date },
+    { header: "Dias restantes", value: (contrato) => contrato.dias },
+    { header: "Status", value: (contrato) => contrato.status },
+  ];
   const nomeProcesso = (id: string | null) => {
     const processo = processos.find((item) => item.id === id);
     return processo ? `${processo.number} — ${processo.title}` : null;
@@ -277,67 +299,13 @@ function Contratos() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={loading || exibidos.length === 0}
-            onClick={() =>
-              exportarCsv(
-                `contratos-${new Date().toISOString().slice(0, 10)}.csv`,
-                [
-                  {
-                    header: "Número",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.number,
-                  },
-                  {
-                    header: "Instrumento",
-                    value: (contrato: (typeof exibidos)[number]) =>
-                      contrato.instrument_type === "ata_registro_precos"
-                        ? "Ata de Registro de Preços"
-                        : "Contrato",
-                  },
-                  {
-                    header: "Objeto",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.object,
-                  },
-                  {
-                    header: "Fornecedor",
-                    value: (contrato: (typeof exibidos)[number]) =>
-                      nomeFornecedor(contrato.supplier_id),
-                  },
-                  {
-                    header: "Modalidade",
-                    value: (contrato: (typeof exibidos)[number]) =>
-                      MODALIDADES[contrato.modality] ?? contrato.modality,
-                  },
-                  {
-                    header: "Valor total",
-                    value: (contrato: (typeof exibidos)[number]) => Number(contrato.total_value),
-                  },
-                  {
-                    header: "Início",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.start_date,
-                  },
-                  {
-                    header: "Fim",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.end_date,
-                  },
-                  {
-                    header: "Dias restantes",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.dias,
-                  },
-                  {
-                    header: "Status",
-                    value: (contrato: (typeof exibidos)[number]) => contrato.status,
-                  },
-                ],
-                exibidos,
-              )
-            }
-          >
-            <Download className="h-4 w-4" /> Exportar Excel (CSV)
-          </Button>
+          <ReportExportActions
+            title="Contratos e Atas de Registro de Preços"
+            filename={`contratos-${new Date().toISOString().slice(0, 10)}.csv`}
+            columns={colunasRelatorio}
+            rows={exibidos}
+            disabled={loading}
+          />
           <Button
             onClick={() => {
               setContratoEditando(null);

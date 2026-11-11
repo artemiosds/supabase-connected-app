@@ -88,4 +88,4 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - Fornecedores, processos e contratos/Atas têm exportação da lista e dos filtros ativos em CSV UTF-8 compatível com Excel.
 - O gerador protege campos de texto contra injeção de fórmulas e os testes unitários cobrem codificação, aspas, valores nulos/zero e entradas maliciosas.
-- PDF gerencial e XLSX nativo ainda não foram implementados. CSV não foi apresentado como substituto de arquivo XLSX nativo.
+- PDF gerencial pode ser salvo pela impressão do navegador, sem timbre oficial e sem renderização server-side. XLSX nativo permanece pendente; CSV é identificado como CSV compatível com Excel.
