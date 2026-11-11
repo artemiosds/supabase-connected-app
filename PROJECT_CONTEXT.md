@@ -82,4 +82,7 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A migration versionada `20261111200821_contract_arp_item_balances.sql` adiciona tipo de instrumento (contrato/ARP), itens com limite financeiro, saldo por item e livro razão imutável de consumo/estorno.
 - RPCs de consumo e estorno validam sessão, Secretaria ativa, módulo habilitado, permissão, vigência, saldo e justificativa; os movimentos não podem ser inseridos ou editados diretamente por usuários autenticados.
 - A migration inclui RLS forçada, chaves compostas com tenant, índices e eventos de auditoria sem gravar valores pessoais nos detalhes.
-- A migration permanece no repositório e **não foi aplicada ao SMS2**. Interface, E2E por papéis e teste visual ainda precisam ser concluídos.
+- A migration permanece no repositório e **não foi aplicada ao SMS2**. A tela de contratos permite classificar contrato/ARP, cadastrar itens, consultar saldo, registrar consumo com justificativa e estornar sem apagar o histórico. A validação oficial do CI e a homologação visual/E2E por papéis ainda estão pendentes.
+
+
+- Validação local do saldo de contratos/Atas: 3 testes unitários passaram; `tsc --noEmit` passou no snapshot local sincronizado com os tipos novos. O build completo, lint e pipeline oficial ainda dependem da execução do CI. A migration continua sem aplicação no SMS2.

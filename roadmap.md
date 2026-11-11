@@ -79,5 +79,6 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 ## Atualização de construção — saldo de contratos/Atas
 
-- Em preparação: migration versionada para classificar contrato/ARP, registrar itens e controlar consumo com ledger auditável e estorno justificado.
-- A estrutura não foi aplicada ao SMS2. A interface operacional e a homologação por usuários de diferentes perfis ainda estão pendentes.
+- Código em `main`: migration versionada para classificar contrato/ARP, registrar itens e controlar consumo por ledger auditável com estorno justificado; tela de saldo integrada ao módulo de contratos.
+- Verificação local: 3 testes unitários do cálculo e TypeScript passaram. CI completo, build/lint remoto e homologação visual/E2E por perfis seguem pendentes.
+- A migration não foi aplicada ao SMS2; nenhum dado de produção foi alterado.

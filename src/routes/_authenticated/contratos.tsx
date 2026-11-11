@@ -364,7 +364,12 @@ function Contratos() {
                 <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                   <span>Fornecedor: {nomeFornecedor(c.supplier_id)}</span>
                   <span>Modalidade: {MODALIDADES[c.modality] ?? c.modality}</span>
-                  <span>Instrumento: {c.instrument_type === "ata_registro_precos" ? "Ata de Registro de Preços" : "Contrato"}</span>
+                  <span>
+                    Instrumento:{" "}
+                    {c.instrument_type === "ata_registro_precos"
+                      ? "Ata de Registro de Preços"
+                      : "Contrato"}
+                  </span>
                   {c.process_id && (
                     <span className="sm:col-span-2">
                       Processo vinculado: {nomeProcesso(c.process_id) ?? "Processo associado"}

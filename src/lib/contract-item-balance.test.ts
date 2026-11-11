@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  calcularQuantidadeConsumida,
-  calcularSaldoDisponivel,
-} from "./contract-item-balance";
+import { calcularQuantidadeConsumida, calcularSaldoDisponivel } from "./contract-item-balance";
 
 describe("saldo de itens de contrato e ARP", () => {
   it("calcula consumos e estornos mantendo quatro casas decimais", () => {
@@ -17,9 +14,9 @@ describe("saldo de itens de contrato e ARP", () => {
   });
 
   it("não produz saldo negativo por arredondamento", () => {
-    expect(
-      calcularSaldoDisponivel(1, [{ movement_type: "consumption", quantity: 1.00001 }]),
-    ).toBe(0);
+    expect(calcularSaldoDisponivel(1, [{ movement_type: "consumption", quantity: 1.00001 }])).toBe(
+      0,
+    );
   });
 
   it("rejeita quantidades não finitas ou negativas", () => {

@@ -17,13 +17,11 @@ function toScaledQuantity(value: number): number {
   return scaled;
 }
 
-export function calcularQuantidadeConsumida(
-  movements: readonly ContractItemMovement[],
-): number {
+export function calcularQuantidadeConsumida(movements: readonly ContractItemMovement[]): number {
   const consumed = movements.reduce((total, movement) => {
-    const quantity = toScaledQuantity(Number(movement.quantity));
-    if (movement.movement_type === "consumption") return total + quantity;
-    if (movement.movement_type === "reversal") return total - quantity;
+    const amount = toScaledQuantity(Number(movement.quantity));
+    if (movement.movement_type === "consumption") return total + amount;
+    if (movement.movement_type === "reversal") return total - amount;
     return total;
   }, 0);
 
@@ -34,5 +32,7 @@ export function calcularSaldoDisponivel(
   quantityTotal: number,
   movements: readonly ContractItemMovement[],
 ): number {
-  return Math.max(0, toScaledQuantity(quantityTotal) - toScaledQuantity(calcularQuantidadeConsumida(movements))) / QUANTITY_SCALE;
+  const total = toScaledQuantity(quantityTotal);
+  const consumed = Math.max(0, Math.round(calcularQuantidadeConsumida(movements) * QUANTITY_SCALE));
+  return Math.max(0, total - consumed) / QUANTITY_SCALE;
 }

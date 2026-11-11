@@ -61,7 +61,10 @@ const EMPTY_ITEM: ItemForm = {
   unit_value: "",
 };
 
-const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const currency = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 const quantity = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
 
 function numero(input: string): number {
@@ -119,7 +122,10 @@ export function ContractItemsBalance(props: {
         "id,contract_item_id,movement_type,quantity,unit_value_snapshot,reason,reference_number,reverses_movement_id,created_at",
       )
       .eq("tenant_id", props.tenantId)
-      .in("contract_item_id", nextItems.map((item) => item.id))
+      .in(
+        "contract_item_id",
+        nextItems.map((item) => item.id),
+      )
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
     if (movementError) {
@@ -185,7 +191,9 @@ export function ContractItemsBalance(props: {
     event.preventDefault();
     const amount = numero(consumptionForm.quantity);
     if (!Number.isFinite(amount) || amount <= 0 || consumptionForm.reason.trim().length < 10) {
-      toast.error("Informe uma quantidade válida e uma justificativa com pelo menos 10 caracteres.");
+      toast.error(
+        "Informe uma quantidade válida e uma justificativa com pelo menos 10 caracteres.",
+      );
       return;
     }
     setSalvando(true);
@@ -194,7 +202,9 @@ export function ContractItemsBalance(props: {
       p_contract_item_id: item.id,
       p_quantity: amount,
       p_reason: consumptionForm.reason.trim(),
-      p_reference_number: consumptionForm.reference_number.trim() || undefined,
+      ...(consumptionForm.reference_number.trim()
+        ? { p_reference_number: consumptionForm.reference_number.trim() }
+        : {}),
     });
     setSalvando(false);
     if (rpcError) {
@@ -239,7 +249,8 @@ export function ContractItemsBalance(props: {
         onClick={() => setAberto((value) => !value)}
       >
         <ShoppingCart className="h-4 w-4" />
-        Itens e saldo {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        Itens e saldo{" "}
+        {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </Button>
       {aberto && (
         <div className="mt-4 space-y-4">
@@ -247,7 +258,8 @@ export function ContractItemsBalance(props: {
             <div>
               <h3 className="font-medium">Itens de {props.contract.number}</h3>
               <p className="text-xs text-muted-foreground">
-                Total dos itens: {currency.format(itemTotal)} · Limite do instrumento: {currency.format(Number(props.contract.total_value))}
+                Total dos itens: {currency.format(itemTotal)} · Limite do instrumento:{" "}
+                {currency.format(Number(props.contract.total_value))}
               </p>
             </div>
             <Button type="button" size="sm" onClick={() => setFormAberto((value) => !value)}>
@@ -256,7 +268,10 @@ export function ContractItemsBalance(props: {
           </div>
 
           {formAberto && (
-            <form onSubmit={salvarItem} className="grid gap-3 rounded-md bg-muted/30 p-3 sm:grid-cols-2">
+            <form
+              onSubmit={salvarItem}
+              className="grid gap-3 rounded-md bg-muted/30 p-3 sm:grid-cols-2"
+            >
               <div className="sm:col-span-2">
                 <Label htmlFor={`item-description-${props.contract.id}`}>Descrição do item *</Label>
                 <Input
@@ -265,7 +280,12 @@ export function ContractItemsBalance(props: {
                   minLength={3}
                   maxLength={500}
                   value={itemForm.description}
-                  onChange={(event) => setItemForm((current) => ({ ...current, description: event.target.value }))}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -276,7 +296,12 @@ export function ContractItemsBalance(props: {
                   maxLength={40}
                   placeholder="unidade, caixa, frasco"
                   value={itemForm.unit}
-                  onChange={(event) => setItemForm((current) => ({ ...current, unit: event.target.value }))}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      unit: event.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -285,7 +310,12 @@ export function ContractItemsBalance(props: {
                   id={`item-spec-${props.contract.id}`}
                   maxLength={4000}
                   value={itemForm.specification}
-                  onChange={(event) => setItemForm((current) => ({ ...current, specification: event.target.value }))}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      specification: event.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -297,7 +327,12 @@ export function ContractItemsBalance(props: {
                   step="0.0001"
                   required
                   value={itemForm.quantity_total}
-                  onChange={(event) => setItemForm((current) => ({ ...current, quantity_total: event.target.value }))}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      quantity_total: event.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -309,7 +344,12 @@ export function ContractItemsBalance(props: {
                   step="0.0001"
                   required
                   value={itemForm.unit_value}
-                  onChange={(event) => setItemForm((current) => ({ ...current, unit_value: event.target.value }))}
+                  onChange={(event) =>
+                    setItemForm((current) => ({
+                      ...current,
+                      unit_value: event.target.value,
+                    }))
+                  }
                 />
               </div>
               <div className="flex gap-2 sm:col-span-2">
@@ -324,7 +364,10 @@ export function ContractItemsBalance(props: {
           )}
 
           {erro && (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-destructive">
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 text-sm text-destructive"
+            >
               <span>Não foi possível carregar itens e movimentações: {erro}</span>
               <Button type="button" size="sm" variant="outline" onClick={() => void carregar()}>
                 Tentar novamente
@@ -334,13 +377,18 @@ export function ContractItemsBalance(props: {
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum item cadastrado neste instrumento.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum item cadastrado neste instrumento.
+            </p>
           ) : (
             <div className="space-y-3">
               {items.map((item) => {
                 const itemMovements = movementsByItem[item.id] ?? [];
                 const used = calcularQuantidadeConsumida(itemMovements);
-                const available = calcularSaldoDisponivel(Number(item.quantity_total), itemMovements);
+                const available = calcularSaldoDisponivel(
+                  Number(item.quantity_total),
+                  itemMovements,
+                );
                 const reversedIds = new Set(
                   itemMovements
                     .filter((movement) => movement.movement_type === "reversal")
@@ -350,10 +398,16 @@ export function ContractItemsBalance(props: {
                   <article key={item.id} className="space-y-3 rounded-md border p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-medium">{item.line_number}. {item.description}</p>
-                        {item.specification && <p className="text-xs text-muted-foreground">{item.specification}</p>}
+                        <p className="font-medium">
+                          {item.line_number}. {item.description}
+                        </p>
+                        {item.specification && (
+                          <p className="text-xs text-muted-foreground">{item.specification}</p>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                          {quantity.format(Number(item.quantity_total))} {item.unit} × {currency.format(Number(item.unit_value))} · Total {currency.format(Number(item.total_value))}
+                          {quantity.format(Number(item.quantity_total))} {item.unit} ×{" "}
+                          {currency.format(Number(item.unit_value))} · Total{" "}
+                          {currency.format(Number(item.total_value))}
                         </p>
                       </div>
                       <Badge variant={available > 0 ? "secondary" : "destructive"}>
@@ -364,7 +418,10 @@ export function ContractItemsBalance(props: {
                       Consumido: {quantity.format(used)} {item.unit}
                     </p>
                     {consumptionItemId === item.id ? (
-                      <form onSubmit={(event) => void registrarConsumo(event, item)} className="grid gap-2 sm:grid-cols-2">
+                      <form
+                        onSubmit={(event) => void registrarConsumo(event, item)}
+                        className="grid gap-2 sm:grid-cols-2"
+                      >
                         <div>
                           <Label htmlFor={`consume-qty-${item.id}`}>Quantidade a consumir *</Label>
                           <Input
@@ -375,7 +432,12 @@ export function ContractItemsBalance(props: {
                             step="0.0001"
                             required
                             value={consumptionForm.quantity}
-                            onChange={(event) => setConsumptionForm((current) => ({ ...current, quantity: event.target.value }))}
+                            onChange={(event) =>
+                              setConsumptionForm((current) => ({
+                                ...current,
+                                quantity: event.target.value,
+                              }))
+                            }
                           />
                         </div>
                         <div>
@@ -384,7 +446,12 @@ export function ContractItemsBalance(props: {
                             id={`consume-ref-${item.id}`}
                             maxLength={120}
                             value={consumptionForm.reference_number}
-                            onChange={(event) => setConsumptionForm((current) => ({ ...current, reference_number: event.target.value }))}
+                            onChange={(event) =>
+                              setConsumptionForm((current) => ({
+                                ...current,
+                                reference_number: event.target.value,
+                              }))
+                            }
                           />
                         </div>
                         <div className="sm:col-span-2">
@@ -395,14 +462,26 @@ export function ContractItemsBalance(props: {
                             minLength={10}
                             maxLength={1000}
                             value={consumptionForm.reason}
-                            onChange={(event) => setConsumptionForm((current) => ({ ...current, reason: event.target.value }))}
+                            onChange={(event) =>
+                              setConsumptionForm((current) => ({
+                                ...current,
+                                reason: event.target.value,
+                              }))
+                            }
                           />
                         </div>
                         <div className="flex gap-2 sm:col-span-2">
-                          <Button type="submit" disabled={salvando || props.contract.status !== "vigente"}>
+                          <Button
+                            type="submit"
+                            disabled={salvando || props.contract.status !== "vigente"}
+                          >
                             <ShoppingCart className="h-4 w-4" /> Registrar consumo
                           </Button>
-                          <Button type="button" variant="outline" onClick={() => setConsumptionItemId(null)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setConsumptionItemId(null)}
+                          >
                             Cancelar
                           </Button>
                         </div>
@@ -412,7 +491,12 @@ export function ContractItemsBalance(props: {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={salvando || available <= 0 || props.contract.status !== "vigente" || props.contract.end_date < new Date().toISOString().slice(0, 10)}
+                        disabled={
+                          salvando ||
+                          available <= 0 ||
+                          props.contract.status !== "vigente" ||
+                          props.contract.end_date < new Date().toISOString().slice(0, 10)
+                        }
                         onClick={() => setConsumptionItemId(item.id)}
                       >
                         <ShoppingCart className="h-4 w-4" /> Registrar consumo
@@ -420,41 +504,63 @@ export function ContractItemsBalance(props: {
                     )}
                     {itemMovements.length > 0 && (
                       <details className="text-sm">
-                        <summary className="cursor-pointer font-medium">Histórico de movimentações ({itemMovements.length})</summary>
+                        <summary className="cursor-pointer font-medium">
+                          Histórico de movimentações ({itemMovements.length})
+                        </summary>
                         <ol className="mt-2 space-y-3">
                           {itemMovements.map((movement) => (
                             <li key={movement.id} className="border-l-2 border-primary/30 pl-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant={movement.movement_type === "reversal" ? "outline" : "secondary"}>
+                                <Badge
+                                  variant={
+                                    movement.movement_type === "reversal" ? "outline" : "secondary"
+                                  }
+                                >
                                   {movement.movement_type === "reversal" ? "Estorno" : "Consumo"}
                                 </Badge>
-                                <span>{quantity.format(Number(movement.quantity))} {item.unit}</span>
-                                <span className="text-muted-foreground">{new Date(movement.created_at).toLocaleString("pt-BR")}</span>
+                                <span>
+                                  {quantity.format(Number(movement.quantity))} {item.unit}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {new Date(movement.created_at).toLocaleString("pt-BR")}
+                                </span>
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {movement.reason}{movement.reference_number ? ` · Referência: ${movement.reference_number}` : ""}
+                                {movement.reason}
+                                {movement.reference_number
+                                  ? ` · Referência: ${movement.reference_number}`
+                                  : ""}
                               </p>
-                              {movement.movement_type === "consumption" && !reversedIds.has(movement.id) && (
-                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                                  <Input
-                                    aria-label={`Justificativa para estornar consumo de ${quantity.format(Number(movement.quantity))} ${item.unit}`}
-                                    minLength={10}
-                                    maxLength={1000}
-                                    placeholder="Justificativa do estorno (mínimo 10 caracteres)"
-                                    value={reversalReasons[movement.id] ?? ""}
-                                    onChange={(event) => setReversalReasons((current) => ({ ...current, [movement.id]: event.target.value }))}
-                                  />
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={salvando || (reversalReasons[movement.id]?.trim().length ?? 0) < 10}
-                                    onClick={() => void estornar(movement)}
-                                  >
-                                    <RotateCcw className="h-4 w-4" /> Estornar
-                                  </Button>
-                                </div>
-                              )}
+                              {movement.movement_type === "consumption" &&
+                                !reversedIds.has(movement.id) && (
+                                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                    <Input
+                                      aria-label={`Justificativa para estornar consumo de ${quantity.format(Number(movement.quantity))} ${item.unit}`}
+                                      minLength={10}
+                                      maxLength={1000}
+                                      placeholder="Justificativa do estorno (mínimo 10 caracteres)"
+                                      value={reversalReasons[movement.id] ?? ""}
+                                      onChange={(event) =>
+                                        setReversalReasons((current) => ({
+                                          ...current,
+                                          [movement.id]: event.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={
+                                        salvando ||
+                                        (reversalReasons[movement.id]?.trim().length ?? 0) < 10
+                                      }
+                                      onClick={() => void estornar(movement)}
+                                    >
+                                      <RotateCcw className="h-4 w-4" /> Estornar
+                                    </Button>
+                                  </div>
+                                )}
                             </li>
                           ))}
                         </ol>
