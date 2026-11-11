@@ -14,21 +14,6 @@ function parsePortalEntrada(value: unknown): PortalEntrada | undefined {
   return undefined;
 }
 
-const PORTAL_TEXTO: Record<PortalEntrada, { title: string; subtitle: string }> = {
-  master: {
-    title: "Acesse o Painel Master",
-    subtitle: "Entre com a conta autorizada para administrar a plataforma.",
-  },
-  secretaria: {
-    title: "Acesse o Portal da Secretaria",
-    subtitle: "Entre com a conta vinculada à sua organização.",
-  },
-  suporte: {
-    title: "Acesse a Central de Suporte",
-    subtitle: "Entre com a conta técnica autorizada para atendimento.",
-  },
-};
-
 export const Route = createFileRoute("/entrar")({
   validateSearch: (search: Record<string, unknown>) => {
     const portal = parsePortalEntrada(search["portal"]);
@@ -99,7 +84,6 @@ function Entrar() {
 
   return (
     <PortalAuthShell portal={portal}>
-      <form onSubmit={aoEnviar} className="space-y-4">
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
