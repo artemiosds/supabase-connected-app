@@ -44,6 +44,10 @@ import {
 } from "@/components/ui/select";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { importarTextoDeModelo } from "@/lib/docx-import";
+import {
+  extractGoogleDriveFileId,
+  normalizeExternalDocumentUrl,
+} from "@/lib/external-document-url";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
@@ -467,17 +471,6 @@ function Documentos() {
     setArquivoDocumento(null);
     setDialogDocumento(true);
   }
-  function extrairDriveFileId(url: string): string | null {
-    try {
-      const parsed = new URL(url);
-      if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname)) return null;
-      const match = parsed.pathname.match(/\/d\/([^/]+)/);
-      return match?.[1] ?? parsed.searchParams.get("id");
-    } catch {
-      return null;
-    }
-  }
-
   async function selecionarArquivoPrivado(file?: File) {
     setArquivoDocumento(null);
     if (!file) return;
@@ -547,6 +540,12 @@ function Documentos() {
       toast.error("A data de vencimento não pode ser anterior à emissão.");
       return;
     }
+    const linkInformado = linkDocumento.trim();
+    const externalUrl = linkInformado ? normalizeExternalDocumentUrl(linkInformado) : null;
+    if (linkInformado && !externalUrl) {
+      toast.error("Informe um link HTTP ou HTTPS válido, sem credenciais e com até 2.048 caracteres.");
+      return;
+    }
     setSalvandoDocumento(true);
 
     const metadata = {
@@ -563,11 +562,11 @@ function Documentos() {
           ? metadata
           : {
               ...metadata,
-              external_url: linkDocumento.trim() || null,
-              storage_provider: extrairDriveFileId(linkDocumento.trim())
+              external_url: externalUrl,
+              storage_provider: extractGoogleDriveFileId(externalUrl ?? "")
                 ? "google_drive"
                 : "external_link",
-              drive_file_id: extrairDriveFileId(linkDocumento.trim()),
+              drive_file_id: extractGoogleDriveFileId(externalUrl ?? ""),
             };
       const { error: updateError } = await db
         .from("supplier_documents")
@@ -643,14 +642,14 @@ function Documentos() {
       setSalvandoDocumento(false);
       toast.success("Documento e arquivo privado registrados com sucesso.");
     } else {
-      const externalUrl = linkDocumento.trim();
+      const driveFileId = extractGoogleDriveFileId(externalUrl ?? "");
       const { error: insertError } = await db.from("supplier_documents").insert({
         tenant_id: selecionado.id,
         supplier_id: fornecedorId,
         ...metadata,
-        external_url: externalUrl || null,
-        storage_provider: extrairDriveFileId(externalUrl) ? "google_drive" : "external_link",
-        drive_file_id: extrairDriveFileId(externalUrl),
+        external_url: externalUrl,
+        storage_provider: driveFileId ? "google_drive" : "external_link",
+        drive_file_id: driveFileId,
         status: "active",
       });
       setSalvandoDocumento(false);
@@ -1178,6 +1177,9 @@ function Documentos() {
                         documentos.map((d) => {
                           const f = fornecedorPorId.get(d.supplier_id);
                           const status = situacaoVencimento(d.expires_at);
+                          const safeExternalUrl = d.external_url
+                            ? normalizeExternalDocumentUrl(d.external_url)
+                            : null;
                           return (
                             <tr key={d.id} className="border-t">
                               <td className="p-3">
@@ -1210,10 +1212,10 @@ function Documentos() {
                                       <Download className="h-4 w-4" />
                                     </Button>
                                   )}
-                                  {d.external_url && (
+                                  {safeExternalUrl && (
                                     <Button size="icon" variant="ghost" asChild>
                                       <a
-                                        href={d.external_url}
+                                        href={safeExternalUrl}
                                         target="_blank"
                                         rel="noreferrer"
                                         aria-label="Abrir documento"

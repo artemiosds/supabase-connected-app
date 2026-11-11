@@ -48,6 +48,7 @@ Ainda dependem de integração/configuração ou homologação: Google Drive OAu
 
 ## Convenções de manutenção
 
+- Links externos de documentos aceitam somente HTTP/HTTPS, sem credenciais e com limite de 2.048 caracteres; o banco aplica constraint versionada e a interface só abre URLs normalizadas. Google Drive ainda é apenas reconhecimento de link, sem OAuth ou sincronização.
 - Ler este arquivo, `AGENTS.md`, o módulo relacionado e as migrations/tabelas existentes antes de alterar.
 - Alterações de schema somente por nova migration timestampada e revisão da história remota; não reescrever migration aplicada nem alterar o banco manualmente.
 - Preservar tipos gerados, cliente Supabase tipado, paginação e separação de identidade. Preferir arquivamento a exclusão física.
