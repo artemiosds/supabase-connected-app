@@ -42,6 +42,9 @@ Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com
 
 ## Módulos e limites confirmados
 
+A pesquisa de preços agora calcula menor, média, mediana e coeficiente de variação por preço unitário equivalente com frete rateado, e exporta CSV compatível com Excel. Nenhum valor é descartado automaticamente; a análise continua sendo da equipe.
+
+
 Autenticação e recuperação; administração e provisionamento de Secretarias; fornecedores; GED privado no Supabase Storage; templates e documentos gerados; usuários e permissões; equipe interna e suporte; processos de contratação, cotações, orçamento, contratos e aditivos.
 
 O Painel Master tem uma aba Configuração técnica com instruções para SMTP, alertas, backup e cobrança, além dos limites atuais de Drive, PDF e assinatura. A tela não coleta segredos nem confirma configuração externa.

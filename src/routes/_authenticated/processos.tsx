@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { calcularResumoDePrecos, gerarCsvMapaDePrecos, precoUnitarioComFrete, type CotacaoMapa, type ItemMapa } from "@/lib/pesquisa-precos";
 
 export const Route = createFileRoute("/_authenticated/processos")({
   head: () => ({
@@ -1697,21 +1698,43 @@ function DadosEstruturados(props: {
             <p className="text-sm text-muted-foreground">
               Comparação das cotações ativas por item, com preço unitário, frete e total informado.
             </p>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const csv = gerarCsvMapaDePrecos(
+                    props.processNumber,
+                    items as ItemMapa[],
+                    quotes.filter((quote) => quote.is_active) as CotacaoMapa[],
+                  );
+                  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `mapa-comparativo-${props.processNumber.replace(/[^a-zA-Z0-9_-]+/g, "-") || "processo"}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Exportar mapa para Excel (CSV)
+              </Button>
+            </div>
             {items.map((item) => {
               const rows = quotes
                 .filter((q) => q.procurement_item_id === item.id && q.is_active)
-                .sort((a, b) => Number(a.total_price ?? 0) - Number(b.total_price ?? 0));
+                .sort((a, b) => (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity));
               if (!rows.length) return null;
+              const resumo = calcularResumoDePrecos(rows);
               return (
                 <section key={item.id} className="space-y-2 rounded-lg border p-3">
                   <div className="flex flex-wrap justify-between gap-2">
                     <h3 className="font-semibold">
                       {item.line_number}. {item.description}
                     </h3>
-                    <Badge variant="outline">{rows.length} cotação(ões)</Badge>
+                    <Badge variant="outline">{resumo.quantidade} cotação(ões) válidas</Badge>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[620px] text-sm">
+                    <table className="w-full min-w-[760px] text-sm">
                       <thead className="text-left text-muted-foreground">
                         <tr>
                           <th className="p-2">Fornecedor / fonte</th>
@@ -1719,6 +1742,7 @@ function DadosEstruturados(props: {
                           <th className="p-2 text-right">Unitário</th>
                           <th className="p-2 text-right">Frete</th>
                           <th className="p-2 text-right">Total</th>
+                          <th className="p-2 text-right">Unitário c/ frete</th>
                           <th className="p-2">Fonte</th>
                         </tr>
                       </thead>
@@ -1739,29 +1763,30 @@ function DadosEstruturados(props: {
                             <td className="p-2 text-right font-medium">
                               {formatarMoeda(q.total_price ?? 0)}
                             </td>
+                            <td className="p-2 text-right">
+                              {formatarMoeda(precoUnitarioComFrete(q))}
+                            </td>
                             <td className="p-2">
                               {q.reference_url ? (
-                                <a
-                                  className="text-primary underline"
-                                  href={q.reference_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
+                                <a className="text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">
                                   Consultar
                                 </a>
-                              ) : (
-                                "—"
-                              )}
+                              ) : "—"}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  <dl className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                    <div><dt className="text-muted-foreground">Menor unitário c/ frete</dt><dd className="font-semibold">{formatarMoeda(resumo.menor)}</dd></div>
+                    <div><dt className="text-muted-foreground">Média</dt><dd className="font-semibold">{formatarMoeda(resumo.media)}</dd></div>
+                    <div><dt className="text-muted-foreground">Mediana</dt><dd className="font-semibold">{formatarMoeda(resumo.mediana)}</dd></div>
+                    <div><dt className="text-muted-foreground">Coeficiente de variação</dt><dd className="font-semibold">{resumo.coeficienteVariacao === null ? "Não calculável" : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(resumo.coeficienteVariacao) + "%"}</dd></div>
+                  </dl>
                   <p className="text-xs text-muted-foreground">
-                    Menor total informado: {formatarMoeda(rows[0]?.total_price ?? 0)} · Referência
-                    escolhida:{" "}
-                    {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}
+                    Frete rateado pela quantidade cotada. O mapa não exclui valores automaticamente; a análise e justificativa permanecem sob responsabilidade da equipe.
+                    Referência escolhida: {rows.find((q) => q.selected_for_estimate)?.source_name ?? "Não definida"}.
                   </p>
                 </section>
               );
