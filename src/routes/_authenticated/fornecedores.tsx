@@ -1,3 +1,4 @@
+../../../../tmp/fornecedores-sanctions.tsx 219ms
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Building2, History, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
@@ -1037,7 +1038,8 @@ function Fornecedores() {
                           )}
                         </div>
                         <Badge variant={statusExibido === "vigente" ? "destructive" : "outline"}>
-                          {statusExibido[0].toLocaleUpperCase("pt-BR") + statusExibido.slice(1)}
+                          {statusExibido.charAt(0).toLocaleUpperCase("pt-BR") +
+                            statusExibido.slice(1)}
                         </Badge>
                       </div>
                       <p className="whitespace-pre-wrap text-sm">{sancao.reason}</p>
