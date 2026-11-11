@@ -54,7 +54,8 @@ export const Route = createFileRoute("/_authenticated/contratos")({
       { title: "Contratos e vencimentos — Gestão de Fornecedores da Saúde" },
       {
         name: "description",
-        content: "Contratos, aditivos e régua de alertas de vencimento de 120, 90, 60 e 30 dias.",
+        content:
+          "Contratos, aditivos e régua de alertas de vencimento de 120, 90, 60 e 30 dias.",
       },
     ],
   }),
@@ -141,15 +142,21 @@ function Contratos() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const [lista, setLista] = useState<Contrato[]>([]);
-  const [fornecedores, setFornecedores] = useState<{ id: string; legal_name: string }[]>([]);
+  const [fornecedores, setFornecedores] = useState<
+    { id: string; legal_name: string }[]
+  >([]);
   const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
-  const [historicosAbertos, setHistoricosAbertos] = useState<Record<string, boolean>>({});
+  const [historicosAbertos, setHistoricosAbertos] = useState<
+    Record<string, boolean>
+  >({});
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, setPendente] = useState(false);
   const [novoAberto, setNovoAberto] = useState(false);
-  const [contratoEditando, setContratoEditando] = useState<Contrato | null>(null);
+  const [contratoEditando, setContratoEditando] = useState<Contrato | null>(
+    null,
+  );
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "alerta">("todos");
 
@@ -167,47 +174,48 @@ function Contratos() {
     setLoading(true);
     setErro(null);
     try {
-      const [contratosRows, fornecedoresRows, processosRows, aditivosRows] = await Promise.all([
-        carregarTodasAsPaginas<Contrato>((inicio, fim) =>
-          db
-            .from("contracts")
-            .select("*")
-            .eq("tenant_id", selecionado.id)
-            .order("end_date", { ascending: true })
-            .order("id")
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas((inicio, fim) =>
-          db
-            .from("suppliers")
-            .select("id, legal_name")
-            .eq("tenant_id", selecionado.id)
-            .order("legal_name")
-            .order("id")
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<ProcessoOpcao>((inicio, fim) =>
-          db
-            .from("procurement_processes")
-            .select("id,number,title")
-            .eq("tenant_id", selecionado.id)
-            .neq("status", "arquivado")
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
-          db
-            .from("contract_amendments")
-            .select(
-              "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
-            )
-            .eq("tenant_id", selecionado.id)
-            .order("signed_at", { ascending: false })
-            .order("id", { ascending: false })
-            .range(inicio, fim),
-        ),
-      ]);
+      const [contratosRows, fornecedoresRows, processosRows, aditivosRows] =
+        await Promise.all([
+          carregarTodasAsPaginas<Contrato>((inicio, fim) =>
+            db
+              .from("contracts")
+              .select("*")
+              .eq("tenant_id", selecionado.id)
+              .order("end_date", { ascending: true })
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas((inicio, fim) =>
+            db
+              .from("suppliers")
+              .select("id, legal_name")
+              .eq("tenant_id", selecionado.id)
+              .order("legal_name")
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<ProcessoOpcao>((inicio, fim) =>
+            db
+              .from("procurement_processes")
+              .select("id,number,title")
+              .eq("tenant_id", selecionado.id)
+              .neq("status", "arquivado")
+              .order("created_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
+            db
+              .from("contract_amendments")
+              .select(
+                "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
+              )
+              .eq("tenant_id", selecionado.id)
+              .order("signed_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
+        ]);
       setPendente(false);
       setLista(contratosRows);
       setFornecedores(fornecedoresRows);
@@ -234,12 +242,18 @@ function Contratos() {
     () =>
       lista.map((c) => {
         const dias = diasAte(c.end_date);
-        return { ...c, dias, nivel: c.status === "vigente" ? nivelAlerta(dias) : ("ok" as const) };
+        return {
+          ...c,
+          dias,
+          nivel: c.status === "vigente" ? nivelAlerta(dias) : ("ok" as const),
+        };
       }),
     [lista],
   );
-  const contagem = (n: NivelAlerta) => comNivel.filter((c) => c.nivel === n).length;
-  const exibidos = filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
+  const contagem = (n: NivelAlerta) =>
+    comNivel.filter((c) => c.nivel === n).length;
+  const exibidos =
+    filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
   const nomeFornecedor = (id: string | null) =>
     fornecedores.find((f) => f.id === id)?.legal_name ?? "—";
   const nomeProcesso = (id: string | null) => {
@@ -254,7 +268,11 @@ function Contratos() {
   };
 
   if (!selecionado) {
-    return <p className="text-muted-foreground">Selecione uma organização no topo da tela.</p>;
+    return (
+      <p className="text-muted-foreground">
+        Selecione uma organização no topo da tela.
+      </p>
+    );
   }
 
   return (
@@ -282,9 +300,9 @@ function Contratos() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Dados de contratos indisponíveis</AlertTitle>
           <AlertDescription>
-            Não foi possível acessar os dados de contratos no momento. A estrutura do módulo já está
-            preparada; verifique a conexão e as permissões de acesso ao banco antes de tentar
-            novamente.
+            Não foi possível acessar os dados de contratos no momento. A
+            estrutura do módulo já está preparada; verifique a conexão e as
+            permissões de acesso ao banco antes de tentar novamente.
           </AlertDescription>
         </Alert>
       )}
@@ -299,7 +317,9 @@ function Contratos() {
         {(["vencido", "30", "60", "90", "120"] as NivelAlerta[]).map((n) => (
           <Card key={n}>
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">{ROTULO_ALERTA[n]}</p>
+              <p className="text-xs text-muted-foreground">
+                {ROTULO_ALERTA[n]}
+              </p>
               <p className="text-2xl font-semibold">{contagem(n)}</p>
             </CardContent>
           </Card>
@@ -341,7 +361,9 @@ function Contratos() {
             <Card key={c.id}>
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-2">
                 <div>
-                  <CardTitle className="text-base">Contrato nº {c.number}</CardTitle>
+                  <CardTitle className="text-base">
+                    Contrato nº {c.number}
+                  </CardTitle>
                   <p className="text-sm text-muted-foreground">{c.object}</p>
                 </div>
                 <Badge variant="outline" className={corAlerta[c.nivel]}>
@@ -355,15 +377,19 @@ function Contratos() {
               <CardContent className="space-y-3 text-sm">
                 <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                   <span>Fornecedor: {nomeFornecedor(c.supplier_id)}</span>
-                  <span>Modalidade: {MODALIDADES[c.modality] ?? c.modality}</span>
+                  <span>
+                    Modalidade: {MODALIDADES[c.modality] ?? c.modality}
+                  </span>
                   {c.process_id && (
                     <span className="sm:col-span-2">
-                      Processo vinculado: {nomeProcesso(c.process_id) ?? "Processo associado"}
+                      Processo vinculado:{" "}
+                      {nomeProcesso(c.process_id) ?? "Processo associado"}
                     </span>
                   )}
                   <span>Valor: {formatarMoeda(Number(c.total_value))}</span>
                   <span>
-                    Vigência: {formatarData(c.start_date)} a {formatarData(c.end_date)}
+                    Vigência: {formatarData(c.start_date)} a{" "}
+                    {formatarData(c.end_date)}
                   </span>
                   <span>Gestor: {c.manager_name || "—"}</span>
                   <span>
@@ -388,7 +414,11 @@ function Contratos() {
                   >
                     <Pencil className="h-4 w-4" /> Editar contrato
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setAditivoDe(c)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAditivoDe(c)}
+                  >
                     <FilePlus2 className="h-4 w-4" /> Registrar aditivo
                   </Button>
                   {c.process_id && (
@@ -409,7 +439,12 @@ function Contratos() {
                     }
                   >
                     <History className="h-4 w-4" />
-                    Histórico ({aditivos.filter((item) => item.contract_id === c.id).length})
+                    Histórico (
+                    {
+                      aditivos.filter((item) => item.contract_id === c.id)
+                        .length
+                    }
+                    )
                     {historicosAbertos[c.id] ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
@@ -425,7 +460,8 @@ function Contratos() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Histórico de aditivos do contrato
                     </p>
-                    {aditivos.filter((item) => item.contract_id === c.id).length === 0 ? (
+                    {aditivos.filter((item) => item.contract_id === c.id)
+                      .length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         Nenhum aditivo foi registrado para este contrato.
                       </p>
@@ -434,15 +470,22 @@ function Contratos() {
                         {aditivos
                           .filter((item) => item.contract_id === c.id)
                           .map((item) => (
-                            <li key={item.id} className="border-l-2 border-primary/30 pl-3">
+                            <li
+                              key={item.id}
+                              className="border-l-2 border-primary/30 pl-3"
+                            >
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-sm font-medium">{item.number}</p>
+                                <p className="text-sm font-medium">
+                                  {item.number}
+                                </p>
                                 <Badge variant="outline">
                                   {rotuloTipoAditivo[item.kind] ?? item.kind}
                                 </Badge>
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {new Date(item.signed_at).toLocaleDateString("pt-BR")}
+                                {new Date(item.signed_at).toLocaleDateString(
+                                  "pt-BR",
+                                )}
                                 {item.new_end_date
                                   ? ` · Nova vigência até ${formatarData(item.new_end_date)}`
                                   : ""}
@@ -451,7 +494,9 @@ function Contratos() {
                                   : ""}
                               </p>
                               {item.notes && (
-                                <p className="mt-1 whitespace-pre-wrap text-sm">{item.notes}</p>
+                                <p className="mt-1 whitespace-pre-wrap text-sm">
+                                  {item.notes}
+                                </p>
                               )}
                             </li>
                           ))}
@@ -468,7 +513,10 @@ function Contratos() {
       <NovoContrato
         aberto={novoAberto}
         contrato={contratoEditando}
-        hasAditivos={!!contratoEditando && aditivos.some((item) => item.contract_id === contratoEditando.id)}
+        hasAditivos={
+          !!contratoEditando &&
+          aditivos.some((item) => item.contract_id === contratoEditando.id)
+        }
         onFechar={() => {
           setNovoAberto(false);
           setContratoEditando(null);
@@ -503,7 +551,8 @@ function NovoContrato(props: {
 }) {
   const [f, setF] = useState<ContratoForm>(CONTRATO_FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const set = (k: keyof ContratoForm) => (v: string) => setF((current) => ({ ...current, [k]: v }));
+  const set = (k: keyof ContratoForm) => (v: string) =>
+    setF((current) => ({ ...current, [k]: v }));
 
   useEffect(() => {
     if (!props.aberto) return;
@@ -550,7 +599,9 @@ function NovoContrato(props: {
       (totalValue !== Number(props.contrato.total_value) ||
         f.end_date !== props.contrato.end_date)
     ) {
-      toast.error("Com aditivos registrados, alterações de valor e vigência devem ser feitas por novo aditivo.");
+      toast.error(
+        "Com aditivos registrados, alterações de valor e vigência devem ser feitas por novo aditivo.",
+      );
       return;
     }
 
@@ -586,10 +637,14 @@ function NovoContrato(props: {
         return;
       }
       if (!updated) {
-        toast.error("Contrato não encontrado ou sem permissão para atualização.");
+        toast.error(
+          "Contrato não encontrado ou sem permissão para atualização.",
+        );
         return;
       }
-      toast.success("Contrato atualizado. As alterações foram registradas no histórico.");
+      toast.success(
+        "Contrato atualizado. As alterações foram registradas no histórico.",
+      );
       props.onFechar();
       props.onSalvo();
       return;
@@ -642,7 +697,9 @@ function NovoContrato(props: {
     setSalvando(false);
     toast.success(
       linkedQuotes
-        ? "Contrato cadastrado e " + linkedQuotes + " cotação(ões) de referência vinculada(s)."
+        ? "Contrato cadastrado e " +
+            linkedQuotes +
+            " cotação(ões) de referência vinculada(s)."
         : "Contrato cadastrado.",
     );
     props.onFechar();
@@ -650,10 +707,15 @@ function NovoContrato(props: {
   }
 
   return (
-    <Dialog open={props.aberto} onOpenChange={(open) => !open && props.onFechar()}>
+    <Dialog
+      open={props.aberto}
+      onOpenChange={(open) => !open && props.onFechar()}
+    >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{props.contrato ? "Editar contrato" : "Novo contrato"}</DialogTitle>
+          <DialogTitle>
+            {props.contrato ? "Editar contrato" : "Novo contrato"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={salvar} className="grid gap-4 sm:grid-cols-2">
           <Campo label="Número/ano *">
@@ -693,13 +755,17 @@ function NovoContrato(props: {
           <Campo label="Processo de contratação">
             <Select
               value={f.process_id || "sem_processo"}
-              onValueChange={(value) => set("process_id")(value === "sem_processo" ? "" : value)}
+              onValueChange={(value) =>
+                set("process_id")(value === "sem_processo" ? "" : value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Vincular a um processo (opcional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sem_processo">Sem processo vinculado</SelectItem>
+                <SelectItem value="sem_processo">
+                  Sem processo vinculado
+                </SelectItem>
                 {props.processos.map((processo) => (
                   <SelectItem key={processo.id} value={processo.id}>
                     {processo.number} — {processo.title}
@@ -711,13 +777,17 @@ function NovoContrato(props: {
           <Campo label="Fornecedor">
             <Select
               value={f.supplier_id || "sem_fornecedor"}
-              onValueChange={(value) => set("supplier_id")(value === "sem_fornecedor" ? "" : value)}
+              onValueChange={(value) =>
+                set("supplier_id")(value === "sem_fornecedor" ? "" : value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sem_fornecedor">Sem fornecedor vinculado</SelectItem>
+                <SelectItem value="sem_fornecedor">
+                  Sem fornecedor vinculado
+                </SelectItem>
                 {props.fornecedores.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.legal_name}
@@ -801,15 +871,17 @@ function NovoContrato(props: {
             <Alert className="sm:col-span-2">
               <AlertTitle>Contrato com aditivos registrados</AlertTitle>
               <AlertDescription>
-                Valor global e fim de vigência são controlados pelo histórico de aditivos. Registre
-                essas alterações pelo botão “Registrar aditivo”.
+                Valor global e fim de vigência são controlados pelo histórico de
+                aditivos. Registre essas alterações pelo botão “Registrar
+                aditivo”.
               </AlertDescription>
             </Alert>
           )}
           {props.contrato && (
             <p className="sm:col-span-2 text-xs text-muted-foreground">
-              Fornecedor e processo não podem ser trocados enquanto existirem cotações ou documentos
-              vinculados a este contrato. O banco preserva esses vínculos e registra cada alteração.
+              Fornecedor e processo não podem ser trocados enquanto existirem
+              cotações ou documentos vinculados a este contrato. O banco
+              preserva esses vínculos e registra cada alteração.
             </p>
           )}
           <DialogFooter className="sm:col-span-2">
@@ -847,7 +919,9 @@ function NovoAditivo(props: {
     const v = valor.trim() ? numeroDecimal(valor) : 0;
     if (tipo === "prorrogacao") {
       if (!novaData || novaData <= props.contrato.end_date) {
-        toast.error("A nova data final deve ser posterior à vigência atual do contrato.");
+        toast.error(
+          "A nova data final deve ser posterior à vigência atual do contrato.",
+        );
         return;
       }
     } else if (tipo === "acrescimo" || tipo === "supressao") {
@@ -867,7 +941,12 @@ function NovoAditivo(props: {
       number: numero.trim(),
       kind: tipo,
       new_end_date: tipo === "prorrogacao" ? novaData || null : null,
-      value_change: tipo === "supressao" ? -Math.abs(v) : tipo === "acrescimo" ? Math.abs(v) : 0,
+      value_change:
+        tipo === "supressao"
+          ? -Math.abs(v)
+          : tipo === "acrescimo"
+            ? Math.abs(v)
+            : 0,
       notes: observacoes.trim() || null,
       created_by: props.userId,
       updated_by: props.userId,
@@ -887,10 +966,15 @@ function NovoAditivo(props: {
   }
 
   return (
-    <Dialog open={!!props.contrato} onOpenChange={(o) => !o && props.onFechar()}>
+    <Dialog
+      open={!!props.contrato}
+      onOpenChange={(o) => !o && props.onFechar()}
+    >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Termo aditivo — Contrato {props.contrato?.number}</DialogTitle>
+          <DialogTitle>
+            Termo aditivo — Contrato {props.contrato?.number}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={salvar} className="grid gap-4">
           <Campo label="Número do aditivo *">
@@ -907,7 +991,9 @@ function NovoAditivo(props: {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="prorrogacao">Prorrogação de prazo</SelectItem>
+                <SelectItem value="prorrogacao">
+                  Prorrogação de prazo
+                </SelectItem>
                 <SelectItem value="acrescimo">Acréscimo de valor</SelectItem>
                 <SelectItem value="supressao">Supressão de valor</SelectItem>
                 <SelectItem value="outro">Outro</SelectItem>
@@ -957,7 +1043,13 @@ function NovoAditivo(props: {
   );
 }
 
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+function Campo({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid gap-1.5">
       <Label>{label}</Label>
