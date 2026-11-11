@@ -11,6 +11,7 @@ import {
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isInvitationExpired } from "@/lib/invitations";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
@@ -338,10 +339,7 @@ function Usuarios() {
   }
 
   function conviteExpirado(convite: Convite) {
-    return (
-      convite.status === "expired" ||
-      (convite.status === "pending" && Date.parse(convite.expires_at) <= Date.now())
-    );
+    return isInvitationExpired(convite.status, convite.expires_at);
   }
 
   function statusConvite(convite: Convite) {
