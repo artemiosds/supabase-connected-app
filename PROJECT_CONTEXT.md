@@ -60,5 +60,5 @@ Ainda dependem de integração/configuração ou homologação: Google Drive OAu
 
 ## Pendências conhecidas
 
-- O CI do commit `49ec420f4d202dc040ae893b606e50b7f5050e06` passou em formatação, testes unitários, build, TypeScript, Deno, lint e regressões do banco local; aplicou migrations em Supabase descartável e executou pgTAP. Isso não comprova E2E autenticado nem integrações externas.
+- O CI do commit `ab00a6b53065f205a436a52d57ccd57b60563371` passou em formatação, testes unitários, build, TypeScript, Deno nas cinco Edge Functions, lint, aplicação das migrations em Supabase descartável e pgTAP. Isso não comprova E2E autenticado, inspeção visual da interface em dispositivos nem integrações externas.
 - Não liberar comercialmente até terminar a homologação real, revisão operacional/jurídica e gates de e-mail, backup, integrações e isolamento multi-tenant.
