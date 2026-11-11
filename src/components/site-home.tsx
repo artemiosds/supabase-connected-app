@@ -339,7 +339,10 @@ export function SiteHome() {
                   className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Acessar plataforma
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden />
+                  <ArrowRight
+                    className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
+                    aria-hidden
+                  />
                 </a>
               </article>
             ))}
