@@ -7,10 +7,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type PortalEntrada = "master" | "secretaria" | "suporte";
+
+function parsePortalEntrada(value: unknown): PortalEntrada | undefined {
+  if (value === "master" || value === "secretaria" || value === "suporte") return value;
+  return undefined;
+}
+
+const PORTAL_TEXTO: Record<PortalEntrada, { title: string; subtitle: string }> = {
+  master: {
+    title: "Acesse o Painel Master",
+    subtitle: "Entre com a conta autorizada para administrar a plataforma.",
+  },
+  secretaria: {
+    title: "Acesse o Portal da Secretaria",
+    subtitle: "Entre com a conta vinculada à sua organização.",
+  },
+  suporte: {
+    title: "Acesse a Central de Suporte",
+    subtitle: "Entre com a conta técnica autorizada para atendimento.",
+  },
+};
+
 export const Route = createFileRoute("/entrar")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    portal: parsePortalEntrada(search.portal),
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const portal = parsePortalEntrada(search["portal"]);
+    return portal ? { portal } : {};
+  },
   head: () => ({
     meta: [
       { title: "Entrar — Gestão de Fornecedores da Saúde" },
