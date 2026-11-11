@@ -1,5 +1,15 @@
 import type JSZip from "jszip";
-import { PKG_REL_NS, R_NS, W_NS, parseXml, wAncestor, wAttr, wChildren, wDescendants, wFirst } from "./xml";
+import {
+  PKG_REL_NS,
+  R_NS,
+  W_NS,
+  parseXml,
+  wAncestor,
+  wAttr,
+  wChildren,
+  wDescendants,
+  wFirst,
+} from "./xml";
 import { openDocx } from "./package";
 
 export type TextRun = {
@@ -36,7 +46,13 @@ export type DocumentModel = {
   footerText: string[];
 };
 
-type StyleInfo = { bold?: boolean; italic?: boolean; sizePt?: number; heading?: number | null; align?: ParagraphBlock["align"] };
+type StyleInfo = {
+  bold?: boolean;
+  italic?: boolean;
+  sizePt?: number;
+  heading?: number | null;
+  align?: ParagraphBlock["align"];
+};
 
 function onOff(el: Element | null): boolean | undefined {
   if (!el) return undefined;
@@ -44,7 +60,9 @@ function onOff(el: Element | null): boolean | undefined {
   return !(v === "0" || v === "false" || v === "none");
 }
 
-async function readStyles(zip: JSZip): Promise<{ defaultSize: number; styles: Map<string, StyleInfo> }> {
+async function readStyles(
+  zip: JSZip,
+): Promise<{ defaultSize: number; styles: Map<string, StyleInfo> }> {
   const styles = new Map<string, StyleInfo>();
   let defaultSize = 11;
   const file = zip.file("word/styles.xml");
@@ -60,14 +78,27 @@ async function readStyles(zip: JSZip): Promise<{ defaultSize: number; styles: Ma
     const name = (wAttr(wFirst(s, "name"), "val") ?? "").toLowerCase();
     const rPr = wFirst(s, "rPr");
     const pPr = wFirst(s, "pPr");
-    const hm = /^(heading|t[ií]tulo)\s*(\d)$/.exec(name) ?? /^(heading|titulo|ttulo)(\d)$/i.exec(id);
+    const hm =
+      /^(heading|t[ií]tulo)\s*(\d)$/.exec(name) ?? /^(heading|titulo|ttulo)(\d)$/i.exec(id);
     const outline = pPr ? wFirst(pPr, "outlineLvl") : null;
+    const bold = onOff(rPr ? wFirst(rPr, "b") : null);
+    const italic = onOff(rPr ? wFirst(rPr, "i") : null);
+    const sizePt =
+      rPr && wFirst(rPr, "sz") ? Number(wAttr(wFirst(rPr, "sz"), "val")) / 2 : undefined;
+    const heading = hm
+      ? Number(hm[2])
+      : outline
+        ? Number(wAttr(outline, "val")) + 1
+        : name === "title"
+          ? 1
+          : undefined;
+    const align = pPr && wFirst(pPr, "jc") ? mapAlign(wAttr(wFirst(pPr, "jc"), "val")) : undefined;
     const info: StyleInfo = {
-      bold: onOff(rPr ? wFirst(rPr, "b") : null),
-      italic: onOff(rPr ? wFirst(rPr, "i") : null),
-      sizePt: rPr && wFirst(rPr, "sz") ? Number(wAttr(wFirst(rPr, "sz"), "val")) / 2 : undefined,
-      heading: hm ? Number(hm[2]) : outline ? Number(wAttr(outline, "val")) + 1 : name === "title" ? 1 : undefined,
-      align: pPr && wFirst(pPr, "jc") ? mapAlign(wAttr(wFirst(pPr, "jc"), "val")) : undefined,
+      ...(bold === undefined ? {} : { bold }),
+      ...(italic === undefined ? {} : { italic }),
+      ...(sizePt === undefined ? {} : { sizePt }),
+      ...(heading === undefined ? {} : { heading }),
+      ...(align === undefined ? {} : { align }),
     };
     raw.set(id, { info, basedOn: wAttr(wFirst(s, "basedOn"), "val") });
   }
@@ -76,7 +107,8 @@ async function readStyles(zip: JSZip): Promise<{ defaultSize: number; styles: Ma
     if (!r || depth > 10) return {};
     const base = r.basedOn ? resolve(r.basedOn, depth + 1) : {};
     const out: StyleInfo = { ...base };
-    for (const [k, v] of Object.entries(r.info)) if (v !== undefined) (out as Record<string, unknown>)[k] = v;
+    for (const [k, v] of Object.entries(r.info))
+      if (v !== undefined) (out as Record<string, unknown>)[k] = v;
     return out;
   };
   for (const id of raw.keys()) styles.set(id, resolve(id));
@@ -90,7 +122,10 @@ function mapAlign(v: string | null): ParagraphBlock["align"] {
   return "left";
 }
 
-function parseParagraph(p: Element, ctx: { defaultSize: number; styles: Map<string, StyleInfo> }): ParagraphBlock {
+function parseParagraph(
+  p: Element,
+  ctx: { defaultSize: number; styles: Map<string, StyleInfo> },
+): ParagraphBlock {
   const pPr = wFirst(p, "pPr");
   const styleId = pPr ? wAttr(wFirst(pPr, "pStyle"), "val") : null;
   const style = (styleId && ctx.styles.get(styleId)) || {};
@@ -127,14 +162,20 @@ function parseParagraph(p: Element, ctx: { defaultSize: number; styles: Map<stri
     align: jc ? mapAlign(wAttr(jc, "val")) : (style.align ?? "left"),
     heading: style.heading ?? null,
     indentPt: ind ? (Number(wAttr(ind, "left") ?? wAttr(ind, "start") ?? 0) || 0) / 20 : 0,
-    spaceAfterPt: spacing && wAttr(spacing, "after") !== null ? Number(wAttr(spacing, "after")) / 20 : 6,
+    spaceAfterPt:
+      spacing && wAttr(spacing, "after") !== null ? Number(wAttr(spacing, "after")) / 20 : 6,
     bullet: Boolean(pPr && wFirst(pPr, "numPr")),
   };
 }
 
-function parseTable(tbl: Element, ctx: { defaultSize: number; styles: Map<string, StyleInfo> }): TableBlock {
+function parseTable(
+  tbl: Element,
+  ctx: { defaultSize: number; styles: Map<string, StyleInfo> },
+): TableBlock {
   const grid = wFirst(tbl, "tblGrid");
-  const columnWidths = grid ? wChildren(grid, "gridCol").map((g) => Number(wAttr(g, "w")) || 1) : [];
+  const columnWidths = grid
+    ? wChildren(grid, "gridCol").map((g) => Number(wAttr(g, "w")) || 1)
+    : [];
   const rows = wChildren(tbl, "tr").map((tr) => {
     const trPr = wFirst(tr, "trPr");
     const cells = wChildren(tr, "tc").map((tc) => {
@@ -146,12 +187,19 @@ function parseTable(tbl: Element, ctx: { defaultSize: number; styles: Map<string
     });
     return { cells, header: Boolean(trPr && wFirst(trPr, "tblHeader")) };
   });
-  const cols = Math.max(columnWidths.length, ...rows.map((r) => r.cells.reduce((a, c) => a + c.span, 0)), 1);
+  const cols = Math.max(
+    columnWidths.length,
+    ...rows.map((r) => r.cells.reduce((a, c) => a + c.span, 0)),
+    1,
+  );
   while (columnWidths.length < cols) columnWidths.push(columnWidths.length ? columnWidths[0]! : 1);
   return { kind: "table", columnWidths: columnWidths.slice(0, cols), rows };
 }
 
-function bodyBlocks(container: Element, ctx: { defaultSize: number; styles: Map<string, StyleInfo> }): Block[] {
+function bodyBlocks(
+  container: Element,
+  ctx: { defaultSize: number; styles: Map<string, StyleInfo> },
+): Block[] {
   const out: Block[] = [];
   for (const child of Array.from(container.childNodes)) {
     if (child.nodeType !== 1) continue;
@@ -167,19 +215,31 @@ function bodyBlocks(container: Element, ctx: { defaultSize: number; styles: Map<
   return out;
 }
 
-async function storyText(zip: JSZip, rels: Document | null, sectPr: Element | null, kind: "header" | "footer"): Promise<string[]> {
+async function storyText(
+  zip: JSZip,
+  rels: Document | null,
+  sectPr: Element | null,
+  kind: "header" | "footer",
+): Promise<string[]> {
   if (!rels || !sectPr) return [];
   const ref = wChildren(sectPr, `${kind}Reference`).find((r) => wAttr(r, "type") === "default");
   const id = ref?.getAttributeNS(R_NS, "id") ?? ref?.getAttribute("r:id");
   if (!id) return [];
-  const rel = Array.from(rels.getElementsByTagNameNS(PKG_REL_NS, "Relationship")).find((r) => r.getAttribute("Id") === id);
+  const rel = Array.from(rels.getElementsByTagNameNS(PKG_REL_NS, "Relationship")).find(
+    (r) => r.getAttribute("Id") === id,
+  );
   const target = rel?.getAttribute("Target");
   if (!target) return [];
   const file = zip.file("word/" + target.replace(/^\/?word\//, "").replace(/^\//, ""));
   if (!file) return [];
   const doc = parseXml(await file.async("string"), target);
   return wDescendants(doc, "p")
-    .map((p) => wDescendants(p, "t").map((t) => t.textContent ?? "").join("").trim())
+    .map((p) =>
+      wDescendants(p, "t")
+        .map((t) => t.textContent ?? "")
+        .join("")
+        .trim(),
+    )
     .filter(Boolean);
 }
 

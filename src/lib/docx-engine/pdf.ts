@@ -1,4 +1,11 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
 import { DocxEngineError } from "./xml";
 import { base64ToBytes } from "./package";
 import { brandingHasHeader, mmToPoints, type DocumentBranding } from "./branding";
@@ -51,7 +58,12 @@ export function sanitizeForPdf(text: string, font: PDFFont, unsupported: Set<str
 type Word = { text: string; run: TextRun; width: number; space: number; font: PDFFont };
 type Line = { words: Word[]; width: number; height: number; size: number };
 
-function layoutParagraph(p: ParagraphBlock, maxWidth: number, fonts: Fonts, unsupported: Set<string>): Line[] {
+function layoutParagraph(
+  p: ParagraphBlock,
+  maxWidth: number,
+  fonts: Fonts,
+  unsupported: Set<string>,
+): Line[] {
   const lines: Line[] = [];
   let current: Word[] = [];
   let width = 0;
@@ -88,7 +100,13 @@ function layoutParagraph(p: ParagraphBlock, maxWidth: number, fonts: Fonts, unsu
           for (const c of token) {
             const cw = font.widthOfTextAtSize(chunk + c, run.sizePt);
             if (cw > maxWidth - width && chunk) {
-              current.push({ text: chunk, run, width: font.widthOfTextAtSize(chunk, run.sizePt), space: 0, font });
+              current.push({
+                text: chunk,
+                run,
+                width: font.widthOfTextAtSize(chunk, run.sizePt),
+                space: 0,
+                font,
+              });
               push();
               chunk = c;
             } else chunk += c;
@@ -113,22 +131,47 @@ function layoutParagraph(p: ParagraphBlock, maxWidth: number, fonts: Fonts, unsu
   return lines;
 }
 
-function drawLine(page: PDFPage, line: Line, x: number, y: number, maxWidth: number, align: ParagraphBlock["align"], isLast: boolean) {
+function drawLine(
+  page: PDFPage,
+  line: Line,
+  x: number,
+  y: number,
+  maxWidth: number,
+  align: ParagraphBlock["align"],
+  isLast: boolean,
+) {
   const trailing = line.words.at(-1)?.space ?? 0;
   const used = line.width - trailing;
   let cursor = x;
   let extra = 0;
   if (align === "center") cursor += (maxWidth - used) / 2;
   else if (align === "right") cursor += maxWidth - used;
-  else if (align === "justify" && !isLast && line.words.length > 1) extra = (maxWidth - used) / (line.words.length - 1);
+  else if (align === "justify" && !isLast && line.words.length > 1)
+    extra = (maxWidth - used) / (line.words.length - 1);
   const baseline = y - line.size;
   line.words.forEach((w, i) => {
     if (w.run.highlight) {
-      page.drawRectangle({ x: cursor - 1, y: baseline - 2, width: w.width + 2, height: w.run.sizePt + 3, color: rgb(1, 0.95, 0.4) });
+      page.drawRectangle({
+        x: cursor - 1,
+        y: baseline - 2,
+        width: w.width + 2,
+        height: w.run.sizePt + 3,
+        color: rgb(1, 0.95, 0.4),
+      });
     }
-    page.drawText(w.text, { x: cursor, y: baseline, size: w.run.sizePt, font: w.font, color: rgb(0, 0, 0) });
+    page.drawText(w.text, {
+      x: cursor,
+      y: baseline,
+      size: w.run.sizePt,
+      font: w.font,
+      color: rgb(0, 0, 0),
+    });
     if (w.run.underline) {
-      page.drawLine({ start: { x: cursor, y: baseline - 1.5 }, end: { x: cursor + w.width, y: baseline - 1.5 }, thickness: 0.5 });
+      page.drawLine({
+        start: { x: cursor, y: baseline - 1.5 },
+        end: { x: cursor + w.width, y: baseline - 1.5 },
+        thickness: 0.5,
+      });
     }
     cursor += w.width + (i < line.words.length - 1 ? w.space + extra : 0);
   });
@@ -167,15 +210,20 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     try {
       logo = b.logoMime === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
     } catch {
-      throw new DocxEngineError("O brasão configurado não pôde ser lido. Envie novamente um PNG ou JPEG.");
+      throw new DocxEngineError(
+        "O brasão configurado não pôde ser lido. Envie novamente um PNG ou JPEG.",
+      );
     }
   }
 
   const useBrand = brandingHasHeader(b);
-  const headerLines = useBrand ? [b.headerTitle.trim(), b.headerSubtitle.trim()].filter(Boolean) : model.headerText.slice(0, 3);
+  const headerLines = useBrand
+    ? [b.headerTitle.trim(), b.headerSubtitle.trim()].filter(Boolean)
+    : model.headerText.slice(0, 3);
   const footerLines = b.footerText.trim() ? [b.footerText.trim()] : model.footerText.slice(0, 2);
   const logoH = logo ? mmToPoints(16) : 0;
-  const headerHeight = (logo ? logoH + 4 : 0) + headerLines.length * 12 + (headerLines.length || logo ? 6 : 0);
+  const headerHeight =
+    (logo ? logoH + 4 : 0) + headerLines.length * 12 + (headerLines.length || logo ? 6 : 0);
   const footerHeight = footerLines.length * 10 + (b.showPageNumbers ? 10 : 0);
 
   const left = mmToPoints(b.marginLeftMm);
@@ -183,7 +231,8 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
   const top = A4.height - Math.max(mmToPoints(b.marginTopMm), mmToPoints(8) + headerHeight + 6);
   const bottom = Math.max(mmToPoints(b.marginBottomMm), mmToPoints(6) + footerHeight + 6);
   const width = right - left;
-  if (width < 200 || top - bottom < 200) throw new DocxEngineError("As margens do timbrado deixam pouco espaço para o texto.");
+  if (width < 200 || top - bottom < 200)
+    throw new DocxEngineError("As margens do timbrado deixam pouco espaço para o texto.");
 
   const pages: PDFPage[] = [];
   let page!: PDFPage;
@@ -195,9 +244,28 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
   };
   newPage();
 
-  const drawParagraph = (p: ParagraphBlock, x: number, maxWidth: number, target: { page: PDFPage; y: number } | null) => {
+  const drawParagraph = (
+    p: ParagraphBlock,
+    x: number,
+    maxWidth: number,
+    target: { page: PDFPage; y: number } | null,
+  ) => {
     const indent = Math.min(p.indentPt + (p.bullet ? 12 : 0), maxWidth / 3);
-    const runs = p.bullet ? [{ ...(p.runs[0] ?? { bold: false, italic: false, underline: false, sizePt: 11, highlight: false }), text: "\u2022 " }, ...p.runs] : p.runs;
+    const runs = p.bullet
+      ? [
+          {
+            ...(p.runs[0] ?? {
+              bold: false,
+              italic: false,
+              underline: false,
+              sizePt: 11,
+              highlight: false,
+            }),
+            text: "\u2022 ",
+          },
+          ...p.runs,
+        ]
+      : p.runs;
     const lines = layoutParagraph({ ...p, runs }, maxWidth - indent, fonts, unsupported);
     return { lines, indent };
   };
@@ -225,7 +293,14 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
         const w = cols.slice(col, col + c.span).reduce((a, v) => a + v, 0) || cols[col] || width;
         const x = left + cols.slice(0, col).reduce((a, v) => a + v, 0);
         col += c.span;
-        const paras = c.paragraphs.map((p) => drawParagraph(row.header ? { ...p, runs: p.runs.map((r) => ({ ...r, bold: true })) } : p, x, w - CELL_PAD * 2, null));
+        const paras = c.paragraphs.map((p) =>
+          drawParagraph(
+            row.header ? { ...p, runs: p.runs.map((r) => ({ ...r, bold: true })) } : p,
+            x,
+            w - CELL_PAD * 2,
+            null,
+          ),
+        );
         const h = paras.reduce((a, pr) => a + pr.lines.reduce((s, l) => s + l.height, 0) + 2, 0);
         return { x, w, paras, h, src: c };
       });
@@ -233,11 +308,27 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     };
     const drawRow = (m: ReturnType<typeof measure>, isHeader: boolean) => {
       for (const c of m.cells) {
-        page.drawRectangle({ x: c.x, y: y - m.height, width: c.w, height: m.height, borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 0.5, color: isHeader ? rgb(0.93, 0.93, 0.93) : undefined });
+        page.drawRectangle({
+          x: c.x,
+          y: y - m.height,
+          width: c.w,
+          height: m.height,
+          borderColor: rgb(0.5, 0.5, 0.5),
+          borderWidth: 0.5,
+          ...(isHeader ? { color: rgb(0.93, 0.93, 0.93) } : {}),
+        });
         let cy = y - CELL_PAD;
         c.paras.forEach((pr, pi) => {
           pr.lines.forEach((line, li) => {
-            drawLine(page, line, c.x + CELL_PAD + pr.indent, cy, c.w - CELL_PAD * 2 - pr.indent, c.src.paragraphs[pi]!.align, li === pr.lines.length - 1);
+            drawLine(
+              page,
+              line,
+              c.x + CELL_PAD + pr.indent,
+              cy,
+              c.w - CELL_PAD * 2 - pr.indent,
+              c.src.paragraphs[pi]!.align,
+              li === pr.lines.length - 1,
+            );
             cy -= line.height;
           });
           cy -= 2;
@@ -249,7 +340,9 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     for (const row of block.rows) {
       const m = measure(row);
       if (m.height > top - bottom - 40) {
-        throw new DocxEngineError("Uma linha de tabela é maior que uma página e não pode ser paginada no PDF. Divida o conteúdo da célula.");
+        throw new DocxEngineError(
+          "Uma linha de tabela é maior que uma página e não pode ser paginada no PDF. Divida o conteúdo da célula.",
+        );
       }
       if (y - m.height < bottom) {
         newPage();
@@ -261,11 +354,38 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
   };
 
   if (options.title?.trim()) {
-    renderBlock({ kind: "paragraph", runs: [{ text: options.title.trim(), bold: true, italic: false, underline: false, sizePt: 13, highlight: false }], align: "center", heading: 1, indentPt: 0, spaceAfterPt: 12, bullet: false });
+    renderBlock({
+      kind: "paragraph",
+      runs: [
+        {
+          text: options.title.trim(),
+          bold: true,
+          italic: false,
+          underline: false,
+          sizePt: 13,
+          highlight: false,
+        },
+      ],
+      align: "center",
+      heading: 1,
+      indentPt: 0,
+      spaceAfterPt: 12,
+      bullet: false,
+    });
   }
   for (const block of model.blocks) renderBlock(block);
   for (const extra of options.appendix ?? []) {
-    renderBlock({ kind: "paragraph", runs: [{ text: extra, bold: false, italic: false, underline: false, sizePt: 9, highlight: false }], align: "left", heading: null, indentPt: 0, spaceAfterPt: 2, bullet: false });
+    renderBlock({
+      kind: "paragraph",
+      runs: [
+        { text: extra, bold: false, italic: false, underline: false, sizePt: 9, highlight: false },
+      ],
+      align: "left",
+      heading: null,
+      indentPt: 0,
+      spaceAfterPt: 2,
+      bullet: false,
+    });
   }
 
   if (unsupported.size > 0) {
@@ -291,7 +411,13 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
       pg.drawText(clean, { x: (A4.width - tw) / 2, y: hy - size, size, font });
       hy -= 12;
     });
-    if (headerLines.length || logo) pg.drawLine({ start: { x: left, y: hy - 2 }, end: { x: right, y: hy - 2 }, thickness: 0.5, color: rgb(0.5, 0.5, 0.5) });
+    if (headerLines.length || logo)
+      pg.drawLine({
+        start: { x: left, y: hy - 2 },
+        end: { x: right, y: hy - 2 },
+        thickness: 0.5,
+        color: rgb(0.5, 0.5, 0.5),
+      });
     let fy = mmToPoints(6) + footerHeight;
     footerLines.forEach((text) => {
       const clean = sanitizeForPdf(text, fonts.regular, new Set());
@@ -309,6 +435,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
   const bytes = await pdf.save();
   // Integrity check: the produced file must load and keep its page count.
   const reloaded = await PDFDocument.load(bytes);
-  if (reloaded.getPageCount() !== total) throw new DocxEngineError("Falha de integridade ao gerar o PDF.");
+  if (reloaded.getPageCount() !== total)
+    throw new DocxEngineError("Falha de integridade ao gerar o PDF.");
   return bytes;
 }
