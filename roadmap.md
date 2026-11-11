@@ -36,6 +36,7 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 
 - Commit atual de base: `64069a0f044d56b399fd6ed602f564c43ee46f90` (`fix: extend procurement stage constraints`). O CI associado ainda não retornou verificações no conector durante esta etapa.
 - A tela de fornecedores agora está sendo ampliada com histórico de sanções por Secretaria, revogação auditada, validade visual calculada no cliente e migration/RLS versionadas. Esta mudança está em preparação; não foi aplicada ao SMS2.
+- A exportação CSV dos contratos vigentes que vencem em até 90 dias foi preparada em branch, pendente de CI e revisão. PDF executivo e exportações nas demais telas seguem pendentes.
 - O saldo de contratos/Atas, relatórios, exportações adicionais, Word/PDF fiel, integrações externas e homologação com duas Secretarias seguem pendentes.
 
 ## Resumo por fase
