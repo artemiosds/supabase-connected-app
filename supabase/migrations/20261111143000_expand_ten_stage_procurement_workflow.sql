@@ -7,6 +7,22 @@ ALTER TABLE public.process_items
   ADD COLUMN IF NOT EXISTS responsible_name text,
   ADD COLUMN IF NOT EXISTS due_date date;
 
+ALTER TABLE public.procurement_processes
+  DROP CONSTRAINT IF EXISTS procurement_processes_stage_check,
+  ADD CONSTRAINT procurement_processes_stage_check
+    CHECK (stage IN (
+      'planejamento','estudos','objeto','pesquisa','parecer','conclusao',
+      'publicacao','julgamento','assinatura','fiscalizacao'
+    ));
+
+ALTER TABLE public.process_items
+  DROP CONSTRAINT IF EXISTS process_items_stage_check,
+  ADD CONSTRAINT process_items_stage_check
+    CHECK (stage IN (
+      'planejamento','estudos','objeto','pesquisa','parecer','conclusao',
+      'publicacao','julgamento','assinatura','fiscalizacao'
+    ));
+
 DO $migration$
 BEGIN
   IF NOT EXISTS (
