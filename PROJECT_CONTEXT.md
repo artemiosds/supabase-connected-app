@@ -46,6 +46,8 @@ Sanções de fornecedores agora possuem histórico por Secretaria, período, fun
 
 A pesquisa de preços agora calcula menor, média, mediana e coeficiente de variação por preço unitário equivalente com frete rateado, e exporta CSV compatível com Excel. Nenhum valor é descartado automaticamente; a análise continua sendo da equipe.
 
+O módulo de Contratos dispõe de exportação CSV compatível com Excel para contratos vigentes a vencer em até 90 dias, usando apenas dados autorizados da Secretaria selecionada. PDF executivo e exportações nas demais telas ainda não estão implementados.
+
 
 Autenticação e recuperação; administração e provisionamento de Secretarias; fornecedores; GED privado no Supabase Storage; templates e documentos gerados; usuários e permissões; equipe interna e suporte; processos de contratação, cotações, orçamento, contratos e aditivos.
 
