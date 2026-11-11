@@ -49,6 +49,7 @@ Ainda dependem de integração/configuração ou homologação: Google Drive OAu
 
 ## Convenções de manutenção
 
+- Fluxos de autenticação expõem retorno contextual: login à página inicial e redefinição ao login. Cadastro e recuperação de senha já oferecem retorno ao login; módulos internos mantêm Painel no menu global, e Master/Suporte mantêm retorno ao portal operacional.
 - Links externos de documentos aceitam somente HTTP/HTTPS, sem credenciais e com limite de 2.048 caracteres; o banco aplica constraint versionada e a interface só abre URLs normalizadas. Google Drive ainda é apenas reconhecimento de link, sem OAuth ou sincronização.
 - Ler este arquivo, `AGENTS.md`, o módulo relacionado e as migrations/tabelas existentes antes de alterar.
 - Alterações de schema somente por nova migration timestampada e revisão da história remota; não reescrever migration aplicada nem alterar o banco manualmente.

@@ -103,6 +103,8 @@ function Entrar() {
           ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
           : (textoPortal?.subtitle ?? "Acesse sua conta para continuar.")
       }
+      returnTo="/"
+      returnLabel="Voltar ao início"
     >
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">

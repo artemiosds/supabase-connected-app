@@ -1,18 +1,32 @@
 import type { ReactNode } from "react";
-import { HeartPulse } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeft, HeartPulse } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function AuthShell({
   title,
   subtitle,
   children,
+  returnTo,
+  returnLabel,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
+  returnTo?: "/" | "/entrar" | "/recuperar-senha";
+  returnLabel?: string;
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4 py-10">
       <div className="w-full max-w-md">
+        {returnTo && (
+          <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
+            <Link to={returnTo}>
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+              {returnLabel ?? "Voltar"}
+            </Link>
+          </Button>
+        )}
         <div className="mb-8 flex items-center justify-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <HeartPulse className="h-6 w-6" aria-hidden />

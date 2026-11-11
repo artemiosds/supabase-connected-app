@@ -94,6 +94,8 @@ function RedefinirSenha() {
   if (loading) {
     return (
       <AuthShell
+        returnTo="/entrar"
+        returnLabel="Voltar ao login"
         title={
           conviteSuporte
             ? "Definir senha do suporte"
@@ -113,6 +115,8 @@ function RedefinirSenha() {
   if (!session) {
     return (
       <AuthShell
+        returnTo="/entrar"
+        returnLabel="Voltar ao login"
         title="Link inválido"
         subtitle={
           conviteSuporte
@@ -133,6 +137,8 @@ function RedefinirSenha() {
 
   return (
     <AuthShell
+      returnTo="/entrar"
+      returnLabel="Voltar ao login"
       title={
         conviteSuporte
           ? "Crie sua senha de suporte"
