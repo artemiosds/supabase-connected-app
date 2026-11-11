@@ -42,6 +42,8 @@ Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com
 
 ## Módulos e limites confirmados
 
+Sanções de fornecedores agora possuem histórico por Secretaria, período, fundamento, referência, revogação auditada e alerta visual de vigência. O registro não altera automaticamente o status geral do fornecedor nem decide a habilitação em outro processo.
+
 A pesquisa de preços agora calcula menor, média, mediana e coeficiente de variação por preço unitário equivalente com frete rateado, e exporta CSV compatível com Excel. Nenhum valor é descartado automaticamente; a análise continua sendo da equipe.
 
 
@@ -49,7 +51,13 @@ Autenticação e recuperação; administração e provisionamento de Secretarias
 
 O Painel Master tem uma aba Configuração técnica com instruções para SMTP, alertas, backup e cobrança, além dos limites atuais de Drive, PDF e assinatura. A tela não coleta segredos nem confirma configuração externa.
 
-O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. A migration está versionada, pendente de CI e não aplicada ao SMS2.\n\nA biblioteca documental agora tem catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo preenche o contexto do contrato/fornecedor pela migration versionada. A RPC restringe complementos a campos manuais declarados no modelo e bloqueia sobrescrita de valores calculados no servidor. A migration ainda não foi aplicada ao SMS2. DOCX continua sendo importado como texto, e a exportação Word/PDF fiel ao modelo continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
+O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. A migration versionada também substitui as constraints de etapa nas duas tabelas e permanece não aplicada ao SMS2.
+
+A biblioteca documental agora tem catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo preenche o contexto do contrato/fornecedor pela migration versionada. A RPC restringe complementos a campos manuais declarados no modelo e bloqueia sobrescrita de valores calculados no servidor. A migration ainda não foi aplicada ao SMS2. DOCX continua sendo importado como texto, e a exportação Word/PDF fiel ao modelo continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
+
+
+
+As medidas administrativas de fornecedores estão em código com migration versionada `20261111160000_supplier_sanction_history.sql`; ela cria histórico por Secretaria, períodos, referência, fundamento legal, revogação auditável e RLS sem exclusão física. A interface oferece consulta, cadastro e sinalização de vigência, mas não altera automaticamente o status cadastral ou a habilitação. A migration não foi aplicada ao SMS2; validar o histórico remoto antes de qualquer implantação.
 
 ## Convenções de manutenção
 

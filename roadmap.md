@@ -28,8 +28,15 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 
 - Fase 1 — Documentos: catálogo de campos automáticos, prévia com lacunas explícitas e RPC vinculada a contrato/fornecedor com validação de complementos. Exportação fiel DOCX/PDF permanece pendente. Migration de geração está versionada e não aplicada ao SMS2.
 - Fase 2 — Pesquisa de preços: média, mediana, menor preço unitário com frete rateado, coeficiente de variação e CSV compatível com Excel; nenhum valor é excluído automaticamente.
-- Fase 3 — Workflow: dez etapas e campos de responsável/prazo por atividade. Migration versionada pendente de CI e não aplicada ao SMS2.
-- Fases 4–6 seguem pendentes: saldo por item de ARP/execução, sanções de fornecedores, relatórios, integrações externas, restauração, isolamento multi-tenant e homologação real.
+- Fase 3 — Workflow: dez etapas, responsável/prazo por atividade e constraints do banco atualizadas. Código em `main`; migration não aplicada ao SMS2.
+- Fase 4 — Sanções: histórico por Secretaria, período, fundamento, referência, revogação auditada e sinalização visual de vigência. Migration versionada; saldo por item de contrato/ARP ainda pendente.
+- Fases 5–6 seguem pendentes: relatórios, integrações externas, restauração, isolamento multi-tenant e homologação real.
+
+## Atualização de construção — continuidade em 11/11/2026
+
+- Commit atual de base: `64069a0f044d56b399fd6ed602f564c43ee46f90` (`fix: extend procurement stage constraints`). O CI associado ainda não retornou verificações no conector durante esta etapa.
+- A tela de fornecedores agora está sendo ampliada com histórico de sanções por Secretaria, revogação auditada, validade visual calculada no cliente e migration/RLS versionadas. Esta mudança está em preparação; não foi aplicada ao SMS2.
+- O saldo de contratos/Atas, relatórios, exportações adicionais, Word/PDF fiel, integrações externas e homologação com duas Secretarias seguem pendentes.
 
 ## Resumo por fase
 

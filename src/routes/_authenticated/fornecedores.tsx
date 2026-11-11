@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Building2, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
+import { Building2, History, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { getSanctionDisplayStatus, isSanctionCurrentlyEffective } from "@/lib/supplier-sanctions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,11 @@ export const Route = createFileRoute("/_authenticated/fornecedores")({
 });
 
 type Fornecedor = Tables<"suppliers">;
+type SancaoFornecedor = Tables<"supplier_sanctions">;
+type ResumoSancaoFornecedor = Pick<
+  SancaoFornecedor,
+  "supplier_id" | "start_date" | "end_date" | "status"
+>;
 type Categoria =
   | "medicamentos"
   | "materiais_hospitalares"
@@ -124,10 +130,25 @@ function Fornecedores() {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
+  const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
+  const [fornecedorSancoes, setFornecedorSancoes] = useState<Fornecedor | null>(null);
+  const [sancoesAberto, setSancoesAberto] = useState(false);
+  const [sancoes, setSancoes] = useState<SancaoFornecedor[]>([]);
+  const [carregandoSancoes, setCarregandoSancoes] = useState(false);
+  const [salvandoSancao, setSalvandoSancao] = useState(false);
+  const [formSancao, setFormSancao] = useState({
+    measure: "",
+    reason: "",
+    legal_basis: "",
+    reference_number: "",
+    start_date: "",
+    end_date: "",
+  });
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
       setFornecedores([]);
+      setResumosSancoes([]);
       setCapacidades({
         can_view: false,
         can_create: false,
@@ -169,6 +190,22 @@ function Fornecedores() {
           .range(inicio, fim),
       );
       setFornecedores(todosFornecedores);
+
+      try {
+        const todosResumos = await carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("supplier_sanctions")
+            .select("supplier_id,start_date,end_date,status")
+            .eq("tenant_id", selecionado.id)
+            .order("start_date", { ascending: false })
+            .order("supplier_id")
+            .range(inicio, fim),
+        );
+        setResumosSancoes(todosResumos);
+      } catch {
+        // A migration de sanções pode ainda não estar aplicada no ambiente conectado.
+        setResumosSancoes([]);
+      }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setFornecedores([]);
@@ -320,6 +357,127 @@ function Fornecedores() {
     }
     toast.success(novoStatus === "inactive" ? "Fornecedor inativado." : "Fornecedor reativado.");
     await carregar();
+  }
+
+  const hojeIso = new Date().toLocaleDateString("en-CA");
+  const fornecedoresComSancaoVigente = useMemo(
+    () =>
+      new Set(
+        resumosSancoes
+          .filter((sancao) => isSanctionCurrentlyEffective(sancao, hojeIso))
+          .map((sancao) => sancao.supplier_id),
+      ),
+    [resumosSancoes, hojeIso],
+  );
+
+  async function abrirHistoricoSancoes(fornecedor: Fornecedor) {
+    if (!selecionado || !capacidades.can_view) return;
+    setFornecedorSancoes(fornecedor);
+    setSancoes([]);
+    setFormSancao({
+      measure: "",
+      reason: "",
+      legal_basis: "",
+      reference_number: "",
+      start_date: new Date().toLocaleDateString("en-CA"),
+      end_date: "",
+    });
+    setSancoesAberto(true);
+    setCarregandoSancoes(true);
+    const { data, error: erroConsulta } = await db
+      .from("supplier_sanctions")
+      .select(
+        "id,tenant_id,supplier_id,measure,reason,legal_basis,reference_number,start_date,end_date,status,created_by,updated_by,created_at,updated_at",
+      )
+      .eq("tenant_id", selecionado.id)
+      .eq("supplier_id", fornecedor.id)
+      .order("start_date", { ascending: false })
+      .order("id");
+    if (erroConsulta) {
+      toast.error(
+        "O histórico de sanções não está disponível. Verifique se a migration foi aplicada.",
+      );
+      setSancoes([]);
+    } else {
+      setSancoes(data ?? []);
+    }
+    setCarregandoSancoes(false);
+  }
+
+  async function registrarSancao(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if (!selecionado || !fornecedorSancoes || !capacidades.can_update) return;
+    const payload: TablesInsert<"supplier_sanctions"> = {
+      tenant_id: selecionado.id,
+      supplier_id: fornecedorSancoes.id,
+      measure: formSancao.measure.trim(),
+      reason: formSancao.reason.trim(),
+      legal_basis: formSancao.legal_basis.trim() || null,
+      reference_number: formSancao.reference_number.trim() || null,
+      start_date: formSancao.start_date,
+      end_date: formSancao.end_date || null,
+    };
+    setSalvandoSancao(true);
+    const { data, error: erroGravacao } = await db
+      .from("supplier_sanctions")
+      .insert(payload)
+      .select(
+        "id,tenant_id,supplier_id,measure,reason,legal_basis,reference_number,start_date,end_date,status,created_by,updated_by,created_at,updated_at",
+      )
+      .single();
+    setSalvandoSancao(false);
+    if (erroGravacao) {
+      toast.error("Não foi possível registrar a medida. Confira os dados e as permissões.");
+      return;
+    }
+    setSancoes((atuais) => [data, ...atuais]);
+    setResumosSancoes((atuais) => [
+      {
+        supplier_id: data.supplier_id,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        status: data.status,
+      },
+      ...atuais,
+    ]);
+    setFormSancao({
+      measure: "",
+      reason: "",
+      legal_basis: "",
+      reference_number: "",
+      start_date: new Date().toLocaleDateString("en-CA"),
+      end_date: "",
+    });
+    toast.success("Medida registrada no histórico desta Secretaria.");
+  }
+
+  async function revogarSancao(sancao: SancaoFornecedor) {
+    if (!selecionado || !capacidades.can_update) return;
+    const { data, error: erroAtualizacao } = await db
+      .from("supplier_sanctions")
+      .update({ status: "revoked" })
+      .eq("id", sancao.id)
+      .eq("tenant_id", selecionado.id)
+      .select("id")
+      .maybeSingle();
+    if (erroAtualizacao || !data) {
+      toast.error("Não foi possível revogar a medida. Atualize o histórico e tente novamente.");
+      return;
+    }
+    setSancoes((atuais) =>
+      atuais.map((atual) => (atual.id === sancao.id ? { ...atual, status: "revoked" } : atual)),
+    );
+    setResumosSancoes((atuais) =>
+      atuais.map((atual) =>
+        atual.supplier_id === sancao.supplier_id &&
+        atual.start_date === sancao.start_date &&
+        atual.end_date === sancao.end_date &&
+        atual.status === sancao.status
+          ? { ...atual, status: "revoked" }
+          : atual,
+      ),
+    );
+    toast.success("Medida revogada. O evento foi registrado na auditoria.");
   }
 
   if (bancoPendente) {
@@ -494,12 +652,25 @@ function Fornecedores() {
                         {CATEGORIAS.find((c) => c.value === fornecedor.category)?.label ?? "Outros"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>
-                          {fornecedor.status === "active" ? "Ativo" : "Inativo"}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>
+                            {fornecedor.status === "active" ? "Ativo" : "Inativo"}
+                          </Badge>
+                          {fornecedoresComSancaoVigente.has(fornecedor.id) && (
+                            <Badge variant="destructive">Sanção vigente</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => void abrirHistoricoSancoes(fornecedor)}
+                            aria-label={`Consultar sanções de ${fornecedor.legal_name}`}
+                          >
+                            <History className="h-4 w-4" aria-hidden />
+                          </Button>
                           {capacidades.can_update && (
                             <Button
                               size="icon"
@@ -731,6 +902,172 @@ function Fornecedores() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={sancoesAberto}
+        onOpenChange={(valor) => {
+          if (!salvandoSancao) setSancoesAberto(valor);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sanções e impedimentos</DialogTitle>
+            <DialogDescription>
+              {fornecedorSancoes?.legal_name}. O histórico pertence a esta Secretaria e não altera
+              automaticamente o cadastro nem decide a habilitação em processos.
+            </DialogDescription>
+          </DialogHeader>
+
+          {capacidades.can_update && (
+            <form onSubmit={registrarSancao} className="space-y-4 rounded-lg border p-4">
+              <h3 className="font-medium">Registrar medida</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="sancao-medida">Medida aplicada *</Label>
+                  <Input
+                    id="sancao-medida"
+                    required
+                    minLength={2}
+                    maxLength={160}
+                    value={formSancao.measure}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({ ...atual, measure: evento.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sancao-referencia">Número do ato/processo</Label>
+                  <Input
+                    id="sancao-referencia"
+                    maxLength={120}
+                    value={formSancao.reference_number}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({
+                        ...atual,
+                        reference_number: evento.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sancao-fundamento">Fundamento legal</Label>
+                  <Input
+                    id="sancao-fundamento"
+                    maxLength={500}
+                    value={formSancao.legal_basis}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({ ...atual, legal_basis: evento.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sancao-inicio">Início da vigência *</Label>
+                  <Input
+                    id="sancao-inicio"
+                    type="date"
+                    required
+                    value={formSancao.start_date}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({ ...atual, start_date: evento.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sancao-fim">Fim da vigência</Label>
+                  <Input
+                    id="sancao-fim"
+                    type="date"
+                    min={formSancao.start_date}
+                    value={formSancao.end_date}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({ ...atual, end_date: evento.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="sancao-motivo">Motivo detalhado *</Label>
+                  <textarea
+                    id="sancao-motivo"
+                    required
+                    minLength={10}
+                    maxLength={4000}
+                    rows={3}
+                    value={formSancao.reason}
+                    onChange={(evento) =>
+                      setFormSancao((atual) => ({ ...atual, reason: evento.target.value }))
+                    }
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={salvandoSancao || !formSancao.start_date}>
+                {salvandoSancao && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                {salvandoSancao ? "Registrando..." : "Registrar no histórico"}
+              </Button>
+            </form>
+          )}
+
+          <section aria-labelledby="historico-sancoes-titulo" className="space-y-3">
+            <h3 id="historico-sancoes-titulo" className="font-medium">
+              Histórico registrado
+            </h3>
+            {carregandoSancoes ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Carregando histórico...
+              </div>
+            ) : sancoes.length === 0 ? (
+              <p className="rounded-md border p-4 text-sm text-muted-foreground">
+                Nenhuma medida registrada para este fornecedor nesta Secretaria.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {sancoes.map((sancao) => {
+                  const statusExibido = getSanctionDisplayStatus(sancao, hojeIso);
+                  return (
+                    <article key={sancao.id} className="space-y-2 rounded-lg border p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h4 className="font-medium">{sancao.measure}</h4>
+                          {sancao.reference_number && (
+                            <p className="text-sm text-muted-foreground">
+                              Ato/processo: {sancao.reference_number}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant={statusExibido === "vigente" ? "destructive" : "outline"}>
+                          {statusExibido[0].toLocaleUpperCase("pt-BR") + statusExibido.slice(1)}
+                        </Badge>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm">{sancao.reason}</p>
+                      {sancao.legal_basis && (
+                        <p className="text-sm text-muted-foreground">
+                          Fundamento: {sancao.legal_basis}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Vigência: {sancao.start_date}
+                        {sancao.end_date ? ` a ${sancao.end_date}` : " em aberto"}
+                      </p>
+                      {capacidades.can_update &&
+                        sancao.status === "active" &&
+                        statusExibido !== "encerrada" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void revogarSancao(sancao)}
+                          >
+                            Revogar medida
+                          </Button>
+                        )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </DialogContent>
       </Dialog>
     </div>

@@ -1531,6 +1531,65 @@ export type Database = {
           },
         ];
       };
+      supplier_sanctions: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          end_date: string | null;
+          id: string;
+          legal_basis: string | null;
+          measure: string;
+          reason: string;
+          reference_number: string | null;
+          start_date: string;
+          status: string;
+          supplier_id: string;
+          tenant_id: string;
+          updated_at: string;
+          updated_by: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string;
+          end_date?: string | null;
+          id?: string;
+          legal_basis?: string | null;
+          measure: string;
+          reason: string;
+          reference_number?: string | null;
+          start_date: string;
+          status?: string;
+          supplier_id: string;
+          tenant_id: string;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          end_date?: string | null;
+          id?: string;
+          legal_basis?: string | null;
+          measure?: string;
+          reason?: string;
+          reference_number?: string | null;
+          start_date?: string;
+          status?: string;
+          supplier_id?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "supplier_sanctions_tenant_supplier_fk";
+            columns: ["tenant_id", "supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
       tenant_invitations: {
         Row: {
           accepted_at: string | null;
