@@ -70,7 +70,7 @@ jobs:
           version: v2.stable
 
       - name: Start local Supabase
-        run: supabase start
+        run: supabase start -x inbucket
 
       - name: Apply migrations to disposable local database
         run: supabase db reset --local

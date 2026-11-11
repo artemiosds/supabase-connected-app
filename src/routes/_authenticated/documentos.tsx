@@ -1,11 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -53,30 +47,19 @@ import { importarTextoDeModelo } from "@/lib/docx-import";
 
 export const Route = createFileRoute("/_authenticated/documentos")({
   head: () => ({
-    meta: [
-      { title: "Documentos e vencimentos — Gestão de Fornecedores da Saúde" },
-    ],
+    meta: [{ title: "Documentos e vencimentos — Gestão de Fornecedores da Saúde" }],
   }),
   component: Documentos,
 });
 
-type Fornecedor = Pick<
-  Tables<"suppliers">,
-  "id" | "legal_name" | "trade_name" | "cnpj"
->;
+type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj">;
 type DocumentoFornecedor = Tables<"supplier_documents">;
 type Modelo = Tables<"document_templates">;
 type ModeloCatalogo = Tables<"document_template_catalog">;
 type VersaoModelo = Tables<"document_template_versions">;
 type ProcessoContratacao = Pick<
   Tables<"procurement_processes">,
-  | "id"
-  | "number"
-  | "title"
-  | "stage"
-  | "status"
-  | "requesting_unit"
-  | "responsible_name"
+  "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
 >;
 type ContratoGeracao = Pick<
   Tables<"contracts">,
@@ -112,9 +95,7 @@ const TIPOS_ARQUIVO_PRIVADO: Record<string, string> = {
   png: "image/png",
 };
 
-async function validarArquivoPrivado(
-  file: File,
-): Promise<{ mimeType: string; extension: string }> {
+async function validarArquivoPrivado(file: File): Promise<{ mimeType: string; extension: string }> {
   if (file.size < 1 || file.size > LIMITE_ARQUIVO_PRIVADO) {
     throw new Error("O arquivo precisa ter entre 1 byte e 20 MB.");
   }
@@ -122,19 +103,11 @@ async function validarArquivoPrivado(
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
   const mimeType = TIPOS_ARQUIVO_PRIVADO[extension];
   if (!mimeType) {
-    throw new Error(
-      "Formato não permitido. Use PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG.",
-    );
+    throw new Error("Formato não permitido. Use PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG.");
   }
 
-  if (
-    file.type &&
-    file.type !== "application/octet-stream" &&
-    file.type !== mimeType
-  ) {
-    throw new Error(
-      "O tipo informado pelo navegador não corresponde à extensão do arquivo.",
-    );
+  if (file.type && file.type !== "application/octet-stream" && file.type !== mimeType) {
+    throw new Error("O tipo informado pelo navegador não corresponde à extensão do arquivo.");
   }
 
   const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
@@ -142,25 +115,18 @@ async function validarArquivoPrivado(
     expected.every((byte, index) => signature[index] === byte);
 
   const validSignature =
-    (extension === "pdf" &&
-      new TextDecoder().decode(signature.slice(0, 5)) === "%PDF-") ||
-    ((extension === "jpg" || extension === "jpeg") &&
-      startsWith([0xff, 0xd8, 0xff])) ||
-    (extension === "png" &&
-      startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
+    (extension === "pdf" && new TextDecoder().decode(signature.slice(0, 5)) === "%PDF-") ||
+    ((extension === "jpg" || extension === "jpeg") && startsWith([0xff, 0xd8, 0xff])) ||
+    (extension === "png" && startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
     ((extension === "doc" || extension === "xls") &&
       startsWith([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) ||
     ((extension === "docx" || extension === "xlsx") &&
       signature[0] === 0x50 &&
       signature[1] === 0x4b &&
-      (signature[2] === 0x03 ||
-        signature[2] === 0x05 ||
-        signature[2] === 0x07));
+      (signature[2] === 0x03 || signature[2] === 0x05 || signature[2] === 0x07));
 
   if (!validSignature) {
-    throw new Error(
-      "O conteúdo do arquivo não corresponde ao formato selecionado.",
-    );
+    throw new Error("O conteúdo do arquivo não corresponde ao formato selecionado.");
   }
 
   return { mimeType, extension };
@@ -258,8 +224,7 @@ function Documentos() {
 
   const [dialogDocumento, setDialogDocumento] = useState(false);
   const [salvandoDocumento, setSalvandoDocumento] = useState(false);
-  const [documentoEditando, setDocumentoEditando] =
-    useState<DocumentoFornecedor | null>(null);
+  const [documentoEditando, setDocumentoEditando] = useState<DocumentoFornecedor | null>(null);
   const [fornecedorId, setFornecedorId] = useState("");
   const [tituloDocumento, setTituloDocumento] = useState("");
   const [tipoDocumento, setTipoDocumento] = useState<string>("outros");
@@ -285,18 +250,16 @@ function Documentos() {
   const [modeloSelecionado, setModeloSelecionado] = useState("");
   const [processoGeracao, setProcessoGeracao] = useState("");
   const [contratoGeracao, setContratoGeracao] = useState("");
-  const [camposComplementares, setCamposComplementares] = useState<
-    Record<string, string>
-  >({});
+  const [camposComplementares, setCamposComplementares] = useState<Record<string, string>>({});
   const [instalandoModelo, setInstalandoModelo] = useState<string | null>(null);
   const [fornecedorGeracao, setFornecedorGeracao] = useState("nenhum");
   const [tituloGerado, setTituloGerado] = useState("");
   const [conteudoGerado, setConteudoGerado] = useState("");
   const [salvandoGerado, setSalvandoGerado] = useState(false);
-  const [documentoImpressao, setDocumentoImpressao] =
-    useState<DocumentoGerado | null>(null);
-  const [documentoGeradoEditando, setDocumentoGeradoEditando] =
-    useState<DocumentoGerado | null>(null);
+  const [documentoImpressao, setDocumentoImpressao] = useState<DocumentoGerado | null>(null);
+  const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(
+    null,
+  );
   const [tituloEdicaoGerado, setTituloEdicaoGerado] = useState("");
   const [conteudoEdicaoGerado, setConteudoEdicaoGerado] = useState("");
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
@@ -379,11 +342,7 @@ function Documentos() {
             .order("id", { ascending: false })
             .range(inicio, fim),
         ),
-        db
-          .from("tenants")
-          .select("municipality")
-          .eq("id", selecionado.id)
-          .maybeSingle(),
+        db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
         carregarTodasAsPaginas<ModeloCatalogo>((inicio, fim) =>
           db
             .from("document_template_catalog")
@@ -397,9 +356,7 @@ function Documentos() {
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
-                .select(
-                  "id,number,title,stage,status,requesting_unit,responsible_name",
-                )
+                .select("id,number,title,stage,status,requesting_unit,responsible_name")
                 .eq("tenant_id", selecionado.id)
                 .neq("status", "arquivado")
                 .order("created_at", { ascending: false })
@@ -425,12 +382,7 @@ function Documentos() {
           p_tenant_id: selecionado.id,
         }),
       ]);
-      for (const result of [
-        cap,
-        tenantData,
-        workflowCapabilities,
-        workflowRecords,
-      ])
+      for (const result of [cap, tenantData, workflowCapabilities, workflowRecords])
         if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
         can_view: false,
@@ -452,15 +404,9 @@ function Documentos() {
       setProcessos(processRecords);
       setContratos(contractRecords);
       setGerados(generated);
-      setFluxosGerados(
-        (workflowRecords.data ?? []) as unknown as FluxoDocumento[],
-      );
-      setPodeEnviarAprovacao(
-        Boolean(workflowCapabilities.data?.[0]?.can_submit),
-      );
-      setPodeAprovarDocumento(
-        Boolean(workflowCapabilities.data?.[0]?.can_approve),
-      );
+      setFluxosGerados((workflowRecords.data ?? []) as unknown as FluxoDocumento[]);
+      setPodeEnviarAprovacao(Boolean(workflowCapabilities.data?.[0]?.can_submit));
+      setPodeAprovarDocumento(Boolean(workflowCapabilities.data?.[0]?.can_approve));
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -494,8 +440,7 @@ function Documentos() {
     (d) => d.expires_at && situacaoVencimento(d.expires_at).label === "Vencido",
   ).length;
   const proximos = documentos.filter(
-    (d) =>
-      d.expires_at && situacaoVencimento(d.expires_at).variant === "secondary",
+    (d) => d.expires_at && situacaoVencimento(d.expires_at).variant === "secondary",
   ).length;
 
   function abrirNovoDocumento() {
@@ -525,8 +470,7 @@ function Documentos() {
   function extrairDriveFileId(url: string): string | null {
     try {
       const parsed = new URL(url);
-      if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname))
-        return null;
+      if (!["drive.google.com", "docs.google.com"].includes(parsed.hostname)) return null;
       const match = parsed.pathname.match(/\/d\/([^/]+)/);
       return match?.[1] ?? parsed.searchParams.get("id");
     } catch {
@@ -538,9 +482,7 @@ function Documentos() {
     setArquivoDocumento(null);
     if (!file) return;
     if (documentoEditando) {
-      toast.error(
-        "Para substituir um arquivo, cadastre um novo documento e arquive o anterior.",
-      );
+      toast.error("Para substituir um arquivo, cadastre um novo documento e arquive o anterior.");
       return;
     }
     try {
@@ -569,9 +511,7 @@ function Documentos() {
         download: documento.file_name || true,
       });
     if (signedUrlError || !data?.signedUrl) {
-      toast.error(
-        signedUrlError?.message ?? "Não foi possível gerar o link temporário.",
-      );
+      toast.error(signedUrlError?.message ?? "Não foi possível gerar o link temporário.");
       return;
     }
 
@@ -585,9 +525,7 @@ function Documentos() {
       const text = await importarTextoDeModelo(file);
       setConteudoModelo(text);
       if (!tituloModelo.trim())
-        setTituloModelo(
-          file.name.replace(/\\.(txt|md|docx)$/i, "").slice(0, 180),
-        );
+        setTituloModelo(file.name.replace(/\\.(txt|md|docx)$/i, "").slice(0, 180));
       toast.success(
         file.name.toLowerCase().endsWith(".docx")
           ? "Texto do Word importado. Revise tabelas e espaçamentos antes de salvar."
@@ -648,9 +586,7 @@ function Documentos() {
         validated = await validarArquivoPrivado(arquivoDocumento);
       } catch (error) {
         setSalvandoDocumento(false);
-        toast.error(
-          error instanceof Error ? error.message : "Arquivo inválido.",
-        );
+        toast.error(error instanceof Error ? error.message : "Arquivo inválido.");
         return;
       }
 
@@ -673,28 +609,24 @@ function Documentos() {
 
       if (uploadError) {
         setSalvandoDocumento(false);
-        toast.error(
-          `Não foi possível enviar o arquivo: ${uploadError.message}`,
-        );
+        toast.error(`Não foi possível enviar o arquivo: ${uploadError.message}`);
         return;
       }
 
-      const { error: insertError } = await db
-        .from("supplier_documents")
-        .insert({
-          id: documentId,
-          tenant_id: selecionado.id,
-          supplier_id: fornecedorId,
-          ...metadata,
-          storage_provider: "supabase_storage",
-          storage_path: storagePath,
-          file_name: nomeSeguroArquivo(arquivoDocumento.name),
-          mime_type: validated.mimeType,
-          file_size: arquivoDocumento.size,
-          external_url: null,
-          drive_file_id: null,
-          status: "active",
-        });
+      const { error: insertError } = await db.from("supplier_documents").insert({
+        id: documentId,
+        tenant_id: selecionado.id,
+        supplier_id: fornecedorId,
+        ...metadata,
+        storage_provider: "supabase_storage",
+        storage_path: storagePath,
+        file_name: nomeSeguroArquivo(arquivoDocumento.name),
+        mime_type: validated.mimeType,
+        file_size: arquivoDocumento.size,
+        external_url: null,
+        drive_file_id: null,
+        status: "active",
+      });
 
       if (insertError) {
         const { error: cleanupError } = await db.storage
@@ -712,19 +644,15 @@ function Documentos() {
       toast.success("Documento e arquivo privado registrados com sucesso.");
     } else {
       const externalUrl = linkDocumento.trim();
-      const { error: insertError } = await db
-        .from("supplier_documents")
-        .insert({
-          tenant_id: selecionado.id,
-          supplier_id: fornecedorId,
-          ...metadata,
-          external_url: externalUrl || null,
-          storage_provider: extrairDriveFileId(externalUrl)
-            ? "google_drive"
-            : "external_link",
-          drive_file_id: extrairDriveFileId(externalUrl),
-          status: "active",
-        });
+      const { error: insertError } = await db.from("supplier_documents").insert({
+        tenant_id: selecionado.id,
+        supplier_id: fornecedorId,
+        ...metadata,
+        external_url: externalUrl || null,
+        storage_provider: extrairDriveFileId(externalUrl) ? "google_drive" : "external_link",
+        drive_file_id: extrairDriveFileId(externalUrl),
+        status: "active",
+      });
       setSalvandoDocumento(false);
       if (insertError) {
         toast.error(insertError.message);
@@ -792,8 +720,7 @@ function Documentos() {
   }
 
   async function restaurarVersaoModelo(versao: VersaoModelo) {
-    if (!selecionado || !capacidades.can_manage_templates || !modeloHistorico)
-      return;
+    if (!selecionado || !capacidades.can_manage_templates || !modeloHistorico) return;
     const confirmou = window.confirm(
       `Restaurar a versão ${versao.version} de "${modeloHistorico.title}"? O conteúdo atual será preservado no histórico e a restauração criará uma nova versão.`,
     );
@@ -822,9 +749,7 @@ function Documentos() {
       return;
     }
 
-    toast.success(
-      "Versão restaurada. Uma nova versão foi registrada no histórico.",
-    );
+    toast.success("Versão restaurada. Uma nova versão foi registrada no histórico.");
     setDialogHistoricoModelo(false);
     setModeloHistorico(null);
     await carregar();
@@ -840,9 +765,7 @@ function Documentos() {
       content: conteudoModelo.trim(),
       change_summary:
         resumoModelo.trim() ||
-        (modeloEditando
-          ? "Modelo editado pela Secretaria."
-          : "Modelo criado pela Secretaria."),
+        (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
     };
     const result = modeloEditando
       ? await db
@@ -890,13 +813,9 @@ function Documentos() {
     const tipoSolicitado = params.get("tipo");
     if (!processoId || !tipoSolicitado) return;
 
-    const processoExiste = processos.some(
-      (processo) => processo.id === processoId,
-    );
+    const processoExiste = processos.some((processo) => processo.id === processoId);
     if (!processoExiste) {
-      toast.error(
-        "O processo solicitado não está disponível nesta Secretaria.",
-      );
+      toast.error("O processo solicitado não está disponível nesta Secretaria.");
       params.delete("processo");
       params.delete("tipo");
       const query = params.toString();
@@ -909,17 +828,13 @@ function Documentos() {
     }
 
     iniciarGeracao(processoId);
-    const modelo = modelos.find(
-      (item) => item.is_active && item.template_type === tipoSolicitado,
-    );
+    const modelo = modelos.find((item) => item.is_active && item.template_type === tipoSolicitado);
     if (modelo) {
       setModeloSelecionado(modelo.id);
       setTituloGerado(modelo.title);
       setConteudoGerado(modelo.content);
     } else {
-      toast.info(
-        "Instale o modelo correspondente na Biblioteca-base para gerar este documento.",
-      );
+      toast.info("Instale o modelo correspondente na Biblioteca-base para gerar este documento.");
     }
 
     params.delete("processo");
@@ -967,31 +882,21 @@ function Documentos() {
         toast.error("Selecione um modelo instalado nesta Secretaria.");
         return;
       }
-      const contratoSelecionado = contratos.find(
-        (item) => item.id === contratoGeracao,
-      );
-      if (
-        contratoGeracao &&
-        contratoSelecionado?.process_id !== processoGeracao
-      ) {
+      const contratoSelecionado = contratos.find((item) => item.id === contratoGeracao);
+      if (contratoGeracao && contratoSelecionado?.process_id !== processoGeracao) {
         setSalvandoGerado(false);
-        toast.error(
-          "O contrato selecionado não pertence ao processo escolhido.",
-        );
+        toast.error("O contrato selecionado não pertence ao processo escolhido.");
         return;
       }
       const overrides = {
         ...camposComplementares,
         ...(contratoGeracao ? { contract_id: contratoGeracao } : {}),
       };
-      const { error: rpcError } = await db.rpc(
-        "generate_document_from_process",
-        {
-          p_process_id: processoGeracao,
-          p_template_id: modeloSelecionado,
-          p_overrides: overrides as Json,
-        },
-      );
+      const { error: rpcError } = await db.rpc("generate_document_from_process", {
+        p_process_id: processoGeracao,
+        p_template_id: modeloSelecionado,
+        p_overrides: overrides as Json,
+      });
       setSalvandoGerado(false);
       if (rpcError) {
         toast.error(rpcError.message);
@@ -1000,23 +905,19 @@ function Documentos() {
       toast.success("Documento vinculado ao processo e salvo como rascunho.");
     } else {
       const snapshot = preencherModelo();
-      const contratoSelecionado = contratos.find(
-        (item) => item.id === contratoGeracao,
-      );
-      const { error: insertError } = await db
-        .from("generated_documents")
-        .insert({
-          tenant_id: selecionado.id,
-          process_id: contratoSelecionado?.process_id ?? null,
-          contract_id: contratoSelecionado?.id ?? null,
-          supplier_id:
-            contratoSelecionado?.supplier_id ??
-            (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao),
-          template_id: modeloSelecionado || null,
-          title: tituloGerado.trim(),
-          content_snapshot: snapshot,
-          status: "draft",
-        });
+      const contratoSelecionado = contratos.find((item) => item.id === contratoGeracao);
+      const { error: insertError } = await db.from("generated_documents").insert({
+        tenant_id: selecionado.id,
+        process_id: contratoSelecionado?.process_id ?? null,
+        contract_id: contratoSelecionado?.id ?? null,
+        supplier_id:
+          contratoSelecionado?.supplier_id ??
+          (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao),
+        template_id: modeloSelecionado || null,
+        title: tituloGerado.trim(),
+        content_snapshot: snapshot,
+        status: "draft",
+      });
       setSalvandoGerado(false);
       if (insertError) {
         toast.error(insertError.message);
@@ -1065,12 +966,7 @@ function Documentos() {
 
   async function salvarEdicaoGerado(event: FormEvent) {
     event.preventDefault();
-    if (
-      !selecionado ||
-      !documentoGeradoEditando ||
-      !capacidades.can_update ||
-      salvandoEdicaoGerado
-    )
+    if (!selecionado || !documentoGeradoEditando || !capacidades.can_update || salvandoEdicaoGerado)
       return;
     if (tituloEdicaoGerado.trim().length < 2 || !conteudoEdicaoGerado.trim()) {
       toast.error("Informe título e conteúdo do documento.");
@@ -1091,35 +987,24 @@ function Documentos() {
       return;
     }
     setDocumentoGeradoEditando(null);
-    toast.success(
-      "Rascunho atualizado. O histórico de aprovação anterior foi preservado.",
-    );
+    toast.success("Rascunho atualizado. O histórico de aprovação anterior foi preservado.");
     await carregar();
   }
 
-  async function tramitarDocumento(
-    d: DocumentoGerado,
-    action: "submit" | "approve" | "reject",
-  ) {
+  async function tramitarDocumento(d: DocumentoGerado, action: "submit" | "approve" | "reject") {
     if (!selecionado) return;
     const comment =
-      action === "reject"
-        ? window.prompt("Informe o motivo da devolução para correção:")
-        : null;
+      action === "reject" ? window.prompt("Informe o motivo da devolução para correção:") : null;
     if (action === "reject" && (!comment || comment.trim().length < 5)) {
-      if (comment !== null)
-        toast.error("Informe um motivo com pelo menos 5 caracteres.");
+      if (comment !== null) toast.error("Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
-    const { data, error } = await db.rpc(
-      "transition_generated_document_workflow",
-      {
-        p_tenant_id: selecionado.id,
-        p_document_id: d.id,
-        p_action: action,
-        p_comment: comment?.trim() ?? null,
-      },
-    );
+    const { data, error } = await db.rpc("transition_generated_document_workflow", {
+      p_tenant_id: selecionado.id,
+      p_document_id: d.id,
+      p_action: action,
+      p_comment: comment?.trim() ?? null,
+    });
     if (error) {
       toast.error(error.message);
       return;
@@ -1134,11 +1019,7 @@ function Documentos() {
   }
 
   async function assinarDocumento(d: DocumentoGerado) {
-    if (
-      !selecionado ||
-      !capacidades.can_sign ||
-      fluxoPorDocumento.get(d.id)?.status !== "approved"
-    )
+    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved")
       return;
     const confirmou = window.confirm(
       "Confirma a assinatura eletrônica simples deste documento? A assinatura ficará registrada com sua conta, nome e data, e o conteúdo será bloqueado.",
@@ -1187,8 +1068,7 @@ function Documentos() {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Acesso não autorizado</AlertTitle>
         <AlertDescription>
-          Seu perfil não possui permissão para consultar documentos nesta
-          Secretaria.
+          Seu perfil não possui permissão para consultar documentos nesta Secretaria.
         </AlertDescription>
       </Alert>
     );
@@ -1197,12 +1077,9 @@ function Documentos() {
     <div className="space-y-6">
       <div className="print:hidden flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Documentos e vencimentos
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Documentos e vencimentos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Certidões, contratos, modelos e documentos gerados —{" "}
-            {selecionado.nome}
+            Certidões, contratos, modelos e documentos gerados — {selecionado.nome}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1239,9 +1116,7 @@ function Documentos() {
           <div className="print:hidden grid gap-3 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Documentos ativos
-                </CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Documentos ativos</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-semibold">{documentos.length}</p>
@@ -1249,14 +1124,10 @@ function Documentos() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Vencidos
-                </CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Vencidos</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold text-destructive">
-                  {vencidos}
-                </p>
+                <p className="text-2xl font-semibold text-destructive">{vencidos}</p>
               </CardContent>
             </Card>
             <Card>
@@ -1275,17 +1146,11 @@ function Documentos() {
             <TabsList>
               <TabsTrigger value="vencimentos">Vencimentos</TabsTrigger>
               {moduloModelosAtivo && (
-                <TabsTrigger value="modelos">
-                  Modelos ({modelos.length})
-                </TabsTrigger>
+                <TabsTrigger value="modelos">Modelos ({modelos.length})</TabsTrigger>
               )}
-              <TabsTrigger value="gerados">
-                Gerados ({gerados.length})
-              </TabsTrigger>
+              <TabsTrigger value="gerados">Gerados ({gerados.length})</TabsTrigger>
               {moduloModelosAtivo && capacidades.can_manage_templates && (
-                <TabsTrigger value="biblioteca">
-                  Biblioteca-base ({catalogo.length})
-                </TabsTrigger>
+                <TabsTrigger value="biblioteca">Biblioteca-base ({catalogo.length})</TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="vencimentos" className="mt-4">
@@ -1305,10 +1170,7 @@ function Documentos() {
                     <tbody>
                       {documentos.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={6}
-                            className="p-10 text-center text-muted-foreground"
-                          >
+                          <td colSpan={6} className="p-10 text-center text-muted-foreground">
                             Nenhum documento de fornecedor registrado.
                           </td>
                         </tr>
@@ -1321,11 +1183,9 @@ function Documentos() {
                               <td className="p-3">
                                 <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {TIPOS.find(
-                                    ([v]) => v === d.document_type,
-                                  )?.[1] ?? d.document_type}
-                                  {d.storage_provider === "supabase_storage" &&
-                                  d.file_name
+                                  {TIPOS.find(([v]) => v === d.document_type)?.[1] ??
+                                    d.document_type}
+                                  {d.storage_provider === "supabase_storage" && d.file_name
                                     ? ` · Arquivo privado: ${d.file_name}`
                                     : ""}
                                 </p>
@@ -1336,25 +1196,20 @@ function Documentos() {
                               <td className="p-3">{dataLocal(d.issue_date)}</td>
                               <td className="p-3">{dataLocal(d.expires_at)}</td>
                               <td className="p-3">
-                                <Badge variant={status.variant}>
-                                  {status.label}
-                                </Badge>
+                                <Badge variant={status.variant}>{status.label}</Badge>
                               </td>
                               <td className="p-3">
                                 <div className="flex justify-end gap-1">
-                                  {d.storage_provider === "supabase_storage" &&
-                                    d.storage_path && (
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          void abrirArquivoPrivado(d)
-                                        }
-                                        aria-label="Baixar arquivo privado"
-                                      >
-                                        <Download className="h-4 w-4" />
-                                      </Button>
-                                    )}
+                                  {d.storage_provider === "supabase_storage" && d.storage_path && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => void abrirArquivoPrivado(d)}
+                                      aria-label="Baixar arquivo privado"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                   {d.external_url && (
                                     <Button size="icon" variant="ghost" asChild>
                                       <a
@@ -1398,10 +1253,9 @@ function Documentos() {
                 </div>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Os avisos de vencimento são calculados pelo prazo informado. As
-                listas consultam todas as páginas disponíveis; os arquivos
-                permanecem no endereço externo informado até a integração OAuth
-                e sincronização automática com o Drive.
+                Os avisos de vencimento são calculados pelo prazo informado. As listas consultam
+                todas as páginas disponíveis; os arquivos permanecem no endereço externo informado
+                até a integração OAuth e sincronização automática com o Drive.
               </p>
             </TabsContent>
             {moduloModelosAtivo && (
@@ -1412,9 +1266,7 @@ function Documentos() {
                       <CardHeader>
                         <CardTitle className="text-base">{m.title}</CardTitle>
                         {m.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {m.description}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{m.description}</p>
                         )}
                       </CardHeader>
                       <CardContent>
@@ -1423,15 +1275,12 @@ function Documentos() {
                         </p>
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant="outline">Versão {m.version}</Badge>
-                          <Badge variant="outline">
-                            {m.template_type.toUpperCase()}
-                          </Badge>
+                          <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
                           {m.legal_basis && <span>{m.legal_basis}</span>}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Campos automáticos: processo, objeto, Secretaria,
-                          município, unidade, responsável, prioridade e prazo
-                          quando cadastrados.
+                          Campos automáticos: processo, objeto, Secretaria, município, unidade,
+                          responsável, prioridade e prazo quando cadastrados.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
                           <Button
@@ -1456,8 +1305,8 @@ function Documentos() {
                   ))}
                   {modelos.length === 0 && (
                     <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">
-                      Nenhum modelo cadastrado. Use “Novo modelo” para importar
-                      ou colar um texto-base.
+                      Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um
+                      texto-base.
                     </div>
                   )}
                 </div>
@@ -1466,10 +1315,9 @@ function Documentos() {
             {moduloModelosAtivo && capacidades.can_manage_templates && (
               <TabsContent value="biblioteca" className="mt-4">
                 <div className="mb-3 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Modelos-base orientativos da plataforma. A instalação cria uma
-                  cópia independente nesta Secretaria. Revise e adapte o
-                  conteúdo à regulamentação municipal e ao objeto antes de
-                  utilizar.
+                  Modelos-base orientativos da plataforma. A instalação cria uma cópia independente
+                  nesta Secretaria. Revise e adapte o conteúdo à regulamentação municipal e ao
+                  objeto antes de utilizar.
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {catalogo.length === 0 && (
@@ -1483,14 +1331,10 @@ function Documentos() {
                       <Card key={m.id}>
                         <CardHeader className="pb-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <CardTitle className="text-base">
-                              {m.title}
-                            </CardTitle>
+                            <CardTitle className="text-base">{m.title}</CardTitle>
                             <Badge variant="outline">v{m.version}</Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {m.description}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{m.description}</p>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <p className="text-xs text-muted-foreground">
@@ -1505,9 +1349,7 @@ function Documentos() {
                             Consultar referência normativa
                           </a>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {m.template_code}
-                            </span>
+                            <span className="text-xs text-muted-foreground">{m.template_code}</span>
                             {instalado ? (
                               <Badge variant="secondary">Já instalado</Badge>
                             ) : (
@@ -1546,10 +1388,7 @@ function Documentos() {
                     <tbody>
                       {gerados.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={5}
-                            className="p-10 text-center text-muted-foreground"
-                          >
+                          <td colSpan={5} className="p-10 text-center text-muted-foreground">
                             Nenhum documento gerado.
                           </td>
                         </tr>
@@ -1561,8 +1400,7 @@ function Documentos() {
                               <p className="text-xs text-muted-foreground">
                                 {d.process_id
                                   ? "Processo de contratação vinculado"
-                                  : (fornecedorPorId.get(d.supplier_id ?? "")
-                                      ?.legal_name ??
+                                  : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
                                     "Sem fornecedor vinculado")}
                               </p>
                             </td>
@@ -1573,22 +1411,18 @@ function Documentos() {
                                   : d.process_id
                                     ? `Processo ${processos.find((processo) => processo.id === d.process_id)?.number ?? "vinculado"}`
                                     : d.supplier_id
-                                      ? (fornecedorPorId.get(d.supplier_id)
-                                          ?.legal_name ??
+                                      ? (fornecedorPorId.get(d.supplier_id)?.legal_name ??
                                         "Fornecedor vinculado")
                                       : "Documento avulso"}
                               </span>
-                              {d.contract_id &&
-                                contratoPorId.get(d.contract_id)?.object && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {contratoPorId.get(d.contract_id)?.object}
-                                  </p>
-                                )}
+                              {d.contract_id && contratoPorId.get(d.contract_id)?.object && (
+                                <p className="text-xs text-muted-foreground">
+                                  {contratoPorId.get(d.contract_id)?.object}
+                                </p>
+                              )}
                             </td>
                             <td className="p-3">
-                              {new Intl.DateTimeFormat("pt-BR").format(
-                                new Date(d.created_at),
-                              )}
+                              {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
                             </td>
                             <td className="p-3">
                               <Badge
@@ -1631,26 +1465,19 @@ function Documentos() {
                                   return (
                                     <div className="flex flex-wrap items-center justify-end gap-1">
                                       <Badge
-                                        variant={
-                                          status === "approved"
-                                            ? "secondary"
-                                            : "outline"
-                                        }
+                                        variant={status === "approved" ? "secondary" : "outline"}
                                       >
                                         {labels[status] ?? status}
                                       </Badge>
                                       {d.status === "draft" &&
-                                        ["draft", "rejected"].includes(
-                                          status,
-                                        ) &&
+                                        ["draft", "rejected"].includes(status) &&
                                         capacidades.can_update && (
                                           <Button
                                             size="sm"
                                             variant="outline"
                                             onClick={() => abrirEdicaoGerado(d)}
                                           >
-                                            <Pencil className="h-3.5 w-3.5" />{" "}
-                                            Editar
+                                            <Pencil className="h-3.5 w-3.5" /> Editar
                                           </Button>
                                         )}
                                       {d.status === "draft" &&
@@ -1659,12 +1486,7 @@ function Documentos() {
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() =>
-                                              void tramitarDocumento(
-                                                d,
-                                                "submit",
-                                              )
-                                            }
+                                            onClick={() => void tramitarDocumento(d, "submit")}
                                           >
                                             Enviar para aprovação
                                           </Button>
@@ -1675,24 +1497,14 @@ function Documentos() {
                                           <>
                                             <Button
                                               size="sm"
-                                              onClick={() =>
-                                                void tramitarDocumento(
-                                                  d,
-                                                  "approve",
-                                                )
-                                              }
+                                              onClick={() => void tramitarDocumento(d, "approve")}
                                             >
                                               Aprovar
                                             </Button>
                                             <Button
                                               size="sm"
                                               variant="outline"
-                                              onClick={() =>
-                                                void tramitarDocumento(
-                                                  d,
-                                                  "reject",
-                                                )
-                                              }
+                                              onClick={() => void tramitarDocumento(d, "reject")}
                                             >
                                               Devolver
                                             </Button>
@@ -1703,18 +1515,14 @@ function Documentos() {
                                         status === "approved" && (
                                           <Button
                                             size="sm"
-                                            onClick={() =>
-                                              void assinarDocumento(d)
-                                            }
+                                            onClick={() => void assinarDocumento(d)}
                                           >
-                                            <CheckCircle2 className="h-4 w-4" />{" "}
-                                            Assinar
+                                            <CheckCircle2 className="h-4 w-4" /> Assinar
                                           </Button>
                                         )}
                                       {workflow?.decision_comment && (
                                         <span className="basis-full text-right text-xs text-muted-foreground">
-                                          Observação:{" "}
-                                          {workflow.decision_comment}
+                                          Observação: {workflow.decision_comment}
                                         </span>
                                       )}
                                     </div>
@@ -1754,8 +1562,7 @@ function Documentos() {
                 : "Registrar documento de fornecedor"}
             </DialogTitle>
             <DialogDescription>
-              Informe o documento, as datas e um link para o arquivo armazenado
-              externamente.
+              Informe o documento, as datas e um link para o arquivo armazenado externamente.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={salvarDocumento} className="space-y-4">
@@ -1807,11 +1614,7 @@ function Documentos() {
               </div>
               <div className="space-y-2">
                 <Label>Data de emissão</Label>
-                <Input
-                  type="date"
-                  value={emissao}
-                  onChange={(e) => setEmissao(e.target.value)}
-                />
+                <Input type="date" value={emissao} onChange={(e) => setEmissao(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Data de vencimento</Label>
@@ -1827,9 +1630,7 @@ function Documentos() {
                   <Input
                     type="file"
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
-                    onChange={(event) =>
-                      void selecionarArquivoPrivado(event.target.files?.[0])
-                    }
+                    onChange={(event) => void selecionarArquivoPrivado(event.target.files?.[0])}
                   />
                   {arquivoDocumento && (
                     <p className="text-xs text-muted-foreground">
@@ -1838,23 +1639,20 @@ function Documentos() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    PDF, Word, Excel, JPG ou PNG. Limite de 20 MB. O arquivo
-                    ficará em armazenamento privado e só poderá ser acessado por
-                    usuários autorizados desta Secretaria.
+                    PDF, Word, Excel, JPG ou PNG. Limite de 20 MB. O arquivo ficará em armazenamento
+                    privado e só poderá ser acessado por usuários autorizados desta Secretaria.
                   </p>
                 </div>
               )}
               {documentoEditando?.storage_provider === "supabase_storage" && (
                 <Alert className="sm:col-span-2">
                   <AlertDescription>
-                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O
-                    conteúdo é imutável. Para substituir, cadastre um novo
-                    documento e arquive este registro.
+                    Arquivo privado: {documentoEditando.file_name ?? "anexo"}. O conteúdo é
+                    imutável. Para substituir, cadastre um novo documento e arquive este registro.
                   </AlertDescription>
                 </Alert>
               )}
-              {(!documentoEditando ||
-                documentoEditando.storage_provider !== "supabase_storage") &&
+              {(!documentoEditando || documentoEditando.storage_provider !== "supabase_storage") &&
                 !arquivoDocumento && (
                   <div className="space-y-2">
                     <Label>Link do arquivo (Drive ou outro)</Label>
@@ -1877,17 +1675,10 @@ function Documentos() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogDocumento(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setDialogDocumento(false)}>
                 <X className="h-4 w-4" /> Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={salvandoDocumento || !fornecedorId}
-              >
+              <Button type="submit" disabled={salvandoDocumento || !fornecedorId}>
                 {salvandoDocumento ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -1910,9 +1701,7 @@ function Documentos() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {modeloEditando
-                ? "Editar modelo de documento"
-                : "Novo modelo de documento"}
+              {modeloEditando ? "Editar modelo de documento" : "Novo modelo de documento"}
             </DialogTitle>
             <DialogDescription>
               {modeloEditando
@@ -1951,9 +1740,7 @@ function Documentos() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="arquivo-modelo">
-                Importar modelo (.docx, .txt ou .md)
-              </Label>
+              <Label htmlFor="arquivo-modelo">Importar modelo (.docx, .txt ou .md)</Label>
               <Input
                 id="arquivo-modelo"
                 type="file"
@@ -1964,12 +1751,10 @@ function Documentos() {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                No DOCX, parágrafos e tabelas simples são importados como texto
-                editável.
+                No DOCX, parágrafos e tabelas simples são importados como texto editável.
                 <br />
-                Formatação visual, imagens, cabeçalhos e rodapés não são
-                preservados. Também é possível copiar e colar o conteúdo no
-                campo abaixo.
+                Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também é
+                possível copiar e colar o conteúdo no campo abaixo.
               </p>
             </div>
             <div className="space-y-2">
@@ -1986,11 +1771,7 @@ function Documentos() {
               />
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogModelo(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={salvandoModelo}>
@@ -2006,16 +1787,13 @@ function Documentos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={dialogHistoricoModelo}
-        onOpenChange={setDialogHistoricoModelo}
-      >
+      <Dialog open={dialogHistoricoModelo} onOpenChange={setDialogHistoricoModelo}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Histórico de versões</DialogTitle>
             <DialogDescription>
-              {modeloHistorico?.title ?? "Modelo"} — as versões anteriores são
-              somente para consulta.
+              {modeloHistorico?.title ?? "Modelo"} — as versões anteriores são somente para
+              consulta.
             </DialogDescription>
           </DialogHeader>
           {carregandoVersoes ? (
@@ -2032,16 +1810,13 @@ function Documentos() {
                 <Card key={versao.id}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CardTitle className="text-base">
-                        Versão {versao.version}
-                      </CardTitle>
+                      <CardTitle className="text-base">Versão {versao.version}</CardTitle>
                       <Badge variant="outline">
                         {new Date(versao.created_at).toLocaleString("pt-BR")}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {versao.change_summary ||
-                        "Versão arquivada automaticamente."}
+                      {versao.change_summary || "Versão arquivada automaticamente."}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -2074,10 +1849,7 @@ function Documentos() {
             </div>
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogHistoricoModelo(false)}
-            >
+            <Button variant="outline" onClick={() => setDialogHistoricoModelo(false)}>
               Fechar histórico
             </Button>
           </DialogFooter>
@@ -2089,8 +1861,8 @@ function Documentos() {
           <DialogHeader>
             <DialogTitle>Gerar documento</DialogTitle>
             <DialogDescription>
-              Gere um rascunho avulso ou vinculado a um processo. O conteúdo e
-              os dados de origem ficam registrados como fotografia do documento.
+              Gere um rascunho avulso ou vinculado a um processo. O conteúdo e os dados de origem
+              ficam registrados como fotografia do documento.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
@@ -2103,22 +1875,17 @@ function Documentos() {
                     <Select
                       value={processoGeracao || "sem_vinculo"}
                       onValueChange={(value) => {
-                        setProcessoGeracao(
-                          value === "sem_vinculo" ? "" : value,
-                        );
+                        setProcessoGeracao(value === "sem_vinculo" ? "" : value);
                         setContratoGeracao("");
                         setCamposComplementares({});
-                        if (value !== "sem_vinculo")
-                          setFornecedorGeracao("nenhum");
+                        if (value !== "sem_vinculo") setFornecedorGeracao("nenhum");
                       }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Documento avulso ou selecione um processo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sem_vinculo">
-                          Documento avulso (sem processo)
-                        </SelectItem>
+                        <SelectItem value="sem_vinculo">Documento avulso (sem processo)</SelectItem>
                         {processos.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.number} — {p.title}
@@ -2135,9 +1902,7 @@ function Documentos() {
                     value={contratoGeracao || "sem_contrato"}
                     onValueChange={(value) => {
                       const contratoId = value === "sem_contrato" ? "" : value;
-                      const contrato = contratos.find(
-                        (item) => item.id === contratoId,
-                      );
+                      const contrato = contratos.find((item) => item.id === contratoId);
                       setContratoGeracao(contratoId);
                       if (contrato) {
                         setProcessoGeracao(contrato.process_id ?? "");
@@ -2154,9 +1919,7 @@ function Documentos() {
                       {contratos
                         .filter((contrato) => contrato.status !== "arquivado")
                         .filter(
-                          (contrato) =>
-                            !processoGeracao ||
-                            contrato.process_id === processoGeracao,
+                          (contrato) => !processoGeracao || contrato.process_id === processoGeracao,
                         )
                         .map((contrato) => (
                           <SelectItem key={contrato.id} value={contrato.id}>
@@ -2166,17 +1929,14 @@ function Documentos() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Ao selecionar um contrato, o sistema vincula também seu
-                    processo e fornecedor cadastrados, quando existirem.
+                    Ao selecionar um contrato, o sistema vincula também seu processo e fornecedor
+                    cadastrados, quando existirem.
                   </p>
                 </div>
               )}
               <div className="space-y-2">
                 <Label>Modelo</Label>
-                <Select
-                  value={modeloSelecionado}
-                  onValueChange={selecionarModelo}
-                >
+                <Select value={modeloSelecionado} onValueChange={selecionarModelo}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um modelo" />
                   </SelectTrigger>
@@ -2227,16 +1987,14 @@ function Documentos() {
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Dados complementares do documento</Label>
                   <p className="text-xs text-muted-foreground">
-                    Os campos com origem nos dados do processo serão preenchidos
-                    automaticamente. Complete apenas os campos técnicos e
-                    administrativos abaixo; dados ausentes no cadastro ficam
-                    identificados no rascunho para conferência.
+                    Os campos com origem nos dados do processo serão preenchidos automaticamente.
+                    Complete apenas os campos técnicos e administrativos abaixo; dados ausentes no
+                    cadastro ficam identificados no rascunho para conferência.
                   </p>
                   {camposDoModelo.length === 0 ? (
                     <Alert>
                       <AlertDescription>
-                        Selecione um modelo-base instalado que contenha os
-                        campos de preenchimento.
+                        Selecione um modelo-base instalado que contenha os campos de preenchimento.
                       </AlertDescription>
                     </Alert>
                   ) : (
@@ -2276,24 +2034,19 @@ function Documentos() {
                     onChange={(e) => setConteudoGerado(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Campos automáticos: fornecedor, nome_fantasia, cnpj,
-                    secretaria, municipio, data e usuario.
+                    Campos automáticos: fornecedor, nome_fantasia, cnpj, secretaria, municipio, data
+                    e usuario.
                   </p>
                 </div>
               )}
               <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground sm:col-span-2">
-                <AlertCircle className="mr-1 inline h-3.5 w-3.5" /> A assinatura
-                disponível nesta fase é uma assinatura eletrônica simples
-                vinculada à sessão autenticada. Não substitui certificado
-                ICP-Brasil nem assinatura qualificada.
+                <AlertCircle className="mr-1 inline h-3.5 w-3.5" /> A assinatura disponível nesta
+                fase é uma assinatura eletrônica simples vinculada à sessão autenticada. Não
+                substitui certificado ICP-Brasil nem assinatura qualificada.
               </div>
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogGerar(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setDialogGerar(false)}>
                 Cancelar
               </Button>
               <Button
@@ -2303,9 +2056,7 @@ function Documentos() {
                   (processoGeracao
                     ? !modeloSelecionado ||
                       camposDoModelo.some(
-                        (campo) =>
-                          campo.required &&
-                          !camposComplementares[campo.key]?.trim(),
+                        (campo) => campo.required && !camposComplementares[campo.key]?.trim(),
                       )
                     : !tituloGerado.trim() || !conteudoGerado.trim())
                 }
@@ -2324,9 +2075,7 @@ function Documentos() {
 
       <Dialog
         open={!!documentoGeradoEditando}
-        onOpenChange={(open) =>
-          !salvandoEdicaoGerado && !open && setDocumentoGeradoEditando(null)
-        }
+        onOpenChange={(open) => !salvandoEdicaoGerado && !open && setDocumentoGeradoEditando(null)}
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
@@ -2350,13 +2099,11 @@ function Documentos() {
                 rows={18}
                 maxLength={100000}
                 value={conteudoEdicaoGerado}
-                onChange={(event) =>
-                  setConteudoEdicaoGerado(event.target.value)
-                }
+                onChange={(event) => setConteudoEdicaoGerado(event.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                A edição só fica disponível enquanto o documento não estiver
-                aguardando aprovação, aprovado ou assinado.
+                A edição só fica disponível enquanto o documento não estiver aguardando aprovação,
+                aprovado ou assinado.
               </p>
             </div>
             <DialogFooter>
@@ -2371,9 +2118,7 @@ function Documentos() {
               <Button
                 type="submit"
                 disabled={
-                  salvandoEdicaoGerado ||
-                  !tituloEdicaoGerado.trim() ||
-                  !conteudoEdicaoGerado.trim()
+                  salvandoEdicaoGerado || !tituloEdicaoGerado.trim() || !conteudoEdicaoGerado.trim()
                 }
               >
                 {salvandoEdicaoGerado ? (
@@ -2392,9 +2137,7 @@ function Documentos() {
         <div className="hidden print:block print:p-12">
           <div className="mx-auto max-w-4xl">
             <p className="mb-8 text-center text-sm">{selecionado.nome}</p>
-            <h1 className="mb-8 text-center text-2xl font-bold">
-              {documentoImpressao.title}
-            </h1>
+            <h1 className="mb-8 text-center text-2xl font-bold">{documentoImpressao.title}</h1>
             {documentoImpressao.process_id && (
               <p className="mb-5 text-center text-sm">
                 Documento vinculado ao processo de contratação.
@@ -2410,9 +2153,7 @@ function Documentos() {
                 <p>{documentoImpressao.signed_email}</p>
                 <p>
                   {documentoImpressao.signed_at
-                    ? new Date(documentoImpressao.signed_at).toLocaleString(
-                        "pt-BR",
-                      )
+                    ? new Date(documentoImpressao.signed_at).toLocaleString("pt-BR")
                     : ""}
                 </p>
               </div>
