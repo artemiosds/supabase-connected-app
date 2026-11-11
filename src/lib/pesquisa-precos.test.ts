@@ -13,7 +13,9 @@ const cotacoes = [
 
 describe("mapa de pesquisa de preços", () => {
   it("normaliza o frete pela quantidade cotada", () => {
-    expect(precoUnitarioComFrete(cotacoes[0])).toBe(12);
+    expect(
+      precoUnitarioComFrete({ quantity: 10, unit_price: 10, delivery_cost: 20, total_price: 120 }),
+    ).toBe(12);
   });
 
   it("calcula menor preço, média, mediana e coeficiente de variação", () => {
@@ -33,17 +35,19 @@ describe("mapa de pesquisa de preços", () => {
     const csv = gerarCsvMapaDePrecos(
       "12/2026",
       [{ id: "item-1", line_number: 1, description: "=cmd|malicioso", unit: "un", quantity: 1 }],
-      [{
-        id: "quote-1",
-        procurement_item_id: "item-1",
-        source_name: "Fonte",
-        quoted_at: "2026-11-11",
-        quantity: 1,
-        unit_price: 4,
-        delivery_cost: 0,
-        total_price: 4,
-        selected_for_estimate: false,
-      }],
+      [
+        {
+          id: "quote-1",
+          procurement_item_id: "item-1",
+          source_name: "Fonte",
+          quoted_at: "2026-11-11",
+          quantity: 1,
+          unit_price: 4,
+          delivery_cost: 0,
+          total_price: 4,
+          selected_for_estimate: false,
+        },
+      ],
     );
     expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(csv).toContain('"\'=cmd|malicioso"');

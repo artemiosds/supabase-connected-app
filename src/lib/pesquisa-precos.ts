@@ -57,13 +57,18 @@ export function calcularResumoDePrecos(quotes: Precificacao[]): ResumoDePrecos {
     return { quantidade: 0, menor: null, media: null, mediana: null, coeficienteVariacao: null };
   }
   const media = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const firstValue = values[0];
+  if (firstValue === undefined) {
+    return { quantidade: 0, menor: null, media: null, mediana: null, coeficienteVariacao: null };
+  }
   const middle = Math.floor(values.length / 2);
-  const mediana =
-    values.length % 2 === 0 ? (values[middle - 1] + values[middle]) / 2 : values[middle];
+  const lower = values[middle - 1] ?? firstValue;
+  const upper = values[middle] ?? firstValue;
+  const mediana = values.length % 2 === 0 ? (lower + upper) / 2 : upper;
   const variance = values.reduce((sum, value) => sum + (value - media) ** 2, 0) / values.length;
   return {
     quantidade: values.length,
-    menor: values[0],
+    menor: firstValue,
     media,
     mediana,
     coeficienteVariacao: media > 0 ? (Math.sqrt(variance) / media) * 100 : null,
@@ -71,7 +76,9 @@ export function calcularResumoDePrecos(quotes: Precificacao[]): ResumoDePrecos {
 }
 
 function escaparCelulaCsv(value: string | number | boolean | null | undefined): string {
-  let text = String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+  let text = String(value ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
   if (/^[\s\u0000-\u001f]*[=+\-@]/.test(text)) text = "'" + text;
   return '"' + text.replace(/"/g, '""') + '"';
 }
@@ -81,13 +88,28 @@ export function gerarCsvMapaDePrecos(
   items: ItemMapa[],
   quotes: CotacaoMapa[],
 ): string {
-  const rows: Array<Array<string | number | boolean | null>> = [[
-    "Processo", "Item", "Descrição", "Unidade", "Quantidade prevista", "Fonte",
-    "Data da cotação", "Quantidade cotada", "Preço unitário", "Frete", "Preço total",
-    "Preço unitário equivalente com frete", "Selecionada como referência",
-    "Média unitária", "Mediana unitária", "Menor unitário", "Coeficiente de variação (%)",
-    "Referência consultada",
-  ]];
+  const rows: Array<Array<string | number | boolean | null>> = [
+    [
+      "Processo",
+      "Item",
+      "Descrição",
+      "Unidade",
+      "Quantidade prevista",
+      "Fonte",
+      "Data da cotação",
+      "Quantidade cotada",
+      "Preço unitário",
+      "Frete",
+      "Preço total",
+      "Preço unitário equivalente com frete",
+      "Selecionada como referência",
+      "Média unitária",
+      "Mediana unitária",
+      "Menor unitário",
+      "Coeficiente de variação (%)",
+      "Referência consultada",
+    ],
+  ];
   for (const item of items) {
     const itemQuotes = quotes.filter((quote) => quote.procurement_item_id === item.id);
     const summary = calcularResumoDePrecos(itemQuotes);
