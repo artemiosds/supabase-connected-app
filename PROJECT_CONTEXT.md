@@ -10,7 +10,8 @@
 
 ## Estrutura do código
 
-- `src/routes`: páginas TanStack Router; área autenticada em `_authenticated`.
+- `src/routes`: páginas TanStack Router; área autenticada em `_authenticated`. A raiz pública (`/`) apresenta a página inicial do produto para visitantes e preserva o redirecionamento de usuários autenticados ao painel.
+- `src/components/site-home.tsx`: apresentação responsiva dos módulos e dos controles de acesso, com prévia visual explicitamente ilustrativa e CTAs para login.
 - `src/components` e `src/components/ui`: componentes da aplicação e primitives visuais. A aba
   Configuração técnica no Painel Master documenta ajustes manuais sem armazenar segredos.
 - `src/hooks`: estado de autenticação, tenant, permissões e responsividade.
