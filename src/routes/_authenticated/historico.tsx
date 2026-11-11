@@ -13,7 +13,10 @@ export const Route = createFileRoute("/_authenticated/historico")({
   component: Historico,
 });
 
-type Evento = Tables<"audit_events">;
+type Evento = Pick<
+  Tables<"audit_events">,
+  "id" | "action" | "actor_id" | "created_at" | "details" | "entity" | "entity_id"
+>;
 
 function camposAlterados(details: unknown): string[] {
   if (!details || typeof details !== "object" || Array.isArray(details)) return [];
@@ -51,7 +54,7 @@ function Historico() {
       setErro(null);
       const { data, error } = await db
         .from("audit_events")
-        .select("*")
+        .select("id,action,actor_id,created_at,details,entity,entity_id")
         .eq("tenant_id", selecionado.id)
         .order("created_at", { ascending: false })
         .limit(200);
