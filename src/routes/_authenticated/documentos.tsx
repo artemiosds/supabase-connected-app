@@ -418,6 +418,10 @@ function Documentos() {
     () => new Map(fornecedores.map((f) => [f.id, f])),
     [fornecedores],
   );
+  const contratoPorId = useMemo(
+    () => new Map(contratos.map((contrato) => [contrato.id, contrato])),
+    [contratos],
+  );
   const vencidos = documentos.filter(
     (d) => d.expires_at && situacaoVencimento(d.expires_at).label === "Vencido",
   ).length;
@@ -1360,6 +1364,7 @@ function Documentos() {
                     <thead className="bg-muted/40 text-left">
                       <tr>
                         <th className="p-3 font-medium">Documento</th>
+                        <th className="p-3 font-medium">Vínculo</th>
                         <th className="p-3 font-medium">Data</th>
                         <th className="p-3 font-medium">Situação</th>
                         <th className="p-3 text-right font-medium">Ações</th>
@@ -1368,7 +1373,7 @@ function Documentos() {
                     <tbody>
                       {gerados.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="p-10 text-center text-muted-foreground">
+                          <td colSpan={5} className="p-10 text-center text-muted-foreground">
                             Nenhum documento gerado.
                           </td>
                         </tr>
@@ -1383,6 +1388,22 @@ function Documentos() {
                                   : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
                                     "Sem fornecedor vinculado")}
                               </p>
+                            </td>
+                            <td className="p-3">
+                              <span className="font-medium">
+                                {d.contract_id
+                                  ? `Contrato ${contratoPorId.get(d.contract_id)?.number ?? "vinculado"}`
+                                  : d.process_id
+                                    ? `Processo ${processos.find((processo) => processo.id === d.process_id)?.number ?? "vinculado"}`
+                                    : d.supplier_id
+                                      ? (fornecedorPorId.get(d.supplier_id)?.legal_name ?? "Fornecedor vinculado")
+                                      : "Documento avulso"}
+                              </span>
+                              {d.contract_id && contratoPorId.get(d.contract_id)?.object && (
+                                <p className="text-xs text-muted-foreground">
+                                  {contratoPorId.get(d.contract_id)?.object}
+                                </p>
+                              )}
                             </td>
                             <td className="p-3">
                               {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
