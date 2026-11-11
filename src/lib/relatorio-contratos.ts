@@ -33,8 +33,16 @@ function celulaCsv(valor: string | number): string {
 
 export function gerarCsvContratosAVencerEm90Dias(linhas: LinhaRelatorioContrato[]): string {
   const cabecalho = [
-    "Contrato", "Objeto", "Fornecedor", "Processo", "Modalidade", "Valor total",
-    "Fim da vigência", "Dias restantes", "Gestor", "Fiscal",
+    "Contrato",
+    "Objeto",
+    "Fornecedor",
+    "Processo",
+    "Modalidade",
+    "Valor total",
+    "Fim da vigência",
+    "Dias restantes",
+    "Gestor",
+    "Fiscal",
   ];
   const dados = linhas.map((linha) => [
     linha.number,
@@ -48,5 +56,7 @@ export function gerarCsvContratosAVencerEm90Dias(linhas: LinhaRelatorioContrato[
     linha.manager,
     linha.inspector,
   ]);
-  return "\uFEFF" + [cabecalho, ...dados].map((linha) => linha.map(celulaCsv).join(";")).join("\r\n");
+  return (
+    "\uFEFF" + [cabecalho, ...dados].map((linha) => linha.map(celulaCsv).join(";")).join("\r\n")
+  );
 }
