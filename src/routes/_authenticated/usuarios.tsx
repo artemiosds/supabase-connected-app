@@ -330,13 +330,18 @@ function Usuarios() {
     await carregar();
   }
 
-  function statusConvite(status: string) {
-    if (status === "pending") return "Pendente";
-    if (status === "accepted") return "Aceito";
-    if (status === "revoked") return "Cancelado";
-    if (status === "expired") return "Expirado";
-    if (status === "already_member") return "Já era membro";
-    return status;
+  function conviteExpirado(convite: Convite) {
+    return convite.status === "expired" ||
+      (convite.status === "pending" && Date.parse(convite.expires_at) <= Date.now());
+  }
+
+  function statusConvite(convite: Convite) {
+    if (conviteExpirado(convite)) return "Expirado";
+    if (convite.status === "pending") return "Pendente";
+    if (convite.status === "accepted") return "Aceito";
+    if (convite.status === "revoked") return "Cancelado";
+    if (convite.status === "already_member") return "Já era membro";
+    return convite.status;
   }
 
   function abrirEdicaoPapel(membro: Membro) {
@@ -654,7 +659,9 @@ function Usuarios() {
               </p>
             </div>
             <Badge variant="outline">
-              {convites.filter((convite) => convite.status === "pending").length} pendentes
+              {convites.filter(
+                (convite) => convite.status === "pending" && !conviteExpirado(convite),
+              ).length} pendentes
             </Badge>
           </div>
           {convites.length === 0 ? (
@@ -672,7 +679,7 @@ function Usuarios() {
                     <p className="truncate text-sm font-medium">{convite.invited_email}</p>
                     <p className="text-xs text-muted-foreground">
                       {papeis.find((role) => role.id === convite.role_id)?.name ?? "Papel"} ·{" "}
-                      {statusConvite(convite.status)} · expira em{" "}
+                      {statusConvite(convite)} · expira em{" "}
                       {new Date(convite.expires_at).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
