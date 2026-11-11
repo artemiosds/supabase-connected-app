@@ -458,6 +458,7 @@ export type Database = {
           content_snapshot: string;
           created_at: string;
           created_by: string;
+          contract_id: string | null;
           document_type: string;
           id: string;
           process_id: string | null;
@@ -481,6 +482,7 @@ export type Database = {
           content_snapshot: string;
           created_at?: string;
           created_by?: string;
+          contract_id?: string | null;
           document_type?: string;
           id?: string;
           process_id?: string | null;
@@ -504,6 +506,7 @@ export type Database = {
           content_snapshot?: string;
           created_at?: string;
           created_by?: string;
+          contract_id?: string | null;
           document_type?: string;
           id?: string;
           process_id?: string | null;
@@ -532,18 +535,25 @@ export type Database = {
             referencedColumns: ["id", "tenant_id"];
           },
           {
-            foreignKeyName: "generated_documents_supplier_id_fkey";
-            columns: ["supplier_id"];
+            foreignKeyName: "generated_documents_contract_tenant_fk";
+            columns: ["tenant_id", "contract_id"];
             isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            referencedRelation: "contracts";
+            referencedColumns: ["tenant_id", "id"];
           },
           {
-            foreignKeyName: "generated_documents_template_id_fkey";
-            columns: ["template_id"];
+            foreignKeyName: "generated_documents_supplier_tenant_fk";
+            columns: ["tenant_id", "supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "generated_documents_template_tenant_fk";
+            columns: ["template_id", "tenant_id"];
             isOneToOne: false;
             referencedRelation: "document_templates";
-            referencedColumns: ["id"];
+            referencedColumns: ["id", "tenant_id"];
           },
           {
             foreignKeyName: "generated_documents_tenant_id_fkey";
