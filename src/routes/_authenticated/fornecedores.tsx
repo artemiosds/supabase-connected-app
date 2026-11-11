@@ -1,4 +1,3 @@
-../../../../tmp/fornecedores-sanctions.tsx 219ms
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Building2, History, Loader2, Pencil, Plus, Search, ShieldCheck, X } from "lucide-react";
