@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
-import { AuthShell } from "@/components/auth-shell";
+import { PortalAuthShell } from "@/components/portal-auth-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,16 +57,28 @@ function Entrar() {
   const { portal } = Route.useSearch();
   const { signIn, session, loading } = useAuth();
   const navigate = useNavigate();
+  const irParaPortal = useCallback(
+    (replace = false) => {
+      if (portal === "master") {
+        void navigate({ to: "/admin-master", replace });
+        return;
+      }
+      if (portal === "suporte") {
+        void navigate({ to: "/suporte", replace });
+        return;
+      }
+      void navigate({ to: "/painel", replace });
+    },
+    [navigate, portal],
+  );
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) {
-      navigate({ to: "/painel", replace: true });
-    }
-  }, [loading, session, navigate]);
+    if (!loading && session) irParaPortal(true);
+  }, [loading, session, irParaPortal]);
 
   const convitePendente =
     typeof window !== "undefined" &&
@@ -82,30 +94,12 @@ function Entrar() {
       setErro(erroLogin);
       return;
     }
-    if (portal === "master") {
-      navigate({ to: "/admin-master" });
-      return;
-    }
-    if (portal === "suporte") {
-      navigate({ to: "/suporte" });
-      return;
-    }
-    navigate({ to: "/painel" });
+    irParaPortal();
   }
 
-  const textoPortal = portal ? PORTAL_TEXTO[portal] : null;
-
   return (
-    <AuthShell
-      title={textoPortal?.title ?? "Entrar"}
-      subtitle={
-        convitePendente
-          ? "Entre com sua conta ou abra o convite recebido para concluir a ativação."
-          : (textoPortal?.subtitle ?? "Acesse sua conta para continuar.")
-      }
-      returnTo="/"
-      returnLabel="Voltar ao início"
-    >
+    <PortalAuthShell portal={portal}>
+      <form onSubmit={aoEnviar} className="space-y-4">
       <form onSubmit={aoEnviar} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
@@ -151,6 +145,6 @@ function Entrar() {
           Criar conta
         </Link>
       </div>
-    </AuthShell>
+    </PortalAuthShell>
   );
 }
