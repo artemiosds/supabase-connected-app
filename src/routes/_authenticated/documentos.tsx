@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -45,6 +45,13 @@ import {
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { importarTextoDeModelo } from "@/lib/docx-import";
 import {
+  buildDocumentTemplateSchema,
+  buildDocumentVariableValues,
+  DOCUMENT_TEMPLATE_VARIABLES,
+  renderDocumentTemplate,
+  type DocumentVariableContext,
+} from "@/lib/document-variables";
+import {
   extractGoogleDriveFileId,
   normalizeExternalDocumentUrl,
 } from "@/lib/external-document-url";
@@ -63,11 +70,34 @@ type ModeloCatalogo = Tables<"document_template_catalog">;
 type VersaoModelo = Tables<"document_template_versions">;
 type ProcessoContratacao = Pick<
   Tables<"procurement_processes">,
-  "id" | "number" | "title" | "stage" | "status" | "requesting_unit" | "responsible_name"
+  | "id"
+  | "number"
+  | "title"
+  | "description"
+  | "modality"
+  | "stage"
+  | "status"
+  | "priority"
+  | "requesting_unit"
+  | "responsible_name"
+  | "estimated_value"
+  | "due_date"
 >;
 type ContratoGeracao = Pick<
   Tables<"contracts">,
-  "id" | "number" | "object" | "process_id" | "supplier_id" | "status"
+  | "id"
+  | "number"
+  | "object"
+  | "process_id"
+  | "supplier_id"
+  | "status"
+  | "modality"
+  | "total_value"
+  | "start_date"
+  | "end_date"
+  | "manager_name"
+  | "inspector_name"
+  | "ordinance"
 >;
 type CampoComplementar = {
   key: string;
@@ -202,6 +232,9 @@ function Documentos() {
   });
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [municipioSecretaria, setMunicipioSecretaria] = useState("");
+  const [ufSecretaria, setUfSecretaria] = useState("");
+  const [cnpjSecretaria, setCnpjSecretaria] = useState("");
+  const [codigoIbgeSecretaria, setCodigoIbgeSecretaria] = useState("");
   const [documentos, setDocumentos] = useState<DocumentoFornecedor[]>([]);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [catalogo, setCatalogo] = useState<ModeloCatalogo[]>([]);
@@ -243,6 +276,10 @@ function Documentos() {
   const [tituloModelo, setTituloModelo] = useState("");
   const [descricaoModelo, setDescricaoModelo] = useState("");
   const [conteudoModelo, setConteudoModelo] = useState("");
+  const conteudoModeloRef = useRef<HTMLTextAreaElement | null>(null);
+  const [tipoModelo, setTipoModelo] = useState("custom");
+  const [baseLegalModelo, setBaseLegalModelo] = useState("");
+  const [fonteModelo, setFonteModelo] = useState("");
   const [resumoModelo, setResumoModelo] = useState("");
   const [salvandoModelo, setSalvandoModelo] = useState(false);
   const [dialogHistoricoModelo, setDialogHistoricoModelo] = useState(false);
@@ -288,6 +325,9 @@ function Documentos() {
       setPodeEnviarAprovacao(false);
       setPodeAprovarDocumento(false);
       setMunicipioSecretaria("");
+      setUfSecretaria("");
+      setCnpjSecretaria("");
+      setCodigoIbgeSecretaria("");
       setLoading(false);
       return;
     }
@@ -346,7 +386,7 @@ function Documentos() {
             .order("id", { ascending: false })
             .range(inicio, fim),
         ),
-        db.from("tenants").select("municipality").eq("id", selecionado.id).maybeSingle(),
+        db.from("tenants").select("municipality,state,cnpj,ibge_code").eq("id", selecionado.id).maybeSingle(),
         carregarTodasAsPaginas<ModeloCatalogo>((inicio, fim) =>
           db
             .from("document_template_catalog")
@@ -360,7 +400,7 @@ function Documentos() {
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
-                .select("id,number,title,stage,status,requesting_unit,responsible_name")
+                .select("id,number,title,description,modality,stage,status,priority,requesting_unit,responsible_name,estimated_value,due_date")
                 .eq("tenant_id", selecionado.id)
                 .neq("status", "arquivado")
                 .order("created_at", { ascending: false })
@@ -372,7 +412,7 @@ function Documentos() {
           ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
               db
                 .from("contracts")
-                .select("id,number,object,process_id,supplier_id,status")
+                .select("id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance")
                 .eq("tenant_id", selecionado.id)
                 .order("number")
                 .order("id")
@@ -412,6 +452,9 @@ function Documentos() {
       setPodeEnviarAprovacao(Boolean(workflowCapabilities.data?.[0]?.can_submit));
       setPodeAprovarDocumento(Boolean(workflowCapabilities.data?.[0]?.can_approve));
       setMunicipioSecretaria(tenantData.data?.municipality ?? "");
+      setUfSecretaria(tenantData.data?.state ?? "");
+      setCnpjSecretaria(tenantData.data?.cnpj ?? "");
+      setCodigoIbgeSecretaria(tenantData.data?.ibge_code ?? "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
@@ -687,6 +730,9 @@ function Documentos() {
     setTituloModelo("");
     setDescricaoModelo("");
     setConteudoModelo("");
+    setTipoModelo("custom");
+    setBaseLegalModelo("");
+    setFonteModelo("");
     setResumoModelo("");
     setDialogModelo(true);
   }
@@ -696,8 +742,25 @@ function Documentos() {
     setTituloModelo(modelo.title);
     setDescricaoModelo(modelo.description ?? "");
     setConteudoModelo(modelo.content);
+    setTipoModelo(modelo.template_type);
+    setBaseLegalModelo(modelo.legal_basis ?? "");
+    setFonteModelo(modelo.source_reference ?? "");
     setResumoModelo("");
     setDialogModelo(true);
+  }
+
+  function inserirCampoModelo(key: string) {
+    const textarea = conteudoModeloRef.current;
+    const token = "{{" + key + "}}";
+    const start = textarea?.selectionStart ?? conteudoModelo.length;
+    const end = textarea?.selectionEnd ?? start;
+    const updated = conteudoModelo.slice(0, start) + token + conteudoModelo.slice(end);
+    setConteudoModelo(updated);
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      const cursor = start + token.length;
+      textarea?.setSelectionRange(cursor, cursor);
+    });
   }
 
   async function abrirHistoricoModelo(modelo: Modelo) {
@@ -764,6 +827,13 @@ function Documentos() {
       title: tituloModelo.trim(),
       description: descricaoModelo.trim() || null,
       content: conteudoModelo.trim(),
+      template_type: tipoModelo,
+      legal_basis: baseLegalModelo.trim() || null,
+      source_reference: fonteModelo.trim() || null,
+      variables_schema: buildDocumentTemplateSchema(
+        conteudoModelo.trim(),
+        modeloEditando?.variables_schema,
+      ) as Json,
       change_summary:
         resumoModelo.trim() ||
         (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
@@ -793,6 +863,9 @@ function Documentos() {
     setTituloModelo("");
     setDescricaoModelo("");
     setConteudoModelo("");
+    setTipoModelo("custom");
+    setBaseLegalModelo("");
+    setFonteModelo("");
     setResumoModelo("");
     await carregar();
   }
@@ -857,22 +930,6 @@ function Documentos() {
       setConteudoGerado(modelo.content);
     }
   }
-  function preencherModelo(): string {
-    const f = fornecedores.find((item) => item.id === fornecedorGeracao);
-    const values: Record<string, string> = {
-      fornecedor: f?.legal_name ?? "[NOME DO FORNECEDOR]",
-      nome_fantasia: f?.trade_name ?? "",
-      cnpj: f?.cnpj ?? "",
-      secretaria: selecionado?.nome ?? "",
-      municipio: municipioSecretaria,
-      data: new Intl.DateTimeFormat("pt-BR").format(new Date()),
-      usuario: session?.user.email ?? "",
-    };
-    return conteudoGerado.replace(
-      /\{\{\s*(fornecedor|nome_fantasia|cnpj|secretaria|municipio|data|usuario)\s*\}\}/gi,
-      (match, key: string) => values[key.toLowerCase()] ?? match,
-    );
-  }
   async function gerarDocumento(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
@@ -889,8 +946,17 @@ function Documentos() {
         toast.error("O contrato selecionado não pertence ao processo escolhido.");
         return;
       }
+      const declaredKeys = new Set(
+        (modeloDoGerador?.variables_schema as unknown as CampoComplementar[] | undefined)?.map(
+          (field) => field.key,
+        ) ?? [],
+      );
       const overrides = {
-        ...camposComplementares,
+        ...Object.fromEntries(
+          Object.entries(camposComplementares).filter(
+            ([key]) => declaredKeys.has(key) && !valoresAutomaticosGeracao[key]?.trim(),
+          ),
+        ),
         ...(contratoGeracao ? { contract_id: contratoGeracao } : {}),
       };
       const { error: rpcError } = await db.rpc("generate_document_from_process", {
@@ -905,7 +971,7 @@ function Documentos() {
       }
       toast.success("Documento vinculado ao processo e salvo como rascunho.");
     } else {
-      const snapshot = preencherModelo();
+      const snapshot = previaGeracao.content;
       const contratoSelecionado = contratos.find((item) => item.id === contratoGeracao);
       const { error: insertError } = await db.from("generated_documents").insert({
         tenant_id: selecionado.id,
@@ -949,10 +1015,70 @@ function Documentos() {
     await carregar();
   }
 
+  const contratoDoGerador = contratos.find((contrato) => contrato.id === contratoGeracao) ?? null;
+  const fornecedorIdDoGerador =
+    contratoDoGerador?.supplier_id ??
+    (fornecedorGeracao === "nenhum" ? null : fornecedorGeracao);
+  const fornecedorDoGerador = fornecedores.find((fornecedor) => fornecedor.id === fornecedorIdDoGerador);
+  const processoIdDoGerador = contratoDoGerador?.process_id ?? processoGeracao;
+  const processoDoGerador = processos.find((processo) => processo.id === processoIdDoGerador) ?? null;
+  const contextoVariaveisGeracao: DocumentVariableContext = {
+    organization: {
+      name: selecionado?.nome ?? null,
+      municipality: municipioSecretaria || null,
+      state: ufSecretaria || null,
+      cnpj: cnpjSecretaria || null,
+      ibgeCode: codigoIbgeSecretaria || null,
+    },
+    user: { name: null, email: session?.user.email ?? null },
+    supplier: fornecedorDoGerador
+      ? {
+          legalName: fornecedorDoGerador.legal_name,
+          tradeName: fornecedorDoGerador.trade_name,
+          cnpj: fornecedorDoGerador.cnpj,
+          email: null,
+          phone: null,
+        }
+      : null,
+    process: processoDoGerador
+      ? {
+          number: processoDoGerador.number,
+          title: processoDoGerador.title,
+          description: processoDoGerador.description,
+          modality: processoDoGerador.modality,
+          stage: processoDoGerador.stage,
+          status: processoDoGerador.status,
+          priority: processoDoGerador.priority,
+          requestingUnit: processoDoGerador.requesting_unit,
+          responsibleName: processoDoGerador.responsible_name,
+          estimatedValue: processoDoGerador.estimated_value,
+          dueDate: processoDoGerador.due_date,
+        }
+      : null,
+    contract: contratoDoGerador
+      ? {
+          number: contratoDoGerador.number,
+          object: contratoDoGerador.object,
+          modality: contratoDoGerador.modality,
+          totalValue: contratoDoGerador.total_value,
+          startDate: contratoDoGerador.start_date,
+          endDate: contratoDoGerador.end_date,
+          managerName: contratoDoGerador.manager_name,
+          inspectorName: contratoDoGerador.inspector_name,
+          ordinance: contratoDoGerador.ordinance,
+        }
+      : null,
+  };
+  const valoresAutomaticosGeracao = buildDocumentVariableValues(contextoVariaveisGeracao);
+  const previaGeracao = renderDocumentTemplate(conteudoGerado, valoresAutomaticosGeracao);
   const modeloDoGerador = modelos.find((m) => m.id === modeloSelecionado);
   const camposDoModelo = (
     (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
-  ).filter((campo) => !campo.source?.startsWith("process."));
+  ).filter(
+    (campo) =>
+      !campo.source?.startsWith("process.") &&
+      !valoresAutomaticosGeracao[campo.key]?.trim(),
+  );
   const modelosInstalados = new Set(
     modelos
       .filter((m) => m.catalog_template_id && m.is_active)
@@ -1725,12 +1851,48 @@ function Documentos() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Categoria do modelo</Label>
+              <Select value={tipoModelo} onValueChange={setTipoModelo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dfd">DFD</SelectItem>
+                  <SelectItem value="etp">ETP</SelectItem>
+                  <SelectItem value="risk_analysis">Análise de riscos</SelectItem>
+                  <SelectItem value="risk_matrix">Matriz contratual de riscos</SelectItem>
+                  <SelectItem value="tr">Termo de Referência</SelectItem>
+                  <SelectItem value="custom">Outro documento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Descrição</Label>
               <Input
                 maxLength={1000}
                 value={descricaoModelo}
                 onChange={(e) => setDescricaoModelo(e.target.value)}
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Base normativa ou fundamento</Label>
+                <Input
+                  maxLength={2000}
+                  value={baseLegalModelo}
+                  onChange={(e) => setBaseLegalModelo(e.target.value)}
+                  placeholder="Indique a referência a revisar localmente"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fonte oficial ou referência</Label>
+                <Input
+                  maxLength={2000}
+                  value={fonteModelo}
+                  onChange={(e) => setFonteModelo(e.target.value)}
+                  placeholder="URL ou identificação da fonte"
+                />
+              </div>
             </div>
             {modeloEditando && (
               <div className="space-y-2">
@@ -1764,15 +1926,36 @@ function Documentos() {
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
               <Textarea
+                ref={conteudoModeloRef}
                 required
                 rows={12}
                 maxLength={50000}
                 value={conteudoModelo}
                 onChange={(e) => setConteudoModelo(e.target.value)}
-                placeholder={
-                  "Use {{fornecedor}}, {{cnpj}}, {{secretaria}}, {{municipio}}, {{data}} e {{usuario}} como campos automáticos."
-                }
+                placeholder="Escreva ou importe o conteúdo e insira os campos que deseja preencher automaticamente."
               />
+              <details className="rounded-md border p-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Inserir campo automático
+                </summary>
+                <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
+                  {DOCUMENT_TEMPLATE_VARIABLES.map((variable) => (
+                    <Button
+                      key={variable.key}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="justify-start font-mono text-xs"
+                      onClick={() => inserirCampoModelo(variable.key)}
+                    >
+                      { "{{" + variable.key + "}}" }
+                      <span className="ml-2 truncate font-sans text-muted-foreground">
+                        {variable.label}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </details>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>
@@ -2038,9 +2221,40 @@ function Documentos() {
                     onChange={(e) => setConteudoGerado(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Campos automáticos: fornecedor, nome_fantasia, cnpj, secretaria, municipio, data
-                    e usuario.
+                    Campos automáticos disponíveis: Secretaria, fornecedor, processo, contrato,
+                    responsáveis, valores, vigência e usuário.
                   </p>
+                  <details className="rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Pré-visualizar o conteúdo preenchido
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {(previaGeracao.missingKeys.length > 0 ||
+                        previaGeracao.unknownKeys.length > 0) && (
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Campos que precisam de conferência</AlertTitle>
+                          <AlertDescription>
+                            {previaGeracao.missingKeys.length > 0 && (
+                              <p>
+                                Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.
+                              </p>
+                            )}
+                            {previaGeracao.unknownKeys.length > 0 && (
+                              <p>
+                                Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.
+                              </p>
+                            )}
+                            O rascunho manterá marcadores visíveis para impedir que dados ausentes
+                            pareçam preenchidos.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-5">
+                        {previaGeracao.content}
+                      </pre>
+                    </div>
+                  </details>
                 </div>
               )}
               <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground sm:col-span-2">

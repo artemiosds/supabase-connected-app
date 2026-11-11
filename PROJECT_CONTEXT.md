@@ -16,7 +16,7 @@
 - `src/components` e `src/components/ui`: componentes da aplicação e primitives visuais. A aba
   Configuração técnica no Painel Master documenta ajustes manuais sem armazenar segredos.
 - `src/hooks`: estado de autenticação, tenant, permissões e responsividade.
-- `src/lib`: regras de negócio, validação, consultas e utilitários.
+- `src/lib`: regras de negócio, validação, consultas e utilitários. `src/lib/document-variables.ts` mantém o catálogo comum de campos automáticos e a substituição segura de placeholders documentais.
 - `src/integrations/supabase`: cliente Supabase tipado e tipos gerados; `src/lib/db.ts` concentra o acesso tipado e paginação.
 - `supabase/migrations`: schema e segurança versionados. `supabase/functions`: backend Deno. `supabase/tests`: regressões SQL/pgTAP.
 - `docs`, `roadmap.md` e `docs/GO-LIVE-CHECKLIST.md`: decisões, estado e gates de homologação.
@@ -46,7 +46,7 @@ Autenticação e recuperação; administração e provisionamento de Secretarias
 
 O Painel Master tem uma aba Configuração técnica com instruções para SMTP, alertas, backup e cobrança, além dos limites atuais de Drive, PDF e assinatura. A tela não coleta segredos nem confirma configuração externa.
 
-Ainda dependem de integração/configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples. A tabela de integração de pagamento não significa que processamento esteja ativo.
+A biblioteca documental passa a ter um catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo também preencherá o contexto do contrato/fornecedor selecionado pela migration versionada preparada no código; essa migration ainda não foi aplicada ao SMS2. DOCX continua sendo importado como texto, e a exportação Word/PDF fiel ao modelo continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
 
 ## Convenções de manutenção
 
