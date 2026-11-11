@@ -107,6 +107,11 @@ export const DOCUMENT_TEMPLATE_VARIABLES: readonly DocumentVariableDefinition[] 
     source: "process.items",
   },
   {
+    key: "tabela_itens",
+    label: "Tabela de itens do processo",
+    source: "process.items",
+  },
+  {
     key: "levantamento_mercado",
     label: "Levantamento de mercado e cotações",
     source: "process.quotes",
@@ -137,6 +142,15 @@ function formatarData(value: string | null | undefined): string {
 function formatarMoeda(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+
+/** Human label for a catalog placeholder; falls back to the raw key. */
+export function documentVariableLabel(key: string): string {
+  return VARIABLES_BY_KEY.get(key.toLowerCase())?.label ?? key;
+}
+
+export function isKnownDocumentVariable(key: string): boolean {
+  return VARIABLES_BY_KEY.has(key.toLowerCase());
 }
 
 export function buildDocumentVariableValues(
