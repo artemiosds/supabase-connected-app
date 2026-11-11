@@ -1,0 +1,82 @@
+name: Apply formatting on request
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-formatting-main
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: contains(github.event.head_commit.message, '[format]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply Prettier to files covered by CI
+        run: |
+          bunx prettier --write \
+            src/test/commercial-access.test.ts \
+            src/lib/cnpj.test.ts \
+            src/test/app-routing.test.tsx \
+            src/lib/contratacao.test.ts \
+            src/lib/contratacao.ts \
+            src/routes/_authenticated/contratos.tsx \
+            src/components/ui/badge.tsx \
+            src/components/ui/button.tsx \
+            src/components/ui/form.tsx \
+            src/components/ui/navigation-menu.tsx \
+            src/components/ui/sidebar.tsx \
+            src/components/ui/toggle.tsx \
+            src/hooks/use-auth.tsx \
+            src/hooks/use-tenant.tsx \
+            src/integrations/supabase/types.ts \
+            src/integrations/supabase/previewAuthStorage.ts \
+            src/routes/_authenticated/processos.tsx \
+            src/routes/_authenticated/usuarios.tsx \
+            src/routes/_authenticated/documentos.tsx \
+            src/routes/redefinir-senha.tsx \
+            src/routes/entrar.tsx \
+            supabase/functions/invite-tenant-user/index.ts \
+            src/components/admin-master-billing.tsx \
+            src/routes/admin-master.tsx \
+            supabase/functions/platform-billing-config/index.ts \
+            src/components/admin-master-support.tsx \
+            src/components/admin-master-staff.tsx \
+            src/components/platform-staff-workspace.tsx \
+            src/routes/_authenticated/suporte.tsx \
+            src/routes/_authenticated.tsx \
+            supabase/functions/invite-platform-support-agent/index.ts \
+            supabase/functions/invite-platform-staff/index.ts \
+            docs/IMPLANTACAO-EQUIPE-INTERNA.md \
+            docs/IMPLANTACAO-EQUIPE-DE-SUPORTE.md \
+            supabase/functions/send-expiry-notifications/index.ts \
+            supabase/functions/_shared/expiry-notification.ts \
+            src/lib/expiry-notification.test.ts
+
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/test/commercial-access.test.ts src/lib/cnpj.test.ts src/test/app-routing.test.tsx src/lib/contratacao.test.ts src/lib/contratacao.ts src/routes/_authenticated/contratos.tsx src/components/ui/badge.tsx src/components/ui/button.tsx src/components/ui/form.tsx src/components/ui/navigation-menu.tsx src/components/ui/sidebar.tsx src/components/ui/toggle.tsx src/hooks/use-auth.tsx src/hooks/use-tenant.tsx src/integrations/supabase/types.ts src/integrations/supabase/previewAuthStorage.ts src/routes/_authenticated/processos.tsx src/routes/_authenticated/usuarios.tsx src/routes/_authenticated/documentos.tsx src/routes/redefinir-senha.tsx src/routes/entrar.tsx supabase/functions/invite-tenant-user/index.ts src/components/admin-master-billing.tsx src/routes/admin-master.tsx supabase/functions/platform-billing-config/index.ts src/components/admin-master-support.tsx src/components/admin-master-staff.tsx src/components/platform-staff-workspace.tsx src/routes/_authenticated/suporte.tsx src/routes/_authenticated.tsx supabase/functions/invite-platform-support-agent/index.ts supabase/functions/invite-platform-staff/index.ts docs/IMPLANTACAO-EQUIPE-INTERNA.md docs/IMPLANTACAO-EQUIPE-DE-SUPORTE.md supabase/functions/send-expiry-notifications/index.ts supabase/functions/_shared/expiry-notification.ts src/lib/expiry-notification.test.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes were needed."
+            exit 0
+          fi
+          git commit -m "style: apply Prettier to CI-covered files [prettier-bot]"
+          git push
