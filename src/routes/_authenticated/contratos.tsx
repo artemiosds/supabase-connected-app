@@ -146,6 +146,7 @@ function Contratos() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const [lista, setLista] = useState<Contrato[]>([]);
+  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const [fornecedores, setFornecedores] = useState<{ id: string; legal_name: string }[]>([]);
   const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
@@ -160,6 +161,7 @@ function Contratos() {
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
+      setTenantCarregadoId(null);
       setLista([]);
       setFornecedores([]);
       setProcessos([]);
@@ -170,6 +172,7 @@ function Contratos() {
     }
 
     setLoading(true);
+    setTenantCarregadoId(null);
     setErro(null);
     try {
       const [contratosRows, fornecedoresRows, processosRows, aditivosRows] = await Promise.all([
@@ -215,11 +218,13 @@ function Contratos() {
       ]);
       setPendente(false);
       setLista(contratosRows);
+      setTenantCarregadoId(selecionado.id);
       setFornecedores(fornecedoresRows);
       setProcessos(processosRows);
       setAditivos(aditivosRows);
     } catch (error) {
       setLista([]);
+      setTenantCarregadoId(null);
       setFornecedores([]);
       setProcessos([]);
       setAditivos([]);
@@ -257,7 +262,7 @@ function Contratos() {
     return processo ? `${processo.number} — ${processo.title}` : null;
   };
   function exportarVencimentos() {
-    if (!selecionado || loading || erro || vencem90Dias.length === 0) return;
+    if (!selecionado || tenantCarregadoId !== selecionado.id || loading || erro || vencem90Dias.length === 0) return;
     const linhas = vencem90Dias.map((contrato) => ({
       number: contrato.number,
       object: contrato.object,
@@ -305,7 +310,13 @@ function Contratos() {
           <Button
             variant="outline"
             onClick={exportarVencimentos}
-            disabled={loading || pendente || !!erro || vencem90Dias.length === 0}
+            disabled={
+              loading ||
+              pendente ||
+              !!erro ||
+              tenantCarregadoId !== selecionado.id ||
+              vencem90Dias.length === 0
+            }
             aria-label="Exportar contratos vigentes a vencer em até 90 dias para Excel"
           >
             <Download className="h-4 w-4" /> Exportar 90 dias (CSV)
