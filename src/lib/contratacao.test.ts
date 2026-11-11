@@ -16,7 +16,9 @@ describe("régua de vencimento 120/90/60/30", () => {
 
 describe("esteira de etapas", () => {
   it("DFD avança para estudos", () => expect(proximaEtapa("planejamento")).toBe("estudos"));
-  it("conclusão é a última etapa", () => expect(proximaEtapa("conclusao")).toBeNull());
+  it("autorização avança para publicação", () =>
+    expect(proximaEtapa("conclusao")).toBe("publicacao"));
+  it("fiscalização é a última etapa", () => expect(proximaEtapa("fiscalizacao")).toBeNull());
   it("planejamento não tem etapa anterior", () => expect(etapaAnterior("planejamento")).toBeNull());
 });
 

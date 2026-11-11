@@ -24,6 +24,13 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 - Nenhum dado operacional (fornecedores/documentos/processos/contratos); cinco modelos-base globais e GED privado sem objetos.
 - O sino visual já reúne vencimentos de contratos e documentos de fornecedores; ainda sem scheduler/e-mail/WhatsApp. Google Drive OAuth, gateway ativo e backup restaurado continuam pendentes.
 
+## Atualizações de construção — 11/11/2026
+
+- Fase 1 — Documentos: catálogo de campos automáticos, prévia com lacunas explícitas e RPC vinculada a contrato/fornecedor com validação de complementos. Exportação fiel DOCX/PDF permanece pendente. Migration de geração está versionada e não aplicada ao SMS2.
+- Fase 2 — Pesquisa de preços: média, mediana, menor preço unitário com frete rateado, coeficiente de variação e CSV compatível com Excel; nenhum valor é excluído automaticamente.
+- Fase 3 — Workflow: dez etapas e campos de responsável/prazo por atividade. Migration versionada pendente de CI e não aplicada ao SMS2.
+- Fases 4–6 seguem pendentes: saldo por item de ARP/execução, sanções de fornecedores, relatórios, integrações externas, restauração, isolamento multi-tenant e homologação real.
+
 ## Resumo por fase
 
 | Fase | Situação | Próximo marco |

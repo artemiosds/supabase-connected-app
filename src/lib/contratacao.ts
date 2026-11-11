@@ -1,12 +1,40 @@
 // Regras de negócio puras de Contratos e Processos de Contratação.
 
 export const ETAPAS = [
-  { id: "planejamento", nome: "Planejamento", descricao: "DFD e alinhamento com o PCA" },
-  { id: "estudos", nome: "Estudos preliminares", descricao: "ETP e matriz de riscos" },
-  { id: "objeto", nome: "Definição do objeto", descricao: "Termo de Referência ou Projeto Básico" },
-  { id: "pesquisa", nome: "Pesquisa de preços", descricao: "Cotações e mapa comparativo" },
-  { id: "parecer", nome: "Pareceres", descricao: "Jurídico e controle interno" },
-  { id: "conclusao", nome: "Conclusão", descricao: "Envio à licitação ou ratificação" },
+  {
+    id: "planejamento",
+    nome: "Solicitação / DFD",
+    descricao: "Formalização da demanda e alinhamento com o PCA",
+  },
+  {
+    id: "estudos",
+    nome: "Estudo Técnico Preliminar",
+    descricao: "ETP, análise de soluções e riscos",
+  },
+  { id: "objeto", nome: "Termo de Referência", descricao: "Definição do objeto e requisitos" },
+  { id: "pesquisa", nome: "Pesquisa de preços", descricao: "Cotações, fontes e mapa comparativo" },
+  { id: "parecer", nome: "Parecer jurídico", descricao: "Análise jurídica e controle interno" },
+  { id: "conclusao", nome: "Autorização", descricao: "Decisão da autoridade competente" },
+  {
+    id: "publicacao",
+    nome: "Publicação / Abertura",
+    descricao: "Divulgação do edital ou aviso de contratação",
+  },
+  {
+    id: "julgamento",
+    nome: "Julgamento / Homologação",
+    descricao: "Análise das propostas, recursos e homologação",
+  },
+  {
+    id: "assinatura",
+    nome: "Assinatura do contrato",
+    descricao: "Formalização e publicação do instrumento",
+  },
+  {
+    id: "fiscalizacao",
+    nome: "Fiscalização e execução",
+    descricao: "Acompanhamento de entregas e obrigações",
+  },
 ] as const;
 
 export type EtapaId = (typeof ETAPAS)[number]["id"];
@@ -18,6 +46,10 @@ export const CHECKLIST_PADRAO: Record<EtapaId, string[]> = {
   pesquisa: ["Cotações de preços (mín. 3)", "Mapa comparativo de preços"],
   parecer: ["Parecer jurídico", "Manifestação do controle interno"],
   conclusao: ["Autorização da autoridade competente", "Encaminhamento à licitação"],
+  publicacao: ["Publicação do edital ou aviso de contratação"],
+  julgamento: ["Julgamento das propostas", "Recursos e homologação"],
+  assinatura: ["Formalização e assinatura do contrato ou ata"],
+  fiscalizacao: ["Designação da fiscalização", "Acompanhamento da execução e entregas"],
 };
 
 export const MODALIDADES: Record<string, string> = {

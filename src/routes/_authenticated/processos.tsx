@@ -95,6 +95,8 @@ type Item = {
   title: string;
   is_done: boolean;
   sort_order: number;
+  responsible_name: string | null;
+  due_date: string | null;
 };
 
 function ehEtapa(valor: string): valor is EtapaId {
@@ -124,6 +126,7 @@ function Processos() {
   const userId = session?.user.id ?? "";
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
+  const [salvandoEtapaId, setSalvandoEtapaId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendente, setPendente] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -260,6 +263,26 @@ function Processos() {
       return;
     }
     setItens((s) => s.map((x) => (x.id === item.id ? { ...x, is_done: !x.is_done } : x)));
+  }
+
+  async function salvarResponsavelPrazoEtapa(item: Item) {
+    setSalvandoEtapaId(item.id);
+    const { error } = await db
+      .from("process_items")
+      .update({
+        responsible_name: item.responsible_name?.trim() || null,
+        due_date: item.due_date || null,
+        updated_by: userId,
+      })
+      .eq("id", item.id)
+      .eq("tenant_id", selecionado?.id ?? "");
+    setSalvandoEtapaId(null);
+    if (error) {
+      toast.error("Não foi possível salvar o responsável e o prazo da etapa.");
+      void carregar();
+      return;
+    }
+    toast.success("Responsável e prazo da etapa salvos.");
   }
 
   async function concluir(p: Processo) {
@@ -508,12 +531,63 @@ function Processos() {
                         {e.nome}
                       </p>
                       {lista.map((i) => (
-                        <label key={i.id} className="flex items-center gap-2 py-1 text-sm">
-                          <Checkbox checked={i.is_done} onCheckedChange={() => alternarItem(i)} />
-                          <span className={i.is_done ? "text-muted-foreground line-through" : ""}>
-                            {i.title}
-                          </span>
-                        </label>
+                        <div key={i.id} className="space-y-2 rounded-md border p-3">
+                          <label className="flex items-start gap-2 text-sm">
+                            <Checkbox
+                              checked={i.is_done}
+                              onCheckedChange={() => alternarItem(i)}
+                              aria-label={`Concluir: ${i.title}`}
+                            />
+                            <span className={i.is_done ? "text-muted-foreground line-through" : ""}>
+                              {i.title}
+                            </span>
+                          </label>
+                          <div className="grid gap-2 pl-7 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label htmlFor={`responsavel-${i.id}`}>Responsável</Label>
+                              <Input
+                                id={`responsavel-${i.id}`}
+                                maxLength={180}
+                                value={i.responsible_name ?? ""}
+                                onChange={(event) =>
+                                  setItens((current) =>
+                                    current.map((item) =>
+                                      item.id === i.id
+                                        ? { ...item, responsible_name: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                                onBlur={() => void salvarResponsavelPrazoEtapa(i)}
+                                disabled={salvandoEtapaId === i.id}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`prazo-${i.id}`}>Prazo da etapa</Label>
+                              <Input
+                                id={`prazo-${i.id}`}
+                                type="date"
+                                value={i.due_date ?? ""}
+                                onChange={(event) =>
+                                  setItens((current) =>
+                                    current.map((item) =>
+                                      item.id === i.id
+                                        ? { ...item, due_date: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                                onBlur={() => void salvarResponsavelPrazoEtapa(i)}
+                                disabled={salvandoEtapaId === i.id}
+                              />
+                            </div>
+                          </div>
+                          <p className="pl-7 text-xs text-muted-foreground">
+                            {salvandoEtapaId === i.id
+                              ? "Salvando…"
+                              : "Responsável e prazo salvam ao sair do campo."}
+                          </p>
+                        </div>
                       ))}
                     </div>
                   );

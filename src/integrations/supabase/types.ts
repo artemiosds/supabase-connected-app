@@ -1010,6 +1010,8 @@ export type Database = {
           id: string;
           is_done: boolean;
           process_id: string;
+          responsible_name: string | null;
+          due_date: string | null;
           sort_order: number;
           stage: string;
           tenant_id: string;
@@ -1024,6 +1026,8 @@ export type Database = {
           id?: string;
           is_done?: boolean;
           process_id: string;
+          responsible_name?: string | null;
+          due_date?: string | null;
           sort_order?: number;
           stage: string;
           tenant_id: string;
@@ -1038,6 +1042,8 @@ export type Database = {
           id?: string;
           is_done?: boolean;
           process_id?: string;
+          responsible_name?: string | null;
+          due_date?: string | null;
           sort_order?: number;
           stage?: string;
           tenant_id?: string;
