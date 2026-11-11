@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS supplier_sanctions_active_end_date_idx
 
 ALTER TABLE public.supplier_sanctions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.supplier_sanctions FORCE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE public.supplier_sanctions FROM PUBLIC, anon;
+REVOKE ALL ON TABLE public.supplier_sanctions FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.supplier_sanctions TO authenticated;
 GRANT ALL ON TABLE public.supplier_sanctions TO service_role;
 
