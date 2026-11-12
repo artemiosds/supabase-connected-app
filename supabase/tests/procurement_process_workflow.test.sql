@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(13);
+SELECT extensions.plan(17);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -141,5 +141,49 @@ SELECT extensions.ok(
   'process creation continues to create its standard checklist atomically'
 );
 
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid='public.process_items'::regclass
+      AND tgname='trg_guard_procurement_process_item_completion'
+      AND NOT tgisinternal
+      AND (tgtype & 2) = 2
+      AND (tgtype & 16) = 16
+  ),
+  'checklist completion guard runs before item completion updates'
+);
+SELECT extensions.ok(
+  (SELECT prosecdef AND proconfig @> ARRAY['search_path=""']
+   FROM pg_catalog.pg_proc
+   WHERE oid='public.fn_guard_procurement_process_item_completion()'::regprocedure)
+  AND NOT pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.fn_guard_procurement_process_item_completion()',
+    'EXECUTE'
+  ),
+  'checklist guard uses fixed-search-path definer privileges and is not client callable'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%FOR UPDATE%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%NEW.is_done = false%',
+  'checklist edits serialize on the parent process before reopening completed items'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%v_process_status = ''concluido''%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%array_position(v_stages, NEW.stage)%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%array_position(v_stages, v_process_stage)%',
+  'completed processes and checklist items from earlier stages cannot be reopened'
+);
 SELECT * FROM extensions.finish();
 ROLLBACK;
