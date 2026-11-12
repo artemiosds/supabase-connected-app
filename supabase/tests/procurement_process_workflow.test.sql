@@ -333,7 +333,7 @@ SELECT extensions.ok(
 
 SELECT extensions.throws_ok(
   $test$UPDATE public.procurement_processes
-    SET stage = 'objeto'
+    SET stage = 'pesquisa'
     WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
   '23514',
   'O processo deve avançar ou retornar uma etapa por vez.',
