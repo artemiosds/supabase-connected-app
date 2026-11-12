@@ -254,6 +254,8 @@ function Documentos() {
     [fluxosGerados],
   );
   const [loading, setLoading] = useState(true);
+  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
+  const requisicaoRef = useRef(0);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("vencimentos");
   const moduloModelosAtivo = selecionado?.enabled_modules["modelos"] === true;
@@ -315,7 +317,31 @@ function Documentos() {
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
 
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) {
+    const requisicaoAtual = ++requisicaoRef.current;
+    const tenantId = selecionado?.id;
+    setTenantCarregadoId(null);
+    setCapacidades({
+      can_view: false,
+      can_create: false,
+      can_update: false,
+      can_sign: false,
+      can_manage_templates: false,
+    });
+    setFornecedores([]);
+    setDocumentos([]);
+    setModelos([]);
+    setCatalogo([]);
+    setProcessos([]);
+    setContratos([]);
+    setGerados([]);
+    setFluxosGerados([]);
+    setPodeEnviarAprovacao(false);
+    setPodeAprovarDocumento(false);
+    setMunicipioSecretaria("");
+    setUfSecretaria("");
+    setCnpjSecretaria("");
+    setCodigoIbgeSecretaria("");
+    if (!tenantId) {
       setCapacidades({
         can_view: false,
         can_create: false,
@@ -443,6 +469,7 @@ function Documentos() {
           p_tenant_id: selecionado.id,
         }),
       ]);
+      if (requisicaoAtual !== requisicaoRef.current) return;
       for (const result of [cap, tenantData, workflowCapabilities, workflowRecords])
         if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
@@ -472,7 +499,9 @@ function Documentos() {
       setUfSecretaria(tenantData.data?.state ?? "");
       setCnpjSecretaria(tenantData.data?.cnpj ?? "");
       setCodigoIbgeSecretaria(tenantData.data?.ibge_code ?? "");
+      setTenantCarregadoId(tenantId);
     } catch (e) {
+      if (requisicaoAtual !== requisicaoRef.current) return;
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
       setModelos([]);
@@ -483,13 +512,21 @@ function Documentos() {
       setFluxosGerados([]);
       setPodeEnviarAprovacao(false);
       setPodeAprovarDocumento(false);
+      setMunicipioSecretaria("");
+      setUfSecretaria("");
+      setCnpjSecretaria("");
+      setCodigoIbgeSecretaria("");
+      setTenantCarregadoId(tenantId);
     } finally {
-      setLoading(false);
+      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
   }, [selecionado?.id, selecionado?.enabled_modules]);
 
   useEffect(() => {
     void carregar();
+    return () => {
+      requisicaoRef.current += 1;
+    };
   }, [carregar]);
 
   const fornecedorPorId = useMemo(
@@ -1527,7 +1564,23 @@ function Documentos() {
         </AlertDescription>
       </Alert>
     );
-  if (!capacidades.can_view && !loading)
+  if (loading || tenantCarregadoId !== selecionado.id)
+    return (
+      <div className="flex h-40 items-center justify-center" role="status" aria-live="polite">
+        <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+        <span className="sr-only">Carregando documentos da Secretaria selecionada…</span>
+      </div>
+    );
+
+  if (erro)
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Erro ao carregar documentos</AlertTitle>
+        <AlertDescription>{erro}</AlertDescription>
+      </Alert>
+    );
+
+  if (!capacidades.can_view)
     return (
       <Alert>
         <ShieldCheck className="h-4 w-4" />
@@ -1566,12 +1619,6 @@ function Documentos() {
         </div>
       </div>
 
-      {erro && (
-        <Alert variant="destructive">
-          <AlertTitle>Erro ao carregar</AlertTitle>
-          <AlertDescription>{erro}</AlertDescription>
-        </Alert>
-      )}
       {loading ? (
         <div className="flex h-40 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin" />
