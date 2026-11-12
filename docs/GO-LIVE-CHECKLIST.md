@@ -208,3 +208,20 @@ O resultado verde da CI comprova validação automatizada do commit e aplicaçã
 - [ ] Concluir todos os demais gates antes de produção ou venda.
 
 A CI comprova testes automatizados em banco descartável, não homologação visual/autenticada nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2 nesta atualização. **NO-GO comercial permanece.**
+
+
+## Atualização de validação — 12/11/2026, commit `cc4441c720c2cd73dd958d97d62717c19e899022`
+
+- [x] CI completo aprovado no run [43292377124](https://github.com/artemiosds/supabase-connected-app/actions/runs/43292377124).
+- [x] Formatação aprovada no run [43292377134](https://github.com/artemiosds/supabase-connected-app/actions/runs/43292377134).
+- [x] Migrations aplicadas e pgTAP aprovado em Supabase local descartável, incluindo a migration `20261112133000_force_document_template_source_rls.sql`.
+- [x] RLS forçada na tabela de originais DOCX e teste de segurança ampliado para 8 assertions.
+- [x] Corrida de troca de Secretaria corrigida nos carregamentos, diálogos, histórico, restauração, salvamento e análise do DOCX.
+- [x] Falha de limpeza de upload órfão agora é informada quando ocorre.
+- [ ] Executar E2E autenticado de GED/DOCX (upload, download, falha parcial, retry, restauração e reanexo).
+- [ ] Homologar visualmente modelos oficiais anonimizados e timbrados reais.
+- [ ] Validar isolamento com duas Secretarias em sessão real, inclusive Storage.
+- [ ] Testar backup e restauração em projeto Supabase separado, com validação de Auth, Storage, RLS, funções e downloads.
+- [ ] Concluir todos os gates antes de produção ou venda.
+
+A CI verde comprova a suíte automatizada e migrations em ambiente descartável, não comprova E2E visual/autenticado nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2. **NO-GO comercial permanece.**

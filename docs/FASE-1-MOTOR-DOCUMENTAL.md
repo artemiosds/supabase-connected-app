@@ -103,3 +103,20 @@ A cobertura nova reforça regressões automatizadas, mas parte das verificaçõe
 - [ ] Isolamento visual e de Storage entre duas Secretarias e backup/restauração em projeto separado continuam pendentes.
 
 **Resultado:** aplicação, formatação, migrations e regressões pgTAP aprovadas em ambiente descartável. SMS2 permanece sem alteração. Fase 1 continua em homologação e NO-GO para produção/venda.
+
+
+## Atualização de validação — 12/11/2026, commit `cc4441c720c2cd73dd958d97d62717c19e899022`
+
+- [x] CI completo aprovado no run [43292377124](https://github.com/artemiosds/supabase-connected-app/actions/runs/43292377124), com validação da aplicação, testes unitários, build, tipos, lint, migrations e pgTAP.
+- [x] Formatação aprovada no run [43292377134](https://github.com/artemiosds/supabase-connected-app/actions/runs/43292377134).
+- [x] Migration `20261112133000_force_document_template_source_rls.sql` aplicada em banco descartável; tabela de DOCX originais agora força RLS.
+- [x] Teste `document_template_sources_security.test.sql` ampliado para 8 assertions, incluindo FORCE RLS e política de leitura por tenant.
+- [x] Troca de Secretaria fecha diálogos de edição/histórico/geração, limpa arquivos selecionados e invalida resultados antigos.
+- [x] Salvamento de modelos DOCX captura o tenant de origem, conclui o vínculo binário no tenant correto e impede respostas atrasadas de alterar o formulário de outra Secretaria.
+- [x] Falha ao limpar arquivo órfão após falha de metadata agora é explicitamente reportada.
+- [x] Análise DOCX assíncrona descarta resultados caso o usuário tenha mudado de Secretaria durante o processamento.
+- [ ] Ainda faltam E2E autenticados de upload/download Storage, falha parcial, retry e restauração/reanexo em navegador.
+- [ ] Homologação visual com modelos oficiais DOCX anonimizados e timbrados reais continua pendente.
+- [ ] Isolamento E2E de duas Secretarias e backup/restauração em projeto separado continuam pendentes.
+
+**Resultado:** CI automatizado completo verde. O teste automatizado não substitui homologação visual/autenticada e recuperação real de backup. SMS2 não recebeu migrations. Fase 1 continua em homologação e permanece **NO-GO para produção/venda**.
