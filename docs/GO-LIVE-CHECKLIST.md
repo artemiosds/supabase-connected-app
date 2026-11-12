@@ -175,3 +175,22 @@ A execução anterior que falhou ocorreu antes do commit corretivo; não deve se
 - [ ] Backup/restauração em projeto isolado e reconciliação do histórico de migrations SMS2.
 
 Os novos testes ampliam a proteção contra regressões, mas não substituem o cenário completo com dados sintéticos de duas Secretarias. SMS2 permanece intacto e a comercialização continua bloqueada.
+
+
+## Atualização de validação — 12/11/2026, commit `a7bcd6073e7d960b99e54e1f694eccf9c0bae741`
+
+- [x] CI completo aprovado no run [43288209117](https://github.com/artemiosds/supabase-connected-app/actions/runs/43288209117): `validate` e `database-security` concluídos com sucesso.
+- [x] Migrations aplicadas em Supabase local descartável e regressões pgTAP aprovadas.
+- [x] Teste de saldo de itens de contrato/ARP ajustado para o plano correto de 28 assertions.
+- [x] Migration `20261112125500_guard_procurement_process_stage_transitions.sql` e teste estrutural de 22 verificações adicionados para proteger transições de etapa e checklist no banco.
+- [x] Telas de processos e fornecedores receberam proteção contra respostas antigas de consultas após troca de Secretaria.
+- [ ] Completar testes comportamentais de processo com fixtures sintéticas, sessões/papéis autenticados, checklist, transições permitidas e tentativas de pular/concluir indevidamente.
+- [ ] Revisar a tela de documentos para impedir exibição transitória de dados da Secretaria anterior durante troca de tenant.
+- [ ] Homologar GED/DOCX no navegador: upload parcial, retry, restauração/reanexo, falhas de metadata, limpeza de órfãos e downloads autenticados.
+- [ ] Executar testes autenticados de isolamento com duas Secretarias e papéis distintos.
+- [ ] Homologar backup e restauração em projeto Supabase separado, incluindo validação de Storage, RLS, funções e reconstrução de Auth.
+- [ ] Concluir os demais gates deste checklist antes de produção ou comercialização.
+
+O resultado verde da CI comprova validação automatizada do commit e aplicação/testes das migrations em banco descartável. Não comprova E2E visual/autenticado, recuperação de backup, configuração de serviços externos nem aceite do piloto. Nenhuma migration foi aplicada ao SMS2 nesta atualização.
+
+**Estado final desta verificação: NO-GO para produção/venda.**
