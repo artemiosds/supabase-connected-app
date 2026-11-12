@@ -151,3 +151,15 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - Migrations futuras no repositório: `20261112124000`, `20261112124500` e `20261112125000`. Todas passaram por aplicação e testes SQL em banco descartável; nenhuma foi aplicada ao SMS2.
 - O editor ainda é textual. A edição do texto descarta o DOCX original; editor visual rico, E2E autenticado, homologação visual de modelos reais e restauração de backup continuam pendentes.
 - **NO-GO** permanece até concluir o Gate 3 e os demais gates.
+
+
+## Atualização de validação — 12/11/2026, commit `49dd493e6be34b8e143831b46c17861045474d76`
+
+- [x] Corrigida a regex de UUID na política de exclusão de DOCX órfão.
+- [x] CI completo aprovado no commit: validação geral e segurança de banco descartável, incluindo aplicação das migrations e regressões pgTAP ([run 43280660261](https://github.com/artemiosds/supabase-connected-app/actions/runs/43280660261)); formatação aprovada ([run 43280660696](https://github.com/artemiosds/supabase-connected-app/actions/runs/43280660696)).
+- [x] Revisão estática do salvamento e restauração do DOCX: falhas de upload/vínculo geram aviso explícito de salvamento parcial.
+- [ ] E2E autenticado para upload, falha parcial, retry, restauração, limpeza de órfãos e acesso entre duas Secretarias.
+- [ ] Homologação visual com DOCX oficiais anonimizados, brasões e timbrados reais.
+- [ ] Backup/restauração em projeto isolado e reconciliação segura do histórico de migrations do SMS2.
+
+A execução anterior que falhou ocorreu antes do commit corretivo; não deve ser confundida com o CI posterior aprovado. Nenhuma migration foi aplicada ao SMS2 nesta validação. O estado comercial continua **NO-GO**.
