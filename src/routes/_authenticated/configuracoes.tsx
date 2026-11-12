@@ -157,6 +157,7 @@ function Configuracoes() {
 
   const carregarTimbrado = useCallback(async () => {
     if (!selecionado?.id) {
+      setLoadingTimbrado(false);
       setDadosTimbrado(timbradoVazio(""));
       setLogoPreviewUrl(null);
       setErroTimbrado(null);
@@ -346,9 +347,7 @@ function Configuracoes() {
         .from("gfs-private-documents")
         .remove([oldPath]);
       if (removeError) {
-        toast.warning(
-          "O timbrado foi salvo, mas o arquivo antigo ficou pendente de limpeza.",
-        );
+        toast.warning("O timbrado foi salvo, mas o arquivo antigo ficou pendente de limpeza.");
       }
     }
     setSalvandoTimbrado(false);
@@ -643,8 +642,11 @@ function Configuracoes() {
               </div>
 
               <div className="space-y-3">
-                <Label>Brasão ou logotipo institucional (PNG/JPEG, até 300 KB)</Label>
+                <Label htmlFor="timbrado-brasao">
+                  Brasão ou logotipo institucional (PNG/JPEG, até 300 KB)
+                </Label>
                 <Input
+                  id="timbrado-brasao"
                   type="file"
                   accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                   disabled={!podeEditarSecretaria}

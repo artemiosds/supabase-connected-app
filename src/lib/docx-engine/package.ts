@@ -106,12 +106,13 @@ export async function analyzeDocx(input: ArrayBuffer | Uint8Array | JSZip): Prom
       );
     if (
       wDescendants(doc, "sectPr").some((section) =>
-        [...wDescendants(section, "headerReference"), ...wDescendants(section, "footerReference")].some(
-          (reference) => {
-            const type = wAttr(reference, "type");
-            return type !== null && type !== "default";
-          },
-        ),
+        [
+          ...wDescendants(section, "headerReference"),
+          ...wDescendants(section, "footerReference"),
+        ].some((reference) => {
+          const type = wAttr(reference, "type");
+          return type !== null && type !== "default";
+        }),
       )
     )
       warn(
