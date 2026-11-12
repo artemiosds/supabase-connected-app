@@ -125,3 +125,71 @@ COMMIT;
 COMMENT ON TABLE public.document_template_sources IS
   'DOCX original privado associado a uma versao historica de modelo, sem sobrescrita.';
 COMMIT;
+$'
+       AND split_part(name, '/', 3) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      THEN
+        (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
+        AND (SELECT app_auth.is_tenant_in_good_standing(split_part(name, '/', 1)::uuid))
+        AND (SELECT app_auth.is_tenant_module_enabled(split_part(name, '/', 1)::uuid, 'modelos'))
+        AND EXISTS (
+          SELECT 1 FROM public.document_templates t
+          WHERE t.id = split_part(name, '/', 3)::uuid
+            AND t.tenant_id = split_part(name, '/', 1)::uuid
+            AND t.version::text = substring(split_part(name, '/', 4) from 2)
+        )
+      ELSE false
+    END
+  );
+
+CREATE POLICY gfs_private_template_sources_read ON storage.objects
+  FOR SELECT TO authenticated USING (
+    bucket_id = 'gfs-private-documents'
+    AND EXISTS (
+      SELECT 1 FROM public.document_template_sources s
+      WHERE s.storage_path = storage.objects.name
+        AND (SELECT app_auth.has_tenant_data_permission(s.tenant_id, 'documents:view'))
+        AND (SELECT app_auth.is_tenant_in_good_standing(s.tenant_id))
+        AND (SELECT app_auth.is_tenant_module_enabled(s.tenant_id, 'modelos'))
+    )
+  );
+
+-- A failed metadata write may leave a private upload; only its uploader may
+-- read and remove that unlinked object. Linked sources remain immutable.
+CREATE POLICY gfs_private_template_sources_orphan_read ON storage.objects
+  FOR SELECT TO authenticated USING (
+    bucket_id = 'gfs-private-documents'
+    AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\.docx$'
+    AND owner_id = (SELECT auth.uid()::text)
+    AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
+    AND CASE
+      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      THEN (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
+      ELSE false
+    END
+  );
+
+CREATE POLICY gfs_private_template_sources_orphan_delete ON storage.objects
+  FOR DELETE TO authenticated USING (
+    bucket_id = 'gfs-private-documents'
+    AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\.docx$'
+    AND owner_id = (SELECT auth.uid()::text)
+    AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
+    AND CASE
+      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+      THEN (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
+      ELSE false
+    END
+  );
+
+COMMENT ON TABLE public.document_template_sources IS
+  'DOCX original privado associado a uma versao historica de modelo, sem sobrescrita.';
+COMMIT;
+
+      THEN (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
+      ELSE false
+    END
+  );
+
+COMMENT ON TABLE public.document_template_sources IS
+  'DOCX original privado associado a uma versao historica de modelo, sem sobrescrita.';
+COMMIT;
