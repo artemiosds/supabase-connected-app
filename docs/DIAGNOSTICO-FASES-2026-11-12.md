@@ -29,6 +29,8 @@ A estrutura ainda precisa de homologação real. **Não foi confirmado um ciclo 
 | Atribuições/sessões de suporte | 0 |
 | Fornecedores | 0 |
 | Documentos de fornecedor | 0 |
+| Modelos-base ativos no catálogo global | 5 |
+| Módulo modelos na Secretaria | Habilitado |
 | Modelos instalados na Secretaria | 0 |
 | Documentos gerados | 0 |
 | Processos de contratação | 0 |
@@ -78,9 +80,9 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 
 ### Fase 2 — Fornecedores, documentos e GED
 
-**Código:** cadastro e consulta de fornecedores; validação de CNPJ; documentos e vencimentos; histórico de sanções por Secretaria com revogação auditada; GED em bucket privado; modelos e versões; campos automáticos; geração com snapshots; aprovação documental; exportação Word/PDF; importação DOCX; fonte binária privada de modelos versionados (migration pendente).
+**Código:** cadastro e consulta de fornecedores; validação de CNPJ; documentos e vencimentos; histórico de sanções por Secretaria com revogação auditada; GED em bucket privado; modelos e versões; campos automáticos; geração com snapshots; aprovação documental; exportação Word/PDF; importação DOCX; fonte binária privada de modelos versionados (migration pendente). O catálogo global já contém cinco modelos-base ativos: DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR. A Secretaria atual está no plano Profissional, com o módulo modelos habilitado; a tela Biblioteca-base permite instalar cada modelo em cópia independente.
 
-**Falta:** homologar upload/download, URLs assinadas, expiração/arquivamento, substituição e isolamento de Storage com dois tenants. A migration `document_template_binary_source` está no repositório, mas a tabela `document_template_sources` não existe no SMS2. A geração/exportação atual não deve ser descrita como fidelidade completa ao Word original em todos os casos. Assinatura atual é eletrônica simples; não é qualificada ICP-Brasil. Google Drive é reconhecido como link externo, sem OAuth/sincronização integrada ao `main`.
+**Falta:** instalar e adaptar os modelos na Secretaria piloto, revisar o conteúdo com as áreas técnica/jurídica locais e homologar upload/download, URLs assinadas, expiração/arquivamento, substituição e isolamento de Storage com dois tenants. A migration `document_template_binary_source` está no repositório, mas a tabela `document_template_sources` não existe no SMS2. A geração/exportação atual não deve ser descrita como fidelidade completa ao Word original em todos os casos. Assinatura atual é eletrônica simples; não é qualificada ICP-Brasil. Google Drive é reconhecido como link externo, sem OAuth/sincronização integrada ao `main`.
 
 ### Fase 3 — Processos, compras, contratos e relatórios
 
