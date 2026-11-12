@@ -83,8 +83,8 @@ SELECT extensions.ok(
   'existing tenant organization-edit permission is available for Drive administration'
 );
 SELECT extensions.ok((
-  SELECT pg_catalog.position('org:edit' in p.prosrc) > 0
-    AND pg_catalog.position('is_platform_admin' in p.prosrc) = 0
+  SELECT pg_catalog.strpos(p.prosrc, 'org:edit') > 0
+    AND pg_catalog.strpos(p.prosrc, 'is_platform_admin') = 0
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='public' AND p.proname='can_manage_tenant_drive'
