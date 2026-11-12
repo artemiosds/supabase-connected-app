@@ -123,3 +123,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A baseline `20261106194000` não está no histórico. Suas quatro tabelas, 14 índices e 12 políticas nomeadas existem, com RLS e FORCE nas tabelas. Isso não prova equivalência completa; não reaplicar a baseline nem reparar o histórico sem comparação de definições e simulação em cópia restaurada.
 - Seis migrations mais novas aguardam implantação: URL externa, contexto contratual, dez etapas, sanções, saldo contrato/ARP e fonte DOCX privada. `supplier_sanctions`, `contract_items`, `contract_item_movements`, `document_template_sources`, `process_items.responsible_name` e `due_date` estão ausentes no SMS2.
 - Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`. Nenhum histórico, schema ou dado de produção foi alterado nesta auditoria.
+
+
+## Pré-requisito de backup para corrigir o histórico — 12/11/2026
+
+- A baseline sem versão foi conferida em leitura: quatro tabelas com colunas de base esperadas, 14 índices e 12 políticas presentes; RLS/FORCE ativos, sem grants `anon` e zero linhas nas quatro tabelas. Isso não demonstra um backup restaurável nem a equivalência de toda definição após migrations posteriores.
+- O SMS2 é o único projeto conectado da organização Free; nenhuma das 828 execuções de Actions foi do workflow de backup. Não há evidência de artefato criptografado, chave privada de recuperação ou restauração isolada. Não alterar histórico ou schema do SMS2 antes de cumprir esse gate.
+- Ver `docs/RECONCILIACAO-MIGRATIONS-SMS2.md` e `docs/ROTINA-DE-BACKUP.md`. O usuário autorizou continuar a correção, mas nenhum DDL ou reparo de produção foi executado nesta etapa.

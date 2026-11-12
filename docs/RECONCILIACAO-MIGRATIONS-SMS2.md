@@ -47,6 +47,27 @@ constraints, políticas, funções e triggers. Isso exige revisão de locks,
 dependências e comportamento antes da implantação; a contagem de linhas para
 atualização/exclusão em massa é **zero**, pois nenhuma foi planejada.
 
+## Verificação adicional do SMS2 — 12/11/2026
+
+- As quatro tabelas da baseline têm **exatamente as colunas de base previstas** no
+  arquivo local; as 14 entradas de índice e 12 políticas nomeadas estão no
+  catálogo. Todas têm RLS e FORCE RLS ativos. Para `authenticated`, os grants
+  são SELECT/INSERT/UPDATE; `anon` não tem grants nessas tabelas.
+- As quatro tabelas possuem **zero linhas operacionais** nesta consulta. Isso
+  reduz o risco de dados nelas, mas não substitui backup das demais tabelas,
+  Auth e Storage. Definições de constraints/políticas podem ter sido alteradas
+  legitimamente por migrations posteriores; não executar a baseline antiga.
+- Plano da organização `gestao2sms`: **Free**. Só o projeto SMS2 está conectado,
+  sem branch de desenvolvimento. A consulta às 828 execuções de Actions não
+  encontrou nenhuma do workflow `Encrypted SMS2 backup`.
+- O workflow de backup requer `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+  e `AGE_RECIPIENT` no GitHub; não é possível confirmar os valores pelas
+  ferramentas conectadas. Não solicitar a identidade privada age no chat.
+  Executar o primeiro workflow manualmente, baixar o artefato criptografado,
+  validar SHA-256, descriptografar e restaurar em ambiente separado antes de
+  reparar histórico ou alterar schema. O backup lógico não cobre Auth/senhas,
+  configurações do projeto e secrets; planejar reconstrução desses itens.
+
 ## Gate para uma implantação segura
 
 1. Congelar novas mudanças de schema durante a janela. Obter backup do banco e
@@ -68,6 +89,7 @@ atualização/exclusão em massa é **zero**, pois nenhuma foi planejada.
    Testar os fluxos autenticados com perfis reais e duas Secretarias, sem
    persistir fixtures reais. Registrar versões, logs, resultados e retorno.
 
-Este documento **não autoriza** alterar histórico, schema ou dados em produção.
-O usuário pediu confirmação antes dessas mudanças; preparar e conferir todo o
-plano primeiro. Lovable permanece somente para preview.
+O usuário autorizou continuar a correção em 12/11/2026. Os pré-requisitos de
+backup restaurável e ensaio em ambiente separado ainda **não foram cumpridos**;
+nenhum histórico, schema ou dado de produção foi modificado nesta etapa.
+Lovable permanece somente para preview.

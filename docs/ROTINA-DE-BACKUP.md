@@ -66,7 +66,7 @@ Antes de restaurar:
 
 ## Estado atual de execução
 
-A rotina está versionada, mas a consulta ao histórico do GitHub Actions em 08/11/2026 não encontrou nenhuma execução do workflow Encrypted SMS2 backup. Portanto, ainda não há evidência de que os secrets/variables estejam configurados, de que um artefato criptografado tenha sido gerado, nem de que a chave privada consiga descriptografá-lo. O primeiro backup manual e o teste de restauração em projeto separado continuam obrigatórios.
+A rotina está versionada, mas a consulta às 828 execuções do GitHub Actions em 12/11/2026 não encontrou nenhuma execução do workflow Encrypted SMS2 backup. Portanto, ainda não há evidência de que os secrets/variables estejam configurados, de que um artefato criptografado tenha sido gerado, nem de que a chave privada consiga descriptografá-lo. O primeiro backup manual e o teste de restauração em projeto separado continuam obrigatórios.
 
 ## Frequência e política
 
