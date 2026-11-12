@@ -2508,9 +2508,9 @@ function Documentos() {
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              {enabledModules?.["processos"] === true &&
+              {selecionado.enabled_modules["processos"] === true &&
                 selecionado.enabled_modules["documentos"] === true &&
-                enabledModules?.["modelos"] === true && (
+                selecionado.enabled_modules["modelos"] === true && (
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Vincular a processo de contratação (opcional)</Label>
                     <Select
@@ -2536,7 +2536,7 @@ function Documentos() {
                     </Select>
                   </div>
                 )}
-              {enabledModules?.["contratos"] === true && (
+              {selecionado.enabled_modules["contratos"] === true && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Vincular a contrato (opcional)</Label>
                   <Select
