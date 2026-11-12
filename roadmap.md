@@ -109,3 +109,8 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - O DOCX importado passa a ser anexado em Storage privado à versão imutável do modelo, sem alterar a edição de texto. O Word exportado usa o original somente para rascunho não editado com valores de snapshot consistentes; a revisão humana permanece soberana.
 - A migration está no repositório e aguarda reconciliação do histórico do SMS2 para publicação. Layout Word complexo, imagens em PDF, brasão configurável, identidade visual oficial e homologação autenticada seguem pendentes.
+
+
+## Atualização — PR #18 e conciliação de nomes (12/11/2026)
+
+O PR #18 foi integrado ao `main` e acrescentou seis índices de chaves estrangeiras com seis assertions pgTAP. CI completo passou; os índices permanecem pendentes no SMS2. Portanto, o repositório tem 76 arquivos SQL e duas migrations futuras, sem correspondência no histórico remoto: `20261112124000_document_template_binary_source.sql` e `20261112150000_complete_foreign_key_index_coverage.sql`. Não aplicar nenhuma das duas ao SMS2 nesta etapa.
