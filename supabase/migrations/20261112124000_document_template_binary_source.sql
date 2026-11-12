@@ -103,7 +103,7 @@ CREATE POLICY gfs_private_template_sources_orphan_read ON storage.objects
 CREATE POLICY gfs_private_template_sources_orphan_delete ON storage.objects
   FOR DELETE TO authenticated USING (
     bucket_id = 'gfs-private-documents'
-    AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\\.docx$'
+    AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\.docx$'
     AND owner_id = (SELECT auth.uid()::text)
     AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
     AND CASE
