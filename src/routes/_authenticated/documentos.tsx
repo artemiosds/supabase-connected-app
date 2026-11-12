@@ -254,8 +254,6 @@ function Documentos() {
     [fluxosGerados],
   );
   const [loading, setLoading] = useState(true);
-  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
-  const requisicaoRef = useRef(0);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("vencimentos");
   const moduloModelosAtivo = selecionado?.enabled_modules["modelos"] === true;
@@ -317,11 +315,7 @@ function Documentos() {
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
 
   const carregar = useCallback(async () => {
-    const requisicaoAtual = ++requisicaoRef.current;
-    const tenantId = selecionado?.id;
-    const enabledModules = selecionado?.enabled_modules;
-    setTenantCarregadoId(null);
-    if (!tenantId) {
+    if (!selecionado?.id) {
       setCapacidades({
         can_view: false,
         can_create: false,
@@ -344,7 +338,6 @@ function Documentos() {
       setCnpjSecretaria("");
       setCodigoIbgeSecretaria("");
       setLoading(false);
-      setTenantCarregadoId(null);
       return;
     }
     setLoading(true);
@@ -363,12 +356,12 @@ function Documentos() {
         workflowCapabilities,
         workflowRecords,
       ] = await Promise.all([
-        db.rpc("get_document_capabilities", { p_tenant_id: tenantId }),
+        db.rpc("get_document_capabilities", { p_tenant_id: selecionado.id }),
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
           db
             .from("suppliers")
             .select("id,legal_name,trade_name,cnpj")
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", selecionado.id)
             .order("legal_name")
             .order("id")
             .range(inicio, fim),
@@ -377,7 +370,7 @@ function Documentos() {
           db
             .from("supplier_documents")
             .select("*")
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", selecionado.id)
             .eq("status", "active")
             .order("expires_at", { ascending: true, nullsFirst: false })
             .order("id")
@@ -387,7 +380,7 @@ function Documentos() {
           db
             .from("document_templates")
             .select("*")
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", selecionado.id)
             .eq("is_active", true)
             .order("title")
             .order("id")
@@ -397,7 +390,7 @@ function Documentos() {
           db
             .from("generated_documents")
             .select("*")
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", selecionado.id)
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
             .range(inicio, fim),
@@ -405,7 +398,7 @@ function Documentos() {
         db
           .from("tenants")
           .select("municipality,state,cnpj,ibge_code")
-          .eq("id", tenantId)
+          .eq("id", selecionado.id)
           .maybeSingle(),
         carregarTodasAsPaginas<ModeloCatalogo>((inicio, fim) =>
           db
@@ -416,43 +409,42 @@ function Documentos() {
             .order("id")
             .range(inicio, fim),
         ),
-        enabledModules?.processos === true
+        selecionado.enabled_modules["processos"] === true
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
                 .select(
                   "id,number,title,description,modality,stage,status,priority,requesting_unit,responsible_name,estimated_value,due_date",
                 )
-                .eq("tenant_id", tenantId)
+                .eq("tenant_id", selecionado.id)
                 .neq("status", "arquivado")
                 .order("created_at", { ascending: false })
                 .order("id", { ascending: false })
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
-        enabledModules?.contratos === true
+        selecionado.enabled_modules["contratos"] === true
           ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
               db
                 .from("contracts")
                 .select(
                   "id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
                 )
-                .eq("tenant_id", tenantId)
+                .eq("tenant_id", selecionado.id)
                 .order("number")
                 .order("id")
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ContratoGeracao[]),
         db.rpc("get_document_workflow_capabilities", {
-          p_tenant_id: tenantId,
+          p_tenant_id: selecionado.id,
         }),
         db.rpc("list_generated_document_workflows", {
-          p_tenant_id: tenantId,
+          p_tenant_id: selecionado.id,
         }),
       ]);
       for (const result of [cap, tenantData, workflowCapabilities, workflowRecords])
         if (result.error) throw result.error;
-      if (requisicaoAtual !== requisicaoRef.current) return;
       const documentCapabilities = cap.data?.[0] ?? {
         can_view: false,
         can_create: false,
@@ -464,7 +456,7 @@ function Documentos() {
         ...documentCapabilities,
         can_manage_templates:
           documentCapabilities.can_manage_templates &&
-          enabledModules?.modelos === true,
+          selecionado.enabled_modules["modelos"] === true,
       });
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
@@ -480,9 +472,7 @@ function Documentos() {
       setUfSecretaria(tenantData.data?.state ?? "");
       setCnpjSecretaria(tenantData.data?.cnpj ?? "");
       setCodigoIbgeSecretaria(tenantData.data?.ibge_code ?? "");
-      setTenantCarregadoId(tenantId);
     } catch (e) {
-      if (requisicaoAtual !== requisicaoRef.current) return;
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
       setModelos([]);
@@ -493,21 +483,8 @@ function Documentos() {
       setFluxosGerados([]);
       setPodeEnviarAprovacao(false);
       setPodeAprovarDocumento(false);
-      setCapacidades({
-        can_view: false,
-        can_create: false,
-        can_update: false,
-        can_sign: false,
-        can_manage_templates: false,
-      });
-      setFornecedores([]);
-      setMunicipioSecretaria("");
-      setUfSecretaria("");
-      setCnpjSecretaria("");
-      setCodigoIbgeSecretaria("");
-      setTenantCarregadoId(tenantId);
     } finally {
-      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
+      setLoading(false);
     }
   }, [selecionado?.id, selecionado?.enabled_modules]);
 
@@ -1550,14 +1527,6 @@ function Documentos() {
         </AlertDescription>
       </Alert>
     );
-  if (loading || tenantCarregadoId !== selecionado.id) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground" role="status">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        Carregando documentos da Secretaria selecionada…
-      </div>
-    );
-  }
   if (!capacidades.can_view && !loading)
     return (
       <Alert>
