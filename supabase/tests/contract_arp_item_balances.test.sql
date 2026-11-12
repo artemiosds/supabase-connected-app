@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(27);
+SELECT extensions.plan(28);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.contract_items') IS NOT NULL,
