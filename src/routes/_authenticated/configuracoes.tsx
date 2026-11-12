@@ -339,11 +339,17 @@ function Configuracoes() {
       { onConflict: "tenant_id" },
     );
     if (saveError) {
+      let cleanupWarning = "";
       if (uploadedPath) {
-        await db.storage.from("gfs-private-documents").remove([uploadedPath]);
+        const { error: cleanupError } = await db.storage
+          .from("gfs-private-documents")
+          .remove([uploadedPath]);
+        if (cleanupError) {
+          cleanupWarning = ` O arquivo temporário também não pôde ser removido: ${cleanupError.message}`;
+        }
       }
       setSalvandoTimbrado(false);
-      toast.error(saveError.message);
+      toast.error(`${saveError.message}${cleanupWarning}`);
       return;
     }
 
