@@ -17,6 +17,11 @@ const CELL_PAD = 3;
 
 type Fonts = { regular: PDFFont; bold: PDFFont; italic: PDFFont; boldItalic: PDFFont };
 
+/** Centers header/footer assets against the actual page size, including landscape pages. */
+export function centeredPdfX(pageWidth: number, contentWidth: number): number {
+  return (pageWidth - contentWidth) / 2;
+}
+
 const REPLACEMENTS: Record<string, string> = {
   "\u00a0": " ",
   "\u2011": "-",
@@ -448,7 +453,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     if (logo) {
       const scale = logoH / logo.height;
       const lw = logo.width * scale;
-      pg.drawImage(logo, { x: (A4.width - lw) / 2, y: hy - logoH, width: lw, height: logoH });
+      pg.drawImage(logo, { x: centeredPdfX(pageWidth, lw), y: hy - logoH, width: lw, height: logoH });
       hy -= logoH + 4;
     }
     headerLines.forEach((text, i) => {
@@ -456,7 +461,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
       const size = i === 0 && useBrand ? 11 : 9;
       const clean = sanitizeForPdf(text, font, new Set());
       const tw = font.widthOfTextAtSize(clean, size);
-      pg.drawText(clean, { x: (A4.width - tw) / 2, y: hy - size, size, font });
+      pg.drawText(clean, { x: centeredPdfX(pageWidth, tw), y: hy - size, size, font });
       hy -= 12;
     });
     if (headerLines.length || logo)
@@ -470,7 +475,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     footerLines.forEach((text) => {
       const clean = sanitizeForPdf(text, fonts.regular, new Set());
       const tw = fonts.regular.widthOfTextAtSize(clean, 8);
-      pg.drawText(clean, { x: (A4.width - tw) / 2, y: fy - 8, size: 8, font: fonts.regular });
+      pg.drawText(clean, { x: centeredPdfX(pageWidth, tw), y: fy - 8, size: 8, font: fonts.regular });
       fy -= 10;
     });
     if (b.showPageNumbers) {

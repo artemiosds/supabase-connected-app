@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
+import { centeredPdfX } from "./pdf";
 import {
   DEFAULT_BRANDING,
   analyzeDocx,
@@ -79,6 +80,13 @@ const ITEMS: DocumentItem[] = [
 // Placeholder {{numero_processo}} split in three runs with different formatting.
 const SPLIT_PARAGRAPH = `<w:p><w:pPr><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">Processo nº {{numero_</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>proc</w:t></w:r><w:r><w:t>esso}} – fim.</w:t></w:r></w:p>`;
 const ITEMS_TABLE = `<w:tbl><w:tblPr><w:tblStyle w:val="Grade"/></w:tblPr><w:tblGrid><w:gridCol w:w="4000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:p><w:r><w:t>Descrição</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Qtd.</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:shd w:val="clear" w:fill="EEEEEE"/></w:tcPr><w:p><w:r><w:t>{{tabela_itens}}{{item.</w:t></w:r><w:r><w:t>descricao}}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>{{item.quantidade}}</w:t></w:r></w:p></w:tc></w:tr></w:tbl>`;
+
+describe("centralização de elementos do PDF", () => {
+  it("usa a largura real da página em retrato e paisagem", () => {
+    expect(centeredPdfX(792, 200)).toBe(296);
+    expect(centeredPdfX(612, 200)).toBe(206);
+  });
+});
 
 describe("docx engine — generation", () => {
   it("replaces a placeholder split across runs and keeps the first run formatting", async () => {
