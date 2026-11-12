@@ -2255,7 +2255,8 @@ function Documentos() {
               <Label>Texto do modelo *</Label>
               {carregandoOriginalModelo && (
                 <p className="text-xs text-muted-foreground">
-                  Carregando o Word original da versão para preservar o arquivo na próxima gravação...
+                  Carregando o Word original da versão para preservar o arquivo na próxima
+                  gravação...
                 </p>
               )}
               {arquivoOriginalModelo && (
