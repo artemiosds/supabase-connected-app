@@ -2065,6 +2065,74 @@ export type Database = {
           },
         ];
       };
+      tenant_document_branding: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          footer_text: string;
+          header_subtitle: string;
+          header_title: string;
+          logo_file_name: string | null;
+          logo_file_size: number | null;
+          logo_mime: string | null;
+          logo_storage_path: string | null;
+          margin_bottom_mm: number;
+          margin_left_mm: number;
+          margin_right_mm: number;
+          margin_top_mm: number;
+          show_page_numbers: boolean;
+          tenant_id: string;
+          updated_at: string;
+          updated_by: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string;
+          footer_text?: string;
+          header_subtitle?: string;
+          header_title?: string;
+          logo_file_name?: string | null;
+          logo_file_size?: number | null;
+          logo_mime?: string | null;
+          logo_storage_path?: string | null;
+          margin_bottom_mm?: number;
+          margin_left_mm?: number;
+          margin_right_mm?: number;
+          margin_top_mm?: number;
+          show_page_numbers?: boolean;
+          tenant_id: string;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          footer_text?: string;
+          header_subtitle?: string;
+          header_title?: string;
+          logo_file_name?: string | null;
+          logo_file_size?: number | null;
+          logo_mime?: string | null;
+          logo_storage_path?: string | null;
+          margin_bottom_mm?: number;
+          margin_left_mm?: number;
+          margin_right_mm?: number;
+          margin_top_mm?: number;
+          show_page_numbers?: boolean;
+          tenant_id?: string;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_document_branding_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenants: {
         Row: {
           billing_contact: string | null;
