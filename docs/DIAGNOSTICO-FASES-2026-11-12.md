@@ -61,7 +61,7 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 - Todas as 38 tabelas públicas têm RLS; 27 também têm FORCE RLS.
 - O Security Advisor aponta 36 funções `SECURITY DEFINER` executáveis por `authenticated`. Muitas são RPCs deliberadas do produto; não revogar em lote. Manter autorização explícita por usuário, papel, tenant e `search_path` fixo.
 - O Security Advisor também aponta a proteção contra senhas vazadas desativada. No plano Free, não assumir que o recurso esteja disponível; rever opção/plano Supabase.
-- O Performance Advisor continua apontando seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). O PR #18 foi integrado ao `main` e adicionou a migration `20261112150000_complete_foreign_key_index_coverage.sql` com os seis índices; ela ainda não foi aplicada ao SMS2, por isso o Advisor ainda os sinaliza. Não remover índices existentes sem carga real e benchmark.
+- O Performance Advisor ainda aponta seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). Os PRs #18 e #22 foram integrados ao `main`: o primeiro adiciona `20261112150000_complete_foreign_key_index_coverage.sql`; o segundo adiciona `20261112162000_remove_redundant_master_select_policies.sql`. Nenhuma das duas migrations foi aplicada ao SMS2; por isso os seis índices e as sete duplicidades ainda aparecem no Advisor. Não remover índices existentes sem carga real e benchmark.
 - `pg_cron` e `pg_net` não estão instalados; a relação `cron.job` não existe no SMS2. O repositório possui workflow GitHub diário para alertas, condicionado à variável `EXPIRY_ALERTS_ENABLED=true` e a secrets que ainda não foram comprovados/configurados.
 
 ## Fases do produto
@@ -116,16 +116,16 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 
 ## Estado das migrations — cuidado obrigatório
 
-O SMS2 registra 74 versões. O repositório contém 75 arquivos SQL. Em cinco migrations já aplicadas, o Supabase registrou timestamp diferente do prefixo local; a branch `chore/align-applied-supabase-migration-versions` renomeia esses arquivos para os timestamps remotos. A migration de fonte binária Word permanece pendente e foi renumerada para `20261112124000`, depois da última versão aplicada (`20261112123300`).
+O SMS2 registra 74 versões até `20261112123300_contract_arp_item_balances`. O `main` contém 77 arquivos SQL. A conciliação dos cinco timestamps divergentes já foi integrada ao `main` pelo PR #19; os nomes locais correspondem ao histórico remoto. Há exatamente três migrations futuras no código, ainda não aplicadas ao SMS2: `20261112124000_document_template_binary_source.sql` (armazenamento privado das fontes DOCX), `20261112150000_complete_foreign_key_index_coverage.sql` (seis índices de FK) e `20261112162000_remove_redundant_master_select_policies.sql` (remoção de sete políticas SELECT redundantes).
 
 A baseline `20261106194000_restore_operational_process_and_contract_tables` está registrada no SMS2 com `statements` vazio como marcador de histórico; as estruturas já existem. Não reaplicar o SQL de baseline no projeto remoto.
 
-Não executar `supabase db push` ou migration remota em lote enquanto a branch de alinhamento não for revisada e integrada. Não executar os scripts históricos de reparo/reversão depois da correção já registrada. A migration de fonte binária e o PR #18 (seis índices) são mudanças futuras, não aplicadas ao SMS2.
+Não executar `supabase db push` em lote no SMS2. Antes de qualquer mudança remota, gerar backup, comprovar descriptografia e restauração em projeto separado, revisar cada uma das três migrations pendentes e aplicar uma por vez em janela controlada, com verificação posterior de schema, RLS, políticas, índices e Advisor. Não executar os scripts históricos de reparo/reversão depois da correção já registrada. As migrations pendentes foram testadas por `supabase db reset --local` e pgTAP na CI, mas isso não substitui backup e homologação do projeto remoto.
 
 ## Próxima sequência técnica recomendada
 
-1. Integrar a conciliação de nomes das migrations após CI verde.
-2. Fechar a revisão do PR #18 e integrar os seis índices se CI/pgTAP passarem.
+1. Gerar backup criptografado e comprovar restauração em projeto separado.
+2. Revisar e planejar o rollout das três migrations futuras, uma por vez; atualizar o Advisor após cada etapa.
 3. Homologar o relatório de 90 dias em navegador autenticado, incluindo CSV/XLSX e impressão/PDF.
 4. Implementar reenvio seguro de convites sem duplicar identidades nem reviver convites cancelados.
 5. Concluir documentação/validação do motor de documentos e migration de fonte DOCX.
