@@ -120,9 +120,7 @@ describe("importação segura de modelos DOCX", () => {
     corrupted[corruptedByte] = corrupted[corruptedByte]! ^ 1;
     await expect(extractDocxDocumentXml(corrupted.buffer)).rejects.toThrow(/CRC inválido/);
 
-    const mismatchedHeader = new Uint8Array(
-      createStoredZip("word/document.xml", wordXml),
-    );
+    const mismatchedHeader = new Uint8Array(createStoredZip("word/document.xml", wordXml));
     mismatchedHeader[30] = "x".charCodeAt(0);
     await expect(extractDocxDocumentXml(mismatchedHeader.buffer)).rejects.toThrow(
       /cabeçalho local/,

@@ -221,10 +221,10 @@ export async function extractDocxDocumentXml(
     dataStart < localOffset ||
     dataEnd > centralOffset ||
     dataEnd < dataStart ||
-    (localFlags & 0x0008) === 0 &&
+    ((localFlags & 0x0008) === 0 &&
       (localCrc !== documentEntry.crc ||
         localCompressedSize !== documentEntry.compressedSize ||
-        localUncompressedSize !== documentEntry.uncompressedSize)
+        localUncompressedSize !== documentEntry.uncompressedSize))
   ) {
     throw new Error("O conteúdo principal do DOCX está incompleto ou inconsistente.");
   }
