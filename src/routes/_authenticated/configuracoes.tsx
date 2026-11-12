@@ -323,10 +323,7 @@ function Configuracoes() {
 
       {selecionado?.enabled_modules["ged"] === true &&
         selecionado.enabled_modules["fornecedores"] === true && (
-          <TenantGoogleDriveCard
-            tenantId={selecionado.id}
-            tenantName={selecionado.nome}
-          />
+          <TenantGoogleDriveCard tenantId={selecionado.id} tenantName={selecionado.nome} />
         )}
 
       <Card>
