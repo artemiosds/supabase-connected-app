@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -25,6 +25,7 @@ import {
   formatarMoeda,
   MODALIDADES,
   nivelAlerta,
+  selecionarContratosAVencerEm90Dias,
   numeroDecimal,
   ORIENTACAO_ALERTA,
   ROTULO_ALERTA,
@@ -151,6 +152,8 @@ function Contratos() {
   const [fornecedores, setFornecedores] = useState<{ id: string; legal_name: string }[]>([]);
   const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
+  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
+  const requisicaoRef = useRef(0);
   const [historicosAbertos, setHistoricosAbertos] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -161,25 +164,32 @@ function Contratos() {
   const [filtro, setFiltro] = useState<"todos" | "alerta">("todos");
 
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) {
-      setLista([]);
-      setFornecedores([]);
-      setProcessos([]);
-      setAditivos([]);
-      setHistoricosAbertos({});
+    const requisicaoAtual = ++requisicaoRef.current;
+    const tenantId = selecionado?.id;
+
+    // Esconde os dados anteriores imediatamente e invalida qualquer resposta atrasada.
+    setTenantCarregadoId(null);
+    setLista([]);
+    setFornecedores([]);
+    setProcessos([]);
+    setAditivos([]);
+    setHistoricosAbertos({});
+    setErro(null);
+    setPendente(false);
+
+    if (!tenantId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setErro(null);
     try {
       const [contratosRows, fornecedoresRows, processosRows, aditivosRows] = await Promise.all([
         carregarTodasAsPaginas<Contrato>((inicio, fim) =>
           db
             .from("contracts")
             .select("*")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .order("end_date", { ascending: true })
             .order("id")
             .range(inicio, fim),
@@ -188,7 +198,7 @@ function Contratos() {
           db
             .from("suppliers")
             .select("id, legal_name")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .order("legal_name")
             .order("id")
             .range(inicio, fim),
@@ -197,7 +207,7 @@ function Contratos() {
           db
             .from("procurement_processes")
             .select("id,number,title")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .neq("status", "arquivado")
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
@@ -209,27 +219,26 @@ function Contratos() {
             .select(
               "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
             )
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .order("signed_at", { ascending: false })
             .order("id", { ascending: false })
             .range(inicio, fim),
         ),
       ]);
-      setPendente(false);
+
+      if (requisicaoAtual !== requisicaoRef.current) return;
       setLista(contratosRows);
       setFornecedores(fornecedoresRows);
       setProcessos(processosRows);
       setAditivos(aditivosRows);
+      setTenantCarregadoId(tenantId);
     } catch (error) {
-      setLista([]);
-      setFornecedores([]);
-      setProcessos([]);
-      setAditivos([]);
+      if (requisicaoAtual !== requisicaoRef.current) return;
       const message = error instanceof Error ? error.message : String(error);
       if (bancoNaoConfigurado(message)) setPendente(true);
       else setErro(message);
     } finally {
-      setLoading(false);
+      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
   }, [selecionado?.id]);
 
@@ -237,9 +246,18 @@ function Contratos() {
     void carregar();
   }, [carregar]);
 
+  const dadosTenantAtual = !!selecionado?.id && tenantCarregadoId === selecionado.id;
+  const listaAtual = dadosTenantAtual ? lista : [];
+  const fornecedoresAtuais = dadosTenantAtual ? fornecedores : [];
+  const processosAtuais = dadosTenantAtual ? processos : [];
+  const aditivosAtuais = dadosTenantAtual ? aditivos : [];
+  const loadingAtual = loading || !dadosTenantAtual;
+  const erroAtual = dadosTenantAtual ? erro : null;
+  const pendenteAtual = dadosTenantAtual && pendente;
+
   const comNivel = useMemo(
     () =>
-      lista.map((c) => {
+      listaAtual.map((c) => {
         const dias = diasAte(c.end_date);
         return {
           ...c,
@@ -247,12 +265,16 @@ function Contratos() {
           nivel: c.status === "vigente" ? nivelAlerta(dias) : ("ok" as const),
         };
       }),
-    [lista],
+    [listaAtual],
+  );
+  const contratosAVencer90Dias = useMemo(
+    () => selecionarContratosAVencerEm90Dias(listaAtual),
+    [listaAtual],
   );
   const contagem = (n: NivelAlerta) => comNivel.filter((c) => c.nivel === n).length;
   const exibidos = filtro === "alerta" ? comNivel.filter((c) => c.nivel !== "ok") : comNivel;
   const nomeFornecedor = (id: string | null) =>
-    fornecedores.find((f) => f.id === id)?.legal_name ?? "—";
+    fornecedoresAtuais.find((f) => f.id === id)?.legal_name ?? "—";
   const colunasRelatorio: CsvColumn<(typeof exibidos)[number]>[] = [
     { header: "Número", value: (contrato) => contrato.number },
     {
@@ -275,9 +297,30 @@ function Contratos() {
     { header: "Status", value: (contrato) => contrato.status },
   ];
   const nomeProcesso = (id: string | null) => {
-    const processo = processos.find((item) => item.id === id);
+    const processo = processosAtuais.find((item) => item.id === id);
     return processo ? `${processo.number} — ${processo.title}` : null;
   };
+  const colunasRelatorio90Dias: CsvColumn<(typeof contratosAVencer90Dias)[number]>[] = [
+    { header: "Contrato", value: (contrato) => contrato.number },
+    {
+      header: "Instrumento",
+      value: (contrato) =>
+        contrato.instrument_type === "ata_registro_precos"
+          ? "Ata de Registro de Preços"
+          : "Contrato",
+    },
+    { header: "Objeto", value: (contrato) => contrato.object },
+    { header: "Fornecedor", value: (contrato) => nomeFornecedor(contrato.supplier_id) },
+    { header: "Processo", value: (contrato) => nomeProcesso(contrato.process_id) ?? "—" },
+    { header: "Modalidade", value: (contrato) => MODALIDADES[contrato.modality] ?? contrato.modality },
+    { header: "Valor total", value: (contrato) => Number(contrato.total_value) },
+    { header: "Início da vigência", value: (contrato) => formatarData(contrato.start_date) },
+    { header: "Fim da vigência", value: (contrato) => formatarData(contrato.end_date) },
+    { header: "Dias restantes", value: (contrato) => diasAte(contrato.end_date) },
+    { header: "Gestor", value: (contrato) => contrato.manager_name ?? "—" },
+    { header: "Fiscal", value: (contrato) => contrato.inspector_name ?? "—" },
+    { header: "Portaria", value: (contrato) => contrato.ordinance ?? "—" },
+  ];
   const rotuloTipoAditivo: Record<string, string> = {
     prorrogacao: "Prorrogação de prazo",
     acrescimo: "Acréscimo de valor",
@@ -304,21 +347,28 @@ function Contratos() {
             filename={`contratos-${new Date().toISOString().slice(0, 10)}.csv`}
             columns={colunasRelatorio}
             rows={exibidos}
-            disabled={loading}
+            disabled={loadingAtual || pendenteAtual || !!erroAtual}
+          />
+          <ReportExportActions
+            title="Contratos vigentes a vencer nos próximos 90 dias"
+            filename={`contratos-a-vencer-90-dias-${new Date().toLocaleDateString("sv-SE")}`}
+            columns={colunasRelatorio90Dias}
+            rows={contratosAVencer90Dias}
+            disabled={loadingAtual || pendenteAtual || !!erroAtual}
           />
           <Button
             onClick={() => {
               setContratoEditando(null);
               setNovoAberto(true);
             }}
-            disabled={pendente}
+            disabled={pendenteAtual || loadingAtual || !!erroAtual}
           >
             <Plus className="h-4 w-4" /> Novo contrato
           </Button>
         </div>
       </div>
 
-      {pendente && (
+      {pendenteAtual && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Dados de contratos indisponíveis</AlertTitle>
@@ -329,10 +379,10 @@ function Contratos() {
           </AlertDescription>
         </Alert>
       )}
-      {erro && (
+      {erroAtual && (
         <Alert variant="destructive">
           <AlertTitle>Não foi possível carregar</AlertTitle>
-          <AlertDescription>{erro}</AlertDescription>
+          <AlertDescription>{erroAtual}</AlertDescription>
         </Alert>
       )}
 
@@ -364,7 +414,7 @@ function Contratos() {
         </Button>
       </div>
 
-      {loading ? (
+      {loadingAtual ? (
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       ) : exibidos.length === 0 ? (
         <Card>
@@ -456,7 +506,7 @@ function Contratos() {
                     }
                   >
                     <History className="h-4 w-4" />
-                    Histórico ({aditivos.filter((item) => item.contract_id === c.id).length})
+                    Histórico ({aditivosAtuais.filter((item) => item.contract_id === c.id).length})
                     {historicosAbertos[c.id] ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
@@ -477,7 +527,7 @@ function Contratos() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Histórico de aditivos do contrato
                     </p>
-                    {aditivos.filter((item) => item.contract_id === c.id).length === 0 ? (
+                    {aditivosAtuais.filter((item) => item.contract_id === c.id).length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         Nenhum aditivo foi registrado para este contrato.
                       </p>
@@ -529,8 +579,8 @@ function Contratos() {
         }}
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
-        fornecedores={fornecedores}
-        processos={processos}
+        fornecedores={fornecedoresAtuais}
+        processos={processosAtuais}
         onSalvo={carregar}
       />
       <NovoAditivo
