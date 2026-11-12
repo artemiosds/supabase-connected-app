@@ -453,7 +453,12 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     if (logo) {
       const scale = logoH / logo.height;
       const lw = logo.width * scale;
-      pg.drawImage(logo, { x: centeredPdfX(pageWidth, lw), y: hy - logoH, width: lw, height: logoH });
+      pg.drawImage(logo, {
+        x: centeredPdfX(pageWidth, lw),
+        y: hy - logoH,
+        width: lw,
+        height: logoH,
+      });
       hy -= logoH + 4;
     }
     headerLines.forEach((text, i) => {
@@ -475,7 +480,12 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     footerLines.forEach((text) => {
       const clean = sanitizeForPdf(text, fonts.regular, new Set());
       const tw = fonts.regular.widthOfTextAtSize(clean, 8);
-      pg.drawText(clean, { x: centeredPdfX(pageWidth, tw), y: fy - 8, size: 8, font: fonts.regular });
+      pg.drawText(clean, {
+        x: centeredPdfX(pageWidth, tw),
+        y: fy - 8,
+        size: 8,
+        font: fonts.regular,
+      });
       fy -= 10;
     });
     if (b.showPageNumbers) {
