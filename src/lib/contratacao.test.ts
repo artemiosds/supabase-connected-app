@@ -54,7 +54,6 @@ describe("conversão de valores decimais", () => {
   });
 });
 
-
 describe("relatório de contratos a vencer em 90 dias", () => {
   const hoje = new Date(2026, 10, 12);
 
@@ -67,10 +66,8 @@ describe("relatório de contratos a vencer em 90 dias", () => {
       { number: "arquivado", status: "arquivado", end_date: "2026-12-01" },
     ];
 
-    expect(selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number)).toEqual([
-      "hoje",
-      "limite",
-    ]);
+    const numeros = selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number);
+    expect(numeros).toEqual(["hoje", "limite"]);
   });
 
   it("ordena por data final e usa o número como desempate determinístico", () => {
@@ -80,11 +77,8 @@ describe("relatório de contratos a vencer em 90 dias", () => {
       { number: "C-3", status: "vigente", end_date: "2026-12-01" },
     ];
 
-    expect(selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number)).toEqual([
-      "C-3",
-      "A-1",
-      "B-2",
-    ]);
+    const numeros = selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number);
+    expect(numeros).toEqual(["C-3", "A-1", "B-2"]);
   });
 
   it("não altera a lista de entrada", () => {
