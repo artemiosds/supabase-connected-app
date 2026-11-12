@@ -870,32 +870,95 @@ function Documentos() {
     if (!confirmou) return;
 
     setCarregandoVersoes(true);
-    const { error: restoreError } = await db
-      .from("document_templates")
-      .update({
-        title: versao.title,
-        description: versao.description,
-        content: versao.content,
-        template_type: versao.template_type,
-        template_code: versao.template_code,
-        legal_basis: versao.legal_basis,
-        source_reference: versao.source_reference,
-        variables_schema: versao.variables_schema,
-        change_summary: `Restauração da versão histórica ${versao.version}.`,
-      })
-      .eq("id", modeloHistorico.id)
-      .eq("tenant_id", selecionado.id);
+    try {
+      let arquivoOriginal: File | null = null;
+      const { data: source, error: sourceError } = await db
+        .from("document_template_sources")
+        .select("storage_path, file_name")
+        .eq("tenant_id", selecionado.id)
+        .eq("template_id", modeloHistorico.id)
+        .eq("version", versao.version)
+        .maybeSingle();
+      if (sourceError && !isMissingDocumentTemplateSourcesTable(sourceError)) {
+        throw sourceError;
+      }
+      if (source) {
+        const { data: original, error: downloadError } = await db.storage
+          .from("gfs-private-documents")
+          .download(source.storage_path);
+        if (downloadError || !original) {
+          throw downloadError ?? new Error("O Word original da versão histórica não está disponível.");
+        }
+        arquivoOriginal = new File([original], source.file_name, {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+      }
 
-    if (restoreError) {
+      const { data: restored, error: restoreError } = await db
+        .from("document_templates")
+        .update({
+          title: versao.title,
+          description: versao.description,
+          content: versao.content,
+          template_type: versao.template_type,
+          template_code: versao.template_code,
+          legal_basis: versao.legal_basis,
+          source_reference: versao.source_reference,
+          variables_schema: versao.variables_schema,
+          change_summary: `Restauração da versão histórica ${versao.version}.`,
+        })
+        .eq("id", modeloHistorico.id)
+        .eq("tenant_id", selecionado.id)
+        .select("version")
+        .single();
+      if (restoreError || !restored) {
+        throw restoreError ?? new Error("Não foi possível registrar a nova versão restaurada.");
+      }
+
+      let avisoOrigem: string | null = null;
+      if (arquivoOriginal) {
+        const path = `${selecionado.id}/template-sources/${modeloHistorico.id}/v${restored.version}/${crypto.randomUUID()}.docx`;
+        const { error: uploadError } = await db.storage
+          .from("gfs-private-documents")
+          .upload(path, arquivoOriginal, {
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            upsert: false,
+          });
+        if (uploadError) {
+          avisoOrigem = `Versão restaurada, mas o Word original não foi reanexado: ${uploadError.message}`;
+        } else {
+          const { error: metadataError } = await db.from("document_template_sources").insert({
+            tenant_id: selecionado.id,
+            template_id: modeloHistorico.id,
+            version: restored.version,
+            storage_path: path,
+            file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
+            file_size: arquivoOriginal.size,
+          });
+          if (metadataError) {
+            await db.storage.from("gfs-private-documents").remove([path]);
+            avisoOrigem = `Versão restaurada, mas o Word original não foi vinculado: ${metadataError.message}`;
+          }
+        }
+      }
+
+      if (avisoOrigem) {
+        toast.warning(avisoOrigem);
+      } else {
+        toast.success(
+          arquivoOriginal
+            ? "Versão restaurada com o Word original preservado."
+            : "Versão restaurada. Uma nova versão foi registrada no histórico.",
+        );
+      }
+      setDialogHistoricoModelo(false);
+      setModeloHistorico(null);
+      await carregar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível restaurar esta versão.");
+    } finally {
       setCarregandoVersoes(false);
-      toast.error(restoreError.message);
-      return;
     }
-
-    toast.success("Versão restaurada. Uma nova versão foi registrada no histórico.");
-    setDialogHistoricoModelo(false);
-    setModeloHistorico(null);
-    await carregar();
   }
 
   async function salvarModelo(e: FormEvent) {

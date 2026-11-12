@@ -215,6 +215,24 @@ describe("docx engine — analysis, model and PDF", () => {
     ).toThrow(/PDF foi bloqueado/);
   });
 
+  it("embeds the Secretaria logo in a valid branded PDF", async () => {
+    const model = await docxToModel(
+      await buildDocxFromText("Documento institucional", "Termo"),
+    );
+    const bytes = await renderPdf(model, {
+      branding: {
+        ...DEFAULT_BRANDING,
+        headerTitle: "Secretaria Municipal de Saúde",
+        footerText: "Documento institucional",
+        logoBase64:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==",
+        logoMime: "image/png",
+      },
+    });
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(1);
+  });
+
   it("reads original page size and margins for predictable PDF pagination", async () => {
     const tpl = await fixture(
       '<w:p><w:r><w:t>Documento paisagem</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080"/></w:sectPr>',
