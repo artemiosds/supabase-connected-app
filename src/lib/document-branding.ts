@@ -75,11 +75,7 @@ export async function carregarTimbradoSecretaria(
     if (downloadError || !file) {
       throw downloadError ?? new Error("O brasão privado da Secretaria não está disponível.");
     }
-    if (
-      file.size < 1 ||
-      file.size > MAX_LOGO_BYTES ||
-      file.size !== data.logo_file_size
-    ) {
+    if (file.size < 1 || file.size > MAX_LOGO_BYTES || file.size !== data.logo_file_size) {
       throw new Error("O brasão armazenado ultrapassa o limite de 300 KB.");
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
