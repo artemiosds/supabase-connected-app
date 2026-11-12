@@ -141,6 +141,7 @@ function Processos() {
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
   const [filtroEtapa, setFiltroEtapa] = useState<"todas" | EtapaId>("todas");
   const [filtroModalidade, setFiltroModalidade] = useState("todas");
+  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const requisicaoRef = useRef(0);
 
   const carregar = useCallback(async () => {
@@ -148,12 +149,14 @@ function Processos() {
     const tenantId = selecionado?.id;
 
     // Não exibe dados da Secretaria anterior enquanto a nova consulta carrega.
+    setTenantCarregadoId(null);
     setProcessos([]);
     setItens([]);
     setErro(null);
     setPendente(false);
 
     if (!tenantId) {
+      setTenantCarregadoId(null);
       setLoading(false);
       return;
     }
@@ -184,11 +187,13 @@ function Processos() {
       if (requisicaoAtual !== requisicaoRef.current) return;
       setProcessos(comEtapaValida(processosRows));
       setItens(comEtapaValida(checklistRows));
+      setTenantCarregadoId(tenantId);
     } catch (error) {
       if (requisicaoAtual !== requisicaoRef.current) return;
       const message = error instanceof Error ? error.message : String(error);
       if (bancoNaoConfigurado(message)) setPendente(true);
       else setErro(message);
+      setTenantCarregadoId(tenantId);
     } finally {
       if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
@@ -340,6 +345,15 @@ function Processos() {
 
   if (!selecionado) {
     return <p className="text-muted-foreground">Selecione uma organização no topo da tela.</p>;
+  }
+
+  if (loading || tenantCarregadoId !== selecionado.id) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground" role="status">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Carregando processos da Secretaria selecionada…
+      </div>
+    );
   }
 
   const aberto = processos.find((p) => p.id === abertoId) ?? null;
