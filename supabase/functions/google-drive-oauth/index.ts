@@ -564,7 +564,11 @@ Deno.serve(async (request: Request) => {
 
   let body: unknown;
   try {
-    body = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+      return jsonResponse({ error: "A solicitação excede o tamanho permitido." }, 413, origin);
+    }
+    body = JSON.parse(rawBody);
   } catch {
     return jsonResponse({ error: "O corpo da solicitação é inválido." }, 400, origin);
   }
@@ -575,7 +579,16 @@ Deno.serve(async (request: Request) => {
   try {
     const action = (body as Record<string, unknown>).action;
     if (action === "start") {
-      const redirectUri = normalizeRedirectUri(getRequiredEnv("GOOGLE_DRIVE_REDIRECT_URI"));
+      const clientId = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID")?.trim();
+      const configuredRedirect = Deno.env.get("GOOGLE_DRIVE_REDIRECT_URI")?.trim();
+      if (!clientId || !configuredRedirect) {
+        return jsonResponse(
+          { error: "A conexão Google Drive ainda não foi configurada pelo administrador da plataforma." },
+          503,
+          origin,
+        );
+      }
+      const redirectUri = normalizeRedirectUri(configuredRedirect);
       return await startAuthorization(
         request,
         origin,
