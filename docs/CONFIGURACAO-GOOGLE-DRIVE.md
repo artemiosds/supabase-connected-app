@@ -50,12 +50,12 @@ incluindo protocolo, host, caminho e ausência de barra final adicional.
 Configurar somente no ambiente seguro de Edge Function do projeto, nunca no frontend, em arquivo
 .env versionado, SQL público ou mensagens:
 
-| Secret | Valor |
-| --- | --- |
-| GOOGLE_DRIVE_CLIENT_ID | OAuth Client ID do Google Cloud |
-| GOOGLE_DRIVE_CLIENT_SECRET | OAuth Client Secret |
-| GOOGLE_DRIVE_REDIRECT_URI | Redirect URI exato acima |
-| APP_URL | Origem HTTPS publicada do portal, sem caminho |
+| Secret                     | Valor                                         |
+| -------------------------- | --------------------------------------------- |
+| GOOGLE_DRIVE_CLIENT_ID     | OAuth Client ID do Google Cloud               |
+| GOOGLE_DRIVE_CLIENT_SECRET | OAuth Client Secret                           |
+| GOOGLE_DRIVE_REDIRECT_URI  | Redirect URI exato acima                      |
+| APP_URL                    | Origem HTTPS publicada do portal, sem caminho |
 
 As variáveis padrão do Supabase (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) são
 fornecidas pelo runtime. A chave service-role não deve ser copiada para o browser.
