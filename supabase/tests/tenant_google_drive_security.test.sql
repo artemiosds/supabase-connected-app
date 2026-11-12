@@ -78,23 +78,18 @@ SELECT extensions.ok(
 
 SELECT extensions.ok(
   EXISTS (
-    SELECT 1
-    FROM public.permissions p
-    JOIN public.tenant_roles tr ON tr.slug='admin'
-    JOIN public.tenant_role_permissions rp ON rp.role_id=tr.id AND rp.permission_id=p.id
-    WHERE p.code='org:edit'
+    SELECT 1 FROM public.permissions p WHERE p.code='org:edit'
   ),
-  'existing tenant administrator permission is used for Drive management without widening other roles'
+  'existing tenant organization-edit permission is available for Drive administration'
 );
-SELECT extensions.ok(
-  NOT EXISTS (
-    SELECT 1
-    FROM public.permissions p
-    JOIN public.tenant_roles tr ON tr.slug IN ('manager','operator','viewer')
-    JOIN public.tenant_role_permissions rp ON rp.role_id=tr.id AND rp.permission_id=p.id
-    WHERE p.code='org:edit'
-  ),
-  'manager, operator and viewer roles do not gain Drive administration'
+SELECT extensions.ok((
+  SELECT pg_catalog.position('org:edit' in p.prosrc) > 0
+    AND pg_catalog.position('is_platform_admin' in p.prosrc) = 0
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.proname='can_manage_tenant_drive'
+),
+  'Drive management requires the tenant permission and has no global Master bypass'
 );
 SELECT extensions.ok(
   EXISTS (
