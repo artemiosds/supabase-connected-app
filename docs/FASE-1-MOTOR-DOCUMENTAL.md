@@ -5,12 +5,13 @@
 ## Entregas implementadas no código
 
 - Importação de DOCX com análise de placeholders, inclusive quando a expressão está dividida entre runs.
-- Armazenamento opcional e imutável do DOCX original, associado à versão exata do modelo, em bucket privado.
+- Armazenamento imutável do DOCX original por versão do modelo em bucket privado; ao reabrir/editar ou restaurar uma versão, o sistema recupera a fonte original e a reanexa à nova versão quando aplicável.
 - Geração Word a partir do original para preservar parágrafos, runs, estilos e tabelas; substituição de placeholders e expansão de linhas repetíveis.
-- Geração PDF com cabeçalho/rodapé, paginação, margens e tamanho de página configuráveis.
+- Geração PDF com cabeçalho/rodapé, paginação, margens, tamanho de página e brasão configuráveis por Secretaria.
 - Configuração do timbrado por Secretaria: título, subtítulo, rodapé, brasão privado PNG/JPEG (até 300 KB), margens e paginação.
 - Auditoria de mudanças do timbrado e RLS por Secretaria.
 - Pré-análise de recursos DOCX não reproduzidos no PDF; exportação PDF bloqueada quando a perda de conteúdo ou paginação seria insegura.
+- Prévia orientativa e lista de campos pendentes no rascunho; o botão de envio à aprovação é desabilitado no cliente e a RPC do banco também bloqueia placeholders vazios e não configurados.
 
 ## Limites conhecidos do PDF
 
@@ -22,8 +23,9 @@ Cabeçalhos/rodapés padrão em texto e a configuração de página são lidos d
 
 - `20261112124000_document_template_binary_source.sql`: vínculo do DOCX original à versão do modelo.
 - `20261112124500_tenant_document_branding.sql`: configuração institucional por Secretaria, metadados do brasão, RLS, políticas de Storage e auditoria.
+- `20261112125000_block_unconfigured_document_fields.sql`: bloqueio server-side de envio para aprovação quando permanecem campos pendentes ou não configurados.
 
-Essas migrations são aditivas. Não devem ser aplicadas ao SMS2 de produção antes de backup e teste de restauração comprovados em ambiente separado. A ausência dessas tabelas em produção deve resultar em fallback seguro, sem quebrar a geração textual.
+Essas migrations são aditivas e passaram por aplicação/testes pgTAP em banco Supabase descartável na CI. Não devem ser aplicadas ao SMS2 de produção antes de backup e teste de restauração comprovados em ambiente separado. A ausência dessas tabelas em produção deve resultar em fallback seguro, sem quebrar a geração textual.
 
 ## Critérios ainda obrigatórios para encerrar a Fase 1
 
@@ -35,4 +37,11 @@ Essas migrations são aditivas. Não devem ser aplicadas ao SMS2 de produção a
 6. Validar armazenamento privado, troca/remoção do brasão, rollback em falha de upload e trilha de auditoria.
 7. Obter aprovação formal da homologação antes de qualquer implantação em produção.
 
-**Não há autorização técnica para marcar esta fase como concluída apenas porque o build passou.**
+## Validação de código — commit 6f3835e
+
+- Testes unitários, build, TypeScript, lint, formatação e verificação das Edge Functions passaram.
+- Migrations foram aplicadas em Supabase descartável e os testes de segurança/pgTAP passaram.
+- Teste automatizado gera PDF com brasão PNG e valida o arquivo resultante.
+- O SMS2 continua com 74 migrations; `document_template_sources` e `tenant_document_branding` permanecem ausentes. Nenhuma migration foi aplicada à produção.
+
+**Não há autorização técnica para marcar esta fase como concluída apenas porque o CI passou.**
