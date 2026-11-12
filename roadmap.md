@@ -88,4 +88,11 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - Fornecedores, processos e contratos/Atas têm exportação da lista e dos filtros ativos em CSV UTF-8 compatível com Excel.
 - O gerador protege campos de texto contra injeção de fórmulas e os testes unitários cobrem codificação, aspas, valores nulos/zero e entradas maliciosas.
-- PDF gerencial pode ser salvo pela impressão do navegador, sem timbre oficial e sem renderização server-side. XLSX nativo permanece pendente; CSV é identificado como CSV compatível com Excel.
+- PDF gerencial pode ser salvo pela impressão do navegador, sem timbre oficial e sem renderização server-side. XLSX nativo agora é gerado com texto seguro, números tipados, filtro e cabeçalho fixo; CSV continua disponível.
+
+
+## XLSX gerencial — 12/11/2026
+
+- Exportação nativa em `.xlsx` disponível para as listas filtradas de fornecedores, processos e contratos/Atas usando a dependência JSZip existente.
+- Verificação local: arquivo lido com `openpyxl`, testes de estrutura e conteúdo passaram, TypeScript, lint localizado, formatação e build passaram.
+- CI remoto segue em fila; validação visual no Excel/LibreOffice e E2E autenticado continuam pendentes. Nenhuma migration foi aplicada ao SMS2 nesta etapa.

@@ -118,3 +118,10 @@ A baseline 20261106194000 também continua sem versão correspondente no histór
 Cinco Edge Functions estavam ativas na auditoria, incluindo send-expiry-notifications. Sua dependência de banco foi implantada nesta etapa; envio efetivo, secrets e scheduler ainda não foram homologados. O CI do commit 9dbf29f passou build, testes, tipos, lint e regressões de banco local. A verificação desta implantação foi de catálogo/permissões; não substitui E2E autenticado.
 
 Continuam pendentes: reconciliação do histórico, configuração e entrega de e-mail, homologação com duas Secretarias, GED no navegador, backup/restauração em ambiente separado, domínio/publicação e requisitos comerciais. Nenhum e-mail foi enviado nem dado operacional de teste persistido nesta etapa. NO-GO comercial permanece.
+
+
+## Atualização de código — 12/11/2026
+
+- [x] Exportação gerencial CSV e XLSX nativo estruturada no repositório; PDF gerencial via impressão.
+- [ ] Conferir XLSX e PDF visualmente em navegador/Excel real com perfis e duas Secretarias.
+- [ ] Validar em CI a migration de saldo de contratos/Atas e as novas regressões; jobs ainda em fila no momento desta atualização.

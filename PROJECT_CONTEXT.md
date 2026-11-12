@@ -92,11 +92,11 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 - Fornecedores, processos e contratos/Atas exportam a lista filtrada em CSV UTF-8 com separador regional compatível com Excel. Os arquivos incluem campos operacionais necessários, sem exportar contatos/endereço de fornecedores.
 - A saída neutraliza conteúdo que poderia ser interpretado como fórmula de planilha e sanitiza o nome do arquivo.
-- PDF gerencial, exportação XLSX nativa e validação visual do relatório continuam pendentes; documentos oficiais usam o fluxo documental existente, que ainda depende de homologação do layout.
+- Relatórios gerenciais oferecem CSV, XLSX nativo e impressão para PDF; a validação visual do relatório continua pendente. Documentos oficiais usam o fluxo documental existente, que ainda depende de homologação do layout.
 
 
 ## Exportação de relatórios
 
 - Fornecedores, processos e contratos/Atas oferecem CSV UTF-8 compatível com Excel e impressão do relatório para salvar como PDF pelo navegador.
 - O CSV usa separador regional e neutraliza fórmulas; a impressão escapa conteúdo HTML e permite visualizar antes de imprimir.
-- PDF gerencial não é timbrado nem renderizado no servidor. XLSX nativo e homologação visual do relatório continuam pendentes.
+- PDF gerencial não é timbrado nem renderizado no servidor. XLSX nativo é gerado no navegador com o JSZip já declarado no projeto, sem fórmulas executáveis, com cabeçalho fixo, filtros e limite de 10.000 registros por exportação. A homologação visual do relatório continua pendente.
