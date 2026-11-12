@@ -30,9 +30,11 @@ CREATE TABLE public.tenant_document_branding (
     )
     OR (
       logo_storage_path IS NOT NULL
+      AND logo_mime IS NOT NULL
       AND logo_mime IN ('image/png', 'image/jpeg')
       AND logo_file_name IS NOT NULL
       AND char_length(btrim(logo_file_name)) BETWEEN 1 AND 255
+      AND logo_file_size IS NOT NULL
       AND logo_file_size BETWEEN 1 AND 307200
     )
   ),

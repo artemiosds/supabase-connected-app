@@ -195,6 +195,14 @@ describe("docx engine — generation", () => {
 });
 
 describe("docx engine — analysis, model and PDF", () => {
+  it("warns about first-page and even-page header variants before PDF export", async () => {
+    const tpl = await fixture(
+      '<w:p><w:r><w:t>Documento</w:t></w:r></w:p><w:sectPr><w:headerReference w:type="first" r:id="rId2"/></w:sectPr>',
+    );
+    const analysis = await analyzeDocx(tpl);
+    expect(analysis.warnings.some((warning) => warning.code === "header-variants")).toBe(true);
+  });
+
   it("blocks PDF export when unsupported Word content would be lost", () => {
     expect(() =>
       assertPdfCompatible([{ code: "images", message: "Imagens não são reproduzidas." }]),

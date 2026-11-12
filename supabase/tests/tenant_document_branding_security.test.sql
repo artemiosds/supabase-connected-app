@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(8);
+SELECT extensions.plan(9);
 
 SELECT extensions.has_table(
   'public',
@@ -22,6 +22,14 @@ SELECT extensions.is(
 SELECT extensions.ok(
   NOT pg_catalog.has_table_privilege('authenticated', 'public.tenant_document_branding', 'DELETE'),
   'authenticated users cannot physically delete letterhead settings'
+);
+SELECT extensions.ok(
+  (SELECT pg_catalog.pg_get_constraintdef(oid) LIKE '%logo_mime IS NOT NULL%'
+      AND pg_catalog.pg_get_constraintdef(oid) LIKE '%logo_file_size IS NOT NULL%'
+   FROM pg_catalog.pg_constraint
+   WHERE conrelid = 'public.tenant_document_branding'::regclass
+     AND conname = 'tenant_document_branding_logo_metadata_check'),
+  'a stored logo must include a verified MIME type and file size'
 );
 SELECT extensions.ok(
   EXISTS (

@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { DocxEngineError, parseXml, wDescendants, W_NS } from "./xml";
+import { DocxEngineError, parseXml, wAttr, wDescendants, W_NS } from "./xml";
 import { listPlaceholders, paragraphPlainText } from "./placeholders";
 
 export const MAX_DOCX_BYTES = 5 * 1024 * 1024;
