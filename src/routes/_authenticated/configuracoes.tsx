@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { TenantGoogleDriveCard } from "@/components/tenant-google-drive-card";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -319,6 +320,14 @@ function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      {selecionado?.enabled_modules["ged"] === true &&
+        selecionado.enabled_modules["fornecedores"] === true && (
+          <TenantGoogleDriveCard
+            tenantId={selecionado.id}
+            tenantName={selecionado.nome}
+          />
+        )}
 
       <Card>
         <CardHeader>
