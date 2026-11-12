@@ -88,3 +88,18 @@ A cobertura nova reforça regressões automatizadas, mas parte das verificaçõe
 - [ ] Permanecem pendentes isolamento autenticado com duas Secretarias e backup/restauração em projeto separado.
 
 **Resultado:** CI técnico aprovado no commit indicado. SMS2 não recebeu migrations nesta etapa. A Fase 1 continua em homologação e permanece **NO-GO para produção/venda**.
+
+
+## Atualização de validação — 12/11/2026, commit `7a4fdaedfd61c0df305236332921ae844bb9aff6`
+
+- [x] CI completo aprovado no run [43290173715](https://github.com/artemiosds/supabase-connected-app/actions/runs/43290173715): validação da aplicação e segurança do banco concluídas com sucesso.
+- [x] A migration `20261112132000_harden_procurement_process_stage_guard.sql` foi aplicada em Supabase local descartável junto com as demais migrations.
+- [x] Teste de workflow de contratação ampliado de 22 para 24 assertions: o trigger agora também é acionado em alteração de ID do processo e a etapa do item de checklist fica imutável após criação.
+- [x] Tela de documentos agora invalida requisições antigas, limpa os dados da Secretaria anterior durante a troca de contexto e só exibe a lista quando a consulta corresponde ao tenant selecionado.
+- [x] O erro de carregamento passou a ser apresentado separadamente do estado de falta de permissão.
+- [ ] Ainda faltam testes comportamentais completos do workflow com fixtures sintéticas e papéis autenticados; as verificações atuais da migration são estruturais.
+- [ ] E2E autenticado de salvamento/restauração DOCX, falha parcial, retry, limpeza de órfãos e download continua pendente.
+- [ ] Homologação visual com modelos DOCX oficiais anonimizados e timbrados reais continua pendente.
+- [ ] Isolamento visual e de Storage entre duas Secretarias e backup/restauração em projeto separado continuam pendentes.
+
+**Resultado:** aplicação, formatação, migrations e regressões pgTAP aprovadas em ambiente descartável. SMS2 permanece sem alteração. Fase 1 continua em homologação e NO-GO para produção/venda.

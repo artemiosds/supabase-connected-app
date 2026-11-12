@@ -194,3 +194,17 @@ Os novos testes ampliam a proteção contra regressões, mas não substituem o c
 O resultado verde da CI comprova validação automatizada do commit e aplicação/testes das migrations em banco descartável. Não comprova E2E visual/autenticado, recuperação de backup, configuração de serviços externos nem aceite do piloto. Nenhuma migration foi aplicada ao SMS2 nesta atualização.
 
 **Estado final desta verificação: NO-GO para produção/venda.**
+
+
+## Atualização de validação — 12/11/2026, commit `7a4fdaedfd61c0df305236332921ae844bb9aff6`
+
+- [x] CI completo aprovado no run [43290173715](https://github.com/artemiosds/supabase-connected-app/actions/runs/43290173715): jobs `validate` e `database-security` verdes.
+- [x] Todas as migrations do repositório aplicadas em Supabase local descartável e regressões pgTAP aprovadas.
+- [x] Proteção do workflow de processos endurecida: trigger de processo cobre mudanças de ID/tenant/etapa/status e checklist não pode ser movido entre etapas após criação; teste estrutural agora possui 24 assertions.
+- [x] Carregamento de documentos protegido contra respostas assíncronas de outra Secretaria, com limpeza dos dados anteriores e gate pelo tenant carregado.
+- [ ] Completar testes comportamentais de processos com fixtures sintéticas e papéis autenticados.
+- [ ] Completar E2E de DOCX/GED, isolamento autenticado de duas Secretarias e homologação visual com modelos oficiais anonimizados.
+- [ ] Executar backup/restauração em projeto separado e validar Auth, Storage, RLS, funções e downloads.
+- [ ] Concluir todos os demais gates antes de produção ou venda.
+
+A CI comprova testes automatizados em banco descartável, não homologação visual/autenticada nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2 nesta atualização. **NO-GO comercial permanece.**
