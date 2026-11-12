@@ -1197,18 +1197,15 @@ function Documentos() {
     setBaixandoRascunhoId(documento.id);
     try {
       const {
-        DEFAULT_BRANDING,
         assertPdfCompatible,
         buildDocxFromText,
         docxToModel,
         generateDocx,
         renderPdf,
       } = await import("@/lib/docx-engine");
-      const branding = {
-        ...DEFAULT_BRANDING,
-        headerTitle: selecionado.nome,
-        footerText: "Rascunho para revisão",
-      };
+      const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
+      const branding = await carregarTimbradoSecretaria(selecionado.id, selecionado.nome);
+      if (!branding.footerText.trim()) branding.footerText = "Rascunho para revisão";
       let template: ArrayBuffer | Uint8Array = await buildDocxFromText(
         documento.content_snapshot,
         documento.title,
@@ -1281,6 +1278,7 @@ function Documentos() {
                 branding: pdfBranding,
                 title: documento.title,
                 useTemplatePageSetup: preservarConfiguracaoOriginal,
+                useTemplatePageSize: true,
               });
             })();
       const mimeType =

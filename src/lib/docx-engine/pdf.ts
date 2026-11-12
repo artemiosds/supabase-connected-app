@@ -205,6 +205,8 @@ export type PdfOptions = {
   title?: string;
   /** Uses the page size and margins embedded in the original DOCX. */
   useTemplatePageSetup?: boolean;
+  /** Keeps the source page dimensions even when the Secretaria supplies new margins. */
+  useTemplatePageSize?: boolean;
   /** Extra paragraphs appended at the end (e.g. signature record). */
   appendix?: string[];
 };
@@ -251,8 +253,14 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     (logo ? logoH + 4 : 0) + headerLines.length * 12 + (headerLines.length || logo ? 6 : 0);
   const footerHeight = footerLines.length * 10 + (b.showPageNumbers ? 10 : 0);
 
-  const pageWidth = options.useTemplatePageSetup ? model.pageLayout.widthPt : A4.width;
-  const pageHeight = options.useTemplatePageSetup ? model.pageLayout.heightPt : A4.height;
+  const pageWidth =
+    options.useTemplatePageSetup || options.useTemplatePageSize
+      ? model.pageLayout.widthPt
+      : A4.width;
+  const pageHeight =
+    options.useTemplatePageSetup || options.useTemplatePageSize
+      ? model.pageLayout.heightPt
+      : A4.height;
   const leftMargin = options.useTemplatePageSetup
     ? model.pageLayout.leftPt
     : mmToPoints(b.marginLeftMm);
