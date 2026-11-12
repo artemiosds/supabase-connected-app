@@ -416,7 +416,7 @@ function Documentos() {
             .order("id")
             .range(inicio, fim),
         ),
-        enabledModules?.["processos"] === true
+        enabledModules?.processos === true
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
@@ -430,7 +430,7 @@ function Documentos() {
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
-        enabledModules?.["contratos"] === true
+        enabledModules?.contratos === true
           ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
               db
                 .from("contracts")
@@ -464,7 +464,7 @@ function Documentos() {
         ...documentCapabilities,
         can_manage_templates:
           documentCapabilities.can_manage_templates &&
-          enabledModules?.["modelos"] === true,
+          enabledModules?.modelos === true,
       });
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
