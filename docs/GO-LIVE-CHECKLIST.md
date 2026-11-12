@@ -1,7 +1,7 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
 > **Estado verificado em 12/11/2026 — prevalece sobre as fotografias históricas abaixo.** Consulta somente leitura ao Supabase SMS2 e CI do commit `1e6207cec299912a8212595a0ffd57c5928f5dc7`:
-> - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 79 arquivos SQL e cinco migrations futuras não aplicadas: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, cobertura de índices FK e remoção de políticas SELECT redundantes.
+> - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 82 arquivos SQL e oito migrations futuras não aplicadas ao SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, guardas do workflow de contratação, FORCE RLS da fonte DOCX, cobertura de índices FK e remoção de políticas SELECT redundantes.
 > - Há 1 Secretaria, 1 vínculo municipal, 2 perfis e 2 identidades Auth; não há fornecedores, documentos operacionais, processos ou contratos. O catálogo global contém 5 modelos.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. Ativa não significa que e-mail real ou scheduler esteja homologado.
 > - CI completo do commit `1e6207c` passou testes unitários, build, TypeScript, Deno, lint, formatação, aplicação das 79 migrations em Supabase descartável e regressões pgTAP ([run 43271911944](https://github.com/artemiosds/supabase-connected-app/actions/runs/43271911944)).
@@ -225,3 +225,18 @@ A CI comprova testes automatizados em banco descartável, não homologação vis
 - [ ] Concluir todos os gates antes de produção ou venda.
 
 A CI verde comprova a suíte automatizada e migrations em ambiente descartável, não comprova E2E visual/autenticado nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2. **NO-GO comercial permanece.**
+
+
+## Atualização de validação — 12/11/2026, commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`
+
+- [x] Importador DOCX agora valida CRC-32 do XML principal e consistência do cabeçalho local com o diretório central do ZIP; testes cobrem conteúdo corrompido e cabeçalho divergente.
+- [x] Ações assíncronas da tela Documentos (seleção/importação, URL temporária, cadastro/upload e arquivamento) descartam respostas após troca de Secretaria; upload ainda sem metadata é removido se o contexto mudar.
+- [x] CI completo aprovado no run [43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085): unit tests, build, TypeScript, Deno, lint, migrations em banco descartável e pgTAP.
+- [x] Formatação aprovada no run [43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137).
+- [x] Todas as 82 migrations do repositório foram aplicadas em banco Supabase local descartável; SMS2 não recebeu migrations.
+- [ ] E2E autenticado de upload/download, falha parcial, retry, restauração/reanexo e limpeza de órfãos.
+- [ ] Homologação visual com DOCX oficiais anonimizados, incluindo timbrado, brasão, tabelas, paisagem e paginação.
+- [ ] Isolamento autenticado e Storage com duas Secretarias e papéis distintos.
+- [ ] Backup/restauração em projeto Supabase separado, com Auth, Storage, RLS, funções e downloads verificados.
+
+**NO-GO para produção/venda permanece.** CI verde não substitui E2E, aceite visual, isolamento real ou teste de recuperação.

@@ -23,7 +23,7 @@
 
 ## Banco e relações principais
 
-Schema `public` no SMS2 consultado em 2026-11-12: 38 tabelas, todas com RLS habilitada; 27 com FORCE RLS e 133 políticas. O histórico remoto contém 74 versões até `20261112123300`. O repositório `main` possui 79 migrations SQL; cinco migrations futuras permanecem sem aplicação no SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos não configurados, cobertura final de índices FK e remoção de políticas SELECT redundantes. A baseline `20261106194000` está registrada como marcador vazio. Não executar `db push` indiscriminadamente; consultar `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
+Schema `public` no SMS2 consultado em 2026-11-12: 38 tabelas, todas com RLS habilitada; 27 com FORCE RLS e 133 políticas. O histórico remoto contém 74 versões até `20261112123300`. O repositório `main` possui 82 migrations SQL; oito migrations futuras permanecem sem aplicação no SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos não configurados, cobertura final de índices FK e remoção de políticas SELECT redundantes. A baseline `20261106194000` está registrada como marcador vazio. Não executar `db push` indiscriminadamente; consultar `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 - Identidade e multitenancy: `profiles`, `tenants`, `tenant_memberships`, `permissions`, `tenant_roles`, `tenant_role_permissions`, `membership_roles`, `platform_admins`, `audit_events`.
 - Fornecedores e documentos: `suppliers`, `supplier_documents`, `document_templates`, `generated_documents`, `document_template_catalog`, `document_template_versions`.
@@ -128,7 +128,7 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 - O SMS2 registra 74 versões até `20261112123300`; a `main` possui 79 arquivos SQL. Os cinco timestamps divergentes foram alinhados ao histórico remoto no PR #19, preservando o SQL.
 - A baseline `20261106194000` está registrada como marcador vazio; as estruturas correspondentes existem. Não reaplicar a baseline nem reparar o histórico sem backup restaurado e comparação de definições.
-- Cinco migrations futuras aguardam implantação: fonte DOCX privada (`20261112124000`), timbrado por Secretaria (`20261112124500`), bloqueio de campos não configurados (`20261112125000`), cobertura de índices FK (`20261112150000`) e remoção de políticas SELECT redundantes (`20261112162000`). As tabelas `document_template_sources` e `tenant_document_branding` estão ausentes no SMS2.
+- Oito migrations futuras aguardam implantação: fonte DOCX privada (`20261112124000`), timbrado por Secretaria (`20261112124500`), bloqueio de campos não configurados (`20261112125000`), proteção das transições do workflow de contratação (`20261112125500`), endurecimento da imutabilidade do checklist (`20261112132000`), FORCE RLS dos originais DOCX (`20261112133000`), cobertura de índices FK (`20261112150000`) e remoção de políticas SELECT redundantes (`20261112162000`). As tabelas `document_template_sources` e `tenant_document_branding` estão ausentes no SMS2.
 - Todas as cinco migrations passaram aplicação e pgTAP em banco Supabase descartável no CI; nenhuma foi aplicada ao SMS2. Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 
@@ -143,3 +143,12 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 - O usuário dispensou o backup como pré-requisito; isso remove o bloqueio de processo, não o risco de recuperação. A alteração do metadata será transacional e está registrada nos dois SQLs em `docs/REPARO-HISTORICO-SMS2*.sql` antes de execução.
 - A baseline também exige a unicidade de `suppliers(tenant_id,id)`; no SMS2 a constraint nomeada está ausente, mas o índice único `ux_suppliers_tenant_id_id` provê a mesma chave. As quatro tabelas operacionais e `supplier_documents` têm zero linhas na pré-verificação.
+
+
+## Validação de segurança adicional — 12/11/2026, commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`
+
+- O importador DOCX valida CRC-32 do XML principal, nome/caminho do cabeçalho local, flags, método de compressão, tamanhos declarados e limite anterior ao diretório central. Pacotes corrompidos ou inconsistentes são rejeitados antes da importação.
+- A tela Documentos descarta resultados assíncronos de seleção, análise/importação, URL temporária, cadastro, upload e arquivamento quando a Secretaria selecionada muda; upload sem vínculo é removido quando a troca ocorre antes da gravação dos metadados.
+- CI integral aprovado no run [43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085): testes unitários, build, TypeScript, Deno, lint, aplicação das 82 migrations em banco descartável e pgTAP; formatação aprovada no run [43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137).
+- O SMS2 continua com 74 migrations até `20261112123300`; as oito migrations futuras listadas acima permanecem sem aplicação.
+- Continuam pendentes E2E autenticado em navegador, homologação visual com modelos DOCX oficiais anonimizados, teste de isolamento com duas Secretarias e backup/restauração em projeto isolado. Não declarar a Fase 1 homologada apenas pela CI.

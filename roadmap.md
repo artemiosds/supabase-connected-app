@@ -113,4 +113,12 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 ## Atualização — PR #18 e conciliação de nomes (12/11/2026)
 
-O PR #18 acrescentou seis índices de chaves estrangeiras; o PR #22 adicionou a remoção de sete políticas SELECT redundantes. O motor documental também recebeu duas migrations futuras adicionais para timbrado por Secretaria e bloqueio de campos não configurados. O repositório tem 79 arquivos SQL; cinco migrations permanecem pendentes no SMS2: `20261112124000_document_template_binary_source.sql`, `20261112124500_tenant_document_branding.sql`, `20261112125000_block_unconfigured_document_fields.sql`, `20261112150000_complete_foreign_key_index_coverage.sql` e `20261112162000_remove_redundant_master_select_policies.sql`. Nenhuma foi aplicada ao SMS2 nesta etapa.
+O PR #18 acrescentou seis índices de chaves estrangeiras; o PR #22 adicionou a remoção de sete políticas SELECT redundantes. O motor documental também recebeu duas migrations futuras adicionais para timbrado por Secretaria e bloqueio de campos não configurados. O repositório tem 82 arquivos SQL; oito migrations permanecem pendentes no SMS2: `20261112124000_document_template_binary_source.sql`, `20261112124500_tenant_document_branding.sql`, `20261112125000_block_unconfigured_document_fields.sql`, `20261112125500_guard_procurement_process_stage_transitions.sql`, `20261112132000_harden_procurement_process_stage_guard.sql`, `20261112133000_force_document_template_source_rls.sql`, `20261112150000_complete_foreign_key_index_coverage.sql` e `20261112162000_remove_redundant_master_select_policies.sql`. Nenhuma foi aplicada ao SMS2 nesta etapa.
+
+
+## Atualização de segurança do motor documental — 12/11/2026
+
+- Importador DOCX valida CRC-32 e consistência dos cabeçalhos ZIP; conteúdo adulterado/inconsistente é rejeitado antes da importação.
+- A tela Documentos descarta respostas assíncronas após troca de Secretaria, inclusive seleção/importação, URL temporária, upload/cadastro e arquivamento.
+- CI do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b` aprovado ([run 43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085)); formatação aprovada ([run 43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137)). Migrations aplicadas apenas em banco descartável; SMS2 preservado.
+- Fase 1 segue em homologação: E2E autenticado, comparação visual DOCX/PDF com modelos oficiais, isolamento com duas Secretarias e restore em projeto separado ainda pendentes. NO-GO comercial permanece.

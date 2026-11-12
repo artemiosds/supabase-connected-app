@@ -120,3 +120,20 @@ A cobertura nova reforça regressões automatizadas, mas parte das verificaçõe
 - [ ] Isolamento E2E de duas Secretarias e backup/restauração em projeto separado continuam pendentes.
 
 **Resultado:** CI automatizado completo verde. O teste automatizado não substitui homologação visual/autenticada e recuperação real de backup. SMS2 não recebeu migrations. Fase 1 continua em homologação e permanece **NO-GO para produção/venda**.
+
+
+## Atualização de segurança e CI — 12/11/2026, commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`
+
+- [x] Importação DOCX reforçada com CRC-32 do XML principal e validação de consistência entre diretório central e cabeçalho local ZIP (nome, flags, método e tamanhos).
+- [x] Testes unitários específicos rejeitam XML principal corrompido e cabeçalho local divergente.
+- [x] Ações assíncronas da tela Documentos protegidas contra troca de Secretaria durante seleção/importação, criação de URL temporária, cadastro/upload e arquivamento.
+- [x] Upload de arquivo de fornecedor sem vínculo é removido se a Secretaria mudar antes de registrar seus metadados.
+- [x] CI integral aprovado no run [43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085): testes unitários, build, TypeScript, Deno, lint, aplicação de 82 migrations em banco descartável e pgTAP.
+- [x] Formatação aprovada no run [43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137).
+- [ ] Testes E2E autenticados de upload/download Storage, falha parcial, retry, restauração/reanexo e limpeza de órfãos.
+- [ ] Homologação visual com modelos DOCX oficiais anonimizados e brasões/timbrados aprovados.
+- [ ] Teste real de isolamento com duas Secretarias, usuários com papéis distintos e tentativas de acesso cruzado ao Storage.
+- [ ] Backup e restauração em projeto Supabase separado, incluindo Auth, Storage, RLS, funções e downloads.
+- [ ] Aceite formal da Secretaria antes de qualquer implantação.
+
+O CI comprova a suíte automatizada e as migrations em banco descartável; não comprova interação autenticada no navegador, fidelidade visual de DOCX reais nem recuperação de backup. As oito migrations posteriores a `20261112123300` continuam fora do SMS2. **A Fase 1 permanece em homologação e NO-GO para produção/venda.**
