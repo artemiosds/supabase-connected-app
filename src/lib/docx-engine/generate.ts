@@ -144,7 +144,12 @@ async function applyBranding(
     sectPr = wEl(documentXml, "sectPr");
     body.appendChild(sectPr);
   }
-  if (wChildren(sectPr, "headerReference").length > 0) return false;
+  if (
+    wChildren(sectPr, "headerReference").length > 0 ||
+    wChildren(sectPr, "footerReference").length > 0
+  ) {
+    return false;
+  }
 
   const docRels = await ensureRels(zip, "word/_rels/document.xml.rels");
   const ct = parseXml(
