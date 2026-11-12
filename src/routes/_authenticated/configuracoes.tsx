@@ -303,7 +303,7 @@ function Configuracoes() {
         arquivoBrasao.name
           .normalize("NFC")
           .replace(/[\\/]/g, "_")
-          .replace(/\\p{Cc}/gu, "_")
+          .replace(/\p{Cc}/gu, "_")
           .trim()
           .slice(0, 255) || `brasao.${extension}`;
       logoFileSize = arquivoBrasao.size;
