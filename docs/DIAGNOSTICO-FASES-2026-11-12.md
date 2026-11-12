@@ -59,7 +59,7 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 - Todas as 38 tabelas públicas têm RLS; 27 também têm FORCE RLS.
 - O Security Advisor aponta 36 funções `SECURITY DEFINER` executáveis por `authenticated`. Muitas são RPCs deliberadas do produto; não revogar em lote. Manter autorização explícita por usuário, papel, tenant e `search_path` fixo.
 - O Security Advisor também aponta a proteção contra senhas vazadas desativada. No plano Free, não assumir que o recurso esteja disponível; rever opção/plano Supabase.
-- O Performance Advisor aponta seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). A migration com seis índices está em PR #18; ainda não integrada nem aplicada ao SMS2. Não remover índices existentes sem carga real e benchmark.
+- O Performance Advisor continua apontando seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). O PR #18 foi integrado ao `main` e adicionou a migration `20261112150000_complete_foreign_key_index_coverage.sql` com os seis índices; ela ainda não foi aplicada ao SMS2, por isso o Advisor ainda os sinaliza. Não remover índices existentes sem carga real e benchmark.
 - `pg_cron` e `pg_net` não estão instalados; a relação `cron.job` não existe no SMS2. O repositório possui workflow GitHub diário para alertas, condicionado à variável `EXPIRY_ALERTS_ENABLED=true` e a secrets que ainda não foram comprovados/configurados.
 
 ## Fases do produto
