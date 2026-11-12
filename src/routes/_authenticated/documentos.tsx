@@ -338,6 +338,12 @@ function Documentos() {
     setDialogGerar(false);
     setDocumentoGeradoEditando(null);
     setDocumentoImpressao(null);
+    setSalvandoDocumento(false);
+    setSalvandoModelo(false);
+    setSalvandoGerado(false);
+    setSalvandoEdicaoGerado(false);
+    setInstalandoModelo(null);
+    setBaixandoRascunhoId(null);
   }, [selecionado?.id]);
 
   const carregar = useCallback(async () => {
@@ -1034,6 +1040,7 @@ function Documentos() {
       setModeloHistorico(null);
       await carregar();
     } catch (error) {
+      if (tenantIdRef.current !== tenantId) return;
       toast.error(
         error instanceof Error ? error.message : "Não foi possível restaurar esta versão.",
       );
@@ -1045,12 +1052,16 @@ function Documentos() {
   async function salvarModelo(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
+    const tenantId = selecionado.id;
+    const arquivoOriginal = arquivoOriginalModelo;
+    const modeloAtual = modeloEditando;
     setSalvandoModelo(true);
-    if (arquivoOriginalModelo) {
+    if (arquivoOriginal) {
       const { error: sourceTableError } = await db
         .from("document_template_sources")
         .select("template_id")
         .limit(1);
+      if (tenantIdRef.current !== tenantId) return;
       if (sourceTableError) {
         setSalvandoModelo(false);
         toast.error(
@@ -1070,41 +1081,44 @@ function Documentos() {
       source_reference: fonteModelo.trim() || null,
       variables_schema: buildDocumentTemplateSchema(
         conteudoModelo.trim(),
-        modeloEditando?.variables_schema,
+        modeloAtual?.variables_schema,
       ) as Json,
       change_summary:
         resumoModelo.trim() ||
-        (modeloEditando ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
+        (modeloAtual ? "Modelo editado pela Secretaria." : "Modelo criado pela Secretaria."),
     };
-    const result = modeloEditando
+    const result = modeloAtual
       ? await db
           .from("document_templates")
           .update(payload)
-          .eq("id", modeloEditando.id)
-          .eq("tenant_id", selecionado.id)
+          .eq("id", modeloAtual.id)
+          .eq("tenant_id", tenantId)
           .select("*")
           .single()
       : await db
           .from("document_templates")
           .insert({
-            tenant_id: selecionado.id,
+            tenant_id: tenantId,
             ...payload,
           })
           .select("*")
           .single();
     if (result.error) {
+      if (tenantIdRef.current !== tenantId) return;
       setSalvandoModelo(false);
       toast.error(result.error.message);
       return;
     }
-    if (arquivoOriginalModelo && result.data) {
+    if (arquivoOriginal && result.data) {
       const { data: existingSource, error: sourceError } = await db
         .from("document_template_sources")
         .select("storage_path")
+        .eq("tenant_id", tenantId)
         .eq("template_id", result.data.id)
         .eq("version", result.data.version)
         .maybeSingle();
       if (sourceError || existingSource) {
+        if (tenantIdRef.current !== tenantId) return;
         setSalvandoModelo(false);
         setModeloEditando(result.data);
         toast.error(
@@ -1113,31 +1127,33 @@ function Documentos() {
         );
         return;
       }
-      const path = `${selecionado.id}/template-sources/${result.data.id}/v${result.data.version}/${crypto.randomUUID()}.docx`;
+      const path = `${tenantId}/template-sources/${result.data.id}/v${result.data.version}/${crypto.randomUUID()}.docx`;
       const { error: uploadError } = await db.storage
         .from("gfs-private-documents")
-        .upload(path, arquivoOriginalModelo, {
+        .upload(path, arquivoOriginal, {
           contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           upsert: false,
         });
       if (uploadError) {
+        if (tenantIdRef.current !== tenantId) return;
         setSalvandoModelo(false);
         setModeloEditando(result.data);
         toast.error(`Texto salvo, mas o Word original não foi enviado: ${uploadError.message}`);
         return;
       }
       const { error: metadataError } = await db.from("document_template_sources").insert({
-        tenant_id: selecionado.id,
+        tenant_id: tenantId,
         template_id: result.data.id,
         version: result.data.version,
         storage_path: path,
-        file_name: nomeSeguroArquivo(arquivoOriginalModelo.name) || "modelo.docx",
-        file_size: arquivoOriginalModelo.size,
+        file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
+        file_size: arquivoOriginal.size,
       });
       if (metadataError) {
         const { error: cleanupError } = await db.storage
           .from("gfs-private-documents")
           .remove([path]);
+        if (tenantIdRef.current !== tenantId) return;
         setSalvandoModelo(false);
         setModeloEditando(result.data);
         toast.error(
@@ -1148,9 +1164,10 @@ function Documentos() {
         return;
       }
     }
+    if (tenantIdRef.current !== tenantId) return;
     setSalvandoModelo(false);
     toast.success(
-      modeloEditando
+      modeloAtual
         ? "Modelo atualizado. Uma nova versão foi registrada."
         : "Modelo salvo nesta Secretaria.",
     );
