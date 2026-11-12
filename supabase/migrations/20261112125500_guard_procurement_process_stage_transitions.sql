@@ -18,7 +18,7 @@ DECLARE
     'conclusao','publicacao','julgamento','assinatura','fiscalizacao'
   ];
 BEGIN
-  IF NEW.is_done IS DISTINCT FROM OLD.is_done AND NEW.is_done = false THEN
+  IF TG_OP = 'INSERT' THEN
     SELECT p.stage, p.status
       INTO v_process_stage, v_process_status
     FROM public.procurement_processes p
@@ -29,17 +29,38 @@ BEGIN
       RAISE EXCEPTION 'Processo vinculado ao item não encontrado nesta Secretaria.'
         USING ERRCODE = '23514';
     END IF;
-
     IF v_process_status = 'concluido' THEN
-      RAISE EXCEPTION 'Não é permitido reabrir itens de um processo concluído.'
+      RAISE EXCEPTION 'Não é permitido adicionar itens a um processo concluído.'
         USING ERRCODE = '23514';
     END IF;
-
     IF pg_catalog.array_position(v_stages, NEW.stage)
        < pg_catalog.array_position(v_stages, v_process_stage) THEN
-      RAISE EXCEPTION 'Retorne o processo à etapa correspondente antes de reabrir um item anterior.'
+      RAISE EXCEPTION 'Não é permitido adicionar pendências em etapas já superadas.'
         USING ERRCODE = '23514';
     END IF;
+    RETURN NEW;
+  END IF;
+
+  SELECT p.stage, p.status
+    INTO v_process_stage, v_process_status
+  FROM public.procurement_processes p
+  WHERE p.tenant_id = NEW.tenant_id AND p.id = NEW.process_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Processo vinculado ao item não encontrado nesta Secretaria.'
+      USING ERRCODE = '23514';
+  END IF;
+  IF v_process_status = 'concluido' THEN
+    RAISE EXCEPTION 'Não é permitido alterar itens de um processo concluído.'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.is_done IS DISTINCT FROM OLD.is_done AND NEW.is_done = false
+     AND pg_catalog.array_position(v_stages, NEW.stage)
+         < pg_catalog.array_position(v_stages, v_process_stage) THEN
+    RAISE EXCEPTION 'Retorne o processo à etapa correspondente antes de reabrir um item anterior.'
+      USING ERRCODE = '23514';
   END IF;
 
   RETURN NEW;
@@ -52,13 +73,13 @@ REVOKE ALL ON FUNCTION public.fn_guard_procurement_process_item_completion()
 DROP TRIGGER IF EXISTS trg_guard_procurement_process_item_completion
   ON public.process_items;
 CREATE TRIGGER trg_guard_procurement_process_item_completion
-  BEFORE UPDATE OF is_done
+  BEFORE INSERT OR UPDATE
   ON public.process_items
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_guard_procurement_process_item_completion();
 
 COMMENT ON FUNCTION public.fn_guard_procurement_process_item_completion() IS
-  'Serializa alterações do checklist com a etapa do processo e impede reabrir itens de etapas já superadas ou processos concluídos.';
+  'Serializa inclusões/edições do checklist com a etapa do processo e protege processos concluídos e etapas superadas.';
 
 CREATE OR REPLACE FUNCTION public.fn_guard_procurement_process_transition()
 RETURNS trigger
@@ -82,6 +103,12 @@ DECLARE
   v_old_position integer;
   v_new_position integer;
 BEGIN
+  IF OLD.status = 'concluido'
+     AND (NEW.stage IS DISTINCT FROM OLD.stage OR NEW.status IS DISTINCT FROM OLD.status) THEN
+    RAISE EXCEPTION 'Um processo concluído não pode ser reaberto nem ter sua etapa alterada.'
+      USING ERRCODE = '23514';
+  END IF;
+
   IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id THEN
     RAISE EXCEPTION 'A Secretaria vinculada ao processo não pode ser alterada.'
       USING ERRCODE = '23514';
