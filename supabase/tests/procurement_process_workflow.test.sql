@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(17);
+SELECT extensions.plan(20);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -184,6 +184,40 @@ SELECT extensions.ok(
     'public.fn_guard_procurement_process_item_completion()'::regprocedure
   ) LIKE '%array_position(v_stages, v_process_stage)%',
   'completed processes and checklist items from earlier stages cannot be reopened'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_transition()'::regprocedure
+  ) LIKE '%OLD.status = ''concluido''%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_transition()'::regprocedure
+  ) LIKE '%NEW.status IS DISTINCT FROM OLD.status%',
+  'a completed process cannot be reopened or moved to another stage'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid='public.process_items'::regclass
+      AND tgname='trg_guard_procurement_process_item_completion'
+      AND NOT tgisinternal
+      AND (tgtype & 2) = 2
+      AND (tgtype & 4) = 4
+      AND (tgtype & 16) = 16
+  ),
+  'checklist guard covers both inserts and updates'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%TG_OP = ''INSERT''%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%Não é permitido adicionar pendências em etapas já superadas%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%Não é permitido alterar itens de um processo concluído%',
+  'checklist insert and update guards preserve completed and previously passed stages'
 );
 SELECT * FROM extensions.finish();
 ROLLBACK;
