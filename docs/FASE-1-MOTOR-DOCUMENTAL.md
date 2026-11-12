@@ -72,3 +72,19 @@ O fluxo atual salva a versão textual e depois envia o DOCX original. Se o uploa
 A cobertura nova reforça regressões automatizadas, mas parte das verificações ainda é estrutural e os dois testes comportamentais atuais validam apenas o fechamento seguro para sessão ausente e usuário sem acesso à Secretaria. Não equivale a homologar o fluxo completo com duas Secretarias.
 
 **Fase 1 permanece em homologação e NO-GO para produção/venda. SMS2 não foi alterado.**
+
+
+## Atualização de validação — 12/11/2026, commit `a7bcd6073e7d960b99e54e1f694eccf9c0bae741`
+
+- [x] CI completo aprovado no run [43288209117](https://github.com/artemiosds/supabase-connected-app/actions/runs/43288209117): job `validate` e job `database-security` concluídos com sucesso.
+- [x] O job de segurança iniciou Supabase local, aplicou todas as migrations do repositório em banco descartável e executou a regressão pgTAP.
+- [x] Corrigida a contagem do teste `contract_arp_item_balances.test.sql`: 28 assertions executadas e plano ajustado para 28.
+- [x] Teste `procurement_process_workflow.test.sql` cobre 22 verificações estruturais da proteção de transições de etapa e checklist.
+- [x] A migration `20261112125500_guard_procurement_process_stage_transitions.sql` adiciona validações no banco para impedir pulo de etapas, avanço sem checklist concluído, conclusão fora da etapa final e alterações de identidade/tenant.
+- [x] Proteções contra respostas assíncronas antigas após troca de Secretaria foram adicionadas às telas de processos e fornecedores.
+- [ ] A cobertura de workflow de processos ainda precisa de fixtures comportamentais completas, com papéis autenticados e tentativas válidas/inválidas; o teste estrutural não substitui essa homologação.
+- [ ] A tela de documentos ainda precisa de revisão específica para corrida de carregamento ao trocar de Secretaria.
+- [ ] Permanecem pendentes E2E de falhas parciais DOCX, retry, restauração/reanexo, limpeza de órfãos e homologação visual com modelos reais anonimizados.
+- [ ] Permanecem pendentes isolamento autenticado com duas Secretarias e backup/restauração em projeto separado.
+
+**Resultado:** CI técnico aprovado no commit indicado. SMS2 não recebeu migrations nesta etapa. A Fase 1 continua em homologação e permanece **NO-GO para produção/venda**.
