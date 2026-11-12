@@ -1,14 +1,14 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `49ec420f4d202dc040ae893b606e50b7f5050e06`:
-> - O schema `public` tem 35 tabelas e todas estão com RLS habilitada. Há 68 versões de migration registradas, até `20261111021946` (`link_generated_documents_to_contracts`). O repositório tem 69 arquivos SQL; `20261106194000` não tem versão correspondente no histórico remoto. Alguns arquivos foram registrados sob versões/timestamps diferentes; não executar `db push` ou reparo do histórico sem comparar cada migration.
-> - Há 1 Secretaria e 1 vínculo municipal; 2 perfis; nenhum fornecedor, documento operacional, processo, contrato, aditivo ou documento gerado. Catálogo global contém 5 modelos. Outbox de notificações está vazia.
-> - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. As quatro primeiras exigem JWT; a última usa `verify_jwt = false` e autenticação por segredo de servidor. Ativa não significa que e-mail real ou scheduler esteja homologado.
-> - No commit acima passaram formatação, testes utilitários/unitários, build, TypeScript, Deno, lint, inicialização do Supabase local sem Mailpit, aplicação de migrations e testes pgTAP. Nenhum dado fictício foi escrito no SMS2 e nenhum e-mail real foi enviado.
-> - Integrações/configurações ainda pendentes: SMTP e agendamento de alertas, Drive OAuth, gateway/webhooks de pagamento, restore de backup em projeto separado e homologação autenticada com duas Secretarias. O estado permanece **NO-GO para venda/liberação comercial**.
+> **Estado atualizado em 12/11/2026.** A fotografia atual e o diagnóstico por fases estão em [docs/DIAGNOSTICO-FASES-2026-11-12.md](docs/DIAGNOSTICO-FASES-2026-11-12.md). Use esse documento como referência; os blocos históricos abaixo são registro de evolução, não estado atual.
 
-
-Atualizado em **10/11/2026** após integração da importação DOCX e dos alertas visuais. A análise detalhada está em [docs/DIAGNOSTICO-FASES-2026-11-10.md](docs/DIAGNOSTICO-FASES-2026-11-10.md).
+- SMS2: 74 migrations, 38 tabelas públicas com RLS, 27 com FORCE RLS e 133 políticas.
+- 1 Secretaria, 1 vínculo municipal, 1 Master ativo, 2 identidades Auth; zero fornecedores, arquivos GED, processos, contratos, sanções, funcionários internos ou técnicos de suporte.
+- Cinco Edge Functions ativas (convites municipais, cobrança, suporte, equipe interna e alertas de vencimento).
+- Código no `main`: motor documental com aprovação, Word/PDF, modelos versionados, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
+- Pendências principais: duas Secretarias de homologação, GED autenticado, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
+- Migração de fonte binária DOCX está no código como versão futura; não está aplicada ao SMS2. A conciliação de timestamps aplicada no banco está sendo alinhada em branch separada.
+- **NO-GO comercial** até conclusão dos gates descritos no diagnóstico.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
 
@@ -109,3 +109,8 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - O DOCX importado passa a ser anexado em Storage privado à versão imutável do modelo, sem alterar a edição de texto. O Word exportado usa o original somente para rascunho não editado com valores de snapshot consistentes; a revisão humana permanece soberana.
 - A migration está no repositório e aguarda reconciliação do histórico do SMS2 para publicação. Layout Word complexo, imagens em PDF, brasão configurável, identidade visual oficial e homologação autenticada seguem pendentes.
+
+
+## Atualização — PR #18 e conciliação de nomes (12/11/2026)
+
+O PR #18 foi integrado ao `main` e acrescentou seis índices de chaves estrangeiras com seis assertions pgTAP. CI completo passou; os índices permanecem pendentes no SMS2. Portanto, o repositório tem 76 arquivos SQL e duas migrations futuras, sem correspondência no histórico remoto: `20261112124000_document_template_binary_source.sql` e `20261112150000_complete_foreign_key_index_coverage.sql`. Não aplicar nenhuma das duas ao SMS2 nesta etapa.
