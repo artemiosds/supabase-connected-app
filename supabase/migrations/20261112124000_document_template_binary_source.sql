@@ -107,7 +107,16 @@ CREATE POLICY gfs_private_template_sources_orphan_delete ON storage.objects
     AND owner_id = (SELECT auth.uid()::text)
     AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
     AND CASE
-      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[89ab][0-9a-f]{12}$'
+      WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
+      THEN (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
+      ELSE false
+    END
+  );
+
+COMMENT ON TABLE public.document_template_sources IS
+  'DOCX original privado associado a uma versao historica de modelo, sem sobrescrita.';
+COMMIT;
+
       THEN (SELECT app_auth.has_tenant_data_permission(split_part(name, '/', 1)::uuid, 'documents:manage_templates'))
       ELSE false
     END
