@@ -1018,6 +1018,7 @@ function Documentos() {
       if (restoreError || !restored) {
         throw restoreError ?? new Error("Não foi possível registrar a nova versão restaurada.");
       }
+      if (tenantIdRef.current !== tenantId) return;
 
       let avisoOrigem: string | null = null;
       if (arquivoOriginal) {
@@ -1030,9 +1031,12 @@ function Documentos() {
           });
         if (uploadError) {
           avisoOrigem = `Versão restaurada, mas o Word original não foi reanexado: ${uploadError.message}`;
+        } else if (tenantIdRef.current !== tenantId) {
+          await db.storage.from("gfs-private-documents").remove([path]);
+          return;
         } else {
           const { error: metadataError } = await db.from("document_template_sources").insert({
-            tenant_id: selecionado.id,
+            tenant_id: tenantId,
             template_id: modeloHistorico.id,
             version: restored.version,
             storage_path: path,
@@ -1163,6 +1167,10 @@ function Documentos() {
         setSalvandoModelo(false);
         setModeloEditando(result.data);
         toast.error(`Texto salvo, mas o Word original não foi enviado: ${uploadError.message}`);
+        return;
+      }
+      if (tenantIdRef.current !== tenantId) {
+        await db.storage.from("gfs-private-documents").remove([path]);
         return;
       }
       const { error: metadataError } = await db.from("document_template_sources").insert({
