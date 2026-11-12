@@ -6,6 +6,17 @@ const ZIP_EOCD_SIGNATURE = 0x06054b50;
 const ZIP_CENTRAL_SIGNATURE = 0x02014b50;
 const ZIP_LOCAL_SIGNATURE = 0x04034b50;
 
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 type InflateRaw = (bytes: Uint8Array) => Promise<Uint8Array>;
 
 function readUint16(view: DataView, offset: number): number {
@@ -129,6 +140,7 @@ export async function extractDocxDocumentXml(
     | {
         flags: number;
         method: number;
+        crc: number;
         compressedSize: number;
         uncompressedSize: number;
         localOffset: number;
@@ -142,6 +154,7 @@ export async function extractDocxDocumentXml(
 
     const flags = readUint16(view, cursor + 8);
     const method = readUint16(view, cursor + 10);
+    const crc = readUint32(view, cursor + 16);
     const compressedSize = readUint32(view, cursor + 20);
     const uncompressedSize = readUint32(view, cursor + 24);
     const fileNameLength = readUint16(view, cursor + 28);
@@ -162,7 +175,7 @@ export async function extractDocxDocumentXml(
       if (documentEntry) {
         throw new Error("O documento Word contém mais de um arquivo principal.");
       }
-      documentEntry = { flags, method, compressedSize, uncompressedSize, localOffset };
+      documentEntry = { flags, method, crc, compressedSize, uncompressedSize, localOffset };
     }
 
     cursor = entryEnd;
@@ -185,18 +198,44 @@ export async function extractDocxDocumentXml(
   if (readUint32(view, localOffset) !== ZIP_LOCAL_SIGNATURE || localOffset + 30 > view.byteLength) {
     throw new Error("O conteúdo principal do DOCX está corrompido.");
   }
+  const localFlags = readUint16(view, localOffset + 6);
+  const localMethod = readUint16(view, localOffset + 8);
+  const localCrc = readUint32(view, localOffset + 14);
+  const localCompressedSize = readUint32(view, localOffset + 18);
+  const localUncompressedSize = readUint32(view, localOffset + 22);
   const localNameLength = readUint16(view, localOffset + 26);
   const localExtraLength = readUint16(view, localOffset + 28);
+  const localName = new TextDecoder("utf-8", { fatal: true }).decode(
+    bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength),
+  );
   const dataStart = localOffset + 30 + localNameLength + localExtraLength;
   const dataEnd = dataStart + documentEntry.compressedSize;
-  if (dataStart < localOffset || dataEnd > view.byteLength || dataEnd < dataStart) {
-    throw new Error("O conteúdo principal do DOCX está incompleto.");
+  if (
+    localName !== "word/document.xml" ||
+    localFlags !== documentEntry.flags ||
+    localMethod !== documentEntry.method
+  ) {
+    throw new Error("O cabeçalho local do documento Word não corresponde ao índice ZIP.");
+  }
+  if (
+    dataStart < localOffset ||
+    dataEnd > centralOffset ||
+    dataEnd < dataStart ||
+    (localFlags & 0x0008) === 0 &&
+      (localCrc !== documentEntry.crc ||
+        localCompressedSize !== documentEntry.compressedSize ||
+        localUncompressedSize !== documentEntry.uncompressedSize)
+  ) {
+    throw new Error("O conteúdo principal do DOCX está incompleto ou inconsistente.");
   }
 
   const compressedBytes = bytes.slice(dataStart, dataEnd);
   const xmlBytes = documentEntry.method === 0 ? compressedBytes : await inflateRaw(compressedBytes);
   if (xmlBytes.byteLength !== documentEntry.uncompressedSize) {
     throw new Error("O tamanho do conteúdo Word não corresponde ao arquivo.");
+  }
+  if (crc32(xmlBytes) !== documentEntry.crc) {
+    throw new Error("A integridade do conteúdo Word não pôde ser confirmada (CRC inválido).");
   }
   return decodeWordXml(xmlBytes);
 }

@@ -3,6 +3,17 @@ import { extractDocxDocumentXml, extractWordDocumentText } from "./docx-import";
 
 const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function createStoredZip(fileName: string, content: string, flags = 0): ArrayBuffer {
   const encoder = new TextEncoder();
   const name = encoder.encode(fileName);
@@ -15,6 +26,7 @@ function createStoredZip(fileName: string, content: string, flags = 0): ArrayBuf
   view.setUint32(0, 0x04034b50, true);
   view.setUint16(6, flags, true);
   view.setUint16(8, 0, true);
+  view.setUint32(14, crc32(data), true);
   view.setUint32(18, data.length, true);
   view.setUint32(22, data.length, true);
   view.setUint16(26, name.length, true);
@@ -25,6 +37,7 @@ function createStoredZip(fileName: string, content: string, flags = 0): ArrayBuf
   view.setUint32(centralOffset, 0x02014b50, true);
   view.setUint16(centralOffset + 8, flags, true);
   view.setUint16(centralOffset + 10, 0, true);
+  view.setUint32(centralOffset + 16, crc32(data), true);
   view.setUint32(centralOffset + 20, data.length, true);
   view.setUint32(centralOffset + 24, data.length, true);
   view.setUint16(centralOffset + 28, name.length, true);
@@ -98,6 +111,21 @@ describe("importação segura de modelos DOCX", () => {
     await expect(
       extractDocxDocumentXml(archive, async () => new TextEncoder().encode(wordXml)),
     ).resolves.toBe(wordXml);
+  });
+
+  it("verifica CRC e correspondência do cabeçalho local antes de importar", async () => {
+    const corrupted = new Uint8Array(createStoredZip("word/document.xml", wordXml));
+    const localNameLength = new DataView(corrupted.buffer).getUint16(26, true);
+    corrupted[30 + localNameLength + 8] ^= 1;
+    await expect(extractDocxDocumentXml(corrupted.buffer)).rejects.toThrow(/CRC inválido/);
+
+    const mismatchedHeader = new Uint8Array(
+      createStoredZip("word/document.xml", wordXml),
+    );
+    mismatchedHeader[30] = "x".charCodeAt(0);
+    await expect(extractDocxDocumentXml(mismatchedHeader.buffer)).rejects.toThrow(
+      /cabeçalho local/,
+    );
   });
 
   it("rejeita arquivo sem o documento principal e arquivo criptografado", async () => {
