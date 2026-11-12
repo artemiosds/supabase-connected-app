@@ -441,12 +441,6 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     });
   }
 
-  if (unsupported.size > 0) {
-    throw new DocxEngineError(
-      `O texto contém caracteres que o PDF não suporta: ${[...unsupported].slice(0, 10).join(" ")}. Substitua-os ou exporte em Word.`,
-    );
-  }
-
   const total = pages.length;
   pages.forEach((pg, index) => {
     let hy = pageHeight - mmToPoints(8);
@@ -464,7 +458,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     headerLines.forEach((text, i) => {
       const font = i === 0 && useBrand ? fonts.bold : fonts.regular;
       const size = i === 0 && useBrand ? 11 : 9;
-      const clean = sanitizeForPdf(text, font, new Set());
+      const clean = sanitizeForPdf(text, font, unsupported);
       const tw = font.widthOfTextAtSize(clean, size);
       pg.drawText(clean, { x: centeredPdfX(pageWidth, tw), y: hy - size, size, font });
       hy -= 12;
@@ -478,7 +472,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
       });
     let fy = mmToPoints(6) + footerHeight;
     footerLines.forEach((text) => {
-      const clean = sanitizeForPdf(text, fonts.regular, new Set());
+      const clean = sanitizeForPdf(text, fonts.regular, unsupported);
       const tw = fonts.regular.widthOfTextAtSize(clean, 8);
       pg.drawText(clean, {
         x: centeredPdfX(pageWidth, tw),
@@ -494,6 +488,12 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
       pg.drawText(label, { x: right - tw, y: mmToPoints(6), size: 8, font: fonts.regular });
     }
   });
+
+  if (unsupported.size > 0) {
+    throw new DocxEngineError(
+      `O documento contém caracteres que o PDF não suporta: ${[...unsupported].slice(0, 10).join(" ")}. Substitua-os ou exporte em Word.`,
+    );
+  }
 
   const bytes = await pdf.save();
   // Integrity check: the produced file must load and keep its page count.
