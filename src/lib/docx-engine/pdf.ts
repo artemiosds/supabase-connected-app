@@ -186,6 +186,7 @@ const PDF_BLOCKING_WARNING_CODES = new Set([
   "sections",
   "numbering",
   "nested-table",
+  "header-variants",
 ]);
 
 export function assertPdfCompatible(warnings: readonly { code: string; message: string }[]): void {

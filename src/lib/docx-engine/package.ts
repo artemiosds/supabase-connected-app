@@ -104,6 +104,34 @@ export async function analyzeDocx(input: ArrayBuffer | Uint8Array | JSZip): Prom
         "nested-table",
         "Tabelas dentro de células são preservadas no Word, mas não são reproduzidas fielmente no PDF.",
       );
+    if (
+      wDescendants(doc, "sectPr").some((section) =>
+        [...wDescendants(section, "headerReference"), ...wDescendants(section, "footerReference")].some(
+          (reference) => {
+            const type = wAttr(reference, "type");
+            return type !== null && type !== "default";
+          },
+        ),
+      )
+    )
+      warn(
+        "header-variants",
+        "Cabeçalhos ou rodapés de primeira página/páginas pares não são reproduzidos fielmente no PDF.",
+      );
+    if (
+      wDescendants(doc, "tblStyle").length ||
+      wDescendants(doc, "tblBorders").length ||
+      wDescendants(doc, "shd").length
+    )
+      warn(
+        "table-formatting",
+        "O PDF mantém o conteúdo e a grade das tabelas, mas pode simplificar estilos, cores e bordas personalizadas.",
+      );
+    if (wDescendants(doc, "color").length || wDescendants(doc, "rFonts").length)
+      warn(
+        "text-formatting",
+        "O PDF pode substituir fontes e cores de texto personalizadas; esses recursos permanecem no Word.",
+      );
     if (wDescendants(doc, "drawing").length || wDescendants(doc, "pict").length)
       warn("images", "Imagens do modelo são mantidas no Word, mas não são reproduzidas no PDF.");
     if (wDescendants(doc, "object").length || wDescendants(doc, "altChunk").length)

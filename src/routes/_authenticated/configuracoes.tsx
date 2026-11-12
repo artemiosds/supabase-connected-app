@@ -206,7 +206,7 @@ function Configuracoes() {
         .createSignedUrl(data.logo_storage_path, 3600);
       if (signedError || !signed?.signedUrl) {
         setLogoPreviewUrl(null);
-        setErroTimbrado("Não foi possível abrir a prévia privada do brasão.");
+        toast.error("Não foi possível abrir a prévia privada do brasão.");
       } else {
         setLogoPreviewUrl(signed.signedUrl);
       }
@@ -345,7 +345,11 @@ function Configuracoes() {
       const { error: removeError } = await db.storage
         .from("gfs-private-documents")
         .remove([oldPath]);
-      if (removeError) toast.warning("O timbrado foi salvo, mas o arquivo antigo ficou pendente de limpeza.");
+      if (removeError) {
+        toast.warning(
+          "O timbrado foi salvo, mas o arquivo antigo ficou pendente de limpeza.",
+        );
+      }
     }
     setSalvandoTimbrado(false);
     setArquivoBrasao(null);
@@ -572,15 +576,17 @@ function Configuracoes() {
           {!selecionado ? (
             <Alert>
               <AlertTitle>Selecione uma Secretaria</AlertTitle>
-              <AlertDescription>O timbrado é configurado separadamente para cada organização.</AlertDescription>
+              <AlertDescription>
+                O timbrado é configurado separadamente para cada organização.
+              </AlertDescription>
             </Alert>
           ) : loadingTimbrado ? (
             <div className="flex h-28 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : erroTimbrado ? (
-            <Alert variant="destructive">
-              <AlertTitle>Configuração indisponível</AlertTitle>
+            <Alert>
+              <AlertTitle>Configuração pendente ou indisponível</AlertTitle>
               <AlertDescription>{erroTimbrado}</AlertDescription>
             </Alert>
           ) : (
@@ -594,7 +600,10 @@ function Configuracoes() {
                     disabled={!podeEditarSecretaria}
                     value={dadosTimbrado.header_title}
                     onChange={(event) =>
-                      setDadosTimbrado((current) => ({ ...current, header_title: event.target.value }))
+                      setDadosTimbrado((current) => ({
+                      ...current,
+                      header_title: event.target.value,
+                    }))
                     }
                     placeholder={selecionado.nome}
                   />
@@ -607,7 +616,10 @@ function Configuracoes() {
                     disabled={!podeEditarSecretaria}
                     value={dadosTimbrado.header_subtitle}
                     onChange={(event) =>
-                      setDadosTimbrado((current) => ({ ...current, header_subtitle: event.target.value }))
+                      setDadosTimbrado((current) => ({
+                      ...current,
+                      header_subtitle: event.target.value,
+                    }))
                     }
                     placeholder="Prefeitura Municipal, secretaria ou departamento"
                   />
@@ -620,7 +632,10 @@ function Configuracoes() {
                     disabled={!podeEditarSecretaria}
                     value={dadosTimbrado.footer_text}
                     onChange={(event) =>
-                      setDadosTimbrado((current) => ({ ...current, footer_text: event.target.value }))
+                      setDadosTimbrado((current) => ({
+                      ...current,
+                      footer_text: event.target.value,
+                    }))
                     }
                     placeholder="Endereço institucional, telefone ou informação oficial"
                   />
@@ -647,7 +662,9 @@ function Configuracoes() {
                     />
                   )}
                   <div className="min-w-0 flex-1 text-sm text-muted-foreground">
-                    {arquivoBrasao?.name ?? dadosTimbrado.logo_file_name ?? "Nenhum brasão cadastrado"}
+                    {arquivoBrasao?.name ??
+                      dadosTimbrado.logo_file_name ??
+                      "Nenhum brasão cadastrado"}
                   </div>
                   {(dadosTimbrado.logo_storage_path || arquivoBrasao) && (
                     <Button
@@ -674,12 +691,14 @@ function Configuracoes() {
               <div className="space-y-2">
                 <Label>Margens de impressão (mm)</Label>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {([
-                    ["Superior", "margin_top_mm"],
-                    ["Inferior", "margin_bottom_mm"],
-                    ["Esquerda", "margin_left_mm"],
-                    ["Direita", "margin_right_mm"],
-                  ] as const).map(([label, key]) => (
+                  {(
+                    [
+                      ["Superior", "margin_top_mm"],
+                      ["Inferior", "margin_bottom_mm"],
+                      ["Esquerda", "margin_left_mm"],
+                      ["Direita", "margin_right_mm"],
+                    ] as const
+                  ).map(([label, key]) => (
                     <div key={key} className="space-y-1">
                       <Label htmlFor={`timbrado-${key}`}>{label}</Label>
                       <Input

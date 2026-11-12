@@ -202,6 +202,9 @@ describe("docx engine — analysis, model and PDF", () => {
     expect(() =>
       assertPdfCompatible([{ code: "table-style", message: "Estilo de tabela simples." }]),
     ).not.toThrow();
+    expect(() =>
+      assertPdfCompatible([{ code: "header-variants", message: "Cabeçalho de primeira página." }]),
+    ).toThrow(/PDF foi bloqueado/);
   });
 
   it("reads original page size and margins for predictable PDF pagination", async () => {
@@ -224,6 +227,14 @@ describe("docx engine — analysis, model and PDF", () => {
     const page = (await PDFDocument.load(bytes)).getPage(0);
     expect(Math.round(page.getWidth())).toBe(792);
     expect(Math.round(page.getHeight())).toBe(612);
+
+    const brandedPdf = await renderPdf(model, {
+      branding: { ...DEFAULT_BRANDING, marginLeftMm: 40 },
+      useTemplatePageSize: true,
+    });
+    const brandedPage = (await PDFDocument.load(brandedPdf)).getPage(0);
+    expect(Math.round(brandedPage.getWidth())).toBe(792);
+    expect(Math.round(brandedPage.getHeight())).toBe(612);
   });
 
   it("lists placeholders even when split between runs and warns about unsupported features", async () => {

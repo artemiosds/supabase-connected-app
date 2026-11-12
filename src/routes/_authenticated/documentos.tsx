@@ -1196,16 +1196,13 @@ function Documentos() {
     if (!selecionado || documento.status !== "draft" || baixandoRascunhoId) return;
     setBaixandoRascunhoId(documento.id);
     try {
-      const {
-        assertPdfCompatible,
-        buildDocxFromText,
-        docxToModel,
-        generateDocx,
-        renderPdf,
-      } = await import("@/lib/docx-engine");
+      const { assertPdfCompatible, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
+        await import("@/lib/docx-engine");
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
       const branding = await carregarTimbradoSecretaria(selecionado.id, selecionado.nome);
-      if (!branding.footerText.trim()) branding.footerText = "Rascunho para revisão";
+      if (!branding.footerText.trim()) {
+        branding.footerText = "Rascunho para revisão";
+      }
       let template: ArrayBuffer | Uint8Array = await buildDocxFromText(
         documento.content_snapshot,
         documento.title,
