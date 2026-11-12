@@ -26,7 +26,7 @@ CREATE INDEX idx_document_template_sources_tenant_version
   ON public.document_template_sources (tenant_id, template_id, version DESC);
 
 ALTER TABLE public.document_template_sources ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.document_template_sources FROM anon;
+REVOKE ALL ON public.document_template_sources FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT ON public.document_template_sources TO authenticated;
 
 CREATE POLICY document_template_sources_select ON public.document_template_sources
