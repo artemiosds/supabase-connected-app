@@ -163,3 +163,15 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - [ ] Backup/restauração em projeto isolado e reconciliação segura do histórico de migrations do SMS2.
 
 A execução anterior que falhou ocorreu antes do commit corretivo; não deve ser confundida com o CI posterior aprovado. Nenhuma migration foi aplicada ao SMS2 nesta validação. O estado comercial continua **NO-GO**.
+
+
+## Atualização de validação — 12/11/2026, commit `4e79bf6accf1f5b50b4c648233bfcfdb4e84d108`
+
+- [x] Testes do fluxo de aprovação documental ampliados de 4 para 13 verificações.
+- [x] CI completo aprovado: aplicação, build, TypeScript, Deno/Edge Functions, lint, migrations em banco descartável e testes pgTAP ([validação 43284764341](https://github.com/artemiosds/supabase-connected-app/actions/runs/43284764341)); formatação aprovada ([43284764170](https://github.com/artemiosds/supabase-connected-app/actions/runs/43284764170)).
+- [ ] Homologação com duas Secretarias e papéis distintos, incluindo envio, aprovação por outro usuário, devolução, campos pendentes e isolamento cruzado.
+- [ ] Testes E2E de upload, falha parcial, recuperação/retry e restauração DOCX.
+- [ ] Homologação visual com modelos oficiais anonimizados e brasões/timbrados reais.
+- [ ] Backup/restauração em projeto isolado e reconciliação do histórico de migrations SMS2.
+
+Os novos testes ampliam a proteção contra regressões, mas não substituem o cenário completo com dados sintéticos de duas Secretarias. SMS2 permanece intacto e a comercialização continua bloqueada.
