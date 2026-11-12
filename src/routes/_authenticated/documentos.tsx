@@ -601,23 +601,28 @@ function Documentos() {
     setDialogDocumento(true);
   }
   async function selecionarArquivoPrivado(file?: File) {
+    const tenantId = selecionado?.id;
     setArquivoDocumento(null);
-    if (!file) return;
+    if (!file || !tenantId) return;
     if (documentoEditando) {
       toast.error("Para substituir um arquivo, cadastre um novo documento e arquive o anterior.");
       return;
     }
     try {
       await validarArquivoPrivado(file);
+      if (tenantIdRef.current !== tenantId) return;
       setArquivoDocumento(file);
       setLinkDocumento("");
       toast.success("Arquivo validado e pronto para envio privado.");
     } catch (error) {
+      if (tenantIdRef.current !== tenantId) return;
       toast.error(error instanceof Error ? error.message : "Arquivo inválido.");
     }
   }
 
   async function abrirArquivoPrivado(documento: DocumentoFornecedor) {
+    const tenantId = selecionado?.id;
+    if (!tenantId || documento.tenant_id !== tenantId) return;
     if (
       documento.storage_provider !== "supabase_storage" ||
       !documento.storage_path ||
@@ -632,6 +637,7 @@ function Documentos() {
       .createSignedUrl(documento.storage_path, 60, {
         download: documento.file_name || true,
       });
+    if (tenantIdRef.current !== tenantId) return;
     if (signedUrlError || !data?.signedUrl) {
       toast.error(signedUrlError?.message ?? "Não foi possível gerar o link temporário.");
       return;
@@ -642,9 +648,11 @@ function Documentos() {
   }
 
   async function importarModelo(file?: File) {
-    if (!file) return;
+    const tenantId = selecionado?.id;
+    if (!file || !tenantId) return;
     try {
       const text = await importarTextoDeModelo(file);
+      if (tenantIdRef.current !== tenantId) return;
       let avisos: { code: string; message: string }[] = [];
       if (file.name.toLowerCase().endsWith(".docx")) {
         const { analyzeDocx } = await import("@/lib/docx-engine");
@@ -662,6 +670,7 @@ function Documentos() {
           : "Texto do modelo importado.",
       );
     } catch (error) {
+      if (tenantIdRef.current !== tenantId) return;
       setArquivoOriginalModelo(null);
       setAvisosModeloDocx([]);
       toast.error(
@@ -675,6 +684,8 @@ function Documentos() {
   async function salvarDocumento(e: FormEvent) {
     e.preventDefault();
     if (!selecionado || !fornecedorId) return;
+    const tenantId = selecionado.id;
+    if (tenantIdRef.current !== tenantId) return;
     if (emissao && vencimento && vencimento < emissao) {
       toast.error("A data de vencimento não pode ser anterior à emissão.");
       return;
@@ -713,7 +724,8 @@ function Documentos() {
         .from("supplier_documents")
         .update(payload)
         .eq("id", documentoEditando.id)
-        .eq("tenant_id", selecionado.id);
+        .eq("tenant_id", tenantId);
+      if (tenantIdRef.current !== tenantId) return;
       setSalvandoDocumento(false);
       if (updateError) {
         toast.error(updateError.message);
@@ -725,6 +737,7 @@ function Documentos() {
       try {
         validated = await validarArquivoPrivado(arquivoDocumento);
       } catch (error) {
+        if (tenantIdRef.current !== tenantId) return;
         setSalvandoDocumento(false);
         toast.error(error instanceof Error ? error.message : "Arquivo inválido.");
         return;
@@ -733,7 +746,7 @@ function Documentos() {
       const documentId = crypto.randomUUID();
       const objectId = crypto.randomUUID();
       const storagePath = [
-        selecionado.id,
+        tenantId,
         "supplier-documents",
         fornecedorId,
         documentId,
@@ -747,6 +760,10 @@ function Documentos() {
           upsert: false,
         });
 
+      if (tenantIdRef.current !== tenantId) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+        return;
+      }
       if (uploadError) {
         setSalvandoDocumento(false);
         toast.error(`Não foi possível enviar o arquivo: ${uploadError.message}`);
@@ -755,7 +772,7 @@ function Documentos() {
 
       const { error: insertError } = await db.from("supplier_documents").insert({
         id: documentId,
-        tenant_id: selecionado.id,
+        tenant_id: tenantId,
         supplier_id: fornecedorId,
         ...metadata,
         storage_provider: "supabase_storage",
@@ -773,6 +790,7 @@ function Documentos() {
           .from("gfs-private-documents")
           .remove([storagePath]);
         setSalvandoDocumento(false);
+        if (tenantIdRef.current !== tenantId) return;
         toast.error(
           cleanupError
             ? `O registro não foi salvo (${insertError.message}). O arquivo permanece privado e sem vínculo; solicite a limpeza ao suporte.`
@@ -780,6 +798,7 @@ function Documentos() {
         );
         return;
       }
+      if (tenantIdRef.current !== tenantId) return;
       setSalvandoDocumento(false);
       toast.success("Documento e arquivo privado registrados com sucesso.");
     } else {
@@ -793,6 +812,7 @@ function Documentos() {
         drive_file_id: driveFileId,
         status: "active",
       });
+      if (tenantIdRef.current !== tenantId) return;
       setSalvandoDocumento(false);
       if (insertError) {
         toast.error(insertError.message);
@@ -801,18 +821,21 @@ function Documentos() {
       toast.success("Documento registrado.");
     }
 
+    if (tenantIdRef.current !== tenantId) return;
     setArquivoDocumento(null);
     setDialogDocumento(false);
     await carregar();
   }
 
   async function arquivarDocumento(d: DocumentoFornecedor) {
-    if (!selecionado) return;
+    const tenantId = selecionado?.id;
+    if (!tenantId || d.tenant_id !== tenantId) return;
     const { error: updateError } = await db
       .from("supplier_documents")
       .update({ status: "archived" })
       .eq("id", d.id)
-      .eq("tenant_id", selecionado.id);
+      .eq("tenant_id", tenantId);
+    if (tenantIdRef.current !== tenantId) return;
     if (updateError) {
       toast.error(updateError.message);
       return;
