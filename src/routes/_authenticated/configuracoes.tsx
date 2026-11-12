@@ -600,9 +600,9 @@ function Configuracoes() {
                     value={dadosTimbrado.header_title}
                     onChange={(event) =>
                       setDadosTimbrado((current) => ({
-                      ...current,
-                      header_title: event.target.value,
-                    }))
+                        ...current,
+                        header_title: event.target.value,
+                      }))
                     }
                     placeholder={selecionado.nome}
                   />
@@ -616,9 +616,9 @@ function Configuracoes() {
                     value={dadosTimbrado.header_subtitle}
                     onChange={(event) =>
                       setDadosTimbrado((current) => ({
-                      ...current,
-                      header_subtitle: event.target.value,
-                    }))
+                        ...current,
+                        header_subtitle: event.target.value,
+                      }))
                     }
                     placeholder="Prefeitura Municipal, secretaria ou departamento"
                   />
@@ -632,9 +632,9 @@ function Configuracoes() {
                     value={dadosTimbrado.footer_text}
                     onChange={(event) =>
                       setDadosTimbrado((current) => ({
-                      ...current,
-                      footer_text: event.target.value,
-                    }))
+                        ...current,
+                        footer_text: event.target.value,
+                      }))
                     }
                     placeholder="Endereço institucional, telefone ou informação oficial"
                   />
