@@ -1,12 +1,12 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 12/11/2026 — prevalece sobre as fotografias históricas abaixo.** Consulta somente leitura ao Supabase SMS2 e CI do commit `6f3835e75c3b0e56296dbb5d013fd08f537e2b18`:
+> **Estado verificado em 12/11/2026 — prevalece sobre as fotografias históricas abaixo.** Consulta somente leitura ao Supabase SMS2 e CI do commit `1e6207cec299912a8212595a0ffd57c5928f5dc7`:
 > - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 79 arquivos SQL e cinco migrations futuras não aplicadas: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, cobertura de índices FK e remoção de políticas SELECT redundantes.
 > - Há 1 Secretaria, 1 vínculo municipal, 2 perfis e 2 identidades Auth; não há fornecedores, documentos operacionais, processos ou contratos. O catálogo global contém 5 modelos.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. Ativa não significa que e-mail real ou scheduler esteja homologado.
-> - CI do commit `6f3835e` passou formatação, testes unitários, build, TypeScript, Deno, lint, aplicação de todas as migrations em Supabase descartável e testes pgTAP. O commit documental posterior atualiza este checklist; o código continua sem publicação/deploy.
-> - O motor documental inclui DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria e bloqueio de campos pendentes. O editor visual rico e E2E autenticado ainda não foram homologados. Nenhum dado fictício foi escrito no SMS2 nem e-mail real enviado.
-> - Integrações/configurações ainda pendentes: SMTP e agendamento de alertas, Drive OAuth, gateway/webhooks de pagamento, restore de backup em projeto separado e homologação autenticada com duas Secretarias. O estado permanece **NO-GO para venda/liberação comercial**.
+> - CI completo do commit `1e6207c` passou testes unitários, build, TypeScript, Deno, lint, formatação, aplicação das 79 migrations em Supabase descartável e regressões pgTAP ([run 43271911944](https://github.com/artemiosds/supabase-connected-app/actions/runs/43271911944)).
+> - O motor documental inclui DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria, bloqueio de campos pendentes e proteção contra DOCX ZIP excessivamente grande. O editor visual rico, E2E autenticado e homologação visual de modelos reais ainda não foram concluídos. Nenhum dado fictício foi escrito no SMS2 nem e-mail real enviado.
+> - SMS2 continua sem `document_template_sources` e `tenant_document_branding`; nenhuma das cinco migrations futuras foi aplicada. Integrações/configurações ainda pendentes: SMTP e agendamento de alertas, Drive OAuth, gateway/webhooks de pagamento, restore de backup em projeto separado e homologação autenticada com duas Secretarias. O estado permanece **NO-GO para venda/liberação comercial**.
 
 **Verificação:** 12/11/2026
 **Supabase:** SMS2, projeto `rwbbznqtocunzrpcvjvk`.

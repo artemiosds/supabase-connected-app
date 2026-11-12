@@ -118,6 +118,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - O DOCX original é carregado por versão, preservado ao editar metadados/restaurar versão e usado na exportação Word quando o texto não foi alterado. O editor da página ainda é textual; editar o texto desvincula o original. Editor visual rico preservando formatação durante edição permanece pendente.
 - O PDF usa renderizador `pdf-lib` a partir do modelo; logo, margens, cabeçalho/rodapé e paginação são testados. Não é conversão Word completa: recursos incompatíveis são bloqueados e alguns estilos de fonte/cor/tabela podem ser simplificados.
 - A homologação de modelos reais, duas Secretarias, perfis, downloads autenticados, comparação visual Word/PDF e aplicação segura das migrations continuam pendentes.
+- No commit `1e6207cec299912a8212595a0ffd57c5928f5dc7`, o PDF passou a centralizar brasão, cabeçalho e rodapé pela largura real da página, inclusive paisagem. O teste automatizado cobre as duas larguras.
+- O leitor DOCX agora verifica o tamanho descompactado declarado de cada entrada e o total do pacote antes de inflar qualquer arquivo; teste ZIP comprimido excessivamente grande incluído.
+- CI completo aprovado no run [43271911944](https://github.com/artemiosds/supabase-connected-app/actions/runs/43271911944): testes, build, tipos, Deno, lint, aplicação das 79 migrations em banco descartável e pgTAP.
+- SMS2 permanece inalterado: 74 migrations até `20261112123300`; as tabelas `document_template_sources` e `tenant_document_branding` não existem nele.
 
 
 ## Reconciliação de migrations — auditoria de 12/11/2026

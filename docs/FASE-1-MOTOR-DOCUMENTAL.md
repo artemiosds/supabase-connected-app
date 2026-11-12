@@ -37,11 +37,12 @@ Essas migrations são aditivas e passaram por aplicação/testes pgTAP em banco 
 6. Validar armazenamento privado, troca/remoção do brasão, rollback em falha de upload e trilha de auditoria.
 7. Obter aprovação formal da homologação antes de qualquer implantação em produção.
 
-## Validação de código — commit 6f3835e
+## Validação de código — commit `1e6207cec299912a8212595a0ffd57c5928f5dc7`
 
-- Testes unitários, build, TypeScript, lint, formatação e verificação das Edge Functions passaram.
-- Migrations foram aplicadas em Supabase descartável e os testes de segurança/pgTAP passaram.
-- Teste automatizado gera PDF com brasão PNG e valida o arquivo resultante.
-- O SMS2 continua com 74 migrations; `document_template_sources` e `tenant_document_branding` permanecem ausentes. Nenhuma migration foi aplicada à produção.
+- CI completo aprovado: testes unitários, build de produção, TypeScript, verificação das Edge Functions, lint e formatação.
+- O teste de segurança aplica as 79 migrations em Supabase descartável e executa as regressões pgTAP; resultado aprovado no run [43271911944](https://github.com/artemiosds/supabase-connected-app/actions/runs/43271911944).
+- Foram adicionados testes para centralização do timbrado em páginas retrato/paisagem e rejeição de pacotes DOCX compactados com conteúdo interno acima dos limites antes da descompactação.
+- A prévia Lovable informa o mesmo commit e estado `ready`; a conferência visual autenticada e com modelos reais ainda não foi concluída.
+- O SMS2 continua com 74 migrations até `20261112123300`; `document_template_sources` e `tenant_document_branding` permanecem ausentes. Nenhuma migration foi aplicada à produção.
 
-**Não há autorização técnica para marcar esta fase como concluída apenas porque o CI passou.**
+**A Fase 1 continua em homologação. CI verde não substitui testes visuais, autenticação, isolamento entre Secretarias e aceite formal.**
