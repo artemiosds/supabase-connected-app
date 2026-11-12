@@ -345,7 +345,7 @@ function Fornecedores() {
             .from("suppliers")
             .update(payload)
             .eq("id", editando.id)
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", selecionado.id)
         : await db.from("suppliers").insert(payload);
       if (resultado.error) throw resultado.error;
       toast.success(editando ? "Fornecedor atualizado." : "Fornecedor cadastrado.");
@@ -372,7 +372,7 @@ function Fornecedores() {
       .from("suppliers")
       .update({ status: novoStatus })
       .eq("id", fornecedor.id)
-      .eq("tenant_id", tenantId);
+      .eq("tenant_id", selecionado.id);
     if (erroAtualizacao) {
       toast.error(erroAtualizacao.message);
       return;
@@ -427,7 +427,7 @@ function Fornecedores() {
       .select(
         "id,tenant_id,supplier_id,measure,reason,legal_basis,reference_number,start_date,end_date,status,created_by,updated_by,created_at,updated_at",
       )
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", selecionado.id)
       .eq("supplier_id", fornecedor.id)
       .order("start_date", { ascending: false })
       .order("id");
@@ -495,7 +495,7 @@ function Fornecedores() {
       .from("supplier_sanctions")
       .update({ status: "revoked" })
       .eq("id", sancao.id)
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", selecionado.id)
       .select("id")
       .maybeSingle();
     if (erroAtualizacao || !data) {
