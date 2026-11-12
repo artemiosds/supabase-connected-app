@@ -301,9 +301,7 @@ function Contratos() {
     const processo = processosAtuais.find((item) => item.id === id);
     return processo ? `${processo.number} — ${processo.title}` : null;
   };
-  const colunasRelatorio90Dias: CsvColumn<
-    (typeof contratosAVencer90Dias)[number]
-  >[] = [
+  const colunasRelatorio90Dias: CsvColumn<(typeof contratosAVencer90Dias)[number]>[] = [
     { header: "Contrato", value: (contrato) => contrato.number },
     {
       header: "Instrumento",
@@ -357,9 +355,7 @@ function Contratos() {
           />
           <ReportExportActions
             title="Contratos vigentes a vencer nos próximos 90 dias"
-            filename={`contratos-a-vencer-90-dias-${new Date().toLocaleDateString(
-              "sv-SE",
-            )}`}
+            filename={`contratos-a-vencer-90-dias-${new Date().toLocaleDateString("sv-SE")}`}
             columns={colunasRelatorio90Dias}
             rows={contratosAVencer90Dias}
             disabled={loadingAtual || pendenteAtual || !!erroAtual}
