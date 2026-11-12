@@ -237,6 +237,7 @@ function Contratos() {
       const message = error instanceof Error ? error.message : String(error);
       if (bancoNaoConfigurado(message)) setPendente(true);
       else setErro(message);
+      setTenantCarregadoId(tenantId);
     } finally {
       if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
@@ -300,7 +301,9 @@ function Contratos() {
     const processo = processosAtuais.find((item) => item.id === id);
     return processo ? `${processo.number} — ${processo.title}` : null;
   };
-  const colunasRelatorio90Dias: CsvColumn<(typeof contratosAVencer90Dias)[number]>[] = [
+  const colunasRelatorio90Dias: CsvColumn<
+    (typeof contratosAVencer90Dias)[number]
+  >[] = [
     { header: "Contrato", value: (contrato) => contrato.number },
     {
       header: "Instrumento",
@@ -312,7 +315,10 @@ function Contratos() {
     { header: "Objeto", value: (contrato) => contrato.object },
     { header: "Fornecedor", value: (contrato) => nomeFornecedor(contrato.supplier_id) },
     { header: "Processo", value: (contrato) => nomeProcesso(contrato.process_id) ?? "—" },
-    { header: "Modalidade", value: (contrato) => MODALIDADES[contrato.modality] ?? contrato.modality },
+    {
+      header: "Modalidade",
+      value: (contrato) => MODALIDADES[contrato.modality] ?? contrato.modality,
+    },
     { header: "Valor total", value: (contrato) => Number(contrato.total_value) },
     { header: "Início da vigência", value: (contrato) => formatarData(contrato.start_date) },
     { header: "Fim da vigência", value: (contrato) => formatarData(contrato.end_date) },
@@ -351,7 +357,9 @@ function Contratos() {
           />
           <ReportExportActions
             title="Contratos vigentes a vencer nos próximos 90 dias"
-            filename={`contratos-a-vencer-90-dias-${new Date().toLocaleDateString("sv-SE")}`}
+            filename={`contratos-a-vencer-90-dias-${new Date().toLocaleDateString(
+              "sv-SE",
+            )}`}
             columns={colunasRelatorio90Dias}
             rows={contratosAVencer90Dias}
             disabled={loadingAtual || pendenteAtual || !!erroAtual}
