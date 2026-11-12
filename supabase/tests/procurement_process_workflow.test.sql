@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(24);
+SELECT extensions.plan(32);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -255,5 +255,177 @@ SELECT extensions.ok(
   ) LIKE '%NEW.stage IS DISTINCT FROM OLD.stage%',
   'a checklist item cannot be moved to another stage after creation'
 );
+-- Behavioral fixtures: isolated synthetic identities and tenant are rolled back
+-- with this test transaction. They never reach SMS2 or any shared environment.
+INSERT INTO auth.users (
+  id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data
+)
+VALUES (
+  '10000000-0000-4000-8000-000000000001',
+  'authenticated',
+  'authenticated',
+  'procurement-workflow-fixture@example.invalid',
+  '',
+  '{}'::jsonb,
+  '{"full_name":"Fixture de Teste"}'::jsonb
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.tenants (id, name, slug, created_by, status)
+VALUES (
+  '10000000-0000-4000-8000-000000000002',
+  'Secretaria Fixture',
+  'secretaria-fixture-workflow',
+  '10000000-0000-4000-8000-000000000001',
+  'active'
+);
+
+INSERT INTO public.procurement_processes (
+  id, tenant_id, number, title, stage, status, created_by, updated_by
+)
+VALUES (
+  '10000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000002',
+  'TESTE-WORKFLOW-001',
+  'Processo sintético para regressão de etapas',
+  'planejamento',
+  'em_andamento',
+  '10000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001'
+);
+
+INSERT INTO public.process_items (
+  id, tenant_id, process_id, stage, title, created_by, updated_by
+)
+VALUES (
+  '10000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000003',
+  'planejamento',
+  'Checklist sintético pendente',
+  '10000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.procurement_processes
+    SET stage = 'estudos'
+    WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
+  '23514',
+  'Conclua todos os itens da etapa atual antes de avançar.',
+  'a process cannot advance while its current-stage checklist is pending'
+);
+
+UPDATE public.process_items
+SET is_done = true
+WHERE id = '10000000-0000-4000-8000-000000000004';
+
+UPDATE public.procurement_processes
+SET stage = 'estudos'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+
+SELECT extensions.ok(
+  (SELECT stage = 'estudos'
+   FROM public.procurement_processes
+   WHERE id = '10000000-0000-4000-8000-000000000003'),
+  'a process advances one stage after its current checklist is complete'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.procurement_processes
+    SET stage = 'objeto'
+    WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
+  '23514',
+  'O processo deve avançar ou retornar uma etapa por vez.',
+  'a process cannot skip an intermediate stage'
+);
+
+SELECT extensions.throws_ok(
+  $test$INSERT INTO public.process_items (
+    tenant_id, process_id, stage, title, created_by, updated_by
+  ) VALUES (
+    '10000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000003',
+    'planejamento',
+    'Pendência retroativa',
+    '10000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001'
+  )$test$,
+  '23514',
+  'Não é permitido adicionar pendências em etapas já superadas.',
+  'a process cannot receive a new checklist item in a completed earlier stage'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.process_items
+    SET stage = 'estudos'
+    WHERE id = '10000000-0000-4000-8000-000000000004'$test$,
+  '23514',
+  'A identidade, a etapa e o vínculo da tarefa do checklist são imutáveis.',
+  'an existing checklist item cannot be moved to another stage'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.procurement_processes
+    SET tenant_id = '10000000-0000-4000-8000-000000000099'
+    WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
+  '23514',
+  'A identidade e a Secretaria vinculada ao processo não podem ser alteradas.',
+  'a process cannot be transferred to another tenant'
+);
+
+UPDATE public.procurement_processes
+SET stage = 'objeto'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'pesquisa'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'parecer'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'conclusao'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'publicacao'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'julgamento'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'assinatura'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET stage = 'fiscalizacao'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+UPDATE public.procurement_processes
+SET status = 'concluido'
+WHERE id = '10000000-0000-4000-8000-000000000003';
+
+SELECT extensions.ok(
+  (SELECT stage = 'fiscalizacao' AND status = 'concluido'
+   FROM public.procurement_processes
+   WHERE id = '10000000-0000-4000-8000-000000000003'),
+  'a process can be completed only after reaching the final stage with all checklist items done'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.procurement_processes
+    SET status = 'em_andamento'
+    WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
+  '23514',
+  'Um processo concluído não pode ser reaberto nem ter sua etapa alterada.',
+  'a completed process cannot be reopened'
+);
+
+SELECT extensions.throws_ok(
+  $test$UPDATE public.process_items
+    SET is_done = false
+    WHERE id = '10000000-0000-4000-8000-000000000004'$test$,
+  '23514',
+  'Não é permitido alterar itens de um processo concluído.',
+  'checklist items of a completed process are immutable'
+);
+
 SELECT * FROM extensions.finish();
 ROLLBACK;
