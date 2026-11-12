@@ -130,3 +130,9 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A baseline sem versão foi conferida em leitura: quatro tabelas com colunas de base esperadas, 14 índices e 12 políticas presentes; RLS/FORCE ativos, sem grants `anon` e zero linhas nas quatro tabelas. Isso não demonstra um backup restaurável nem a equivalência de toda definição após migrations posteriores.
 - O SMS2 é o único projeto conectado da organização Free; nenhuma das 828 execuções de Actions foi do workflow de backup. Não há evidência de artefato criptografado, chave privada de recuperação ou restauração isolada. Não alterar histórico ou schema do SMS2 antes de cumprir esse gate.
 - Ver `docs/RECONCILIACAO-MIGRATIONS-SMS2.md` e `docs/ROTINA-DE-BACKUP.md`. O usuário autorizou continuar a correção, mas nenhum DDL ou reparo de produção foi executado nesta etapa.
+
+
+## Correção autorizada do histórico — 12/11/2026
+
+- O usuário dispensou o backup como pré-requisito; isso remove o bloqueio de processo, não o risco de recuperação. A alteração do metadata será transacional e está registrada nos dois SQLs em `docs/REPARO-HISTORICO-SMS2*.sql` antes de execução.
+- A baseline também exige a unicidade de `suppliers(tenant_id,id)`; no SMS2 a constraint nomeada está ausente, mas o índice único `ux_suppliers_tenant_id_id` provê a mesma chave. As quatro tabelas operacionais e `supplier_documents` têm zero linhas na pré-verificação.

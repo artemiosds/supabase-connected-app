@@ -93,3 +93,12 @@ O usuário autorizou continuar a correção em 12/11/2026. Os pré-requisitos de
 backup restaurável e ensaio em ambiente separado ainda **não foram cumpridos**;
 nenhum histórico, schema ou dado de produção foi modificado nesta etapa.
 Lovable permanece somente para preview.
+
+
+## Autorização posterior e reparo do histórico — 12/11/2026
+
+- O usuário dispensou o backup como condição e pediu prosseguir com a implantação. **Risco aceito:** não existe restauração comprovada do SMS2; transação e SQL reverso protegem o reparo do histórico, mas não equivalem a backup completo para DDL futuro.
+- A baseline tem as colunas esperadas nas quatro tabelas, 27 das 28 constraints nomeadas e um índice único equivalente `ux_suppliers_tenant_id_id` em `(tenant_id,id)` para a constraint ausente `suppliers_tenant_id_unique`. Os quatro conjuntos de tabelas, 14 índices e 12 políticas estão presentes; não reaplicar essa migration.
+- Pré-verificação da tabela de histórico: 68 registros, zero das oito versões de destino; há exatamente sete versões remotas por nome. As quatro tabelas operacionais têm zero linhas, assim como `supplier_documents`; não haverá UPDATE/DELETE em tabelas de usuário nesta operação.
+- Query exata para atualização de **sete linhas de histórico** e inserção de **uma entrada de baseline**, com validação estrita e transação: `docs/REPARO-HISTORICO-SMS2.sql`. A reversão, somente antes de publicar migrations novas, atualiza as mesmas sete versões de volta e exclui exclusivamente a entrada de baseline criada: `docs/REPARO-HISTORICO-SMS2-REVERSAO.sql`. Nenhum UPDATE/DELETE em massa de dados da aplicação.
+- A ferramenta conectada não oferece `migration repair` da CLI e não há credenciais CLI no ambiente. O SQL versionado e revisável é o caminho disponível para corrigir somente o metadata do histórico; aplicar migrations de schema pelo conector `apply_migration` e alinhar os nomes/versões dos arquivos no repositório aos registros produzidos.
