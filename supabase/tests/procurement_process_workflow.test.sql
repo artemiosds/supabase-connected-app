@@ -367,11 +367,11 @@ SELECT extensions.throws_ok(
 
 SELECT extensions.throws_ok(
   $test$UPDATE public.procurement_processes
-    SET tenant_id = '10000000-0000-4000-8000-000000000099'
+    SET id = '10000000-0000-4000-8000-000000000099'
     WHERE id = '10000000-0000-4000-8000-000000000003'$test$,
   '23514',
   'A identidade e a Secretaria vinculada ao processo não podem ser alteradas.',
-  'a process cannot be transferred to another tenant'
+  'a process identifier cannot be changed'
 );
 
 UPDATE public.procurement_processes
