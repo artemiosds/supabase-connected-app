@@ -887,7 +887,9 @@ function Documentos() {
           .from("gfs-private-documents")
           .download(source.storage_path);
         if (downloadError || !original) {
-          throw downloadError ?? new Error("O Word original da versão histórica não está disponível.");
+          throw (
+            downloadError ?? new Error("O Word original da versão histórica não está disponível.")
+          );
         }
         arquivoOriginal = new File([original], source.file_name, {
           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -955,7 +957,9 @@ function Documentos() {
       setModeloHistorico(null);
       await carregar();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível restaurar esta versão.");
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível restaurar esta versão.",
+      );
     } finally {
       setCarregandoVersoes(false);
     }

@@ -216,9 +216,7 @@ describe("docx engine — analysis, model and PDF", () => {
   });
 
   it("embeds the Secretaria logo in a valid branded PDF", async () => {
-    const model = await docxToModel(
-      await buildDocxFromText("Documento institucional", "Termo"),
-    );
+    const model = await docxToModel(await buildDocxFromText("Documento institucional", "Termo"));
     const bytes = await renderPdf(model, {
       branding: {
         ...DEFAULT_BRANDING,
