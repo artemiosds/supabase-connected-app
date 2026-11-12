@@ -1,104 +1,44 @@
-# Reconciliação do histórico de migrations do SMS2
+# Reconciliação de migrations — SMS2
 
-Auditoria somente de leitura em **12/11/2026**. Fonte do código: `main` em
-`6ee4e2935a84ae0c04cbe901e223af2ece563c38`. Nenhuma alteração foi feita
-no banco de produção. Não executar `db push` enquanto os dois históricos divergem.
+**Auditoria de leitura somente em 12/11/2026.** Projeto Supabase SMS2: `rwbbznqtocunzrpcvjvk`. A fonte de código é `artemiosds/supabase-connected-app`, branch `main` (mais a branch de alinhamento referida abaixo).
 
-## Estado comprovado
+## Estado remoto confirmado
 
-- `supabase_migrations.schema_migrations` contém **68** versões; o repositório
-  contém **75** arquivos SQL. Não inferir aplicação por nome ou por presença de
-  uma tabela apenas.
-- Sete arquivos locais foram registrados no SMS2 com outro timestamp. Em seis,
-  `statements[1]` coincide **exatamente** com o arquivo correspondente; no
-  sétimo, o SQL coincide após remover comentários e espaços, mas os textos
-  brutos diferem. Nenhum dos sete deve ser executado novamente sem reconciliação.
+- `supabase_migrations.schema_migrations`: **74 versões**.
+- Repositório antes do alinhamento: **75 arquivos SQL**.
+- A única migration local sem versão correspondente no SMS2 é `document_template_binary_source`; ela cria a tabela `public.document_template_sources`, que foi confirmada ausente no banco.
+- A baseline `20261106194000_restore_operational_process_and_contract_tables` existe no histórico remoto com `statement_count=0`. As estruturas operacionais estão presentes; esse registro vazio é marcador de histórico. Não reexecutar o arquivo de baseline no SMS2.
+- As três versões `20261110120237`, `20261110120321` e `20261110121323` de `enforce_support_identity_separation` estão registradas, uma para cada execução idempotente. Os três arquivos locais devem permanecer preservados.
+- A migration de fonte DOCX não está aplicada.
 
-| Arquivo no repositório | Versão registrada no SMS2 | Comparação |
+## Cinco migrations aplicadas com timestamp remoto diferente
+
+| Prefixo antigo local | Versão registrada no SMS2 | Nome |
 | --- | --- | --- |
-| `20261110143000_platform_internal_staff_default_deny_and_support_fk_indexes.sql` | `20261110180336` | Idêntico |
-| `20261110144000_revoke_pending_internal_invitations.sql` | `20261110180349` | Idêntico |
-| `20261110150000_platform_staff_remaining_fk_indexes.sql` | `20261110180400` | Idêntico |
-| `20261110151000_expiry_notification_outbox.sql` | `20261110180414` | Idêntico |
-| `20261110210500_remove_duplicate_contract_index_and_index_workflow_actor_fks.sql` | `20261110234352` | Idêntico |
-| `20261110230000_fix_duplicate_contract_amendment_execution.sql` | `20261111021638` | Idêntico |
-| `20261110230500_link_generated_documents_to_contracts.sql` | `20261111021946` | Mesma lógica SQL; o arquivo local contém cinco linhas adicionais de comentário |
+| `20261111043000` | `20261112122904` | `validate_supplier_document_external_urls` |
+| `20261111110000` | `20261112122950` | `expand_contract_context_in_document_generation` |
+| `20261111143000` | `20261112123048` | `expand_ten_stage_procurement_workflow` |
+| `20261111160000` | `20261112123128` | `supplier_sanction_history` |
+| `20261111200821` | `20261112123300` | `contract_arp_item_balances` |
 
-- `20261106194000_restore_operational_process_and_contract_tables.sql` não tem
-  versão correspondente no histórico. Suas quatro tabelas, 14 índices e 12
-  políticas nomeadas existem hoje. As quatro tabelas têm RLS habilitada e
-  `FORCE ROW LEVEL SECURITY`. **Presença não comprova equivalência** das
-  colunas, constraints, permissões, definições das políticas ou origem histórica.
-- Seis migrations posteriores à última versão registrada permanecem apenas
-  no código, nesta ordem:
+A branch `chore/align-applied-supabase-migration-versions` renomeia esses cinco arquivos para os timestamps efetivamente registrados no SMS2. O SQL não é alterado.
 
-| Versão | Mudança preparada | Indício de ausência no SMS2 |
-| --- | --- | --- |
-| `20261111043000` | Validação de URL de documento externo | Não presumir aplicação pela ausência de coluna; revisar constraint/função |
-| `20261111110000` | Contexto contratual na geração de documentos | Revisar definição atual da RPC antes de publicar |
-| `20261111143000` | Dez etapas com responsável e prazo | `process_items.responsible_name` e `due_date` ausentes |
-| `20261111160000` | Histórico de sanções | `supplier_sanctions` ausente |
-| `20261111200821` | Itens e saldo de contrato/ARP | `contract_items` e `contract_item_movements` ausentes |
-| `20261112114000` | DOCX original privado por versão | `document_template_sources` ausente |
+## Migration nova, ainda pendente
 
-As seis migrations foram analisadas estaticamente: nenhuma contém `UPDATE`,
-`DELETE`, `TRUNCATE` ou `DROP TABLE` em SQL de topo. Há DDL que pode trocar
-constraints, políticas, funções e triggers. Isso exige revisão de locks,
-dependências e comportamento antes da implantação; a contagem de linhas para
-atualização/exclusão em massa é **zero**, pois nenhuma foi planejada.
+A migration local `20261112114000_document_template_binary_source.sql` foi movida, sem alteração do SQL, para `20261112124000_document_template_binary_source.sql`. O novo prefixo fica depois da última versão remota `20261112123300`, evitando que uma migration pendente tenha timestamp anterior ao histórico aplicado.
 
-## Verificação adicional do SMS2 — 12/11/2026
+Ela cria a fonte binária privada por versão de modelo Word. A tabela `document_template_sources` foi consultada e está ausente no SMS2. A migration é futura; não foi aplicada nesta preparação.
 
-- As quatro tabelas da baseline têm **exatamente as colunas de base previstas** no
-  arquivo local; as 14 entradas de índice e 12 políticas nomeadas estão no
-  catálogo. Todas têm RLS e FORCE RLS ativos. Para `authenticated`, os grants
-  são SELECT/INSERT/UPDATE; `anon` não tem grants nessas tabelas.
-- As quatro tabelas possuem **zero linhas operacionais** nesta consulta. Isso
-  reduz o risco de dados nelas, mas não substitui backup das demais tabelas,
-  Auth e Storage. Definições de constraints/políticas podem ter sido alteradas
-  legitimamente por migrations posteriores; não executar a baseline antiga.
-- Plano da organização `gestao2sms`: **Free**. Só o projeto SMS2 está conectado,
-  sem branch de desenvolvimento. A consulta às 828 execuções de Actions não
-  encontrou nenhuma do workflow `Encrypted SMS2 backup`.
-- O workflow de backup requer `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-  e `AGE_RECIPIENT` no GitHub; não é possível confirmar os valores pelas
-  ferramentas conectadas. Não solicitar a identidade privada age no chat.
-  Executar o primeiro workflow manualmente, baixar o artefato criptografado,
-  validar SHA-256, descriptografar e restaurar em ambiente separado antes de
-  reparar histórico ou alterar schema. O backup lógico não cobre Auth/senhas,
-  configurações do projeto e secrets; planejar reconstrução desses itens.
+## Scripts históricos de reparo
 
-## Gate para uma implantação segura
+Os arquivos `docs/REPARO-HISTORICO-SMS2.sql` e `docs/REPARO-HISTORICO-SMS2-REVERSAO.sql` documentaram uma operação anterior de correção de metadata. A leitura atual do histórico mostra que as sete versões mapeadas e a entrada-marker da baseline já estão registradas nos prefixos esperados. **Não executar novamente nenhum dos dois scripts.** A reversão também não deve ser usada depois que migrations posteriores foram aplicadas.
 
-1. Congelar novas mudanças de schema durante a janela. Obter backup do banco e
-   Storage; restaurar uma cópia isolada e provar que ela abre. Registrar plano
-   de retorno e responsáveis. O backup/restauração ainda não foi homologado.
-2. Na cópia, comparar a migration `20261106194000` contra o catálogo completo:
-   colunas, defaults, constraints, FKs, índices, políticas e grants. Resolver
-   diferenças por nova migration forward-only; não reaplicar políticas antigas
-   sobre o SMS2.
-3. Registrar o mapeamento de sete aliases com hashes/conteúdo e versões. Preparar
-   a correção do histórico com ferramenta oficial e revisão humana, sem editar
-   `supabase_migrations.schema_migrations` manualmente. Simular antes na cópia;
-   preservar evidência dos registros originais e um plano de reversão.
-4. Recomparar as seis migrations pendentes com o catálogo da cópia. Aplicar em
-   ordem, uma por vez, sob controle de timeout/locks, verificar RLS, grants,
-   funções e dados após cada etapa. O CI em banco descartável já passou, mas
-   não representa os dados e permissões reais do SMS2.
-5. Só após a reconciliação comprovada, repetir o rollout autorizado no SMS2.
-   Testar os fluxos autenticados com perfis reais e duas Secretarias, sem
-   persistir fixtures reais. Registrar versões, logs, resultados e retorno.
+## Não executar
 
-O usuário autorizou continuar a correção em 12/11/2026. Os pré-requisitos de
-backup restaurável e ensaio em ambiente separado ainda **não foram cumpridos**;
-nenhum histórico, schema ou dado de produção foi modificado nesta etapa.
-Lovable permanece somente para preview.
+- Não executar `supabase db push` indiscriminadamente.
+- Não reaplicar migrations que já aparecem no histórico remoto.
+- Não executar a baseline `20261106194000` no SMS2.
+- Não aplicar `20261112124000_document_template_binary_source.sql` até revisão/CI e uma janela de implantação futura.
+- Não alterar manualmente `supabase_migrations.schema_migrations` sem novo diff de catálogo, backup e plano documentado.
 
-
-## Autorização posterior e reparo do histórico — 12/11/2026
-
-- O usuário dispensou o backup como condição e pediu prosseguir com a implantação. **Risco aceito:** não existe restauração comprovada do SMS2; transação e SQL reverso protegem o reparo do histórico, mas não equivalem a backup completo para DDL futuro.
-- A baseline tem as colunas esperadas nas quatro tabelas, 27 das 28 constraints nomeadas e um índice único equivalente `ux_suppliers_tenant_id_id` em `(tenant_id,id)` para a constraint ausente `suppliers_tenant_id_unique`. Os quatro conjuntos de tabelas, 14 índices e 12 políticas estão presentes; não reaplicar essa migration.
-- Pré-verificação da tabela de histórico: 68 registros, zero das oito versões de destino; há exatamente sete versões remotas por nome. As quatro tabelas operacionais têm zero linhas, assim como `supplier_documents`; não haverá UPDATE/DELETE em tabelas de usuário nesta operação.
-- Query exata para atualização de **sete linhas de histórico** e inserção de **uma entrada de baseline**, com validação estrita e transação: `docs/REPARO-HISTORICO-SMS2.sql`. A reversão, somente antes de publicar migrations novas, atualiza as mesmas sete versões de volta e exclui exclusivamente a entrada de baseline criada: `docs/REPARO-HISTORICO-SMS2-REVERSAO.sql`. Nenhum UPDATE/DELETE em massa de dados da aplicação.
-- A ferramenta conectada não oferece `migration repair` da CLI e não há credenciais CLI no ambiente. O SQL versionado e revisável é o caminho disponível para corrigir somente o metadata do histórico; aplicar migrations de schema pelo conector `apply_migration` e alinhar os nomes/versões dos arquivos no repositório aos registros produzidos.
+A homologação de restore continua pendente; a reconciliação do histórico não equivale a backup. O código foi alinhado para futuras ferramentas CLI, mas nenhum rollout de `document_template_sources` foi feito nesta etapa.
