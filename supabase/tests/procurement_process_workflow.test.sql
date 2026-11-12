@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(22);
+SELECT extensions.plan(24);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -240,6 +240,20 @@ SELECT extensions.ok(
     'public.fn_guard_procurement_process_item_completion()'::regprocedure
   ) LIKE '%NEW.tenant_id IS DISTINCT FROM OLD.tenant_id%',
   'a checklist row cannot be moved across processes or tenants'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_triggerdef(
+    (SELECT oid FROM pg_catalog.pg_trigger
+     WHERE tgrelid='public.procurement_processes'::regclass
+       AND tgname='trg_guard_procurement_process_transition')
+  ) LIKE '%UPDATE OF id, tenant_id, stage, status%',
+  'process identity changes also invoke the transition guard'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%NEW.stage IS DISTINCT FROM OLD.stage%',
+  'a checklist item cannot be moved to another stage after creation'
 );
 SELECT * FROM extensions.finish();
 ROLLBACK;
