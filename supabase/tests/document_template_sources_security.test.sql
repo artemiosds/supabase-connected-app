@@ -1,11 +1,13 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(7);
+SELECT extensions.plan(8);
 
 SELECT extensions.has_table('public', 'document_template_sources', 'private model sources have a metadata table');
 SELECT extensions.ok(
-  (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid = 'public.document_template_sources'::regclass),
-  'source metadata is RLS protected'
+  (SELECT relrowsecurity AND relforcerowsecurity
+   FROM pg_catalog.pg_class
+   WHERE oid = 'public.document_template_sources'::regclass),
+  'source metadata forces row-level security'
 );
 SELECT extensions.is(
   (SELECT count(*)::integer FROM pg_catalog.pg_policies
@@ -45,5 +47,14 @@ SELECT extensions.ok(
   'orphan deletion validates a canonical UUID path'
 );
 
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='public' AND tablename='document_template_sources'
+      AND policyname='document_template_sources_select'
+      AND cmd='SELECT'
+  ),
+  'private source metadata has an explicit tenant-scoped read policy'
+);
 SELECT * FROM extensions.finish();
 ROLLBACK;

@@ -227,6 +227,9 @@ function situacaoVencimento(data: string | null): {
 
 function Documentos() {
   const { selecionado } = useTenant();
+  const tenantIdRef = useRef<string | null>(selecionado?.id ?? null);
+  tenantIdRef.current = selecionado?.id ?? null;
+  const tenantAnteriorRef = useRef<string | null>(selecionado?.id ?? null);
   const { session } = useAuth();
   const [capacidades, setCapacidades] = useState<Capacidades>({
     can_view: false,
@@ -316,9 +319,31 @@ function Documentos() {
   const [conteudoEdicaoGerado, setConteudoEdicaoGerado] = useState("");
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
 
+  useEffect(() => {
+    const tenantId = selecionado?.id ?? null;
+    if (tenantAnteriorRef.current === tenantId) return;
+    tenantAnteriorRef.current = tenantId;
+    setDialogDocumento(false);
+    setDocumentoEditando(null);
+    setArquivoDocumento(null);
+    setDialogModelo(false);
+    setModeloEditando(null);
+    setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
+    setCarregandoOriginalModelo(false);
+    setDialogHistoricoModelo(false);
+    setModeloHistorico(null);
+    setVersoesModelo([]);
+    setCarregandoVersoes(false);
+    setDialogGerar(false);
+    setDocumentoGeradoEditando(null);
+    setDocumentoImpressao(null);
+  }, [selecionado?.id]);
+
   const carregar = useCallback(async () => {
-    const requisicaoAtual = ++requisicaoRef.current;
     const tenantId = selecionado?.id;
+    if (tenantId !== tenantIdRef.current) return;
+    const requisicaoAtual = ++requisicaoRef.current;
     setTenantCarregadoId(null);
     setCapacidades({
       can_view: false,
@@ -469,7 +494,7 @@ function Documentos() {
           p_tenant_id: selecionado.id,
         }),
       ]);
-      if (requisicaoAtual !== requisicaoRef.current) return;
+      if (requisicaoAtual !== requisicaoRef.current || tenantIdRef.current !== tenantId) return;
       for (const result of [cap, tenantData, workflowCapabilities, workflowRecords])
         if (result.error) throw result.error;
       const documentCapabilities = cap.data?.[0] ?? {
@@ -501,7 +526,7 @@ function Documentos() {
       setCodigoIbgeSecretaria(tenantData.data?.ibge_code ?? "");
       setTenantCarregadoId(tenantId);
     } catch (e) {
-      if (requisicaoAtual !== requisicaoRef.current) return;
+      if (requisicaoAtual !== requisicaoRef.current || tenantIdRef.current !== tenantId) return;
       setErro(e instanceof Error ? e.message : String(e));
       setDocumentos([]);
       setModelos([]);
@@ -518,7 +543,8 @@ function Documentos() {
       setCodigoIbgeSecretaria("");
       setTenantCarregadoId(tenantId);
     } finally {
-      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
+      if (requisicaoAtual === requisicaoRef.current && tenantIdRef.current === tenantId)
+        setLoading(false);
     }
   }, [selecionado?.id, selecionado?.enabled_modules]);
 
@@ -806,6 +832,7 @@ function Documentos() {
 
   async function iniciarEdicaoModelo(modelo: Modelo) {
     if (!selecionado) return;
+    const tenantId = selecionado.id;
     setModeloEditando(modelo);
     setTituloModelo(modelo.title);
     setDescricaoModelo(modelo.description ?? "");
@@ -823,10 +850,11 @@ function Documentos() {
       const { data: source, error: sourceError } = await db
         .from("document_template_sources")
         .select("storage_path, file_name")
-        .eq("tenant_id", selecionado.id)
+        .eq("tenant_id", tenantId)
         .eq("template_id", modelo.id)
         .eq("version", modelo.version)
         .maybeSingle();
+      if (tenantIdRef.current !== tenantId) return;
       if (sourceError && !isMissingDocumentTemplateSourcesTable(sourceError)) {
         throw sourceError;
       }
@@ -834,6 +862,7 @@ function Documentos() {
         const { data: original, error: downloadError } = await db.storage
           .from("gfs-private-documents")
           .download(source.storage_path);
+        if (tenantIdRef.current !== tenantId) return;
         if (downloadError || !original) {
           throw downloadError ?? new Error("O Word original desta versão não está disponível.");
         }
@@ -846,6 +875,7 @@ function Documentos() {
         setAvisosModeloDocx(analysis.warnings);
       }
     } catch (error) {
+      if (tenantIdRef.current !== tenantId) return;
       setDialogModelo(false);
       setModeloEditando(null);
       setArquivoOriginalModelo(null);
@@ -854,7 +884,7 @@ function Documentos() {
         error instanceof Error ? error.message : "Não foi possível carregar o Word original.",
       );
     } finally {
-      setCarregandoOriginalModelo(false);
+      if (tenantIdRef.current === tenantId) setCarregandoOriginalModelo(false);
     }
   }
 
@@ -881,6 +911,7 @@ function Documentos() {
 
   async function abrirHistoricoModelo(modelo: Modelo) {
     if (!selecionado) return;
+    const tenantId = selecionado.id;
     setModeloHistorico(modelo);
     setVersoesModelo([]);
     setDialogHistoricoModelo(true);
@@ -888,9 +919,10 @@ function Documentos() {
     const { data, error: historyError } = await db
       .from("document_template_versions")
       .select("*")
-      .eq("tenant_id", selecionado.id)
+      .eq("tenant_id", tenantId)
       .eq("template_id", modelo.id)
       .order("version", { ascending: false });
+    if (tenantIdRef.current !== tenantId) return;
     setCarregandoVersoes(false);
     if (historyError) {
       toast.error(historyError.message);
@@ -901,6 +933,7 @@ function Documentos() {
 
   async function restaurarVersaoModelo(versao: VersaoModelo) {
     if (!selecionado || !capacidades.can_manage_templates || !modeloHistorico) return;
+    const tenantId = selecionado.id;
     const confirmou = window.confirm(
       `Restaurar a versão ${versao.version} de "${modeloHistorico.title}"? O conteúdo atual será preservado no histórico e a restauração criará uma nova versão.`,
     );
@@ -912,10 +945,11 @@ function Documentos() {
       const { data: source, error: sourceError } = await db
         .from("document_template_sources")
         .select("storage_path, file_name")
-        .eq("tenant_id", selecionado.id)
+        .eq("tenant_id", tenantId)
         .eq("template_id", modeloHistorico.id)
         .eq("version", versao.version)
         .maybeSingle();
+      if (tenantIdRef.current !== tenantId) return;
       if (sourceError && !isMissingDocumentTemplateSourcesTable(sourceError)) {
         throw sourceError;
       }
@@ -923,6 +957,7 @@ function Documentos() {
         const { data: original, error: downloadError } = await db.storage
           .from("gfs-private-documents")
           .download(source.storage_path);
+        if (tenantIdRef.current !== tenantId) return;
         if (downloadError || !original) {
           throw (
             downloadError ?? new Error("O Word original da versão histórica não está disponível.")
@@ -947,7 +982,7 @@ function Documentos() {
           change_summary: `Restauração da versão histórica ${versao.version}.`,
         })
         .eq("id", modeloHistorico.id)
-        .eq("tenant_id", selecionado.id)
+        .eq("tenant_id", tenantId)
         .select("version")
         .single();
       if (restoreError || !restored) {
@@ -956,7 +991,7 @@ function Documentos() {
 
       let avisoOrigem: string | null = null;
       if (arquivoOriginal) {
-        const path = `${selecionado.id}/template-sources/${modeloHistorico.id}/v${restored.version}/${crypto.randomUUID()}.docx`;
+        const path = `${tenantId}/template-sources/${modeloHistorico.id}/v${restored.version}/${crypto.randomUUID()}.docx`;
         const { error: uploadError } = await db.storage
           .from("gfs-private-documents")
           .upload(path, arquivoOriginal, {
@@ -975,12 +1010,17 @@ function Documentos() {
             file_size: arquivoOriginal.size,
           });
           if (metadataError) {
-            await db.storage.from("gfs-private-documents").remove([path]);
-            avisoOrigem = `Versão restaurada, mas o Word original não foi vinculado: ${metadataError.message}`;
+            const { error: cleanupError } = await db.storage
+              .from("gfs-private-documents")
+              .remove([path]);
+            avisoOrigem = cleanupError
+              ? `Versão restaurada, mas o Word original não foi vinculado (${metadataError.message}) e a limpeza do arquivo órfão falhou (${cleanupError.message}).`
+              : `Versão restaurada, mas o Word original não foi vinculado: ${metadataError.message}`;
           }
         }
       }
 
+      if (tenantIdRef.current !== tenantId) return;
       if (avisoOrigem) {
         toast.warning(avisoOrigem);
       } else {
@@ -998,7 +1038,7 @@ function Documentos() {
         error instanceof Error ? error.message : "Não foi possível restaurar esta versão.",
       );
     } finally {
-      setCarregandoVersoes(false);
+      if (tenantIdRef.current === tenantId) setCarregandoVersoes(false);
     }
   }
 
@@ -1095,10 +1135,16 @@ function Documentos() {
         file_size: arquivoOriginalModelo.size,
       });
       if (metadataError) {
-        await db.storage.from("gfs-private-documents").remove([path]);
+        const { error: cleanupError } = await db.storage
+          .from("gfs-private-documents")
+          .remove([path]);
         setSalvandoModelo(false);
         setModeloEditando(result.data);
-        toast.error(`Texto salvo, mas o Word original não foi vinculado: ${metadataError.message}`);
+        toast.error(
+          cleanupError
+            ? `Texto salvo, mas o Word original não foi vinculado (${metadataError.message}) e a limpeza do arquivo órfão falhou (${cleanupError.message}).`
+            : `Texto salvo, mas o Word original não foi vinculado: ${metadataError.message}`,
+        );
         return;
       }
     }
