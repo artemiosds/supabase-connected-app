@@ -18,6 +18,18 @@ DECLARE
     'conclusao','publicacao','julgamento','assinatura','fiscalizacao'
   ];
 BEGIN
+  IF TG_OP = 'UPDATE'
+     AND (
+       NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR NEW.process_id IS DISTINCT FROM OLD.process_id
+       OR NEW.created_by IS DISTINCT FROM OLD.created_by
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     ) THEN
+    RAISE EXCEPTION 'A identidade e o vínculo da tarefa do checklist são imutáveis.'
+      USING ERRCODE = '23514';
+  END IF;
+
   IF TG_OP = 'INSERT' THEN
     SELECT p.stage, p.status
       INTO v_process_stage, v_process_status
@@ -109,8 +121,9 @@ BEGIN
       USING ERRCODE = '23514';
   END IF;
 
-  IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id THEN
-    RAISE EXCEPTION 'A Secretaria vinculada ao processo não pode ser alterada.'
+  IF NEW.id IS DISTINCT FROM OLD.id
+     OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id THEN
+    RAISE EXCEPTION 'A identidade e a Secretaria vinculada ao processo não podem ser alteradas.'
       USING ERRCODE = '23514';
   END IF;
 
