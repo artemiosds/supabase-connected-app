@@ -281,6 +281,7 @@ function Documentos() {
   const [descricaoModelo, setDescricaoModelo] = useState("");
   const [conteudoModelo, setConteudoModelo] = useState("");
   const [arquivoOriginalModelo, setArquivoOriginalModelo] = useState<File | null>(null);
+  const [avisosModeloDocx, setAvisosModeloDocx] = useState<{ code: string; message: string }[]>([]);
   const conteudoModeloRef = useRef<HTMLTextAreaElement | null>(null);
   const [tipoModelo, setTipoModelo] = useState("custom");
   const [baseLegalModelo, setBaseLegalModelo] = useState("");
@@ -573,21 +574,25 @@ function Documentos() {
     if (!file) return;
     try {
       const text = await importarTextoDeModelo(file);
+      let avisos: { code: string; message: string }[] = [];
       if (file.name.toLowerCase().endsWith(".docx")) {
         const { analyzeDocx } = await import("@/lib/docx-engine");
-        await analyzeDocx(await file.arrayBuffer());
+        const analysis = await analyzeDocx(await file.arrayBuffer());
+        avisos = analysis.warnings;
       }
       setConteudoModelo(text);
       setArquivoOriginalModelo(file.name.toLowerCase().endsWith(".docx") ? file : null);
+      setAvisosModeloDocx(avisos);
       if (!tituloModelo.trim())
         setTituloModelo(file.name.replace(/\.(txt|md|docx)$/i, "").slice(0, 180));
       toast.success(
         file.name.toLowerCase().endsWith(".docx")
-          ? "Texto do Word importado. Revise tabelas e espaçamentos antes de salvar."
+          ? "Word analisado. A estrutura original será preservada na exportação Word; recursos não compatíveis com PDF serão sinalizados."
           : "Texto do modelo importado.",
       );
     } catch (error) {
       setArquivoOriginalModelo(null);
+      setAvisosModeloDocx([]);
       toast.error(
         error instanceof Error
           ? error.message
@@ -751,6 +756,7 @@ function Documentos() {
     setDescricaoModelo("");
     setConteudoModelo("");
     setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
     setTipoModelo("custom");
     setBaseLegalModelo("");
     setFonteModelo("");
@@ -764,6 +770,7 @@ function Documentos() {
     setDescricaoModelo(modelo.description ?? "");
     setConteudoModelo(modelo.content);
     setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
     setTipoModelo(modelo.template_type);
     setBaseLegalModelo(modelo.legal_basis ?? "");
     setFonteModelo(modelo.source_reference ?? "");
@@ -779,6 +786,7 @@ function Documentos() {
     const updated = conteudoModelo.slice(0, start) + token + conteudoModelo.slice(end);
     setConteudoModelo(updated);
     setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
     requestAnimationFrame(() => {
       textarea?.focus();
       const cursor = start + token.length;
@@ -954,6 +962,7 @@ function Documentos() {
     setDescricaoModelo("");
     setConteudoModelo("");
     setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
     setTipoModelo("custom");
     setBaseLegalModelo("");
     setFonteModelo("");
@@ -1187,8 +1196,14 @@ function Documentos() {
     if (!selecionado || documento.status !== "draft" || baixandoRascunhoId) return;
     setBaixandoRascunhoId(documento.id);
     try {
-      const { DEFAULT_BRANDING, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
-        await import("@/lib/docx-engine");
+      const {
+        DEFAULT_BRANDING,
+        assertPdfCompatible,
+        buildDocxFromText,
+        docxToModel,
+        generateDocx,
+        renderPdf,
+      } = await import("@/lib/docx-engine");
       const branding = {
         ...DEFAULT_BRANDING,
         headerTitle: selecionado.nome,
@@ -1200,7 +1215,7 @@ function Documentos() {
       );
       let values: Record<string, string> = {};
       let originalUsado = false;
-      if (formato === "docx" && documento.template_id && documento.template_version) {
+      if (documento.template_id && documento.template_version) {
         const [{ data: source, error: sourceError }, { data: version, error: versionError }] =
           await Promise.all([
             db
@@ -1249,10 +1264,25 @@ function Documentos() {
       const bytes =
         formato === "docx"
           ? generated.bytes
-          : await renderPdf(await docxToModel(generated.bytes), {
-              branding,
-              title: documento.title,
-            });
+          : await (async () => {
+              assertPdfCompatible(generated.warnings);
+              const preservarConfiguracaoOriginal = !generated.brandingApplied;
+              const pdfBranding = preservarConfiguracaoOriginal
+                ? {
+                    ...branding,
+                    headerTitle: "",
+                    headerSubtitle: "",
+                    logoBase64: null,
+                    logoMime: null,
+                    footerText: "",
+                  }
+                : branding;
+              return renderPdf(await docxToModel(generated.bytes), {
+                branding: pdfBranding,
+                title: documento.title,
+                useTemplatePageSetup: preservarConfiguracaoOriginal,
+              });
+            })();
       const mimeType =
         formato === "docx"
           ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1276,9 +1306,10 @@ function Documentos() {
       if (generated.pending.length) {
         toast.warning("O rascunho contém campos pendentes. Revise o arquivo antes de usá-lo.");
       }
-      if (formato === "docx" && documento.template_id && !originalUsado) {
+      if (documento.template_id && !originalUsado) {
         toast.info(
-          "Word criado a partir do texto revisado; formatação do original não está vinculada a este rascunho.",
+          (formato === "docx" ? "Word" : "PDF") +
+            " criado a partir do texto revisado; a formatação do DOCX original não está vinculada a este rascunho.",
         );
       }
     } catch (error) {
@@ -2050,6 +2081,7 @@ function Documentos() {
           if (!open) {
             setModeloEditando(null);
             setArquivoOriginalModelo(null);
+            setAvisosModeloDocx([]);
           }
         }}
       >
@@ -2150,6 +2182,21 @@ function Documentos() {
               {arquivoOriginalModelo && (
                 <p className="text-xs text-primary">Word original: {arquivoOriginalModelo.name}</p>
               )}
+              {avisosModeloDocx.length > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>O modelo contém recursos que exigem atenção</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc space-y-1 pl-4">
+                      {avisosModeloDocx.map((warning) => (
+                        <li key={warning.code}>{warning.message}</li>
+                      ))}
+                    </ul>
+                    O Word original mantém esses recursos. A exportação PDF será bloqueada quando
+                    eles puderem causar perda de conteúdo ou paginação incorreta.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
@@ -2162,6 +2209,7 @@ function Documentos() {
                 onChange={(e) => {
                   setConteudoModelo(e.target.value);
                   setArquivoOriginalModelo(null);
+                  setAvisosModeloDocx([]);
                 }}
                 placeholder="Escreva ou importe o conteúdo e insira os campos que deseja preencher automaticamente."
               />

@@ -177,9 +177,34 @@ function drawLine(
   });
 }
 
+const PDF_BLOCKING_WARNING_CODES = new Set([
+  "textbox",
+  "images",
+  "embedded",
+  "revisions",
+  "field-code",
+  "sections",
+  "numbering",
+  "nested-table",
+]);
+
+export function assertPdfCompatible(warnings: readonly { code: string; message: string }[]): void {
+  const blocking = warnings.filter((warning) => PDF_BLOCKING_WARNING_CODES.has(warning.code));
+  if (blocking.length > 0) {
+    const details = [...new Set(blocking.map((warning) => warning.message))].join(" ");
+    throw new DocxEngineError(
+      "O PDF foi bloqueado para evitar perda de conteúdo ou paginação incorreta. " +
+        details +
+        " Exporte o Word original ou ajuste o modelo.",
+    );
+  }
+}
+
 export type PdfOptions = {
   branding: DocumentBranding;
   title?: string;
+  /** Uses the page size and margins embedded in the original DOCX. */
+  useTemplatePageSetup?: boolean;
   /** Extra paragraphs appended at the end (e.g. signature record). */
   appendix?: string[];
 };
@@ -226,10 +251,16 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
     (logo ? logoH + 4 : 0) + headerLines.length * 12 + (headerLines.length || logo ? 6 : 0);
   const footerHeight = footerLines.length * 10 + (b.showPageNumbers ? 10 : 0);
 
-  const left = mmToPoints(b.marginLeftMm);
-  const right = A4.width - mmToPoints(b.marginRightMm);
-  const top = A4.height - Math.max(mmToPoints(b.marginTopMm), mmToPoints(8) + headerHeight + 6);
-  const bottom = Math.max(mmToPoints(b.marginBottomMm), mmToPoints(6) + footerHeight + 6);
+  const pageWidth = options.useTemplatePageSetup ? model.pageLayout.widthPt : A4.width;
+  const pageHeight = options.useTemplatePageSetup ? model.pageLayout.heightPt : A4.height;
+  const leftMargin = options.useTemplatePageSetup ? model.pageLayout.leftPt : mmToPoints(b.marginLeftMm);
+  const rightMargin = options.useTemplatePageSetup ? model.pageLayout.rightPt : mmToPoints(b.marginRightMm);
+  const topMargin = options.useTemplatePageSetup ? model.pageLayout.topPt : mmToPoints(b.marginTopMm);
+  const bottomMargin = options.useTemplatePageSetup ? model.pageLayout.bottomPt : mmToPoints(b.marginBottomMm);
+  const left = leftMargin;
+  const right = pageWidth - rightMargin;
+  const top = pageHeight - Math.max(topMargin, mmToPoints(8) + headerHeight + 6);
+  const bottom = Math.max(bottomMargin, mmToPoints(6) + footerHeight + 6);
   const width = right - left;
   if (width < 200 || top - bottom < 200)
     throw new DocxEngineError("As margens do timbrado deixam pouco espaço para o texto.");
@@ -238,7 +269,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
   let page!: PDFPage;
   let y = 0;
   const newPage = () => {
-    page = pdf.addPage([A4.width, A4.height]);
+    page = pdf.addPage([pageWidth, pageHeight]);
     pages.push(page);
     y = top;
   };
@@ -396,7 +427,7 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
 
   const total = pages.length;
   pages.forEach((pg, index) => {
-    let hy = A4.height - mmToPoints(8);
+    let hy = pageHeight - mmToPoints(8);
     if (logo) {
       const scale = logoH / logo.height;
       const lw = logo.width * scale;

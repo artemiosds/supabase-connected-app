@@ -99,6 +99,8 @@ export async function analyzeDocx(input: ArrayBuffer | Uint8Array | JSZip): Prom
     if (name === "word/document.xml") tableCount = wDescendants(doc, "tbl").length;
     if (wDescendants(doc, "txbxContent").length)
       warn("textbox", "Caixas de texto: campos são preenchidos no Word, mas não aparecem no PDF.");
+    if (wDescendants(doc, "tc").some((cell) => wDescendants(cell, "tbl").length > 0))
+      warn("nested-table", "Tabelas dentro de células são preservadas no Word, mas não são reproduzidas fielmente no PDF.");
     if (wDescendants(doc, "drawing").length || wDescendants(doc, "pict").length)
       warn("images", "Imagens do modelo são mantidas no Word, mas não são reproduzidas no PDF.");
     if (wDescendants(doc, "object").length || wDescendants(doc, "altChunk").length)

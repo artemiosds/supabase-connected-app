@@ -40,10 +40,20 @@ export type TableBlock = {
 
 export type Block = ParagraphBlock | TableBlock;
 
+export type DocumentPageLayout = {
+  widthPt: number;
+  heightPt: number;
+  topPt: number;
+  rightPt: number;
+  bottomPt: number;
+  leftPt: number;
+};
+
 export type DocumentModel = {
   blocks: Block[];
   headerText: string[];
   footerText: string[];
+  pageLayout: DocumentPageLayout;
 };
 
 type StyleInfo = {
@@ -253,9 +263,23 @@ export async function docxToModel(input: ArrayBuffer | Uint8Array): Promise<Docu
   const relsFile = zip.file("word/_rels/document.xml.rels");
   const rels = relsFile ? parseXml(await relsFile.async("string"), "document.xml.rels") : null;
   const sectPr = wFirst(body, "sectPr");
+  const pageSize = sectPr ? wFirst(sectPr, "pgSz") : null;
+  const pageMargins = sectPr ? wFirst(sectPr, "pgMar") : null;
+  const twipsToPoints = (value: string | null, fallback: number) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed / 20 : fallback;
+  };
   return {
     blocks: bodyBlocks(body, ctx),
     headerText: await storyText(zip, rels, sectPr, "header"),
     footerText: await storyText(zip, rels, sectPr, "footer"),
+    pageLayout: {
+      widthPt: twipsToPoints(pageSize ? wAttr(pageSize, "w") : null, 595.28),
+      heightPt: twipsToPoints(pageSize ? wAttr(pageSize, "h") : null, 841.89),
+      topPt: twipsToPoints(pageMargins ? wAttr(pageMargins, "top") : null, 72),
+      rightPt: twipsToPoints(pageMargins ? wAttr(pageMargins, "right") : null, 72),
+      bottomPt: twipsToPoints(pageMargins ? wAttr(pageMargins, "bottom") : null, 72),
+      leftPt: twipsToPoints(pageMargins ? wAttr(pageMargins, "left") : null, 72),
+    },
   };
 }

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_BRANDING,
   analyzeDocx,
+  assertPdfCompatible,
   buildDocxFromText,
   docxToModel,
   generateDocx,
@@ -35,9 +36,11 @@ async function fixture(body: string, opts: { header?: string } = {}): Promise<Ui
       "word/header1.xml",
       `<?xml version="1.0"?><w:hdr ${W}><w:p><w:r><w:t>${opts.header}</w:t></w:r></w:p></w:hdr>`,
     );
-  const sect = opts.header
-    ? '<w:sectPr><w:headerReference w:type="default" r:id="rId2"/><w:pgMar w:top="1000" w:bottom="1000" w:left="1000" w:right="1000"/></w:sectPr>'
-    : "<w:sectPr/>";
+  const sect = body.includes("<w:sectPr")
+    ? ""
+    : opts.header
+      ? '<w:sectPr><w:headerReference w:type="default" r:id="rId2"/><w:pgMar w:top="1000" w:bottom="1000" w:left="1000" w:right="1000"/></w:sectPr>'
+      : "<w:sectPr/>";
   zip.file(
     "word/document.xml",
     `<?xml version="1.0" encoding="UTF-8"?><w:document ${W}><w:body>${body}${sect}</w:body></w:document>`,
@@ -192,6 +195,37 @@ describe("docx engine — generation", () => {
 });
 
 describe("docx engine — analysis, model and PDF", () => {
+  it("blocks PDF export when unsupported Word content would be lost", () => {
+    expect(() =>
+      assertPdfCompatible([{ code: "images", message: "Imagens não são reproduzidas." }]),
+    ).toThrow(/PDF foi bloqueado/);
+    expect(() =>
+      assertPdfCompatible([{ code: "table-style", message: "Estilo de tabela simples." }]),
+    ).not.toThrow();
+  });
+
+  it("reads original page size and margins for predictable PDF pagination", async () => {
+    const tpl = await fixture(
+      '<w:p><w:r><w:t>Documento paisagem</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080"/></w:sectPr>',
+    );
+    const model = await docxToModel(tpl);
+    expect(model.pageLayout).toEqual({
+      widthPt: 792,
+      heightPt: 612,
+      topPt: 36,
+      rightPt: 54,
+      bottomPt: 36,
+      leftPt: 54,
+    });
+    const bytes = await renderPdf(model, {
+      branding: DEFAULT_BRANDING,
+      useTemplatePageSetup: true,
+    });
+    const page = (await PDFDocument.load(bytes)).getPage(0);
+    expect(Math.round(page.getWidth())).toBe(792);
+    expect(Math.round(page.getHeight())).toBe(612);
+  });
+
   it("lists placeholders even when split between runs and warns about unsupported features", async () => {
     const tpl = await fixture(`${SPLIT_PARAGRAPH}<w:p><w:r><w:drawing/></w:r></w:p>`);
     const analysis = await analyzeDocx(tpl);
