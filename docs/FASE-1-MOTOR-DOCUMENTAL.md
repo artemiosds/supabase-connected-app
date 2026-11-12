@@ -46,3 +46,16 @@ Essas migrations são aditivas e passaram por aplicação/testes pgTAP em banco 
 - O SMS2 continua com 74 migrations até `20261112123300`; `document_template_sources` e `tenant_document_branding` permanecem ausentes. Nenhuma migration foi aplicada à produção.
 
 **A Fase 1 continua em homologação. CI verde não substitui testes visuais, autenticação, isolamento entre Secretarias e aceite formal.**
+
+
+## Atualização de validação — 12/11/2026, commit `49dd493e6be34b8e143831b46c17861045474d76`
+
+- [x] Corrigida a expressão regular da política de limpeza de DOCX órfão em Storage; a alteração final reduziu o escape duplicado que fazia a migration falhar.
+- [x] CI do commit passou integralmente: validação de aplicação e segurança do banco. O job de banco iniciou Supabase local, aplicou as migrations e executou as regressões pgTAP com sucesso ([run 43280660261](https://github.com/artemiosds/supabase-connected-app/actions/runs/43280660261)). A formatação também passou ([run 43280660696](https://github.com/artemiosds/supabase-connected-app/actions/runs/43280660696)).
+- [x] Revisados os fluxos de reabertura, restauração e salvamento do DOCX em `src/routes/_authenticated/documentos.tsx`.
+- [ ] Ainda é necessária homologação E2E das falhas parciais: texto salvo com upload DOCX falho, metadata recusada, falha de limpeza do objeto órfão, download original indisponível e restauração com reanexo.
+- [ ] A interface deve ser testada para confirmar que a mensagem parcial é clara e que o usuário consegue retomar a operação sem confundir versão textual com versão que preserva o Word.
+
+O fluxo atual salva a versão textual e depois envia o DOCX original. Se o upload ou o vínculo dos metadados falhar, o sistema informa explicitamente que o texto foi salvo, mas o original não foi anexado. Na restauração, a nova versão textual também é registrada antes do reenvio do original, e falhas são informadas. Esse desenho evita declarar sucesso completo indevidamente, mas não torna a operação entre banco e Storage uma transação única; por isso, falhas parciais e limpeza de órfãos precisam de homologação específica.
+
+**O resultado verde da CI valida o código e as migrations em banco descartável. Não comprova isolamento visual/autenticado entre Secretarias, fidelidade de modelos reais, recuperação de backup ou aceite formal. Fase 1 permanece em homologação e NO-GO para produção/venda.**
