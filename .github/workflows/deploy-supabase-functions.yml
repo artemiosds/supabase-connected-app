@@ -64,3 +64,8 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy send-expiry-notifications --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy tenant Google Drive OAuth function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy google-drive-oauth --project-ref rwbbznqtocunzrpcvjvk

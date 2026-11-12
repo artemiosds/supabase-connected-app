@@ -1949,6 +1949,94 @@ export type Database = {
           },
         ];
       };
+      tenant_drive_connections: {
+        Row: {
+          connected_at: string;
+          connected_by: string;
+          drive_folder_id: string;
+          drive_folder_name: string;
+          google_email: string;
+          google_subject: string;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+          vault_secret_id: string;
+        };
+        Insert: {
+          connected_at?: string;
+          connected_by: string;
+          drive_folder_id: string;
+          drive_folder_name: string;
+          google_email: string;
+          google_subject: string;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+          vault_secret_id: string;
+        };
+        Update: {
+          connected_at?: string;
+          connected_by?: string;
+          drive_folder_id?: string;
+          drive_folder_name?: string;
+          google_email?: string;
+          google_subject?: string;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          vault_secret_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_drive_connections_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tenant_drive_oauth_states: {
+        Row: {
+          code_verifier: string;
+          consumed_at: string | null;
+          created_at: string;
+          expires_at: string;
+          folder_name: string;
+          state_hash: string;
+          tenant_id: string;
+          user_id: string;
+        };
+        Insert: {
+          code_verifier: string;
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at: string;
+          folder_name: string;
+          state_hash: string;
+          tenant_id: string;
+          user_id: string;
+        };
+        Update: {
+          code_verifier?: string;
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          folder_name?: string;
+          state_hash?: string;
+          tenant_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_drive_oauth_states_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tenant_memberships: {
         Row: {
           created_at: string;
@@ -2298,6 +2386,53 @@ export type Database = {
           p_details: Json;
           p_name: string;
           p_slug: string;
+        };
+        Returns: Json;
+      };
+      can_manage_tenant_drive: {
+        Args: { p_tenant_id: string };
+        Returns: boolean;
+      };
+      create_tenant_drive_oauth_state: {
+        Args: { p_code_verifier: string; p_state_hash: string; p_tenant_id: string };
+        Returns: { folder_name: string }[];
+      };
+      consume_tenant_drive_oauth_state: {
+        Args: { p_state_hash: string };
+        Returns: {
+          code_verifier: string;
+          folder_name: string;
+          tenant_id: string;
+          user_id: string;
+        }[];
+      };
+      disconnect_tenant_drive: {
+        Args: { p_actor_id: string; p_tenant_id: string };
+        Returns: Json;
+      };
+      get_tenant_drive_connection_status: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          can_manage: boolean;
+          connected_at: string | null;
+          connection_status: string | null;
+          drive_folder_name: string | null;
+          google_email: string | null;
+          is_connected: boolean;
+        }[];
+      };
+      get_tenant_drive_refresh_token: {
+        Args: { p_actor_id: string; p_permission_code?: string; p_tenant_id: string };
+        Returns: string;
+      };
+      save_tenant_drive_connection: {
+        Args: {
+          p_drive_folder_id: string;
+          p_email_verified: boolean;
+          p_google_email: string;
+          p_google_subject: string;
+          p_refresh_token: string;
+          p_state_hash: string;
         };
         Returns: Json;
       };
