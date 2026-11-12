@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(6);
+SELECT extensions.plan(7);
 
 SELECT extensions.has_table('public', 'document_template_sources', 'private model sources have a metadata table');
 SELECT extensions.ok(
@@ -34,6 +34,15 @@ SELECT extensions.ok(
        'gfs_private_template_sources_orphan_delete'
      )),
   'orphan cleanup policies use the supported owner_id column'
+);
+
+SELECT extensions.ok(
+  (SELECT qual LIKE '%[89ab][0-9a-f]{3}-[0-9a-f]{12}%'
+      AND qual NOT LIKE '%[89ab][0-9a-f]{3}-[89ab][0-9a-f]{12}%'
+   FROM pg_catalog.pg_policies
+   WHERE schemaname = 'storage' AND tablename = 'objects'
+     AND policyname = 'gfs_private_template_sources_orphan_delete'),
+  'orphan deletion validates a canonical UUID path'
 );
 
 SELECT * FROM extensions.finish();
