@@ -80,7 +80,7 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 ## Atualização de construção — saldo de contratos/Atas
 
 - Código em `main`: migration versionada para classificar contrato/ARP, registrar itens e controlar consumo por ledger auditável com estorno justificado; tela de saldo integrada ao módulo de contratos.
-- Verificação local: 3 testes unitários do cálculo e TypeScript passaram. CI completo, build/lint remoto e homologação visual/E2E por perfis seguem pendentes.
+- Verificação: CI completo do commit `9f2dc56` passou, incluindo banco descartável e pgTAP; homologação visual/E2E por perfis segue pendente.
 - A migration não foi aplicada ao SMS2; nenhum dado de produção foi alterado.
 
 
@@ -95,4 +95,11 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - Exportação nativa em `.xlsx` disponível para as listas filtradas de fornecedores, processos e contratos/Atas usando a dependência JSZip existente.
 - Verificação local: arquivo lido com `openpyxl`, testes de estrutura e conteúdo passaram, TypeScript, lint localizado, formatação e build passaram.
-- CI remoto segue em fila; validação visual no Excel/LibreOffice e E2E autenticado continuam pendentes. Nenhuma migration foi aplicada ao SMS2 nesta etapa.
+- CI do commit `9f2dc56` passou formatação, testes, build, tipos, lint, migrations em banco descartável e pgTAP. Validação visual no Excel/LibreOffice e E2E autenticado continuam pendentes. Nenhuma migration foi aplicada ao SMS2 nesta etapa.
+
+
+## Documentos — exportação de rascunhos
+
+- Word e PDF de rascunhos agora são gerados a partir do texto revisado usando o motor DOCX/PDF existente; cabeçalho com nome da Secretaria e aviso de rascunho.
+- O DOCX importado continua convertido a texto ao salvar o modelo. Preservar estilos, tabelas e brasão do arquivo original exige vincular seu binário privado ao modelo e versionar esse vínculo.
+- Não afirmar fidelidade visual nem assinatura qualificada antes da homologação.

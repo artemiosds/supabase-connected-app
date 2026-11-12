@@ -298,6 +298,7 @@ function Documentos() {
   const [conteudoGerado, setConteudoGerado] = useState("");
   const [salvandoGerado, setSalvandoGerado] = useState(false);
   const [documentoImpressao, setDocumentoImpressao] = useState<DocumentoGerado | null>(null);
+  const [baixandoRascunhoId, setBaixandoRascunhoId] = useState<string | null>(null);
   const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(
     null,
   );
@@ -1100,6 +1101,61 @@ function Documentos() {
     setConteudoEdicaoGerado(documento.content_snapshot);
   }
 
+  async function baixarRascunho(documento: DocumentoGerado, formato: "docx" | "pdf") {
+    if (!selecionado || documento.status !== "draft" || baixandoRascunhoId) return;
+    setBaixandoRascunhoId(documento.id);
+    try {
+      const { DEFAULT_BRANDING, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
+        await import("@/lib/docx-engine");
+      const branding = {
+        ...DEFAULT_BRANDING,
+        headerTitle: selecionado.nome,
+        footerText: "Rascunho para revisão",
+      };
+      const template = await buildDocxFromText(documento.content_snapshot, documento.title);
+      const generated = await generateDocx({
+        template,
+        values: {},
+        items: [],
+        branding,
+      });
+      const bytes =
+        formato === "docx"
+          ? generated.bytes
+          : await renderPdf(await docxToModel(generated.bytes), {
+              branding,
+              title: documento.title,
+            });
+      const mimeType =
+        formato === "docx"
+          ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          : "application/pdf";
+      const fileName =
+        documento.title
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/gu, "")
+          .replace(/[^a-zA-Z0-9._-]+/gu, "-")
+          .replace(/^-+|-+$/gu, "")
+          .slice(0, 80) || "documento";
+      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileName}-rascunho.${formato}`;
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      if (generated.pending.length) {
+        toast.warning("O rascunho contém campos pendentes. Revise o arquivo antes de usá-lo.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o rascunho.");
+    } finally {
+      setBaixandoRascunhoId(null);
+    }
+  }
+
   async function salvarEdicaoGerado(event: FormEvent) {
     event.preventDefault();
     if (!selecionado || !documentoGeradoEditando || !capacidades.can_update || salvandoEdicaoGerado)
@@ -1581,7 +1637,7 @@ function Documentos() {
                               </Badge>
                             </td>
                             <td className="p-3">
-                              <div className="flex justify-end gap-1">
+                              <div className="flex flex-wrap justify-end gap-1">
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -1590,6 +1646,31 @@ function Documentos() {
                                 >
                                   <Printer className="h-4 w-4" />
                                 </Button>
+                                {d.status === "draft" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={baixandoRascunhoId !== null}
+                                      onClick={() => void baixarRascunho(d, "docx")}
+                                    >
+                                      {baixandoRascunhoId === d.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                      ) : (
+                                        <Download className="h-4 w-4" aria-hidden />
+                                      )}
+                                      Word (rascunho)
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={baixandoRascunhoId !== null}
+                                      onClick={() => void baixarRascunho(d, "pdf")}
+                                    >
+                                      PDF (rascunho)
+                                    </Button>
+                                  </>
+                                )}
                                 {(() => {
                                   const workflow = fluxoPorDocumento.get(d.id);
                                   const status = workflow?.status ?? "draft";

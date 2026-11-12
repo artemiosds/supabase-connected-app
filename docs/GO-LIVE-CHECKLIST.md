@@ -124,4 +124,5 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 - [x] Exportação gerencial CSV e XLSX nativo estruturada no repositório; PDF gerencial via impressão.
 - [ ] Conferir XLSX e PDF visualmente em navegador/Excel real com perfis e duas Secretarias.
-- [ ] Validar em CI a migration de saldo de contratos/Atas e as novas regressões; jobs ainda em fila no momento desta atualização.
+- [x] CI do commit `9f2dc56` aplicou migrations em banco descartável e passou pgTAP.
+- [ ] Homologar rascunhos Word/PDF no navegador e a fidelidade dos modelos DOCX importados.

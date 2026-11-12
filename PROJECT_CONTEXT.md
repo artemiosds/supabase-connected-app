@@ -53,7 +53,7 @@ O Painel Master tem uma aba Configuração técnica com instruções para SMTP, 
 
 O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. A migration versionada também substitui as constraints de etapa nas duas tabelas e permanece não aplicada ao SMS2.
 
-A biblioteca documental agora tem catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo preenche o contexto do contrato/fornecedor pela migration versionada. A RPC restringe complementos a campos manuais declarados no modelo e bloqueia sobrescrita de valores calculados no servidor. A migration ainda não foi aplicada ao SMS2. DOCX continua sendo importado como texto, e a exportação Word/PDF fiel ao modelo continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
+A biblioteca documental agora tem catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo preenche o contexto do contrato/fornecedor pela migration versionada. A RPC restringe complementos a campos manuais declarados no modelo e bloqueia sobrescrita de valores calculados no servidor. A migration ainda não foi aplicada ao SMS2. DOCX importado continua sendo salvo como texto, então a formatação original ainda não é preservada. Rascunhos gerados agora podem ser exportados para Word e PDF a partir do texto revisado, com o nome da Secretaria no cabeçalho; exportação fiel ao DOCX original continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
 
 
 
@@ -82,10 +82,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A migration versionada `20261111200821_contract_arp_item_balances.sql` adiciona tipo de instrumento (contrato/ARP), itens com limite financeiro, saldo por item e livro razão imutável de consumo/estorno.
 - RPCs de consumo e estorno validam sessão, Secretaria ativa, módulo habilitado, permissão, vigência, saldo e justificativa; os movimentos não podem ser inseridos ou editados diretamente por usuários autenticados.
 - A migration inclui RLS forçada, chaves compostas com tenant, índices e eventos de auditoria sem gravar valores pessoais nos detalhes.
-- A migration permanece no repositório e **não foi aplicada ao SMS2**. A tela de contratos permite classificar contrato/ARP, cadastrar itens, consultar saldo, registrar consumo com justificativa e estornar sem apagar o histórico. A validação oficial do CI e a homologação visual/E2E por papéis ainda estão pendentes.
+- A migration permanece no repositório e **não foi aplicada ao SMS2**. A tela de contratos permite classificar contrato/ARP, cadastrar itens, consultar saldo, registrar consumo com justificativa e estornar sem apagar o histórico. O CI do commit `9f2dc569b886b8a9564b73e42a0c2cab01001595` passou migrations em banco descartável e pgTAP; homologação visual/E2E por papéis permanece pendente.
 
 
-- Validação local do saldo de contratos/Atas: 3 testes unitários passaram; `tsc --noEmit` passou no snapshot local sincronizado com os tipos novos. O build completo, lint e pipeline oficial ainda dependem da execução do CI. A migration continua sem aplicação no SMS2.
+- Validação local do saldo de contratos/Atas: 3 testes unitários passaram; `tsc --noEmit` passou no snapshot local sincronizado com os tipos novos. Build, lint e pipeline oficial passaram no commit `9f2dc56`. A migration continua sem aplicação no SMS2.
 
 
 ## Relatórios e exportação
@@ -100,3 +100,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - Fornecedores, processos e contratos/Atas oferecem CSV UTF-8 compatível com Excel e impressão do relatório para salvar como PDF pelo navegador.
 - O CSV usa separador regional e neutraliza fórmulas; a impressão escapa conteúdo HTML e permite visualizar antes de imprimir.
 - PDF gerencial não é timbrado nem renderizado no servidor. XLSX nativo é gerado no navegador com o JSZip já declarado no projeto, sem fórmulas executáveis, com cabeçalho fixo, filtros e limite de 10.000 registros por exportação. A homologação visual do relatório continua pendente.
+
+
+## Exportação de rascunhos documentais
+
+- A lista de documentos gerados permite baixar Word (.docx) e PDF de rascunhos, a partir de `content_snapshot` revisado e do motor `src/lib/docx-engine`; documentos assinados e cancelados não recebem cópia editável por esse fluxo.
+- O cabeçalho usa o nome da Secretaria e o rodapé indica rascunho. Não há brasão configurado nem garantia de fidelidade aos estilos de um DOCX originalmente importado.
+- O fluxo foi verificado em build, tipos, lint e testes do motor; download no navegador e conferência visual continuam pendentes.
