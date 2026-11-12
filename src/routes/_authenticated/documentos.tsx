@@ -877,6 +877,7 @@ function Documentos() {
         });
         const { analyzeDocx } = await import("@/lib/docx-engine");
         const analysis = await analyzeDocx(await file.arrayBuffer());
+        if (tenantIdRef.current !== tenantId) return;
         setArquivoOriginalModelo(file);
         setAvisosModeloDocx(analysis.warnings);
       }
