@@ -107,3 +107,11 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A lista de documentos gerados permite baixar Word (.docx) e PDF de rascunhos, a partir de `content_snapshot` revisado e do motor `src/lib/docx-engine`; documentos assinados e cancelados não recebem cópia editável por esse fluxo.
 - O cabeçalho usa o nome da Secretaria e o rodapé indica rascunho. Não há brasão configurado nem garantia de fidelidade aos estilos de um DOCX originalmente importado.
 - O fluxo foi verificado em build, tipos, lint e testes do motor; download no navegador e conferência visual continuam pendentes.
+
+
+## Modelos DOCX originais — código de 12/11/2026
+
+- A migration `20261112114000_document_template_binary_source.sql` cria `document_template_sources` imutável por `(template_id, version)`, chaves compostas e políticas de Storage privado em `gfs-private-documents`. Está versionada no repositório e não foi aplicada no SMS2.
+- Ao importar DOCX, o texto continua editável e o arquivo original é analisado e enviado ao Storage após salvar o modelo. Editar o texto do modelo descarta o arquivo selecionado; uma falha de upload/metadados deixa o texto salvo e é comunicada.
+- Na exportação Word de um rascunho vinculado a processo, o arquivo original só é usado se a versão e o conteúdo coincidirem exatamente com o snapshot preenchido pelo servidor. Depois de edição humana, a exportação usa o texto revisado. PDF continua gerado a partir do texto e não preserva imagens/layout complexos do Word.
+- Pendente: aplicar migration com revisão de histórico, testes reais de perfis e duas Secretarias, download em navegador e conferência visual no Word/PDF. CI local/descartável não equivale a homologação em produção.

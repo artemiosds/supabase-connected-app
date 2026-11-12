@@ -103,3 +103,9 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - Word e PDF de rascunhos agora são gerados a partir do texto revisado usando o motor DOCX/PDF existente; cabeçalho com nome da Secretaria e aviso de rascunho.
 - O DOCX importado continua convertido a texto ao salvar o modelo. Preservar estilos, tabelas e brasão do arquivo original exige vincular seu binário privado ao modelo e versionar esse vínculo.
 - Não afirmar fidelidade visual nem assinatura qualificada antes da homologação.
+
+
+## Fonte binária dos modelos — 12/11/2026
+
+- O DOCX importado passa a ser anexado em Storage privado à versão imutável do modelo, sem alterar a edição de texto. O Word exportado usa o original somente para rascunho não editado com valores de snapshot consistentes; a revisão humana permanece soberana.
+- A migration está no repositório e aguarda reconciliação do histórico do SMS2 para publicação. Layout Word complexo, imagens em PDF, brasão configurável, identidade visual oficial e homologação autenticada seguem pendentes.

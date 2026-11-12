@@ -377,6 +377,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      document_template_sources: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          file_name: string;
+          file_size: number;
+          storage_path: string;
+          template_id: string;
+          tenant_id: string;
+          version: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string;
+          file_name: string;
+          file_size: number;
+          storage_path: string;
+          template_id: string;
+          tenant_id: string;
+          version: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          file_name?: string;
+          file_size?: number;
+          storage_path?: string;
+          template_id?: string;
+          tenant_id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_template_sources_template_id_tenant_id_fkey";
+            columns: ["template_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "document_templates";
+            referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "document_template_sources_template_id_version_fkey";
+            columns: ["template_id", "version"];
+            isOneToOne: true;
+            referencedRelation: "document_template_versions";
+            referencedColumns: ["template_id", "version"];
+          },
+        ];
+      };
       document_template_versions: {
         Row: {
           change_summary: string | null;

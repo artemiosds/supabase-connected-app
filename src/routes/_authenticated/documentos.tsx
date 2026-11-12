@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { importarTextoDeModelo } from "@/lib/docx-import";
+import { valuesForUneditedSource } from "@/lib/document-source";
 import {
   buildDocumentTemplateSchema,
   buildDocumentVariableValues,
@@ -276,6 +277,7 @@ function Documentos() {
   const [tituloModelo, setTituloModelo] = useState("");
   const [descricaoModelo, setDescricaoModelo] = useState("");
   const [conteudoModelo, setConteudoModelo] = useState("");
+  const [arquivoOriginalModelo, setArquivoOriginalModelo] = useState<File | null>(null);
   const conteudoModeloRef = useRef<HTMLTextAreaElement | null>(null);
   const [tipoModelo, setTipoModelo] = useState("custom");
   const [baseLegalModelo, setBaseLegalModelo] = useState("");
@@ -568,15 +570,21 @@ function Documentos() {
     if (!file) return;
     try {
       const text = await importarTextoDeModelo(file);
+      if (file.name.toLowerCase().endsWith(".docx")) {
+        const { analyzeDocx } = await import("@/lib/docx-engine");
+        await analyzeDocx(await file.arrayBuffer());
+      }
       setConteudoModelo(text);
+      setArquivoOriginalModelo(file.name.toLowerCase().endsWith(".docx") ? file : null);
       if (!tituloModelo.trim())
-        setTituloModelo(file.name.replace(/\\.(txt|md|docx)$/i, "").slice(0, 180));
+        setTituloModelo(file.name.replace(/\.(txt|md|docx)$/i, "").slice(0, 180));
       toast.success(
         file.name.toLowerCase().endsWith(".docx")
           ? "Texto do Word importado. Revise tabelas e espaçamentos antes de salvar."
           : "Texto do modelo importado.",
       );
     } catch (error) {
+      setArquivoOriginalModelo(null);
       toast.error(
         error instanceof Error
           ? error.message
@@ -739,6 +747,7 @@ function Documentos() {
     setTituloModelo("");
     setDescricaoModelo("");
     setConteudoModelo("");
+    setArquivoOriginalModelo(null);
     setTipoModelo("custom");
     setBaseLegalModelo("");
     setFonteModelo("");
@@ -751,6 +760,7 @@ function Documentos() {
     setTituloModelo(modelo.title);
     setDescricaoModelo(modelo.description ?? "");
     setConteudoModelo(modelo.content);
+    setArquivoOriginalModelo(null);
     setTipoModelo(modelo.template_type);
     setBaseLegalModelo(modelo.legal_basis ?? "");
     setFonteModelo(modelo.source_reference ?? "");
@@ -765,6 +775,7 @@ function Documentos() {
     const end = textarea?.selectionEnd ?? start;
     const updated = conteudoModelo.slice(0, start) + token + conteudoModelo.slice(end);
     setConteudoModelo(updated);
+    setArquivoOriginalModelo(null);
     requestAnimationFrame(() => {
       textarea?.focus();
       const cursor = start + token.length;
@@ -853,15 +864,67 @@ function Documentos() {
           .update(payload)
           .eq("id", modeloEditando.id)
           .eq("tenant_id", selecionado.id)
-      : await db.from("document_templates").insert({
-          tenant_id: selecionado.id,
-          ...payload,
-        });
-    setSalvandoModelo(false);
+          .select("*")
+          .single()
+      : await db
+          .from("document_templates")
+          .insert({
+            tenant_id: selecionado.id,
+            ...payload,
+          })
+          .select("*")
+          .single();
     if (result.error) {
+      setSalvandoModelo(false);
       toast.error(result.error.message);
       return;
     }
+    if (arquivoOriginalModelo && result.data) {
+      const { data: existingSource, error: sourceError } = await db
+        .from("document_template_sources")
+        .select("storage_path")
+        .eq("template_id", result.data.id)
+        .eq("version", result.data.version)
+        .maybeSingle();
+      if (sourceError || existingSource) {
+        setSalvandoModelo(false);
+        setModeloEditando(result.data);
+        toast.error(
+          sourceError?.message ??
+            "O texto foi salvo, mas esta versão já tem um Word original. Altere o texto para criar uma nova versão.",
+        );
+        return;
+      }
+      const path = `${selecionado.id}/template-sources/${result.data.id}/v${result.data.version}/${crypto.randomUUID()}.docx`;
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(path, arquivoOriginalModelo, {
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          upsert: false,
+        });
+      if (uploadError) {
+        setSalvandoModelo(false);
+        setModeloEditando(result.data);
+        toast.error(`Texto salvo, mas o Word original não foi enviado: ${uploadError.message}`);
+        return;
+      }
+      const { error: metadataError } = await db.from("document_template_sources").insert({
+        tenant_id: selecionado.id,
+        template_id: result.data.id,
+        version: result.data.version,
+        storage_path: path,
+        file_name: arquivoOriginalModelo.name.slice(0, 255),
+        file_size: arquivoOriginalModelo.size,
+      });
+      if (metadataError) {
+        await db.storage.from("gfs-private-documents").remove([path]);
+        setSalvandoModelo(false);
+        setModeloEditando(result.data);
+        toast.error(`Texto salvo, mas o Word original não foi vinculado: ${metadataError.message}`);
+        return;
+      }
+    }
+    setSalvandoModelo(false);
     toast.success(
       modeloEditando
         ? "Modelo atualizado. Uma nova versão foi registrada."
@@ -872,6 +935,7 @@ function Documentos() {
     setTituloModelo("");
     setDescricaoModelo("");
     setConteudoModelo("");
+    setArquivoOriginalModelo(null);
     setTipoModelo("custom");
     setBaseLegalModelo("");
     setFonteModelo("");
@@ -1112,10 +1176,52 @@ function Documentos() {
         headerTitle: selecionado.nome,
         footerText: "Rascunho para revisão",
       };
-      const template = await buildDocxFromText(documento.content_snapshot, documento.title);
+      let template: ArrayBuffer | Uint8Array = await buildDocxFromText(
+        documento.content_snapshot,
+        documento.title,
+      );
+      let values: Record<string, string> = {};
+      let originalUsado = false;
+      if (formato === "docx" && documento.template_id && documento.template_version) {
+        const [{ data: source, error: sourceError }, { data: version, error: versionError }] =
+          await Promise.all([
+            db
+              .from("document_template_sources")
+              .select("storage_path")
+              .eq("tenant_id", selecionado.id)
+              .eq("template_id", documento.template_id)
+              .eq("version", documento.template_version)
+              .maybeSingle(),
+            db
+              .from("document_template_versions")
+              .select("content")
+              .eq("tenant_id", selecionado.id)
+              .eq("template_id", documento.template_id)
+              .eq("version", documento.template_version)
+              .maybeSingle(),
+          ]);
+        if (sourceError || versionError) throw sourceError ?? versionError;
+        if (source && version) {
+          const snapshotValues = valuesForUneditedSource(
+            version.content,
+            documento.content_snapshot,
+            documento.variables_snapshot,
+          );
+          if (snapshotValues) {
+            const { data: original, error: downloadError } = await db.storage
+              .from("gfs-private-documents")
+              .download(source.storage_path);
+            if (downloadError || !original)
+              throw downloadError ?? new Error("Word original indisponível.");
+            template = await original.arrayBuffer();
+            values = snapshotValues;
+            originalUsado = true;
+          }
+        }
+      }
       const generated = await generateDocx({
         template,
-        values: {},
+        values,
         items: [],
         branding,
       });
@@ -1148,6 +1254,11 @@ function Documentos() {
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
       if (generated.pending.length) {
         toast.warning("O rascunho contém campos pendentes. Revise o arquivo antes de usá-lo.");
+      }
+      if (formato === "docx" && documento.template_id && !originalUsado) {
+        toast.info(
+          "Word criado a partir do texto revisado; formatação do original não está vinculada a este rascunho.",
+        );
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível exportar o rascunho.");
@@ -1915,7 +2026,10 @@ function Documentos() {
         open={dialogModelo}
         onOpenChange={(open) => {
           setDialogModelo(open);
-          if (!open) setModeloEditando(null);
+          if (!open) {
+            setModeloEditando(null);
+            setArquivoOriginalModelo(null);
+          }
         }}
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -2007,11 +2121,14 @@ function Documentos() {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                No DOCX, parágrafos e tabelas simples são importados como texto editável.
+                No DOCX, o texto fica editável e o Word original fica vinculado a esta versão.
                 <br />
-                Formatação visual, imagens, cabeçalhos e rodapés não são preservados. Também é
-                possível copiar e colar o conteúdo no campo abaixo.
+                Alterar o texto abaixo descarta o vínculo com o arquivo importado; importe novamente
+                para preservar sua formatação. Também é possível copiar e colar texto.
               </p>
+              {arquivoOriginalModelo && (
+                <p className="text-xs text-primary">Word original: {arquivoOriginalModelo.name}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
@@ -2021,7 +2138,10 @@ function Documentos() {
                 rows={12}
                 maxLength={50000}
                 value={conteudoModelo}
-                onChange={(e) => setConteudoModelo(e.target.value)}
+                onChange={(e) => {
+                  setConteudoModelo(e.target.value);
+                  setArquivoOriginalModelo(null);
+                }}
                 placeholder="Escreva ou importe o conteúdo e insira os campos que deseja preencher automaticamente."
               />
               <details className="rounded-md border p-3">

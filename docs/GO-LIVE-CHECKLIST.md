@@ -126,3 +126,11 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - [ ] Conferir XLSX e PDF visualmente em navegador/Excel real com perfis e duas Secretarias.
 - [x] CI do commit `9f2dc56` aplicou migrations em banco descartável e passou pgTAP.
 - [ ] Homologar rascunhos Word/PDF no navegador e a fidelidade dos modelos DOCX importados.
+
+
+## Modelos Word privados — 12/11/2026
+
+- [x] Código e migration versionada para DOCX original por versão, guardado no bucket privado e protegido por RLS/Storage.
+- [ ] Publicar a migration no SMS2 somente após reconciliar o histórico e revisar permissões de produção.
+- [ ] Confirmar com perfis reais: MASTER, DIRETOR, membro sem permissão e duas Secretarias; importar, editar, exportar Word, baixar PDF e verificar a aparência.
+- [ ] Configurar brasão/timbre oficial e validar documento final com equipe jurídica. PDF gerado no navegador ainda não reproduz imagens e tabelas complexas do DOCX original.
