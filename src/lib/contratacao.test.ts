@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { diasAte, nivelAlerta, numeroDecimal, proximaEtapa, etapaAnterior } from "./contratacao";
+import {
+  diasAte,
+  nivelAlerta,
+  numeroDecimal,
+  proximaEtapa,
+  etapaAnterior,
+  selecionarContratosAVencerEm90Dias,
+} from "./contratacao";
 
 describe("régua de vencimento 120/90/60/30", () => {
   it("120 dias ainda é alerta de planejamento", () => expect(nivelAlerta(120)).toBe("120"));
@@ -44,5 +51,45 @@ describe("conversão de valores decimais", () => {
     expect(Number.isNaN(numeroDecimal(""))).toBe(true);
     expect(Number.isNaN(numeroDecimal("12,3,4"))).toBe(true);
     expect(Number.isNaN(numeroDecimal("R$"))).toBe(true);
+  });
+});
+
+describe("relatório de contratos a vencer em 90 dias", () => {
+  const hoje = new Date(2026, 10, 12);
+
+  it("inclui hoje e o 90º dia e exclui contratos vencidos ou fora da janela", () => {
+    const contratos = [
+      { number: "hoje", status: "vigente", end_date: "2026-11-12" },
+      { number: "limite", status: "vigente", end_date: "2027-02-10" },
+      { number: "vencido", status: "vigente", end_date: "2026-11-11" },
+      { number: "fora", status: "vigente", end_date: "2027-02-11" },
+      { number: "arquivado", status: "arquivado", end_date: "2026-12-01" },
+    ];
+
+    const numeros = selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number);
+    expect(numeros).toEqual(["hoje", "limite"]);
+  });
+
+  it("ordena por data final e usa o número como desempate determinístico", () => {
+    const contratos = [
+      { number: "B-2", status: "vigente", end_date: "2026-12-12" },
+      { number: "A-1", status: "vigente", end_date: "2026-12-12" },
+      { number: "C-3", status: "vigente", end_date: "2026-12-01" },
+    ];
+
+    const numeros = selecionarContratosAVencerEm90Dias(contratos, hoje).map((item) => item.number);
+    expect(numeros).toEqual(["C-3", "A-1", "B-2"]);
+  });
+
+  it("não altera a lista de entrada", () => {
+    const contratos = [
+      { number: "B", status: "vigente", end_date: "2026-12-12" },
+      { number: "A", status: "vigente", end_date: "2026-12-01" },
+    ];
+    const original = [...contratos];
+
+    selecionarContratosAVencerEm90Dias(contratos, hoje);
+
+    expect(contratos).toEqual(original);
   });
 });

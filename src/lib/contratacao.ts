@@ -90,6 +90,22 @@ export function nivelAlerta(dias: number): NivelAlerta {
   return "ok";
 }
 
+/** Retorna somente contratos vigentes que vencem entre hoje e os próximos 90 dias. */
+export function selecionarContratosAVencerEm90Dias<
+  T extends { status: string; end_date: string; number?: string },
+>(contratos: readonly T[], hoje: Date = new Date()): T[] {
+  return contratos
+    .filter((contrato) => {
+      const dias = diasAte(contrato.end_date, hoje);
+      return contrato.status === "vigente" && dias >= 0 && dias <= 90;
+    })
+    .sort(
+      (a, b) =>
+        a.end_date.localeCompare(b.end_date) ||
+        (a.number ?? "").localeCompare(b.number ?? "", "pt-BR"),
+    );
+}
+
 /**
  * Parses decimal text from Brazilian and international keyboards.
  * Examples: 1.234,56; 1234,56; 1,234.56; 1234.56.
