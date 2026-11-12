@@ -275,3 +275,27 @@ export function renderDocumentTemplate(
     unknownKeys: [...unknownKeys],
   };
 }
+
+
+/** Returns human-readable unresolved markers that must be fixed before approval. */
+export function extractPendingDocumentFields(content: string): string[] {
+  const fields = new Map<string, string>();
+  const add = (rawValue: string) => {
+    const raw = rawValue.trim();
+    if (!raw) return;
+    const definition = DOCUMENT_TEMPLATE_VARIABLES.find((variable) => variable.key === raw.toLowerCase());
+    const label = definition?.label ?? raw;
+    fields.set(label.toLocaleLowerCase(), label);
+  };
+
+  for (const match of content.matchAll(/\[PREENCHER:\s*([^\]]+)\]/gu)) {
+    if (match[1]) add(match[1]);
+  }
+  for (const match of content.matchAll(/\[CAMPO NÃO CONFIGURADO:\s*([^\]]+)\]/gu)) {
+    if (match[1]) add(match[1]);
+  }
+  for (const match of content.matchAll(/\{\{\s*([a-zA-Z][a-zA-Z0-9_]*)\s*\}\}/gu)) {
+    if (match[1]) add(match[1]);
+  }
+  return [...fields.values()];
+}

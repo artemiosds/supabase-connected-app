@@ -4,6 +4,7 @@ import {
   buildDocumentVariableValues,
   extractDocumentTemplateVariables,
   renderDocumentTemplate,
+  extractPendingDocumentFields,
   type DocumentVariableContext,
 } from "./document-variables";
 
@@ -89,6 +90,16 @@ describe("preenchimento de modelos documentais", () => {
     expect(result.content).toContain("Fornecedor Hospitalar Ltda.");
     expect(result.missingKeys).toEqual([]);
     expect(result.unknownKeys).toEqual([]);
+  });
+
+  it("lista todos os marcadores pendentes e remove duplicidades", () => {
+    expect(
+      extractPendingDocumentFields(
+        "{{numero_contrato}} [PREENCHER: Número do contrato] " +
+          "[CAMPO NÃO CONFIGURADO: campo_novo] {{campo_novo}}",
+      ),
+    ).toEqual(["Número do contrato", "campo_novo"]);
+    expect(extractPendingDocumentFields("Documento completo sem marcadores.")).toEqual([]);
   });
 
   it("marca campos conhecidos vazios e identificadores não cadastrados sem removê-los silenciosamente", () => {

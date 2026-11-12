@@ -16,7 +16,7 @@
 
 O DOCX original continua sendo a referência de preservação. O PDF é produzido por um renderizador próprio e não é um conversor Microsoft Word/LibreOffice. Fontes/cores e estilos de tabela avançados podem ser simplificados e são sinalizados. Imagens, caixas de texto, objetos incorporados, revisões controladas, campos não resolvidos, seções múltiplas, listas numeradas e tabelas aninhadas bloqueiam a exportação PDF para evitar omissões. Nesses casos, deve-se usar o Word original ou ajustar o modelo.
 
-Cabeçalhos/rodapés padrão em texto e a configuração de página são lidos do DOCX. Variantes de primeira página ou páginas pares bloqueiam PDF. A fidelidade visual de modelos reais ainda precisa de homologação com arquivos aprovados pela Secretaria.
+Cabeçalhos/rodapés padrão em texto e a configuração de página são lidos do DOCX. Variantes de primeira página ou páginas pares bloqueiam PDF. A fidelidade visual de modelos reais ainda precisa de homologação com arquivos aprovados pela Secretaria. A tela de modelo é textual: se o usuário alterar o texto importado, o vínculo com o DOCX original é descartado; um editor visual rico que preserve a formatação durante alterações ainda é critério aberto.
 
 ## Migrações e produção
 
@@ -31,7 +31,7 @@ Essas migrations são aditivas. Não devem ser aplicadas ao SMS2 de produção a
 2. Aplicar as migrations em ambiente de homologação isolado e validar RLS/Storage com duas Secretarias e papéis diferentes.
 3. Importar e exportar modelos DOCX representativos (texto, tabelas, placeholders divididos, linhas repetíveis, cabeçalho, rodapé, paisagem e brasão), comparar Word e PDF visualmente e registrar os recursos não suportados.
 4. Validar os dados automáticos do processo/contrato por meio das funções autorizadas no servidor; nenhuma informação calculada deve ser confiada ao cliente.
-5. Confirmar prévia do documento e lista de campos não preenchidos antes da assinatura, com bloqueio de assinatura quando existirem campos obrigatórios pendentes.
+5. Confirmar prévia orientativa, lista explícita de campos pendentes no rascunho e bloqueio de envio à aprovação quando houver `[PREENCHER: ...]`, `[CAMPO NÃO CONFIGURADO: ...]` ou placeholders `{{...}}`.
 6. Validar armazenamento privado, troca/remoção do brasão, rollback em falha de upload e trilha de auditoria.
 7. Obter aprovação formal da homologação antes de qualquer implantação em produção.
 

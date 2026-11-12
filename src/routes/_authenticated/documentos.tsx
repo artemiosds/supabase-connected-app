@@ -52,6 +52,7 @@ import {
   buildDocumentTemplateSchema,
   buildDocumentVariableValues,
   DOCUMENT_TEMPLATE_VARIABLES,
+  extractPendingDocumentFields,
   renderDocumentTemplate,
   type DocumentVariableContext,
 } from "@/lib/document-variables";
@@ -288,6 +289,7 @@ function Documentos() {
   const [fonteModelo, setFonteModelo] = useState("");
   const [resumoModelo, setResumoModelo] = useState("");
   const [salvandoModelo, setSalvandoModelo] = useState(false);
+  const [carregandoOriginalModelo, setCarregandoOriginalModelo] = useState(false);
   const [dialogHistoricoModelo, setDialogHistoricoModelo] = useState(false);
   const [modeloHistorico, setModeloHistorico] = useState<Modelo | null>(null);
   const [versoesModelo, setVersoesModelo] = useState<VersaoModelo[]>([]);
@@ -751,6 +753,7 @@ function Documentos() {
   }
 
   function iniciarNovoModelo() {
+    setCarregandoOriginalModelo(false);
     setModeloEditando(null);
     setTituloModelo("");
     setDescricaoModelo("");
@@ -764,7 +767,8 @@ function Documentos() {
     setDialogModelo(true);
   }
 
-  function iniciarEdicaoModelo(modelo: Modelo) {
+  async function iniciarEdicaoModelo(modelo: Modelo) {
+    if (!selecionado) return;
     setModeloEditando(modelo);
     setTituloModelo(modelo.title);
     setDescricaoModelo(modelo.description ?? "");
@@ -776,6 +780,43 @@ function Documentos() {
     setFonteModelo(modelo.source_reference ?? "");
     setResumoModelo("");
     setDialogModelo(true);
+    setCarregandoOriginalModelo(true);
+
+    try {
+      const { data: source, error: sourceError } = await db
+        .from("document_template_sources")
+        .select("storage_path, file_name")
+        .eq("tenant_id", selecionado.id)
+        .eq("template_id", modelo.id)
+        .eq("version", modelo.version)
+        .maybeSingle();
+      if (sourceError && !isMissingDocumentTemplateSourcesTable(sourceError)) {
+        throw sourceError;
+      }
+      if (source) {
+        const { data: original, error: downloadError } = await db.storage
+          .from("gfs-private-documents")
+          .download(source.storage_path);
+        if (downloadError || !original) {
+          throw downloadError ?? new Error("O Word original desta versão não está disponível.");
+        }
+        const file = new File([original], source.file_name, {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        const { analyzeDocx } = await import("@/lib/docx-engine");
+        const analysis = await analyzeDocx(await file.arrayBuffer());
+        setArquivoOriginalModelo(file);
+        setAvisosModeloDocx(analysis.warnings);
+      }
+    } catch (error) {
+      setDialogModelo(false);
+      setModeloEditando(null);
+      setArquivoOriginalModelo(null);
+      setAvisosModeloDocx([]);
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar o Word original.");
+    } finally {
+      setCarregandoOriginalModelo(false);
+    }
   }
 
   function inserirCampoModelo(key: string) {
@@ -785,6 +826,11 @@ function Documentos() {
     const end = textarea?.selectionEnd ?? start;
     const updated = conteudoModelo.slice(0, start) + token + conteudoModelo.slice(end);
     setConteudoModelo(updated);
+    if (arquivoOriginalModelo) {
+      toast.warning(
+        "Inserir um campo altera o texto e desvincula o Word original desta nova versão.",
+      );
+    }
     setArquivoOriginalModelo(null);
     setAvisosModeloDocx([]);
     requestAnimationFrame(() => {
@@ -1647,7 +1693,7 @@ function Documentos() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => iniciarEdicaoModelo(m)}
+                              onClick={() => void iniciarEdicaoModelo(m)}
                             >
                               <Pencil className="h-4 w-4" /> Editar modelo
                             </Button>
@@ -1746,8 +1792,10 @@ function Documentos() {
                           </td>
                         </tr>
                       ) : (
-                        gerados.map((d) => (
-                          <tr key={d.id} className="border-t">
+                        gerados.map((d) => {
+                          const camposPendentes = extractPendingDocumentFields(d.content_snapshot);
+                          return (
+                            <tr key={d.id} className="border-t">
                             <td className="p-3">
                               <p className="font-medium">{d.title}</p>
                               <p className="text-xs text-muted-foreground">
@@ -1756,6 +1804,11 @@ function Documentos() {
                                   : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
                                     "Sem fornecedor vinculado")}
                               </p>
+                              {camposPendentes.length > 0 && (
+                                <p className="mt-1 text-xs text-destructive">
+                                  Campos pendentes: {camposPendentes.join(", ")}
+                                </p>
+                              )}
                             </td>
                             <td className="p-3">
                               <span className="font-medium">
@@ -1864,6 +1917,7 @@ function Documentos() {
                                           <Button
                                             size="sm"
                                             variant="outline"
+                                            disabled={camposPendentes.length > 0}
                                             onClick={() => void tramitarDocumento(d, "submit")}
                                           >
                                             Enviar para aprovação
@@ -1919,8 +1973,9 @@ function Documentos() {
                                   )}
                               </div>
                             </td>
-                          </tr>
-                        ))
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -2077,6 +2132,7 @@ function Documentos() {
             setModeloEditando(null);
             setArquivoOriginalModelo(null);
             setAvisosModeloDocx([]);
+            setCarregandoOriginalModelo(false);
           }
         }}
       >
@@ -2195,13 +2251,36 @@ function Documentos() {
             </div>
             <div className="space-y-2">
               <Label>Texto do modelo *</Label>
+              {carregandoOriginalModelo && (
+                <p className="text-xs text-muted-foreground">
+                  Carregando o Word original da versão para preservar o arquivo na próxima gravação...
+                </p>
+              )}
+              {arquivoOriginalModelo && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Word original vinculado</AlertTitle>
+                  <AlertDescription>
+                    O arquivo original será preservado se o texto permanecer sem alterações. Esta
+                    caixa é um editor textual; ao editar o texto ou inserir campos, o vínculo com o
+                    Word será removido. Para manter estilos e tabelas, ajuste o arquivo no Word e
+                    importe novamente.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Textarea
                 ref={conteudoModeloRef}
                 required
+                disabled={carregandoOriginalModelo}
                 rows={12}
                 maxLength={50000}
                 value={conteudoModelo}
                 onChange={(e) => {
+                  if (arquivoOriginalModelo) {
+                    toast.warning(
+                      "A edição textual desvinculou o Word original; esta versão será gerada a partir do texto.",
+                    );
+                  }
                   setConteudoModelo(e.target.value);
                   setArquivoOriginalModelo(null);
                   setAvisosModeloDocx([]);
@@ -2235,7 +2314,7 @@ function Documentos() {
               <Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={salvandoModelo}>
+              <Button type="submit" disabled={salvandoModelo || carregandoOriginalModelo}>
                 {salvandoModelo ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -2497,6 +2576,11 @@ function Documentos() {
                   <p className="text-xs text-muted-foreground">
                     Campos automáticos disponíveis: Secretaria, fornecedor, processo, contrato,
                     responsáveis, valores, vigência e usuário.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Prévia orientativa: os valores definitivos de processos e contratos são
+                    calculados no servidor. Revise o rascunho gerado; campos ainda pendentes
+                    aparecem na lista e impedem o envio para aprovação.
                   </p>
                   <details className="rounded-md border p-3">
                     <summary className="cursor-pointer text-sm font-medium">
