@@ -147,7 +147,9 @@ async function applyBranding(
   if (
     wChildren(sectPr, "headerReference").length > 0 ||
     wChildren(sectPr, "footerReference").length > 0
-  ) return false;
+  ) {
+    return false;
+  }
 
   const docRels = await ensureRels(zip, "word/_rels/document.xml.rels");
   const ct = parseXml(

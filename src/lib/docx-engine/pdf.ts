@@ -253,10 +253,18 @@ export async function renderPdf(model: DocumentModel, options: PdfOptions): Prom
 
   const pageWidth = options.useTemplatePageSetup ? model.pageLayout.widthPt : A4.width;
   const pageHeight = options.useTemplatePageSetup ? model.pageLayout.heightPt : A4.height;
-  const leftMargin = options.useTemplatePageSetup ? model.pageLayout.leftPt : mmToPoints(b.marginLeftMm);
-  const rightMargin = options.useTemplatePageSetup ? model.pageLayout.rightPt : mmToPoints(b.marginRightMm);
-  const topMargin = options.useTemplatePageSetup ? model.pageLayout.topPt : mmToPoints(b.marginTopMm);
-  const bottomMargin = options.useTemplatePageSetup ? model.pageLayout.bottomPt : mmToPoints(b.marginBottomMm);
+  const leftMargin = options.useTemplatePageSetup
+    ? model.pageLayout.leftPt
+    : mmToPoints(b.marginLeftMm);
+  const rightMargin = options.useTemplatePageSetup
+    ? model.pageLayout.rightPt
+    : mmToPoints(b.marginRightMm);
+  const topMargin = options.useTemplatePageSetup
+    ? model.pageLayout.topPt
+    : mmToPoints(b.marginTopMm);
+  const bottomMargin = options.useTemplatePageSetup
+    ? model.pageLayout.bottomPt
+    : mmToPoints(b.marginBottomMm);
   const left = leftMargin;
   const right = pageWidth - rightMargin;
   const top = pageHeight - Math.max(topMargin, mmToPoints(8) + headerHeight + 6);
