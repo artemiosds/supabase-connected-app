@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Building2,
   Download,
@@ -157,28 +157,34 @@ function Fornecedores() {
     end_date: "",
   });
 
+  const requisicaoRef = useRef(0);
+
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) {
-      setFornecedores([]);
-      setResumosSancoes([]);
-      setCapacidades({
-        can_view: false,
-        can_create: false,
-        can_update: false,
-        can_deactivate: false,
-      });
+    const requisicaoAtual = ++requisicaoRef.current;
+    const tenantId = selecionado?.id;
+    setFornecedores([]);
+    setResumosSancoes([]);
+    setCapacidades({
+      can_view: false,
+      can_create: false,
+      can_update: false,
+      can_deactivate: false,
+    });
+    setErro(null);
+
+    if (!tenantId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setErro(null);
     try {
       const { data: permissoes, error: erroPermissoes } = await db.rpc(
         "get_supplier_capabilities",
-        { p_tenant_id: selecionado.id },
+        { p_tenant_id: tenantId },
       );
       if (erroPermissoes) throw erroPermissoes;
+      if (requisicaoAtual !== requisicaoRef.current) return;
       const acesso = permissoes?.[0] ?? {
         can_view: false,
         can_create: false,
@@ -196,11 +202,12 @@ function Fornecedores() {
         db
           .from("suppliers")
           .select("*")
-          .eq("tenant_id", selecionado.id)
+          .eq("tenant_id", tenantId)
           .order("legal_name", { ascending: true })
           .order("id")
           .range(inicio, fim),
       );
+      if (requisicaoAtual !== requisicaoRef.current) return;
       setFornecedores(todosFornecedores);
 
       try {
@@ -208,17 +215,20 @@ function Fornecedores() {
           db
             .from("supplier_sanctions")
             .select("supplier_id,start_date,end_date,status")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .order("start_date", { ascending: false })
             .order("supplier_id")
             .range(inicio, fim),
         );
+        if (requisicaoAtual !== requisicaoRef.current) return;
         setResumosSancoes(todosResumos);
       } catch {
+        if (requisicaoAtual !== requisicaoRef.current) return;
         // A migration de sanções pode ainda não estar aplicada no ambiente conectado.
         setResumosSancoes([]);
       }
     } catch (e) {
+      if (requisicaoAtual !== requisicaoRef.current) return;
       const mensagem = e instanceof Error ? e.message : String(e);
       setFornecedores([]);
       if (bancoNaoConfigurado(mensagem)) {
@@ -229,7 +239,7 @@ function Fornecedores() {
         setErro(mensagem);
       }
     } finally {
-      setLoading(false);
+      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
   }, [selecionado?.id]);
 
@@ -335,7 +345,7 @@ function Fornecedores() {
             .from("suppliers")
             .update(payload)
             .eq("id", editando.id)
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
         : await db.from("suppliers").insert(payload);
       if (resultado.error) throw resultado.error;
       toast.success(editando ? "Fornecedor atualizado." : "Fornecedor cadastrado.");
@@ -362,7 +372,7 @@ function Fornecedores() {
       .from("suppliers")
       .update({ status: novoStatus })
       .eq("id", fornecedor.id)
-      .eq("tenant_id", selecionado.id);
+      .eq("tenant_id", tenantId);
     if (erroAtualizacao) {
       toast.error(erroAtualizacao.message);
       return;
@@ -417,7 +427,7 @@ function Fornecedores() {
       .select(
         "id,tenant_id,supplier_id,measure,reason,legal_basis,reference_number,start_date,end_date,status,created_by,updated_by,created_at,updated_at",
       )
-      .eq("tenant_id", selecionado.id)
+      .eq("tenant_id", tenantId)
       .eq("supplier_id", fornecedor.id)
       .order("start_date", { ascending: false })
       .order("id");
@@ -485,7 +495,7 @@ function Fornecedores() {
       .from("supplier_sanctions")
       .update({ status: "revoked" })
       .eq("id", sancao.id)
-      .eq("tenant_id", selecionado.id)
+      .eq("tenant_id", tenantId)
       .select("id")
       .maybeSingle();
     if (erroAtualizacao || !data) {
