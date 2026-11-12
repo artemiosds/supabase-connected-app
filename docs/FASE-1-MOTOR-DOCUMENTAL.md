@@ -59,3 +59,16 @@ Essas migrations são aditivas e passaram por aplicação/testes pgTAP em banco 
 O fluxo atual salva a versão textual e depois envia o DOCX original. Se o upload ou o vínculo dos metadados falhar, o sistema informa explicitamente que o texto foi salvo, mas o original não foi anexado. Na restauração, a nova versão textual também é registrada antes do reenvio do original, e falhas são informadas. Esse desenho evita declarar sucesso completo indevidamente, mas não torna a operação entre banco e Storage uma transação única; por isso, falhas parciais e limpeza de órfãos precisam de homologação específica.
 
 **O resultado verde da CI valida o código e as migrations em banco descartável. Não comprova isolamento visual/autenticado entre Secretarias, fidelidade de modelos reais, recuperação de backup ou aceite formal. Fase 1 permanece em homologação e NO-GO para produção/venda.**
+
+
+## Atualização de validação — 12/11/2026, commit `4e79bf6accf1f5b50b4c648233bfcfdb4e84d108`
+
+- [x] Ampliado o teste pgTAP de aprovação documental de 4 para 13 verificações.
+- [x] Cobertura estrutural de RLS/FORCE RLS, policies de leitura autenticada, vínculo composto documento/Secretaria, bloqueio de acesso sem identidade ou sem acesso à Secretaria, bloqueio de concorrência por `FOR UPDATE`, módulo habilitado, aprovação por pessoa diferente, justificativa mínima para devolução e trilha de eventos/auditoria.
+- [x] CI integral do commit aprovado: validação da aplicação e segurança do banco descartável, incluindo aplicação de migrations e regressões pgTAP ([run 43284764341](https://github.com/artemiosds/supabase-connected-app/actions/runs/43284764341)); formatação aprovada ([run 43284764170](https://github.com/artemiosds/supabase-connected-app/actions/runs/43284764170)).
+- [ ] Ainda falta teste comportamental completo com fixtures de duas Secretarias e usuários com papéis reais de envio/aprovação, incluindo placeholder pendente, envio válido, aprovação pelo segundo usuário e tentativa de acesso cruzado.
+- [ ] E2E autenticado de upload/restauração DOCX, retry, limpeza de órfãos e homologação visual continuam pendentes.
+
+A cobertura nova reforça regressões automatizadas, mas parte das verificações ainda é estrutural e os dois testes comportamentais atuais validam apenas o fechamento seguro para sessão ausente e usuário sem acesso à Secretaria. Não equivale a homologar o fluxo completo com duas Secretarias.
+
+**Fase 1 permanece em homologação e NO-GO para produção/venda. SMS2 não foi alterado.**
