@@ -127,6 +127,7 @@ const CATEGORIAS: { value: Categoria; label: string }[] = [
 function Fornecedores() {
   const { selecionado, bancoPendente } = useTenant();
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const [capacidades, setCapacidades] = useState<Capacidades>({
     can_view: false,
     can_create: false,
@@ -162,6 +163,7 @@ function Fornecedores() {
   const carregar = useCallback(async () => {
     const requisicaoAtual = ++requisicaoRef.current;
     const tenantId = selecionado?.id;
+    setTenantCarregadoId(null);
     setFornecedores([]);
     setResumosSancoes([]);
     setCapacidades({
@@ -173,6 +175,7 @@ function Fornecedores() {
     setErro(null);
 
     if (!tenantId) {
+      setTenantCarregadoId(null);
       setLoading(false);
       return;
     }
@@ -195,6 +198,7 @@ function Fornecedores() {
 
       if (!acesso.can_view) {
         setFornecedores([]);
+        setTenantCarregadoId(tenantId);
         return;
       }
 
@@ -227,6 +231,8 @@ function Fornecedores() {
         // A migration de sanções pode ainda não estar aplicada no ambiente conectado.
         setResumosSancoes([]);
       }
+      if (requisicaoAtual !== requisicaoRef.current) return;
+      setTenantCarregadoId(tenantId);
     } catch (e) {
       if (requisicaoAtual !== requisicaoRef.current) return;
       const mensagem = e instanceof Error ? e.message : String(e);
@@ -238,6 +244,7 @@ function Fornecedores() {
       } else {
         setErro(mensagem);
       }
+      setTenantCarregadoId(tenantId);
     } finally {
       if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
@@ -526,6 +533,15 @@ function Fornecedores() {
           O cadastro de fornecedores depende da estrutura multitenant da plataforma.
         </AlertDescription>
       </Alert>
+    );
+  }
+
+  if (loading || (selecionado && tenantCarregadoId !== selecionado.id)) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground" role="status">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Carregando fornecedores da Secretaria selecionada…
+      </div>
     );
   }
 
