@@ -319,6 +319,7 @@ function Documentos() {
   const carregar = useCallback(async () => {
     const requisicaoAtual = ++requisicaoRef.current;
     const tenantId = selecionado?.id;
+    const enabledModules = selecionado?.enabled_modules;
     setTenantCarregadoId(null);
     if (!tenantId) {
       setCapacidades({
@@ -415,7 +416,7 @@ function Documentos() {
             .order("id")
             .range(inicio, fim),
         ),
-        selecionado.enabled_modules["processos"] === true
+        enabledModules?.["processos"] === true
           ? carregarTodasAsPaginas<ProcessoContratacao>((inicio, fim) =>
               db
                 .from("procurement_processes")
@@ -429,7 +430,7 @@ function Documentos() {
                 .range(inicio, fim),
             )
           : Promise.resolve([] as ProcessoContratacao[]),
-        selecionado.enabled_modules["contratos"] === true
+        enabledModules?.["contratos"] === true
           ? carregarTodasAsPaginas<ContratoGeracao>((inicio, fim) =>
               db
                 .from("contracts")
@@ -463,7 +464,7 @@ function Documentos() {
         ...documentCapabilities,
         can_manage_templates:
           documentCapabilities.can_manage_templates &&
-          selecionado.enabled_modules["modelos"] === true,
+          enabledModules?.["modelos"] === true,
       });
       setFornecedores(suppliers);
       setDocumentos(supplierDocs);
@@ -2507,9 +2508,9 @@ function Documentos() {
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              {selecionado.enabled_modules["processos"] === true &&
+              {enabledModules?.["processos"] === true &&
                 selecionado.enabled_modules["documentos"] === true &&
-                selecionado.enabled_modules["modelos"] === true && (
+                enabledModules?.["modelos"] === true && (
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Vincular a processo de contratação (opcional)</Label>
                     <Select
@@ -2535,7 +2536,7 @@ function Documentos() {
                     </Select>
                   </div>
                 )}
-              {selecionado.enabled_modules["contratos"] === true && (
+              {enabledModules?.["contratos"] === true && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Vincular a contrato (opcional)</Label>
                   <Select
