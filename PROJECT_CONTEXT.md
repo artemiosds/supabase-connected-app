@@ -126,10 +126,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 ## Reconciliação de migrations — auditoria de 12/11/2026
 
-- O SMS2 registra 74 versões até `20261112123300`; a `main` possui 79 arquivos SQL. Os cinco timestamps divergentes foram alinhados ao histórico remoto no PR #19, preservando o SQL.
+- Fotografia da reconciliação inicial: o SMS2 registra 74 versões até `20261112123300`; o `main` agora possui 82 arquivos SQL, com oito migrations futuras ainda não aplicadas. Os cinco timestamps divergentes foram alinhados ao histórico remoto no PR #19, preservando o SQL.
 - A baseline `20261106194000` está registrada como marcador vazio; as estruturas correspondentes existem. Não reaplicar a baseline nem reparar o histórico sem backup restaurado e comparação de definições.
 - Oito migrations futuras aguardam implantação: fonte DOCX privada (`20261112124000`), timbrado por Secretaria (`20261112124500`), bloqueio de campos não configurados (`20261112125000`), proteção das transições do workflow de contratação (`20261112125500`), endurecimento da imutabilidade do checklist (`20261112132000`), FORCE RLS dos originais DOCX (`20261112133000`), cobertura de índices FK (`20261112150000`) e remoção de políticas SELECT redundantes (`20261112162000`). As tabelas `document_template_sources` e `tenant_document_branding` estão ausentes no SMS2.
-- Todas as cinco migrations passaram aplicação e pgTAP em banco Supabase descartável no CI; nenhuma foi aplicada ao SMS2. Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
+- As migrations futuras foram aplicadas e testadas em banco Supabase descartável no CI do commit `2a3570d`; nenhuma foi aplicada ao SMS2. Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 
 ## Pré-requisito de backup para corrigir o histórico — 12/11/2026

@@ -6,8 +6,8 @@
 - 1 Secretaria, 1 vínculo municipal, 1 Master ativo, 2 identidades Auth; zero fornecedores, arquivos GED, processos, contratos, sanções, funcionários internos ou técnicos de suporte.
 - Cinco Edge Functions ativas (convites municipais, cobrança, suporte, equipe interna e alertas de vencimento).
 - Código no `main`: motor documental com aprovação, preservação de DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria, lista/bloqueio de campos pendentes, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
-- Pendências principais: editor visual rico, E2E com duas Secretarias, GED autenticado, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
-- SMS2 permanece com 74 migrations; cinco migrations futuras estão no `main` e não foram aplicadas: fonte DOCX, timbrado, bloqueio de campos pendentes, índices FK e remoção de políticas SELECT redundantes.
+- Pendências principais: editor visual rico, E2E com duas Secretarias, GED autenticado, homologação DOCX/PDF real, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
+- SMS2 permanece com 74 migrations; oito migrations futuras estão no `main` e não foram aplicadas: fonte DOCX, timbrado, bloqueio de campos pendentes, guardas de workflow, FORCE RLS de DOCX, índices FK e remoção de políticas SELECT redundantes.
 - **NO-GO comercial** até conclusão dos gates descritos no diagnóstico.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
