@@ -117,11 +117,11 @@ SET LOCAL ROLE authenticated;
 SELECT pg_catalog.set_config('request.jwt.claim.sub', '', true);
 SELECT pg_catalog.set_config('request.jwt.claims', '{}', true);
 SELECT extensions.throws_ok(
-  $SELECT public.transition_generated_document_workflow(
+  $test$SELECT public.transition_generated_document_workflow(
     '00000000-0000-4000-8000-000000000010'::uuid,
     '00000000-0000-4000-8000-000000000011'::uuid,
     'submit', NULL
-  )$,
+  )$test$,
   '42501',
   'Sessão autenticada obrigatória.',
   'workflow transition rejects a request without an authenticated identity'
@@ -138,11 +138,11 @@ SELECT pg_catalog.set_config(
   true
 );
 SELECT extensions.throws_ok(
-  $SELECT public.transition_generated_document_workflow(
+  $test$SELECT public.transition_generated_document_workflow(
     '00000000-0000-4000-8000-000000000013'::uuid,
     '00000000-0000-4000-8000-000000000014'::uuid,
     'submit', NULL
-  )$,
+  )$test$,
   '42501',
   'Secretaria inativa ou módulo de documentos indisponível.',
   'workflow transition rejects a user without access to the requested tenant'
