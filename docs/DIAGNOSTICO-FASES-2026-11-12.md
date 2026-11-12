@@ -29,6 +29,8 @@ A estrutura ainda precisa de homologação real. **Não foi confirmado um ciclo 
 | Atribuições/sessões de suporte | 0 |
 | Fornecedores | 0 |
 | Documentos de fornecedor | 0 |
+| Modelos-base ativos no catálogo global | 5 |
+| Módulo modelos na Secretaria | Habilitado |
 | Modelos instalados na Secretaria | 0 |
 | Documentos gerados | 0 |
 | Processos de contratação | 0 |
@@ -59,7 +61,7 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 - Todas as 38 tabelas públicas têm RLS; 27 também têm FORCE RLS.
 - O Security Advisor aponta 36 funções `SECURITY DEFINER` executáveis por `authenticated`. Muitas são RPCs deliberadas do produto; não revogar em lote. Manter autorização explícita por usuário, papel, tenant e `search_path` fixo.
 - O Security Advisor também aponta a proteção contra senhas vazadas desativada. No plano Free, não assumir que o recurso esteja disponível; rever opção/plano Supabase.
-- O Performance Advisor aponta seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). A migration com seis índices está em PR #18; ainda não integrada nem aplicada ao SMS2. Não remover índices existentes sem carga real e benchmark.
+- O Performance Advisor continua apontando seis FKs sem índice, 72 índices sem uso (INFO) e sete grupos com políticas permissivas múltiplas (WARN). O PR #18 foi integrado ao `main` e adicionou a migration `20261112150000_complete_foreign_key_index_coverage.sql` com os seis índices; ela ainda não foi aplicada ao SMS2, por isso o Advisor ainda os sinaliza. Não remover índices existentes sem carga real e benchmark.
 - `pg_cron` e `pg_net` não estão instalados; a relação `cron.job` não existe no SMS2. O repositório possui workflow GitHub diário para alertas, condicionado à variável `EXPIRY_ALERTS_ENABLED=true` e a secrets que ainda não foram comprovados/configurados.
 
 ## Fases do produto
@@ -78,15 +80,15 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 
 ### Fase 2 — Fornecedores, documentos e GED
 
-**Código:** cadastro e consulta de fornecedores; validação de CNPJ; documentos e vencimentos; histórico de sanções por Secretaria com revogação auditada; GED em bucket privado; modelos e versões; campos automáticos; geração com snapshots; aprovação documental; exportação Word/PDF; importação DOCX; fonte binária privada de modelos versionados (migration pendente).
+**Código:** cadastro e consulta de fornecedores; validação de CNPJ; documentos e vencimentos; histórico de sanções por Secretaria com revogação auditada; GED em bucket privado; modelos e versões; campos automáticos; geração com snapshots; aprovação documental; exportação Word/PDF; importação DOCX; fonte binária privada de modelos versionados (migration pendente). O catálogo global já contém cinco modelos-base ativos: DFD, ETP, Mapa de Análise de Riscos, Matriz Contratual de Alocação de Riscos e TR. A Secretaria atual está no plano Profissional, com o módulo modelos habilitado; a tela Biblioteca-base permite instalar cada modelo em cópia independente.
 
-**Falta:** homologar upload/download, URLs assinadas, expiração/arquivamento, substituição e isolamento de Storage com dois tenants. A migration `document_template_binary_source` está no repositório, mas a tabela `document_template_sources` não existe no SMS2. A geração/exportação atual não deve ser descrita como fidelidade completa ao Word original em todos os casos. Assinatura atual é eletrônica simples; não é qualificada ICP-Brasil. Google Drive é reconhecido como link externo, sem OAuth/sincronização integrada ao `main`.
+**Falta:** instalar e adaptar os modelos na Secretaria piloto, revisar o conteúdo com as áreas técnica/jurídica locais e homologar upload/download, URLs assinadas, expiração/arquivamento, substituição e isolamento de Storage com dois tenants. A migration `document_template_binary_source` está no repositório, mas a tabela `document_template_sources` não existe no SMS2. A geração/exportação atual não deve ser descrita como fidelidade completa ao Word original em todos os casos. Assinatura atual é eletrônica simples; não é qualificada ICP-Brasil. Google Drive é reconhecido como link externo, sem OAuth/sincronização integrada ao `main`.
 
 ### Fase 3 — Processos, compras, contratos e relatórios
 
 **Código:** processo com checklist atômico; dez etapas com responsável/prazo; itens de contratação; pesquisa e mapa comparativo de preços; frete rateado; cotação selecionada; dotações; contratos/aditivos com guardas de prazo/valor; saldo de contrato/ARP com ledger auditável e estorno; exportação CSV/XLSX das listas; relatórios imprimíveis; sinalização de processo parado.
 
-**Falta:** homologação funcional no navegador com cenários legais e operacionais reais, inclusive modalidades, três cotações, preço de referência, frete, dotação, saldo por item, aditivos e reversões. O relatório CSV específico de contratos vigentes a vencer em até 90 dias está em PR #17 (rascunho/sem merge) e não deve ser contado como parte do `main`.
+**Falta:** homologação funcional no navegador com cenários legais e operacionais reais, inclusive modalidades, três cotações, preço de referência, frete, dotação, saldo por item, aditivos e reversões. O relatório de contratos/Atas vigentes a vencer de hoje até 90 dias foi integrado ao `main` pelo PR #20. Usa o exportador compartilhado (CSV, XLSX e impressão/PDF) e inclui proteção contra dados de tenant anterior durante troca de Secretaria.
 
 ### Fase 4 — Convites, Equipe Interna e Suporte
 
@@ -124,7 +126,7 @@ Não executar `supabase db push` ou migration remota em lote enquanto a branch d
 
 1. Integrar a conciliação de nomes das migrations após CI verde.
 2. Fechar a revisão do PR #18 e integrar os seis índices se CI/pgTAP passarem.
-3. Rever PR #17 e decidir se o relatório de vencimentos em 90 dias entra no produto.
+3. Homologar o relatório de 90 dias em navegador autenticado, incluindo CSV/XLSX e impressão/PDF.
 4. Implementar reenvio seguro de convites sem duplicar identidades nem reviver convites cancelados.
 5. Concluir documentação/validação do motor de documentos e migration de fonte DOCX.
 6. Homologar GED, duas Secretarias e os fluxos de processos/contratos em ambiente isolado.
