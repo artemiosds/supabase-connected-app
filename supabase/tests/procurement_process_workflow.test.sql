@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(32);
+SELECT extensions.plan(33);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
