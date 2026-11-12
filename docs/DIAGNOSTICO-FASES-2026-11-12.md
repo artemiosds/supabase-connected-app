@@ -86,7 +86,7 @@ A função de alertas ativa não prova que o serviço de e-mail ou o agendamento
 
 **Código:** processo com checklist atômico; dez etapas com responsável/prazo; itens de contratação; pesquisa e mapa comparativo de preços; frete rateado; cotação selecionada; dotações; contratos/aditivos com guardas de prazo/valor; saldo de contrato/ARP com ledger auditável e estorno; exportação CSV/XLSX das listas; relatórios imprimíveis; sinalização de processo parado.
 
-**Falta:** homologação funcional no navegador com cenários legais e operacionais reais, inclusive modalidades, três cotações, preço de referência, frete, dotação, saldo por item, aditivos e reversões. O relatório CSV específico de contratos vigentes a vencer em até 90 dias está em PR #17 (rascunho/sem merge) e não deve ser contado como parte do `main`.
+**Falta:** homologação funcional no navegador com cenários legais e operacionais reais, inclusive modalidades, três cotações, preço de referência, frete, dotação, saldo por item, aditivos e reversões. O relatório de contratos/Atas vigentes a vencer de hoje até 90 dias foi integrado ao `main` pelo PR #20. Usa o exportador compartilhado (CSV, XLSX e impressão/PDF) e inclui proteção contra dados de tenant anterior durante troca de Secretaria.
 
 ### Fase 4 — Convites, Equipe Interna e Suporte
 
@@ -124,7 +124,7 @@ Não executar `supabase db push` ou migration remota em lote enquanto a branch d
 
 1. Integrar a conciliação de nomes das migrations após CI verde.
 2. Fechar a revisão do PR #18 e integrar os seis índices se CI/pgTAP passarem.
-3. Rever PR #17 e decidir se o relatório de vencimentos em 90 dias entra no produto.
+3. Homologar o relatório de 90 dias em navegador autenticado, incluindo CSV/XLSX e impressão/PDF.
 4. Implementar reenvio seguro de convites sem duplicar identidades nem reviver convites cancelados.
 5. Concluir documentação/validação do motor de documentos e migration de fonte DOCX.
 6. Homologar GED, duas Secretarias e os fluxos de processos/contratos em ambiente isolado.
