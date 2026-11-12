@@ -1155,6 +1155,7 @@ function Documentos() {
         );
         return;
       }
+      if (tenantIdRef.current !== tenantId) return;
       const path = `${tenantId}/template-sources/${result.data.id}/v${result.data.version}/${crypto.randomUUID()}.docx`;
       const { error: uploadError } = await db.storage
         .from("gfs-private-documents")
