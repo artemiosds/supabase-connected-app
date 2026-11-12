@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ChevronLeft,
@@ -141,24 +141,31 @@ function Processos() {
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
   const [filtroEtapa, setFiltroEtapa] = useState<"todas" | EtapaId>("todas");
   const [filtroModalidade, setFiltroModalidade] = useState("todas");
+  const requisicaoRef = useRef(0);
 
   const carregar = useCallback(async () => {
-    if (!selecionado?.id) {
-      setProcessos([]);
-      setItens([]);
+    const requisicaoAtual = ++requisicaoRef.current;
+    const tenantId = selecionado?.id;
+
+    // Não exibe dados da Secretaria anterior enquanto a nova consulta carrega.
+    setProcessos([]);
+    setItens([]);
+    setErro(null);
+    setPendente(false);
+
+    if (!tenantId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setErro(null);
     try {
       const [processosRows, checklistRows] = await Promise.all([
         carregarTodasAsPaginas((inicio, fim) =>
           db
             .from("procurement_processes")
             .select("*")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .neq("status", "arquivado")
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
@@ -168,23 +175,22 @@ function Processos() {
           db
             .from("process_items")
             .select("*")
-            .eq("tenant_id", selecionado.id)
+            .eq("tenant_id", tenantId)
             .order("sort_order")
             .order("id")
             .range(inicio, fim),
         ),
       ]);
-      setPendente(false);
+      if (requisicaoAtual !== requisicaoRef.current) return;
       setProcessos(comEtapaValida(processosRows));
       setItens(comEtapaValida(checklistRows));
     } catch (error) {
-      setProcessos([]);
-      setItens([]);
+      if (requisicaoAtual !== requisicaoRef.current) return;
       const message = error instanceof Error ? error.message : String(error);
       if (bancoNaoConfigurado(message)) setPendente(true);
       else setErro(message);
     } finally {
-      setLoading(false);
+      if (requisicaoAtual === requisicaoRef.current) setLoading(false);
     }
   }, [selecionado?.id]);
 
