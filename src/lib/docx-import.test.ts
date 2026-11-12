@@ -116,7 +116,8 @@ describe("importação segura de modelos DOCX", () => {
   it("verifica CRC e correspondência do cabeçalho local antes de importar", async () => {
     const corrupted = new Uint8Array(createStoredZip("word/document.xml", wordXml));
     const localNameLength = new DataView(corrupted.buffer).getUint16(26, true);
-    corrupted[30 + localNameLength + 8] ^= 1;
+    const corruptedByte = 30 + localNameLength + 8;
+    corrupted[corruptedByte] = corrupted[corruptedByte]! ^ 1;
     await expect(extractDocxDocumentXml(corrupted.buffer)).rejects.toThrow(/CRC inválido/);
 
     const mismatchedHeader = new Uint8Array(
