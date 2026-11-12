@@ -276,14 +276,15 @@ export function renderDocumentTemplate(
   };
 }
 
-
 /** Returns human-readable unresolved markers that must be fixed before approval. */
 export function extractPendingDocumentFields(content: string): string[] {
   const fields = new Map<string, string>();
   const add = (rawValue: string) => {
     const raw = rawValue.trim();
     if (!raw) return;
-    const definition = DOCUMENT_TEMPLATE_VARIABLES.find((variable) => variable.key === raw.toLowerCase());
+    const definition = DOCUMENT_TEMPLATE_VARIABLES.find(
+      (variable) => variable.key === raw.toLowerCase(),
+    );
     const label = definition?.label ?? raw;
     fields.set(label.toLocaleLowerCase(), label);
   };

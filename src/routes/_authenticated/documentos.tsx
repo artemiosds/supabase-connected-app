@@ -813,7 +813,9 @@ function Documentos() {
       setModeloEditando(null);
       setArquivoOriginalModelo(null);
       setAvisosModeloDocx([]);
-      toast.error(error instanceof Error ? error.message : "Não foi possível carregar o Word original.");
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível carregar o Word original.",
+      );
     } finally {
       setCarregandoOriginalModelo(false);
     }
@@ -1796,183 +1798,183 @@ function Documentos() {
                           const camposPendentes = extractPendingDocumentFields(d.content_snapshot);
                           return (
                             <tr key={d.id} className="border-t">
-                            <td className="p-3">
-                              <p className="font-medium">{d.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {d.process_id
-                                  ? "Processo de contratação vinculado"
-                                  : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
-                                    "Sem fornecedor vinculado")}
-                              </p>
-                              {camposPendentes.length > 0 && (
-                                <p className="mt-1 text-xs text-destructive">
-                                  Campos pendentes: {camposPendentes.join(", ")}
-                                </p>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <span className="font-medium">
-                                {d.contract_id
-                                  ? `Contrato ${contratoPorId.get(d.contract_id)?.number ?? "vinculado"}`
-                                  : d.process_id
-                                    ? `Processo ${processos.find((processo) => processo.id === d.process_id)?.number ?? "vinculado"}`
-                                    : d.supplier_id
-                                      ? (fornecedorPorId.get(d.supplier_id)?.legal_name ??
-                                        "Fornecedor vinculado")
-                                      : "Documento avulso"}
-                              </span>
-                              {d.contract_id && contratoPorId.get(d.contract_id)?.object && (
+                              <td className="p-3">
+                                <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {contratoPorId.get(d.contract_id)?.object}
+                                  {d.process_id
+                                    ? "Processo de contratação vinculado"
+                                    : (fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ??
+                                      "Sem fornecedor vinculado")}
                                 </p>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
-                            </td>
-                            <td className="p-3">
-                              <Badge
-                                variant={
-                                  d.status === "signed"
-                                    ? "secondary"
-                                    : d.status === "cancelled"
-                                      ? "outline"
-                                      : "default"
-                                }
-                              >
-                                {d.status === "signed"
-                                  ? "Assinado"
-                                  : d.status === "cancelled"
-                                    ? "Cancelado"
-                                    : "Rascunho"}
-                              </Badge>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex flex-wrap justify-end gap-1">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => setDocumentoImpressao(d)}
-                                  aria-label="Visualizar e imprimir"
-                                >
-                                  <Printer className="h-4 w-4" />
-                                </Button>
-                                {d.status === "draft" && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={baixandoRascunhoId !== null}
-                                      onClick={() => void baixarRascunho(d, "docx")}
-                                    >
-                                      {baixandoRascunhoId === d.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                                      ) : (
-                                        <Download className="h-4 w-4" aria-hidden />
-                                      )}
-                                      Word (rascunho)
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={baixandoRascunhoId !== null}
-                                      onClick={() => void baixarRascunho(d, "pdf")}
-                                    >
-                                      PDF (rascunho)
-                                    </Button>
-                                  </>
+                                {camposPendentes.length > 0 && (
+                                  <p className="mt-1 text-xs text-destructive">
+                                    Campos pendentes: {camposPendentes.join(", ")}
+                                  </p>
                                 )}
-                                {(() => {
-                                  const workflow = fluxoPorDocumento.get(d.id);
-                                  const status = workflow?.status ?? "draft";
-                                  const labels: Record<string, string> = {
-                                    draft: "Em elaboração",
-                                    pending_approval: "Aguardando aprovação",
-                                    approved: "Aprovado",
-                                    rejected: "Devolvido para correção",
-                                    signed: "Assinado",
-                                    cancelled: "Cancelado",
-                                  };
-                                  return (
-                                    <div className="flex flex-wrap items-center justify-end gap-1">
-                                      <Badge
-                                        variant={status === "approved" ? "secondary" : "outline"}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-medium">
+                                  {d.contract_id
+                                    ? `Contrato ${contratoPorId.get(d.contract_id)?.number ?? "vinculado"}`
+                                    : d.process_id
+                                      ? `Processo ${processos.find((processo) => processo.id === d.process_id)?.number ?? "vinculado"}`
+                                      : d.supplier_id
+                                        ? (fornecedorPorId.get(d.supplier_id)?.legal_name ??
+                                          "Fornecedor vinculado")
+                                        : "Documento avulso"}
+                                </span>
+                                {d.contract_id && contratoPorId.get(d.contract_id)?.object && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {contratoPorId.get(d.contract_id)?.object}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
+                              </td>
+                              <td className="p-3">
+                                <Badge
+                                  variant={
+                                    d.status === "signed"
+                                      ? "secondary"
+                                      : d.status === "cancelled"
+                                        ? "outline"
+                                        : "default"
+                                  }
+                                >
+                                  {d.status === "signed"
+                                    ? "Assinado"
+                                    : d.status === "cancelled"
+                                      ? "Cancelado"
+                                      : "Rascunho"}
+                                </Badge>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex flex-wrap justify-end gap-1">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => setDocumentoImpressao(d)}
+                                    aria-label="Visualizar e imprimir"
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                  </Button>
+                                  {d.status === "draft" && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={baixandoRascunhoId !== null}
+                                        onClick={() => void baixarRascunho(d, "docx")}
                                       >
-                                        {labels[status] ?? status}
-                                      </Badge>
-                                      {d.status === "draft" &&
-                                        ["draft", "rejected"].includes(status) &&
-                                        capacidades.can_update && (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => abrirEdicaoGerado(d)}
-                                          >
-                                            <Pencil className="h-3.5 w-3.5" /> Editar
-                                          </Button>
+                                        {baixandoRascunhoId === d.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                        ) : (
+                                          <Download className="h-4 w-4" aria-hidden />
                                         )}
-                                      {d.status === "draft" &&
-                                        status !== "pending_approval" &&
-                                        podeEnviarAprovacao && (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={camposPendentes.length > 0}
-                                            onClick={() => void tramitarDocumento(d, "submit")}
-                                          >
-                                            Enviar para aprovação
-                                          </Button>
-                                        )}
-                                      {d.status === "draft" &&
-                                        status === "pending_approval" &&
-                                        podeAprovarDocumento && (
-                                          <>
-                                            <Button
-                                              size="sm"
-                                              onClick={() => void tramitarDocumento(d, "approve")}
-                                            >
-                                              Aprovar
-                                            </Button>
+                                        Word (rascunho)
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={baixandoRascunhoId !== null}
+                                        onClick={() => void baixarRascunho(d, "pdf")}
+                                      >
+                                        PDF (rascunho)
+                                      </Button>
+                                    </>
+                                  )}
+                                  {(() => {
+                                    const workflow = fluxoPorDocumento.get(d.id);
+                                    const status = workflow?.status ?? "draft";
+                                    const labels: Record<string, string> = {
+                                      draft: "Em elaboração",
+                                      pending_approval: "Aguardando aprovação",
+                                      approved: "Aprovado",
+                                      rejected: "Devolvido para correção",
+                                      signed: "Assinado",
+                                      cancelled: "Cancelado",
+                                    };
+                                    return (
+                                      <div className="flex flex-wrap items-center justify-end gap-1">
+                                        <Badge
+                                          variant={status === "approved" ? "secondary" : "outline"}
+                                        >
+                                          {labels[status] ?? status}
+                                        </Badge>
+                                        {d.status === "draft" &&
+                                          ["draft", "rejected"].includes(status) &&
+                                          capacidades.can_update && (
                                             <Button
                                               size="sm"
                                               variant="outline"
-                                              onClick={() => void tramitarDocumento(d, "reject")}
+                                              onClick={() => abrirEdicaoGerado(d)}
                                             >
-                                              Devolver
+                                              <Pencil className="h-3.5 w-3.5" /> Editar
                                             </Button>
-                                          </>
+                                          )}
+                                        {d.status === "draft" &&
+                                          status !== "pending_approval" &&
+                                          podeEnviarAprovacao && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              disabled={camposPendentes.length > 0}
+                                              onClick={() => void tramitarDocumento(d, "submit")}
+                                            >
+                                              Enviar para aprovação
+                                            </Button>
+                                          )}
+                                        {d.status === "draft" &&
+                                          status === "pending_approval" &&
+                                          podeAprovarDocumento && (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                onClick={() => void tramitarDocumento(d, "approve")}
+                                              >
+                                                Aprovar
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => void tramitarDocumento(d, "reject")}
+                                              >
+                                                Devolver
+                                              </Button>
+                                            </>
+                                          )}
+                                        {d.status === "draft" &&
+                                          capacidades.can_sign &&
+                                          status === "approved" && (
+                                            <Button
+                                              size="sm"
+                                              onClick={() => void assinarDocumento(d)}
+                                            >
+                                              <CheckCircle2 className="h-4 w-4" /> Assinar
+                                            </Button>
+                                          )}
+                                        {workflow?.decision_comment && (
+                                          <span className="basis-full text-right text-xs text-muted-foreground">
+                                            Observação: {workflow.decision_comment}
+                                          </span>
                                         )}
-                                      {d.status === "draft" &&
-                                        capacidades.can_sign &&
-                                        status === "approved" && (
-                                          <Button
-                                            size="sm"
-                                            onClick={() => void assinarDocumento(d)}
-                                          >
-                                            <CheckCircle2 className="h-4 w-4" /> Assinar
-                                          </Button>
-                                        )}
-                                      {workflow?.decision_comment && (
-                                        <span className="basis-full text-right text-xs text-muted-foreground">
-                                          Observação: {workflow.decision_comment}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                                {d.status !== "signed" &&
-                                  d.status !== "cancelled" &&
-                                  capacidades.can_update && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => void cancelarGerado(d)}
-                                    >
-                                      Cancelar
-                                    </Button>
-                                  )}
-                              </div>
-                            </td>
+                                      </div>
+                                    );
+                                  })()}
+                                  {d.status !== "signed" &&
+                                    d.status !== "cancelled" &&
+                                    capacidades.can_update && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => void cancelarGerado(d)}
+                                      >
+                                        Cancelar
+                                      </Button>
+                                    )}
+                                </div>
+                              </td>
                             </tr>
                           );
                         })
