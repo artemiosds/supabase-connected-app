@@ -94,10 +94,11 @@ A cobertura nova reforça regressões automatizadas, mas parte das verificaçõe
 
 - [x] CI completo aprovado no run [43290173715](https://github.com/artemiosds/supabase-connected-app/actions/runs/43290173715): validação da aplicação e segurança do banco concluídas com sucesso.
 - [x] A migration `20261112132000_harden_procurement_process_stage_guard.sql` foi aplicada em Supabase local descartável junto com as demais migrations.
-- [x] Teste de workflow de contratação ampliado de 22 para 24 assertions: o trigger agora também é acionado em alteração de ID do processo e a etapa do item de checklist fica imutável após criação.
+- [x] Teste de workflow de contratação ampliado de 24 para 33 assertions: 9 novas verificações comportamentais exercitam bloqueios e transições válidas com fixtures sintéticas revertidas.
 - [x] Tela de documentos agora invalida requisições antigas, limpa os dados da Secretaria anterior durante a troca de contexto e só exibe a lista quando a consulta corresponde ao tenant selecionado.
 - [x] O erro de carregamento passou a ser apresentado separadamente do estado de falta de permissão.
-- [ ] Ainda faltam testes comportamentais completos do workflow com fixtures sintéticas e papéis autenticados; as verificações atuais da migration são estruturais.
+- [x] Há testes comportamentais com fixtures sintéticas para avanço, salto, checklist retroativo, imutabilidade de identidade e conclusão/reabertura do processo.
+- [ ] Ainda falta E2E autenticado com dois tenants, papéis distintos e tentativas de acesso cruzado; a fixture SQL usa contexto de banco privilegiado e não simula sessões reais de usuários.
 - [ ] E2E autenticado de salvamento/restauração DOCX, falha parcial, retry, limpeza de órfãos e download continua pendente.
 - [ ] Homologação visual com modelos DOCX oficiais anonimizados e timbrados reais continua pendente.
 - [ ] Isolamento visual e de Storage entre duas Secretarias e backup/restauração em projeto separado continuam pendentes.
@@ -137,3 +138,14 @@ A cobertura nova reforça regressões automatizadas, mas parte das verificaçõe
 - [ ] Aceite formal da Secretaria antes de qualquer implantação.
 
 O CI comprova a suíte automatizada e as migrations em banco descartável; não comprova interação autenticada no navegador, fidelidade visual de DOCX reais nem recuperação de backup. As oito migrations posteriores a `20261112123300` continuam fora do SMS2. **A Fase 1 permanece em homologação e NO-GO para produção/venda.**
+
+
+## Regressão comportamental do workflow — 12/11/2026, commit `44862e0749f52e70b7bf111b1dd611dc5593c094`
+
+- [x] `procurement_process_workflow.test.sql` agora possui 33 assertions, incluindo 9 verificações comportamentais.
+- [x] Fixture sintética cria usuário Auth, Secretaria, processo e item de checklist dentro de transação com ROLLBACK.
+- [x] Verifica checklist pendente, avanço válido, salto de etapas, inclusão retroativa, etapa imutável, ID imutável, conclusão na etapa final, bloqueio de reabertura e imutabilidade do checklist concluído.
+- [x] CI completo aprovado no run [43304160591](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160591), incluindo migrations em banco descartável e pgTAP; formatação aprovada no run [43304160274](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160274).
+- [ ] E2E autenticado entre duas Secretarias, com perfis e Storage, continua pendente.
+
+O teste usa apenas dados sintéticos e faz ROLLBACK; não grava no SMS2. A Fase 1 continua em homologação e NO-GO para produção/venda.

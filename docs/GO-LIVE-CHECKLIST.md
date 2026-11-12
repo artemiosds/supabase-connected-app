@@ -200,7 +200,7 @@ O resultado verde da CI comprova validação automatizada do commit e aplicaçã
 
 - [x] CI completo aprovado no run [43290173715](https://github.com/artemiosds/supabase-connected-app/actions/runs/43290173715): jobs `validate` e `database-security` verdes.
 - [x] Todas as migrations do repositório aplicadas em Supabase local descartável e regressões pgTAP aprovadas.
-- [x] Proteção do workflow de processos endurecida: trigger de processo cobre mudanças de ID/tenant/etapa/status e checklist não pode ser movido entre etapas após criação; teste estrutural agora possui 24 assertions.
+- [x] Proteção do workflow de processos endurecida: trigger de processo cobre mudanças de ID/tenant/etapa/status e checklist não pode ser movido entre etapas após criação; teste pgTAP ampliado para 33 assertions, incluindo 9 verificações comportamentais com fixtures sintéticas em transação revertida.
 - [x] Carregamento de documentos protegido contra respostas assíncronas de outra Secretaria, com limpeza dos dados anteriores e gate pelo tenant carregado.
 - [ ] Completar testes comportamentais de processos com fixtures sintéticas e papéis autenticados.
 - [ ] Completar E2E de DOCX/GED, isolamento autenticado de duas Secretarias e homologação visual com modelos oficiais anonimizados.
@@ -240,3 +240,15 @@ A CI verde comprova a suíte automatizada e migrations em ambiente descartável,
 - [ ] Backup/restauração em projeto Supabase separado, com Auth, Storage, RLS, funções e downloads verificados.
 
 **NO-GO para produção/venda permanece.** CI verde não substitui E2E, aceite visual, isolamento real ou teste de recuperação.
+
+
+## Atualização de regressão comportamental — 12/11/2026, commit `44862e0749f52e70b7bf111b1dd611dc5593c094`
+
+- [x] `procurement_process_workflow.test.sql` ampliado para 33 assertions: 24 verificações anteriores e 9 verificações comportamentais novas.
+- [x] Fixtures sintéticas criam usuário, Secretaria, processo e checklist dentro de uma transação encerrada com ROLLBACK.
+- [x] Cenários comportamentais: impedir avanço com checklist pendente; permitir avanço após conclusão; impedir salto de etapa; impedir pendência retroativa; impedir mudança de etapa da tarefa; impedir alteração do ID do processo; permitir conclusão somente na etapa final; impedir reabertura; impedir alteração do checklist após conclusão.
+- [x] CI completo aprovado no run [43304160591](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160591): aplicação, build, TypeScript, Deno, lint, migrations em banco descartável e pgTAP.
+- [x] Formatação aprovada no run [43304160274](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160274).
+- [ ] E2E autenticado com dois tenants reais de teste, perfis diferentes e tentativas de acesso cruzado ainda pendente.
+
+As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamental não substitui a homologação autenticada entre duas Secretarias. SMS2 não foi alterado; NO-GO comercial permanece.

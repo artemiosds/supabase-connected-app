@@ -122,3 +122,10 @@ O PR #18 acrescentou seis índices de chaves estrangeiras; o PR #22 adicionou a 
 - A tela Documentos descarta respostas assíncronas após troca de Secretaria, inclusive seleção/importação, URL temporária, upload/cadastro e arquivamento.
 - CI do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b` aprovado ([run 43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085)); formatação aprovada ([run 43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137)). Migrations aplicadas apenas em banco descartável; SMS2 preservado.
 - Fase 1 segue em homologação: E2E autenticado, comparação visual DOCX/PDF com modelos oficiais, isolamento com duas Secretarias e restore em projeto separado ainda pendentes. NO-GO comercial permanece.
+
+
+## Workflow de contratação — testes comportamentais — 12/11/2026
+
+- Teste pgTAP ampliado para 33 assertions, com fixtures sintéticas e ROLLBACK; inclui nove verificações comportamentais de transições, checklist e conclusão.
+- CI do commit `44862e0749f52e70b7bf111b1dd611dc5593c094` passou validação e banco descartável ([run 43304160591](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160591)); formatação ([run 43304160274](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160274)).
+- Ainda falta E2E autenticado com duas Secretarias, papéis distintos e Storage. SMS2 preservado; NO-GO comercial permanece.

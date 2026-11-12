@@ -152,3 +152,11 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - CI integral aprovado no run [43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085): testes unitários, build, TypeScript, Deno, lint, aplicação das 82 migrations em banco descartável e pgTAP; formatação aprovada no run [43302243137](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243137).
 - O SMS2 continua com 74 migrations até `20261112123300`; as oito migrations futuras listadas acima permanecem sem aplicação.
 - Continuam pendentes E2E autenticado em navegador, homologação visual com modelos DOCX oficiais anonimizados, teste de isolamento com duas Secretarias e backup/restauração em projeto isolado. Não declarar a Fase 1 homologada apenas pela CI.
+
+
+## Workflow de contratação — regressão comportamental 12/11/2026
+
+- O teste `supabase/tests/procurement_process_workflow.test.sql` passou de 24 para 33 assertions.
+- Nove verificações comportamentais usam fixtures sintéticas (usuário Auth, tenant, processo e checklist) em transação revertida: checklist pendente, avanço permitido, salto de etapa, tarefa retroativa, etapa imutável, ID imutável, conclusão na etapa final, reabertura e edição após conclusão.
+- CI do commit `44862e0749f52e70b7bf111b1dd611dc5593c094` aprovado no run [43304160591](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160591); formatação no run [43304160274](https://github.com/artemiosds/supabase-connected-app/actions/runs/43304160274).
+- A fixture SQL não simula duas sessões authenticated com papéis diferentes. E2E de isolamento entre duas Secretarias e Storage segue pendente. SMS2 não foi alterado.
