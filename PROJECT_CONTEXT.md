@@ -23,7 +23,7 @@
 
 ## Banco e relações principais
 
-Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com RLS habilitada. O histórico remoto contém 68 versões até `20261111021946` (`link_generated_documents_to_contracts`). O repositório possui 69 migrations SQL; `20261106194000` não tem versão correspondente no histórico remoto e outras migrations foram registradas com timestamps diferentes. Comparar cuidadosamente histórico e arquivos antes de qualquer nova publicação; não executar `db push` indiscriminadamente.
+Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com RLS habilitada. O histórico remoto contém 68 versões até `20261111021946` (`link_generated_documents_to_contracts`). O repositório possui 75 migrations SQL; `20261106194000` não tem versão correspondente no histórico remoto e outras migrations foram registradas com timestamps diferentes. Comparar cuidadosamente histórico e arquivos antes de qualquer nova publicação; não executar `db push` indiscriminadamente.
 
 - Identidade e multitenancy: `profiles`, `tenants`, `tenant_memberships`, `permissions`, `tenant_roles`, `tenant_role_permissions`, `membership_roles`, `platform_admins`, `audit_events`.
 - Fornecedores e documentos: `suppliers`, `supplier_documents`, `document_templates`, `generated_documents`, `document_template_catalog`, `document_template_versions`.
@@ -115,3 +115,11 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - Ao importar DOCX, o texto continua editável e o arquivo original é analisado e enviado ao Storage após salvar o modelo. Editar o texto do modelo descarta o arquivo selecionado; uma falha de upload/metadados deixa o texto salvo e é comunicada.
 - Na exportação Word de um rascunho vinculado a processo, o arquivo original só é usado se a versão e o conteúdo coincidirem exatamente com o snapshot preenchido pelo servidor. Depois de edição humana, a exportação usa o texto revisado. PDF continua gerado a partir do texto e não preserva imagens/layout complexos do Word.
 - Pendente: aplicar migration com revisão de histórico, testes reais de perfis e duas Secretarias, download em navegador e conferência visual no Word/PDF. CI local/descartável não equivale a homologação em produção.
+
+
+## Reconciliação de migrations — auditoria de 12/11/2026
+
+- O SMS2 registra 68 versões; a `main` possui 75 arquivos SQL. Sete arquivos tiveram outro timestamp ao serem registrados: seis SQLs são byte a byte iguais aos registros remotos; o de vínculo de documentos a contratos difere só por cinco linhas de comentários, com lógica SQL equivalente após normalização.
+- A baseline `20261106194000` não está no histórico. Suas quatro tabelas, 14 índices e 12 políticas nomeadas existem, com RLS e FORCE nas tabelas. Isso não prova equivalência completa; não reaplicar a baseline nem reparar o histórico sem comparação de definições e simulação em cópia restaurada.
+- Seis migrations mais novas aguardam implantação: URL externa, contexto contratual, dez etapas, sanções, saldo contrato/ARP e fonte DOCX privada. `supplier_sanctions`, `contract_items`, `contract_item_movements`, `document_template_sources`, `process_items.responsible_name` e `due_date` estão ausentes no SMS2.
+- Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`. Nenhum histórico, schema ou dado de produção foi alterado nesta auditoria.
