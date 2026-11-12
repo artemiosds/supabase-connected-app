@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(20);
+SELECT extensions.plan(22);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -218,6 +218,28 @@ SELECT extensions.ok(
     'public.fn_guard_procurement_process_item_completion()'::regprocedure
   ) LIKE '%Não é permitido alterar itens de um processo concluído%',
   'checklist insert and update guards preserve completed and previously passed stages'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_transition()'::regprocedure
+  ) LIKE '%NEW.id IS DISTINCT FROM OLD.id%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_transition()'::regprocedure
+  ) LIKE '%NEW.tenant_id IS DISTINCT FROM OLD.tenant_id%',
+  'a process cannot change its identity or owning tenant'
+);
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%NEW.id IS DISTINCT FROM OLD.id%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%NEW.process_id IS DISTINCT FROM OLD.process_id%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_procurement_process_item_completion()'::regprocedure
+  ) LIKE '%NEW.tenant_id IS DISTINCT FROM OLD.tenant_id%',
+  'a checklist row cannot be moved across processes or tenants'
 );
 SELECT * FROM extensions.finish();
 ROLLBACK;
