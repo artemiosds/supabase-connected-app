@@ -4,6 +4,62 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '90s';
 
+CREATE OR REPLACE FUNCTION public.fn_guard_procurement_process_item_completion()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_process_stage text;
+  v_process_status text;
+  v_stages text[] := ARRAY[
+    'planejamento','estudos','objeto','pesquisa','parecer',
+    'conclusao','publicacao','julgamento','assinatura','fiscalizacao'
+  ];
+BEGIN
+  IF NEW.is_done IS DISTINCT FROM OLD.is_done AND NEW.is_done = false THEN
+    SELECT p.stage, p.status
+      INTO v_process_stage, v_process_status
+    FROM public.procurement_processes p
+    WHERE p.tenant_id = NEW.tenant_id AND p.id = NEW.process_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Processo vinculado ao item não encontrado nesta Secretaria.'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF v_process_status = 'concluido' THEN
+      RAISE EXCEPTION 'Não é permitido reabrir itens de um processo concluído.'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF pg_catalog.array_position(v_stages, NEW.stage)
+       < pg_catalog.array_position(v_stages, v_process_stage) THEN
+      RAISE EXCEPTION 'Retorne o processo à etapa correspondente antes de reabrir um item anterior.'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.fn_guard_procurement_process_item_completion()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS trg_guard_procurement_process_item_completion
+  ON public.process_items;
+CREATE TRIGGER trg_guard_procurement_process_item_completion
+  BEFORE UPDATE OF is_done
+  ON public.process_items
+  FOR EACH ROW
+  EXECUTE FUNCTION public.fn_guard_procurement_process_item_completion();
+
+COMMENT ON FUNCTION public.fn_guard_procurement_process_item_completion() IS
+  'Serializa alterações do checklist com a etapa do processo e impede reabrir itens de etapas já superadas ou processos concluídos.';
+
 CREATE OR REPLACE FUNCTION public.fn_guard_procurement_process_transition()
 RETURNS trigger
 LANGUAGE plpgsql
