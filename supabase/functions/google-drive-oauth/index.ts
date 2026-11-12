@@ -1,5 +1,8 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const OPENID_SCOPES = ["openid", "email", DRIVE_SCOPE];
@@ -17,7 +20,10 @@ function noStoreHeaders(origin?: string): Headers {
   });
   if (origin) {
     headers.set("Access-Control-Allow-Origin", origin);
-    headers.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type");
+    headers.set(
+      "Access-Control-Allow-Headers",
+      "authorization, x-client-info, apikey, content-type",
+    );
     headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   }
   return headers;
@@ -190,10 +196,7 @@ async function fetchGoogleIdentity(accessToken: string): Promise<{
   };
 }
 
-async function createTenantDriveFolder(
-  accessToken: string,
-  folderName: string,
-): Promise<string> {
+async function createTenantDriveFolder(accessToken: string, folderName: string): Promise<string> {
   const response = await fetch(
     "https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType",
     {
@@ -251,9 +254,7 @@ async function startAuthorization(
   const tenantId = (body as Record<string, unknown>).tenant_id;
   if (
     typeof tenantId !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      tenantId,
-    )
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tenantId)
   ) {
     return jsonResponse({ error: "Secretaria inválida." }, 400, origin);
   }
@@ -315,7 +316,8 @@ async function startAuthorization(
     {
       authorization_url: authorizationUrl.toString(),
       scope: DRIVE_SCOPE,
-      message: "O Google solicitará acesso somente aos arquivos criados ou abertos pelo aplicativo.",
+      message:
+        "O Google solicitará acesso somente aos arquivos criados ou abertos pelo aplicativo.",
     },
     200,
     origin,
@@ -352,7 +354,11 @@ async function disconnectDrive(
     p_tenant_id: tenantId,
   });
   if (accessError || canManage !== true) {
-    return jsonResponse({ error: "Somente o administrador desta Secretaria pode desconectar o Drive." }, 403, origin);
+    return jsonResponse(
+      { error: "Somente o administrador desta Secretaria pode desconectar o Drive." },
+      403,
+      origin,
+    );
   }
 
   const serviceClient = createServiceClient(supabaseUrl, serviceRoleKey);
@@ -401,7 +407,10 @@ async function disconnectDrive(
     await revokeGoogleToken(refreshToken);
   } catch {
     return jsonResponse(
-      { error: "O Google não confirmou a revogação. A conexão foi mantida para permitir nova tentativa." },
+      {
+        error:
+          "O Google não confirmou a revogação. A conexão foi mantida para permitir nova tentativa.",
+      },
       502,
       origin,
     );
@@ -416,7 +425,9 @@ async function disconnectDrive(
     // administrator can inspect and repair the connection record safely.
     console.error("Google token revoked but local disconnect failed:", error.message);
     return jsonResponse(
-      { error: "O Google revogou o acesso, mas o registro local precisa de revisão administrativa." },
+      {
+        error: "O Google revogou o acesso, mas o registro local precisa de revisão administrativa.",
+      },
       409,
       origin,
     );
@@ -523,7 +534,10 @@ Deno.serve(async (request: Request) => {
         appUrl,
       );
     } catch (error) {
-      console.error("Google Drive callback is not configured:", error instanceof Error ? error.message : "unknown error");
+      console.error(
+        "Google Drive callback is not configured:",
+        error instanceof Error ? error.message : "unknown error",
+      );
       const fallback = Deno.env.get("APP_URL")?.trim();
       if (fallback) {
         try {
@@ -583,37 +597,28 @@ Deno.serve(async (request: Request) => {
       const configuredRedirect = Deno.env.get("GOOGLE_DRIVE_REDIRECT_URI")?.trim();
       if (!clientId || !configuredRedirect) {
         return jsonResponse(
-          { error: "A conexão Google Drive ainda não foi configurada pelo administrador da plataforma." },
+          {
+            error:
+              "A conexão Google Drive ainda não foi configurada pelo administrador da plataforma.",
+          },
           503,
           origin,
         );
       }
       const redirectUri = normalizeRedirectUri(configuredRedirect);
-      return await startAuthorization(
-        request,
-        origin,
-        supabaseUrl,
-        anonKey,
-        redirectUri,
-        body,
-      );
+      return await startAuthorization(request, origin, supabaseUrl, anonKey, redirectUri, body);
     }
     if (action === "disconnect") {
-      return await disconnectDrive(
-        request,
-        origin,
-        supabaseUrl,
-        anonKey,
-        serviceRoleKey,
-        body,
-      );
+      return await disconnectDrive(request, origin, supabaseUrl, anonKey, serviceRoleKey, body);
     }
     return jsonResponse({ error: "Ação não reconhecida." }, 400, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return jsonResponse(
       {
-        error: message.startsWith("Sessão") ? message : "Não foi possível processar a conexão do Google Drive.",
+        error: message.startsWith("Sessão")
+          ? message
+          : "Não foi possível processar a conexão do Google Drive.",
       },
       message.startsWith("Sessão") ? 401 : 400,
       origin,
