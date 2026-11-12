@@ -81,8 +81,7 @@ export async function openDocx(input: ArrayBuffer | Uint8Array): Promise<JSZip> 
   for (const name of Object.keys(zip.files)) {
     if (!name.endsWith(".xml") && !name.endsWith(".rels")) continue;
     const text = await zip.file(name)!.async("string");
-    total += text.length;
-    if (text.length > MAX_PART_BYTES || total > MAX_TOTAL_UNCOMPRESSED) {
+    if (text.length > MAX_PART_BYTES) {
       throw new DocxEngineError("O conteúdo interno do Word ultrapassa o limite de segurança.");
     }
   }
