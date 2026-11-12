@@ -239,6 +239,25 @@ describe("docx engine — analysis, model and PDF", () => {
     expect(pdf.getPageCount()).toBe(1);
   });
 
+  it("rejects oversized compressed DOCX entries before inflating them", async () => {
+    const zip = new JSZip();
+    zip.file(
+      "[Content_Types].xml",
+      `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
+    );
+    zip.file(
+      "word/document.xml",
+      `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${"A".repeat(8 * 1024 * 1024 + 1)}</w:document>`,
+    );
+    const bytes = await zip.generateAsync({
+      type: "uint8array",
+      compression: "DEFLATE",
+      compressionOptions: { level: 9 },
+    });
+    expect(bytes.byteLength).toBeLessThan(5 * 1024 * 1024);
+    await expect(analyzeDocx(bytes)).rejects.toThrow("limite de segurança");
+  });
+
   it("reads original page size and margins for predictable PDF pagination", async () => {
     const tpl = await fixture(
       '<w:p><w:r><w:t>Documento paisagem</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080"/></w:sectPr>',

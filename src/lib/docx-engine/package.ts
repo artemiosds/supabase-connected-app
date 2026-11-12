@@ -42,11 +42,26 @@ export async function openDocx(input: ArrayBuffer | Uint8Array): Promise<JSZip> 
   } catch {
     throw new DocxEngineError("O arquivo não é um documento Word (.docx) válido.");
   }
-  let total = 0;
+  let totalUncompressed = 0;
   for (const file of Object.values(zip.files)) {
-    // JSZip exposes uncompressed size through internal data; guard via async read below.
     if (file.name.includes("..") || file.name.startsWith("/")) {
       throw new DocxEngineError("O documento Word contém caminhos internos inválidos.");
+    }
+    if (file.dir) continue;
+
+    // Reject ZIP bombs from central-directory metadata before JSZip inflates any entry.
+    const uncompressedSize = (
+      file as unknown as { _data?: { uncompressedSize?: number } }
+    )._data?.uncompressedSize;
+    if (!Number.isSafeInteger(uncompressedSize) || uncompressedSize! < 0) {
+      throw new DocxEngineError("Não foi possível validar o tamanho interno do documento Word.");
+    }
+    if (uncompressedSize! > MAX_PART_BYTES) {
+      throw new DocxEngineError("Uma parte interna do Word ultrapassa o limite de segurança.");
+    }
+    totalUncompressed += uncompressedSize!;
+    if (totalUncompressed > MAX_TOTAL_UNCOMPRESSED) {
+      throw new DocxEngineError("O conteúdo interno do Word ultrapassa o limite de segurança.");
     }
   }
   const ct = zip.file("[Content_Types].xml");
