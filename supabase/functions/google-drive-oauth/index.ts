@@ -242,9 +242,9 @@ async function startAuthorization(
   supabaseUrl: string,
   anonKey: string,
   redirectUri: string,
+  body: unknown,
 ): Promise<Response> {
   const user = await verifyUser(supabaseUrl, anonKey, request.headers.get("Authorization"));
-  const body: unknown = await request.json();
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return jsonResponse({ error: "O corpo da solicitação é inválido." }, 400, origin);
   }
@@ -328,9 +328,9 @@ async function disconnectDrive(
   supabaseUrl: string,
   anonKey: string,
   serviceRoleKey: string,
+  body: unknown,
 ): Promise<Response> {
   const user = await verifyUser(supabaseUrl, anonKey, request.headers.get("Authorization"));
-  const body: unknown = await request.json();
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return jsonResponse({ error: "O corpo da solicitação é inválido." }, 400, origin);
   }
@@ -356,6 +356,31 @@ async function disconnectDrive(
   }
 
   const serviceClient = createServiceClient(supabaseUrl, serviceRoleKey);
+  const { count: linkedDocuments, error: linkedDocumentsError } = await serviceClient
+    .from("supplier_documents")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("storage_provider", "google_drive")
+    .not("drive_file_id", "is", null);
+  if (linkedDocumentsError) {
+    console.error("Could not check linked Google Drive documents:", linkedDocumentsError.message);
+    return jsonResponse(
+      { error: "Não foi possível conferir os documentos vinculados ao Drive." },
+      500,
+      origin,
+    );
+  }
+  if ((linkedDocuments ?? 0) > 0) {
+    return jsonResponse(
+      {
+        error:
+          "Existem documentos vinculados ao Google Drive. Preserve ou migre esses arquivos antes de desconectar a conta.",
+      },
+      409,
+      origin,
+    );
+  }
+
   const { data: refreshToken, error: tokenError } = await serviceClient.rpc(
     "get_tenant_drive_refresh_token",
     {
@@ -484,18 +509,34 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const appUrl = getRequiredEnv("APP_URL");
-  const redirectUri = normalizeRedirectUri(getRequiredEnv("GOOGLE_DRIVE_REDIRECT_URI"));
   if (request.method === "GET") {
-    return await handleOAuthCallback(
-      request,
-      supabaseUrl,
-      serviceRoleKey,
-      getRequiredEnv("GOOGLE_DRIVE_CLIENT_ID"),
-      getRequiredEnv("GOOGLE_DRIVE_CLIENT_SECRET"),
-      redirectUri,
-      appUrl,
-    );
+    try {
+      const appUrl = normalizeRedirectUri(getRequiredEnv("APP_URL"));
+      const redirectUri = normalizeRedirectUri(getRequiredEnv("GOOGLE_DRIVE_REDIRECT_URI"));
+      return await handleOAuthCallback(
+        request,
+        supabaseUrl,
+        serviceRoleKey,
+        getRequiredEnv("GOOGLE_DRIVE_CLIENT_ID"),
+        getRequiredEnv("GOOGLE_DRIVE_CLIENT_SECRET"),
+        redirectUri,
+        appUrl,
+      );
+    } catch (error) {
+      console.error("Google Drive callback is not configured:", error instanceof Error ? error.message : "unknown error");
+      const fallback = Deno.env.get("APP_URL")?.trim();
+      if (fallback) {
+        try {
+          return redirectToApp(normalizeRedirectUri(fallback), "error");
+        } catch {
+          // Do not redirect to an invalid environment value.
+        }
+      }
+      return new Response("O retorno do Google Drive ainda não está configurado.", {
+        status: 503,
+        headers: noStoreHeaders(),
+      });
+    }
   }
 
   const originHeader = request.headers.get("Origin") ?? "";
@@ -534,10 +575,25 @@ Deno.serve(async (request: Request) => {
   try {
     const action = (body as Record<string, unknown>).action;
     if (action === "start") {
-      return await startAuthorization(request, origin, supabaseUrl, anonKey, redirectUri);
+      const redirectUri = normalizeRedirectUri(getRequiredEnv("GOOGLE_DRIVE_REDIRECT_URI"));
+      return await startAuthorization(
+        request,
+        origin,
+        supabaseUrl,
+        anonKey,
+        redirectUri,
+        body,
+      );
     }
     if (action === "disconnect") {
-      return await disconnectDrive(request, origin, supabaseUrl, anonKey, serviceRoleKey);
+      return await disconnectDrive(
+        request,
+        origin,
+        supabaseUrl,
+        anonKey,
+        serviceRoleKey,
+        body,
+      );
     }
     return jsonResponse({ error: "Ação não reconhecida." }, 400, origin);
   } catch (error) {
