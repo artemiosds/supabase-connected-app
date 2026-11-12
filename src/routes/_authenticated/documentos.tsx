@@ -44,7 +44,10 @@ import {
 } from "@/components/ui/select";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { importarTextoDeModelo } from "@/lib/docx-import";
-import { valuesForUneditedSource } from "@/lib/document-source";
+import {
+  isMissingDocumentTemplateSourcesTable,
+  valuesForUneditedSource,
+} from "@/lib/document-source";
 import {
   buildDocumentTemplateSchema,
   buildDocumentVariableValues,
@@ -843,6 +846,21 @@ function Documentos() {
     e.preventDefault();
     if (!selecionado) return;
     setSalvandoModelo(true);
+    if (arquivoOriginalModelo) {
+      const { error: sourceTableError } = await db
+        .from("document_template_sources")
+        .select("template_id")
+        .limit(1);
+      if (sourceTableError) {
+        setSalvandoModelo(false);
+        toast.error(
+          isMissingDocumentTemplateSourcesTable(sourceTableError)
+            ? "O vínculo do Word original ainda não está habilitado no banco. Nenhuma versão foi salva; tente novamente após a implantação segura da migration."
+            : `Não foi possível verificar o armazenamento do Word original: ${sourceTableError.message}`,
+        );
+        return;
+      }
+    }
     const payload = {
       title: tituloModelo.trim(),
       description: descricaoModelo.trim() || null,
@@ -913,7 +931,7 @@ function Documentos() {
         template_id: result.data.id,
         version: result.data.version,
         storage_path: path,
-        file_name: arquivoOriginalModelo.name.slice(0, 255),
+        file_name: nomeSeguroArquivo(arquivoOriginalModelo.name) || "modelo.docx",
         file_size: arquivoOriginalModelo.size,
       });
       if (metadataError) {
@@ -1200,8 +1218,11 @@ function Documentos() {
               .eq("version", documento.template_version)
               .maybeSingle(),
           ]);
-        if (sourceError || versionError) throw sourceError ?? versionError;
-        if (source && version) {
+        if (versionError) throw versionError;
+        if (sourceError && !isMissingDocumentTemplateSourcesTable(sourceError)) {
+          throw sourceError;
+        }
+        if (!sourceError && source && version) {
           const snapshotValues = valuesForUneditedSource(
             version.content,
             documento.content_snapshot,

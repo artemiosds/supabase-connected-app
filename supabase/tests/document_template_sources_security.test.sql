@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(5);
+SELECT extensions.plan(6);
 
 SELECT extensions.has_table('public', 'document_template_sources', 'private model sources have a metadata table');
 SELECT extensions.ok(
@@ -24,6 +24,16 @@ SELECT extensions.ok(
     WHERE schemaname = 'storage' AND tablename = 'objects'
       AND policyname LIKE 'gfs_private_template_sources_%'),
   'private Storage has upload, linked read and orphan cleanup policies'
+);
+SELECT extensions.ok(
+  (SELECT count(*) = 2 AND bool_and(qual LIKE '%owner_id%')
+   FROM pg_catalog.pg_policies
+   WHERE schemaname = 'storage' AND tablename = 'objects'
+     AND policyname IN (
+       'gfs_private_template_sources_orphan_read',
+       'gfs_private_template_sources_orphan_delete'
+     )),
+  'orphan cleanup policies use the supported owner_id column'
 );
 
 SELECT * FROM extensions.finish();

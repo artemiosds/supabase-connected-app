@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { valuesForUneditedSource } from "./document-source";
+import { isMissingDocumentTemplateSourcesTable, valuesForUneditedSource } from "./document-source";
 
 describe("binary Word source selection", () => {
   it("uses the original only for the exact server merged snapshot", () => {
@@ -17,5 +17,14 @@ describe("binary Word source selection", () => {
     expect(
       valuesForUneditedSource("{{numero_processo}}", "42/2026", { numero_processo: 42 }),
     ).toBeNull();
+  });
+});
+
+describe("optional binary-source schema compatibility", () => {
+  it("recognizes only missing-table errors for the optional source table", () => {
+    expect(isMissingDocumentTemplateSourcesTable({ code: "PGRST205" })).toBe(true);
+    expect(isMissingDocumentTemplateSourcesTable({ code: "42P01" })).toBe(true);
+    expect(isMissingDocumentTemplateSourcesTable({ code: "42501" })).toBe(false);
+    expect(isMissingDocumentTemplateSourcesTable(null)).toBe(false);
   });
 });

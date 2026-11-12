@@ -91,7 +91,7 @@ CREATE POLICY gfs_private_template_sources_orphan_read ON storage.objects
   FOR SELECT TO authenticated USING (
     bucket_id = 'gfs-private-documents'
     AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\.docx$'
-    AND owner = (SELECT auth.uid())
+    AND owner_id = (SELECT auth.uid()::text)
     AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
     AND CASE
       WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
@@ -104,7 +104,7 @@ CREATE POLICY gfs_private_template_sources_orphan_delete ON storage.objects
   FOR DELETE TO authenticated USING (
     bucket_id = 'gfs-private-documents'
     AND name ~* '/template-sources/.*/v[1-9][0-9]*/.*\.docx$'
-    AND owner = (SELECT auth.uid())
+    AND owner_id = (SELECT auth.uid()::text)
     AND NOT EXISTS (SELECT 1 FROM public.document_template_sources s WHERE s.storage_path = storage.objects.name)
     AND CASE
       WHEN split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[89ab][0-9a-f]{12}$'

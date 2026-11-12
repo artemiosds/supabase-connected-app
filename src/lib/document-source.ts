@@ -16,3 +16,10 @@ export function valuesForUneditedSource(
   );
   return merged === documentContent ? values : null;
 }
+
+/** True only when the optional binary-source table has not reached this database yet. */
+export function isMissingDocumentTemplateSourcesTable(
+  error: { code?: string } | null | undefined,
+): boolean {
+  return error?.code === "PGRST205" || error?.code === "42P01";
+}
