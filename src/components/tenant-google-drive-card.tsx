@@ -3,13 +3,7 @@ import { Cloud, Loader2, ShieldCheck, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
@@ -188,9 +182,7 @@ export function TenantGoogleDriveCard({ tenantId, tenantName }: Props) {
                 Pasta: {status.drive_folder_name ?? "Pasta da Secretaria"}
               </p>
               {dataConexao && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Conectado em {dataConexao}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Conectado em {dataConexao}</p>
               )}
             </div>
             <Separator />
@@ -227,7 +219,11 @@ export function TenantGoogleDriveCard({ tenantId, tenantName }: Props) {
               </p>
             </div>
             {status?.can_manage && (
-              <Button type="button" disabled={busy || schemaPending} onClick={() => void conectar()}>
+              <Button
+                type="button"
+                disabled={busy || schemaPending}
+                onClick={() => void conectar()}
+              >
                 {busy ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
