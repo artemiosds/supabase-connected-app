@@ -5,9 +5,9 @@
 - SMS2: 74 migrations, 38 tabelas públicas com RLS, 27 com FORCE RLS e 133 políticas.
 - 1 Secretaria, 1 vínculo municipal, 1 Master ativo, 2 identidades Auth; zero fornecedores, arquivos GED, processos, contratos, sanções, funcionários internos ou técnicos de suporte.
 - Cinco Edge Functions ativas (convites municipais, cobrança, suporte, equipe interna e alertas de vencimento).
-- Código no `main`: motor documental com aprovação, Word/PDF, modelos versionados, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
-- Pendências principais: duas Secretarias de homologação, GED autenticado, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
-- Migração de fonte binária DOCX está no código como versão futura; não está aplicada ao SMS2. A conciliação de timestamps aplicada no banco está sendo alinhada em branch separada.
+- Código no `main`: motor documental com aprovação, preservação de DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria, lista/bloqueio de campos pendentes, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
+- Pendências principais: editor visual rico, E2E com duas Secretarias, GED autenticado, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
+- SMS2 permanece com 74 migrations; cinco migrations futuras estão no `main` e não foram aplicadas: fonte DOCX, timbrado, bloqueio de campos pendentes, índices FK e remoção de políticas SELECT redundantes.
 - **NO-GO comercial** até conclusão dos gates descritos no diagnóstico.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
@@ -26,7 +26,7 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 
 ## Atualizações de construção — 11/11/2026
 
-- Fase 1 — Documentos: catálogo de campos automáticos, prévia com lacunas explícitas e RPC vinculada a contrato/fornecedor com validação de complementos. Exportação fiel DOCX/PDF permanece pendente. Migration de geração está versionada e não aplicada ao SMS2.
+- Fase 1 — Documentos: catálogo de campos automáticos, geração server-side vinculada a processo/contrato, fonte DOCX privada por versão, substituição de placeholders fragmentados, linhas repetíveis, exportação Word e PDF com timbrado configurável, prévia e bloqueio de campos pendentes. O editor visual rico e a homologação visual/E2E ainda permanecem pendentes; três migrations documentais futuras não foram aplicadas ao SMS2.
 - Fase 2 — Pesquisa de preços: média, mediana, menor preço unitário com frete rateado, coeficiente de variação e CSV compatível com Excel; nenhum valor é excluído automaticamente.
 - Fase 3 — Workflow: dez etapas, responsável/prazo por atividade e constraints do banco atualizadas. Código em `main`; migration não aplicada ao SMS2.
 - Fase 4 — Sanções: histórico por Secretaria, período, fundamento, referência, revogação auditada e sinalização visual de vigência. Migration versionada; saldo por item de contrato/ARP ainda pendente.
@@ -101,8 +101,8 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 ## Documentos — exportação de rascunhos
 
 - Word e PDF de rascunhos agora são gerados a partir do texto revisado usando o motor DOCX/PDF existente; cabeçalho com nome da Secretaria e aviso de rascunho.
-- O DOCX importado continua convertido a texto ao salvar o modelo. Preservar estilos, tabelas e brasão do arquivo original exige vincular seu binário privado ao modelo e versionar esse vínculo.
-- Não afirmar fidelidade visual nem assinatura qualificada antes da homologação.
+- O DOCX original agora é vinculado de forma privada à versão do modelo e pode ser reutilizado na exportação Word; editar o texto na tela desvincula a fonte. O PDF usa renderizador próprio e timbrado por Secretaria, mas não é conversor Word completo.
+- Não afirmar fidelidade visual integral nem assinatura qualificada antes da homologação.
 
 
 ## Fonte binária dos modelos — 12/11/2026
@@ -113,4 +113,4 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 ## Atualização — PR #18 e conciliação de nomes (12/11/2026)
 
-O PR #18 foi integrado ao `main` e acrescentou seis índices de chaves estrangeiras com seis assertions pgTAP. CI completo passou; os índices permanecem pendentes no SMS2. Portanto, o repositório tem 76 arquivos SQL e duas migrations futuras, sem correspondência no histórico remoto: `20261112124000_document_template_binary_source.sql` e `20261112150000_complete_foreign_key_index_coverage.sql`. Não aplicar nenhuma das duas ao SMS2 nesta etapa.
+O PR #18 acrescentou seis índices de chaves estrangeiras; o PR #22 adicionou a remoção de sete políticas SELECT redundantes. O motor documental também recebeu duas migrations futuras adicionais para timbrado por Secretaria e bloqueio de campos não configurados. O repositório tem 79 arquivos SQL; cinco migrations permanecem pendentes no SMS2: `20261112124000_document_template_binary_source.sql`, `20261112124500_tenant_document_branding.sql`, `20261112125000_block_unconfigured_document_fields.sql`, `20261112150000_complete_foreign_key_index_coverage.sql` e `20261112162000_remove_redundant_master_select_policies.sql`. Nenhuma foi aplicada ao SMS2 nesta etapa.

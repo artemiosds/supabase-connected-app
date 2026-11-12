@@ -23,7 +23,7 @@
 
 ## Banco e relações principais
 
-Schema `public` no SMS2 consultado em 2026-11-11: 35 tabelas listadas, todas com RLS habilitada. O histórico remoto contém 68 versões até `20261111021946` (`link_generated_documents_to_contracts`). O repositório possui 75 migrations SQL; `20261106194000` não tem versão correspondente no histórico remoto e outras migrations foram registradas com timestamps diferentes. Comparar cuidadosamente histórico e arquivos antes de qualquer nova publicação; não executar `db push` indiscriminadamente.
+Schema `public` no SMS2 consultado em 2026-11-12: 38 tabelas, todas com RLS habilitada; 27 com FORCE RLS e 133 políticas. O histórico remoto contém 74 versões até `20261112123300`. O repositório `main` possui 79 migrations SQL; cinco migrations futuras permanecem sem aplicação no SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos não configurados, cobertura final de índices FK e remoção de políticas SELECT redundantes. A baseline `20261106194000` está registrada como marcador vazio. Não executar `db push` indiscriminadamente; consultar `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 - Identidade e multitenancy: `profiles`, `tenants`, `tenant_memberships`, `permissions`, `tenant_roles`, `tenant_role_permissions`, `membership_roles`, `platform_admins`, `audit_events`.
 - Fornecedores e documentos: `suppliers`, `supplier_documents`, `document_templates`, `generated_documents`, `document_template_catalog`, `document_template_versions`.
@@ -53,7 +53,7 @@ O Painel Master tem uma aba Configuração técnica com instruções para SMTP, 
 
 O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. A migration versionada também substitui as constraints de etapa nas duas tabelas e permanece não aplicada ao SMS2.
 
-A biblioteca documental agora tem catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato, com prévia e marcadores explícitos para dados ausentes. A geração vinculada a processo preenche o contexto do contrato/fornecedor pela migration versionada. A RPC restringe complementos a campos manuais declarados no modelo e bloqueia sobrescrita de valores calculados no servidor. A migration ainda não foi aplicada ao SMS2. DOCX importado continua sendo salvo como texto, então a formatação original ainda não é preservada. Rascunhos gerados agora podem ser exportados para Word e PDF a partir do texto revisado, com o nome da Secretaria no cabeçalho; exportação fiel ao DOCX original continua pendente. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
+O motor documental agora possui catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato; substituição de campos divididos entre runs; linhas repetíveis de itens; geração Word a partir do DOCX original privado por versão; e prévia/lista de campos pendentes. O editor continua textual: se o conteúdo for alterado, o vínculo com o DOCX original é descartado; ao reabrir/editar ou restaurar uma versão sem alterar texto, o sistema recupera e preserva o original. A RPC de tramitação bloqueia envio à aprovação quando permanecem `[PREENCHER: ...]`, `[CAMPO NÃO CONFIGURADO: ...]` ou `{{...}}`. A exportação PDF agora usa renderizador próprio com cabeçalho, rodapé, margens, paginação e brasão configuráveis por Secretaria; não é conversor Word completo, portanto recursos incompatíveis são sinalizados ou bloqueados. As migrations de fonte DOCX, timbrado e bloqueio de campos ainda não foram aplicadas ao SMS2. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
 
 
 
@@ -109,12 +109,15 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - O fluxo foi verificado em build, tipos, lint e testes do motor; download no navegador e conferência visual continuam pendentes.
 
 
-## Modelos DOCX originais — código de 12/11/2026
+## Motor DOCX/PDF e timbrado — código de 12/11/2026
 
-- A migration `20261112114000_document_template_binary_source.sql` cria `document_template_sources` imutável por `(template_id, version)`, chaves compostas e políticas de Storage privado em `gfs-private-documents`. Está versionada no repositório e não foi aplicada no SMS2.
-- Ao importar DOCX, o texto continua editável e o arquivo original é analisado e enviado ao Storage após salvar o modelo. Editar o texto do modelo descarta o arquivo selecionado; uma falha de upload/metadados deixa o texto salvo e é comunicada.
-- Na exportação Word de um rascunho vinculado a processo, o arquivo original só é usado se a versão e o conteúdo coincidirem exatamente com o snapshot preenchido pelo servidor. Depois de edição humana, a exportação usa o texto revisado. PDF continua gerado a partir do texto e não preserva imagens/layout complexos do Word.
-- Pendente: aplicar migration com revisão de histórico, testes reais de perfis e duas Secretarias, download em navegador e conferência visual no Word/PDF. CI local/descartável não equivale a homologação em produção.
+- A migration `20261112124000_document_template_binary_source.sql` cria `document_template_sources` imutável por `(template_id, version)`, chaves compostas e políticas de Storage privado em `gfs-private-documents`.
+- A migration `20261112124500_tenant_document_branding.sql` cria configurações por Secretaria para título, subtítulo, rodapé, brasão PNG/JPEG privado, margens e numeração de páginas, com RLS, políticas de Storage e auditoria.
+- A migration `20261112125000_block_unconfigured_document_fields.sql` reforça o bloqueio server-side de envio para aprovação quando restam campos ausentes ou não configurados.
+- As três migrations estão no `main`, testadas em Supabase descartável/pgTAP, mas não foram aplicadas no SMS2.
+- O DOCX original é carregado por versão, preservado ao editar metadados/restaurar versão e usado na exportação Word quando o texto não foi alterado. O editor da página ainda é textual; editar o texto desvincula o original. Editor visual rico preservando formatação durante edição permanece pendente.
+- O PDF usa renderizador `pdf-lib` a partir do modelo; logo, margens, cabeçalho/rodapé e paginação são testados. Não é conversão Word completa: recursos incompatíveis são bloqueados e alguns estilos de fonte/cor/tabela podem ser simplificados.
+- A homologação de modelos reais, duas Secretarias, perfis, downloads autenticados, comparação visual Word/PDF e aplicação segura das migrations continuam pendentes.
 
 
 ## Reconciliação de migrations — auditoria de 12/11/2026

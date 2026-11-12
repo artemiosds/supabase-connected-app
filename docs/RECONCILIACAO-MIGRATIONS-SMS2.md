@@ -5,8 +5,8 @@
 ## Estado remoto confirmado
 
 - `supabase_migrations.schema_migrations`: **74 versões**.
-- Repositório antes do alinhamento: **75 arquivos SQL**.
-- Duas migrations locais não têm versão correspondente no SMS2: `document_template_binary_source` e `complete_foreign_key_index_coverage`. A primeira cria `public.document_template_sources`, confirmada ausente; a segunda adiciona seis índices de FK e foi integrada ao `main` pelo PR #18, ainda não aplicada ao banco.
+- Repositório atual `main`: **79 arquivos SQL**.
+- Cinco migrations futuras não têm versão correspondente no SMS2: fonte DOCX privada, timbrado por Secretaria, bloqueio de campos não configurados, cobertura de índices FK e remoção de políticas SELECT redundantes. As duas primeiras criam `public.document_template_sources` e `public.tenant_document_branding`, ambas confirmadas ausentes; nenhuma das cinco foi aplicada ao banco.
 - A baseline `20261106194000_restore_operational_process_and_contract_tables` existe no histórico remoto com `statement_count=0`. As estruturas operacionais estão presentes; esse registro vazio é marcador de histórico. Não reexecutar o arquivo de baseline no SMS2.
 - As três versões `20261110120237`, `20261110120321` e `20261110121323` de `enforce_support_identity_separation` estão registradas, uma para cada execução idempotente. Os três arquivos locais devem permanecer preservados.
 - A migration de fonte DOCX não está aplicada.
@@ -23,11 +23,17 @@
 
 A branch `chore/align-applied-supabase-migration-versions` renomeia esses cinco arquivos para os timestamps efetivamente registrados no SMS2. O SQL não é alterado.
 
-## Migration nova, ainda pendente
+## Migrations futuras, ainda pendentes
 
-A migration local `20261112114000_document_template_binary_source.sql` foi movida, sem alteração do SQL, para `20261112124000_document_template_binary_source.sql`. O PR #18 adicionou `20261112150000_complete_foreign_key_index_coverage.sql`, após a última versão remota `20261112123300`. As duas migrations permanecem pendentes.
+Após a última versão remota `20261112123300`, o `main` contém cinco migrations futuras, todas aplicadas e testadas apenas em banco Supabase descartável na CI:
 
-Ela cria a fonte binária privada por versão de modelo Word. A tabela `document_template_sources` foi consultada e está ausente no SMS2. A migration é futura; não foi aplicada nesta preparação.
+- `20261112124000_document_template_binary_source.sql`: fonte DOCX privada por versão de modelo.
+- `20261112124500_tenant_document_branding.sql`: timbrado por Secretaria, brasão privado, RLS e auditoria.
+- `20261112125000_block_unconfigured_document_fields.sql`: bloqueia envio documental quando restam campos pendentes.
+- `20261112150000_complete_foreign_key_index_coverage.sql`: seis índices de FK.
+- `20261112162000_remove_redundant_master_select_policies.sql`: remove sete políticas SELECT redundantes.
+
+As tabelas `document_template_sources` e `tenant_document_branding` foram consultadas e estão ausentes no SMS2. Nenhuma dessas migrations foi aplicada em produção.
 
 ## Scripts históricos de reparo
 
@@ -38,7 +44,7 @@ Os arquivos `docs/REPARO-HISTORICO-SMS2.sql` e `docs/REPARO-HISTORICO-SMS2-REVER
 - Não executar `supabase db push` indiscriminadamente.
 - Não reaplicar migrations que já aparecem no histórico remoto.
 - Não executar a baseline `20261106194000` no SMS2.
-- Não aplicar `20261112124000_document_template_binary_source.sql` até revisão/CI e uma janela de implantação futura.
+- Não aplicar nenhuma das cinco migrations futuras até revisão/CI, backup com restauração comprovada em projeto isolado e janela de implantação futura.
 - Não alterar manualmente `supabase_migrations.schema_migrations` sem novo diff de catálogo, backup e plano documentado.
 
 A homologação de restore continua pendente; a reconciliação do histórico não equivale a backup. O código foi alinhado para futuras ferramentas CLI, mas nenhum rollout de `document_template_sources` foi feito nesta etapa.

@@ -56,8 +56,10 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - [ ] Testar upload/download autenticado, URLs assinadas, expiração e bloqueio após arquivamento.
 - [ ] Testar isolamento do Storage entre tenants.
 - [ ] Testar MIME, tamanho acima de 20 MiB, arquivo inválido e substituição.
-- [ ] Homologar importação TXT/MD/DOCX; DOCX importa texto e tabelas simples, não o layout original.
-- [ ] Testar versionamento, snapshots, campos obrigatórios, geração, impressão e auditoria.
+- [ ] Homologar importação TXT/MD/DOCX e DOCX original por versão: parágrafos, estilos, tabelas, cabeçalho/rodapé, placeholders fragmentados e linhas repetíveis.
+- [ ] Testar edição e restauração de versões; confirmar que editar texto desvincula o original e que metadados/restauração preservam a fonte quando aplicável.
+- [ ] Testar prévia e lista de campos pendentes; confirmar bloqueio de envio à aprovação para `[PREENCHER: ...]`, `[CAMPO NÃO CONFIGURADO: ...]` e `{{...}}`.
+- [ ] Homologar brasão, cabeçalho, rodapé, margens e paginação por Secretaria; comparar Word/PDF e verificar avisos/bloqueios de recursos não suportados.
 - [ ] Definir retenção, PDF server-side e nível jurídico de assinatura.
 
 ## Gate 4 — Processos e contratos
@@ -141,3 +143,11 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - [x] Comparadas 68 versões remotas e 75 migrations da `main`; sete aliases mapeados e SQL confrontado.
 - [ ] Comprovar equivalência completa da baseline sem versão, restaurar backup em projeto isolado e simular reparo de histórico. Ver `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 - [ ] Só depois de revisão e autorização, publicar as seis migrations pendentes no SMS2 e homologar por perfil e Secretaria.
+
+
+## Atualização do motor documental — 12/11/2026
+
+- Código em `main`: preservação do DOCX original por versão, recuperação ao reabrir/restaurar, PDF gerado pelo renderizador próprio, timbrado configurável por Secretaria e bloqueio de campos pendentes antes da aprovação.
+- Migrations futuras no repositório: `20261112124000`, `20261112124500` e `20261112125000`. Todas passaram por aplicação e testes SQL em banco descartável; nenhuma foi aplicada ao SMS2.
+- O editor ainda é textual. A edição do texto descarta o DOCX original; editor visual rico, E2E autenticado, homologação visual de modelos reais e restauração de backup continuam pendentes.
+- **NO-GO** permanece até concluir o Gate 3 e os demais gates.
