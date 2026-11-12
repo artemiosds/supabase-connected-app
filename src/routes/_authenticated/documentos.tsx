@@ -348,7 +348,6 @@ function Documentos() {
     }
     setLoading(true);
     setErro(null);
-    setErro(null);
     try {
       const [
         cap,
