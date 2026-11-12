@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
@@ -92,6 +92,7 @@ function Configuracoes() {
   const [arquivoBrasao, setArquivoBrasao] = useState<File | null>(null);
   const [removerBrasao, setRemoverBrasao] = useState(false);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const requisicaoTimbradoRef = useRef(0);
 
   useEffect(() => {
     let ativo = true;
@@ -156,6 +157,8 @@ function Configuracoes() {
   }, [carregarSecretaria]);
 
   const carregarTimbrado = useCallback(async () => {
+    const requisicao = ++requisicaoTimbradoRef.current;
+    const aindaAtual = () => requisicao === requisicaoTimbradoRef.current;
     if (!selecionado?.id) {
       setLoadingTimbrado(false);
       setDadosTimbrado(timbradoVazio(""));
@@ -172,6 +175,7 @@ function Configuracoes() {
       .select("*")
       .eq("tenant_id", selecionado.id)
       .maybeSingle();
+    if (!aindaAtual()) return;
     if (error) {
       setDadosTimbrado(timbradoVazio(selecionado.nome));
       setLogoPreviewUrl(null);
@@ -205,6 +209,7 @@ function Configuracoes() {
       const { data: signed, error: signedError } = await db.storage
         .from("gfs-private-documents")
         .createSignedUrl(data.logo_storage_path, 3600);
+      if (!aindaAtual()) return;
       if (signedError || !signed?.signedUrl) {
         setLogoPreviewUrl(null);
         toast.error("Não foi possível abrir a prévia privada do brasão.");
