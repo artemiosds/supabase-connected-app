@@ -346,6 +346,15 @@ describe("docx engine — analysis, model and PDF", () => {
     ).rejects.toThrow(/caracteres/);
   });
 
+  it("rejects unsupported characters in the Secretaria letterhead instead of silently omitting them", async () => {
+    const model = await docxToModel(await buildDocxFromText("Documento institucional", "Termo"));
+    await expect(
+      renderPdf(model, {
+        branding: { ...DEFAULT_BRANDING, headerTitle: "Secretaria 漢字" },
+      }),
+    ).rejects.toThrow(/caracteres que o PDF não suporta/);
+  });
+
   it("turns tab-separated text into a Word table when a model has no original DOCX", async () => {
     const bytes = await buildDocxFromText(
       "1. OBJETO\nAquisição para {{secretaria}}\nItem\tQtd\nLuva\t10",
