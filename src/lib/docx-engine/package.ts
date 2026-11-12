@@ -50,8 +50,8 @@ export async function openDocx(input: ArrayBuffer | Uint8Array): Promise<JSZip> 
     if (file.dir) continue;
 
     // Reject ZIP bombs from central-directory metadata before JSZip inflates any entry.
-    const uncompressedSize = (file as unknown as { _data?: { uncompressedSize?: number } })
-      ._data?.uncompressedSize;
+    const uncompressedSize = (file as unknown as { _data?: { uncompressedSize?: number } })._data
+      ?.uncompressedSize;
     if (!Number.isSafeInteger(uncompressedSize) || uncompressedSize! < 0) {
       throw new DocxEngineError("Não foi possível validar o tamanho interno do documento Word.");
     }
