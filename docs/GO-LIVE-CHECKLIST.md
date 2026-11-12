@@ -1,14 +1,14 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 11/11/2026 — prevalece sobre as fotografias anteriores neste documento.** Consulta somente leitura ao Supabase SMS2 e CI do commit `49ec420f4d202dc040ae893b606e50b7f5050e06`:
-> - O schema `public` tem 35 tabelas e todas estão com RLS habilitada. Há 68 versões de migration registradas, até `20261111021946` (`link_generated_documents_to_contracts`). O repositório tem 69 arquivos SQL; `20261106194000` não tem versão correspondente no histórico remoto. Alguns arquivos foram registrados sob versões/timestamps diferentes; não executar `db push` ou reparo do histórico sem comparar cada migration.
-> - Há 1 Secretaria e 1 vínculo municipal; 2 perfis; nenhum fornecedor, documento operacional, processo, contrato, aditivo ou documento gerado. Catálogo global contém 5 modelos. Outbox de notificações está vazia.
-> - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. As quatro primeiras exigem JWT; a última usa `verify_jwt = false` e autenticação por segredo de servidor. Ativa não significa que e-mail real ou scheduler esteja homologado.
-> - No commit acima passaram formatação, testes utilitários/unitários, build, TypeScript, Deno, lint, inicialização do Supabase local sem Mailpit, aplicação de migrations e testes pgTAP. Nenhum dado fictício foi escrito no SMS2 e nenhum e-mail real foi enviado.
+> **Estado verificado em 12/11/2026 — prevalece sobre as fotografias históricas abaixo.** Consulta somente leitura ao Supabase SMS2 e CI do commit `6f3835e75c3b0e56296dbb5d013fd08f537e2b18`:
+> - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 79 arquivos SQL e cinco migrations futuras não aplicadas: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, cobertura de índices FK e remoção de políticas SELECT redundantes.
+> - Há 1 Secretaria, 1 vínculo municipal, 2 perfis e 2 identidades Auth; não há fornecedores, documentos operacionais, processos ou contratos. O catálogo global contém 5 modelos.
+> - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. Ativa não significa que e-mail real ou scheduler esteja homologado.
+> - CI do commit `6f3835e` passou formatação, testes unitários, build, TypeScript, Deno, lint, aplicação de todas as migrations em Supabase descartável e testes pgTAP. O commit documental posterior atualiza este checklist; o código continua sem publicação/deploy.
+> - O motor documental inclui DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria e bloqueio de campos pendentes. O editor visual rico e E2E autenticado ainda não foram homologados. Nenhum dado fictício foi escrito no SMS2 nem e-mail real enviado.
 > - Integrações/configurações ainda pendentes: SMTP e agendamento de alertas, Drive OAuth, gateway/webhooks de pagamento, restore de backup em projeto separado e homologação autenticada com duas Secretarias. O estado permanece **NO-GO para venda/liberação comercial**.
 
-
-**Verificação:** 10/11/2026  
+**Verificação:** 12/11/2026
 **Supabase:** SMS2, projeto `rwbbznqtocunzrpcvjvk`.
 
 ## Registro histórico — estado técnico de 10/11/2026

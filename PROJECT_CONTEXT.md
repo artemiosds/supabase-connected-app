@@ -122,10 +122,10 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 ## Reconciliação de migrations — auditoria de 12/11/2026
 
-- O SMS2 registra 68 versões; a `main` possui 75 arquivos SQL. Sete arquivos tiveram outro timestamp ao serem registrados: seis SQLs são byte a byte iguais aos registros remotos; o de vínculo de documentos a contratos difere só por cinco linhas de comentários, com lógica SQL equivalente após normalização.
-- A baseline `20261106194000` não está no histórico. Suas quatro tabelas, 14 índices e 12 políticas nomeadas existem, com RLS e FORCE nas tabelas. Isso não prova equivalência completa; não reaplicar a baseline nem reparar o histórico sem comparação de definições e simulação em cópia restaurada.
-- Seis migrations mais novas aguardam implantação: URL externa, contexto contratual, dez etapas, sanções, saldo contrato/ARP e fonte DOCX privada. `supplier_sanctions`, `contract_items`, `contract_item_movements`, `document_template_sources`, `process_items.responsible_name` e `due_date` estão ausentes no SMS2.
-- Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`. Nenhum histórico, schema ou dado de produção foi alterado nesta auditoria.
+- O SMS2 registra 74 versões até `20261112123300`; a `main` possui 79 arquivos SQL. Os cinco timestamps divergentes foram alinhados ao histórico remoto no PR #19, preservando o SQL.
+- A baseline `20261106194000` está registrada como marcador vazio; as estruturas correspondentes existem. Não reaplicar a baseline nem reparar o histórico sem backup restaurado e comparação de definições.
+- Cinco migrations futuras aguardam implantação: fonte DOCX privada (`20261112124000`), timbrado por Secretaria (`20261112124500`), bloqueio de campos não configurados (`20261112125000`), cobertura de índices FK (`20261112150000`) e remoção de políticas SELECT redundantes (`20261112162000`). As tabelas `document_template_sources` e `tenant_document_branding` estão ausentes no SMS2.
+- Todas as cinco migrations passaram aplicação e pgTAP em banco Supabase descartável no CI; nenhuma foi aplicada ao SMS2. Plano e mapeamento em `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 
 ## Pré-requisito de backup para corrigir o histórico — 12/11/2026
