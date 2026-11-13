@@ -1,0 +1,96 @@
+name: Authenticated tenant isolation E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenant-isolation-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authenticated-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Keep the local Supabase database away from the runner's default Postgres port.
+      SUPABASE_DB_PORT: 55432
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked application dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+
+      - name: Start disposable local Supabase
+        run: supabase start -x inbucket
+
+      - name: Apply all migrations to the disposable database
+        run: supabase db reset --local
+
+      - name: Install pinned Playwright browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.65.0
+          npx playwright install --with-deps chromium
+
+      - name: Seed synthetic users and run authenticated browser isolation tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env)"
+
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export VITE_SUPABASE_URL="$API_URL"
+          export VITE_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
+          export SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
+
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/e2e/seed-tenant-isolation.sql
+
+          bun run dev -- --host 127.0.0.1 --port 4173 --strictPort > /tmp/gfs-vite.log 2>&1 &
+          echo "$!" > /tmp/gfs-vite.pid
+
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:4173/entrar >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/gfs-vite.log
+              echo "::error::Vite did not become ready."
+              exit 1
+            fi
+            sleep 2
+          done
+
+          E2E_APP_URL="http://127.0.0.1:4173" node scripts/e2e/tenant-isolation.browser.mjs
+
+      - name: Upload browser failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenant-isolation-e2e-failure-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
