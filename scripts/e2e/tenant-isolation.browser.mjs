@@ -76,9 +76,8 @@ async function verifyAuthenticatedTenant(scenario) {
       0,
       `${scenario.email} must not see the other tenant's supplier in the UI`,
     );
-    assert.equal(
-      await page.getByText(scenario.tenantName, { exact: true }).count() > 0,
-      true,
+    assert.ok(
+      (await page.getByText(scenario.tenantName, { exact: true }).count()) > 0,
       `${scenario.email} must see only its assigned organization`,
     );
 
@@ -166,10 +165,12 @@ async function verifyAuthenticatedTenant(scenario) {
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
     const safeName = scenario.email.replace(/[^a-z0-9]+/gi, "-");
-    await page.screenshot({
-      path: `artifacts/tenant-isolation-${safeName}.png`,
-      fullPage: true,
-    }).catch(() => {});
+    await page
+      .screenshot({
+        path: `artifacts/tenant-isolation-${safeName}.png`,
+        fullPage: true,
+      })
+      .catch(() => {});
     failedPages.push(scenario.email);
     throw error;
   } finally {
@@ -181,7 +182,9 @@ try {
   for (const scenario of scenarios) {
     await verifyAuthenticatedTenant(scenario);
   }
-  console.log("PASS authenticated multitenant browser E2E: both synthetic tenant accounts are isolated.");
+  console.log(
+    "PASS authenticated multitenant browser E2E: both synthetic tenant accounts are isolated.",
+  );
 } finally {
   await browser.close();
   if (failedPages.length > 0) {
