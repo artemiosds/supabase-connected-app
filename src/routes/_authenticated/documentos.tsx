@@ -1027,7 +1027,8 @@ function Documentos() {
         const sourceResult = await uploadAndLinkDocumentSource({
           upload: async () =>
             await db.storage.from("gfs-private-documents").upload(path, arquivoOriginal, {
-              contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              contentType:
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
               upsert: false,
             }),
           insertMetadata: async () =>
