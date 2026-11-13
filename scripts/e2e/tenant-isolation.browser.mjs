@@ -588,10 +588,12 @@ async function verifyAuthenticatedTenant(scenario) {
     assert.ok(uiRestoreChecks.sourceFileSize > 100);
     assert.equal(uiRestoreChecks.downloadStatus, 200);
     assert.equal(uiRestoreChecks.restoredDocxMatchesOriginalHistoricalBytes, true);
- 
+
     // Exercise the real Secretaria settings screen, including private logo upload.
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Timbrado dos documentos oficiais", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Timbrado dos documentos oficiais", exact: true })
+      .waitFor();
     const brandingHeader = "Cabeçalho E2E " + scenario.tenantName;
     await page.getByLabel("Nome no cabeçalho").fill(brandingHeader);
     await page.getByLabel("Subtítulo institucional").fill("Homologação sintética de timbrado");
@@ -615,11 +617,18 @@ async function verifyAuthenticatedTenant(scenario) {
           return Uint8Array.from(binary, (character) => character.charCodeAt(0));
         };
         const encodeStoragePath = (path) =>
-          path.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+          path
+            .split("/")
+            .map((segment) => encodeURIComponent(segment))
+            .join("/");
         const authenticatedObjectUrl = (path) =>
-          input.apiUrl + "/storage/v1/object/authenticated/gfs-private-documents/" + encodeStoragePath(path);
+          input.apiUrl +
+          "/storage/v1/object/authenticated/gfs-private-documents/" +
+          encodeStoragePath(path);
         const publicObjectUrl = (path) =>
-          input.apiUrl + "/storage/v1/object/public/gfs-private-documents/" + encodeStoragePath(path);
+          input.apiUrl +
+          "/storage/v1/object/public/gfs-private-documents/" +
+          encodeStoragePath(path);
         const objectUrl = (path) =>
           input.apiUrl + "/storage/v1/object/gfs-private-documents/" + encodeStoragePath(path);
         const logoBytes = decodeBase64(input.logoBase64);
@@ -661,8 +670,7 @@ async function verifyAuthenticatedTenant(scenario) {
           },
           body: new Blob([logoBytes], { type: "image/png" }),
         });
-        const orphanPath =
-          input.tenantId + "/document-branding/" + input.orphanFileId + ".png";
+        const orphanPath = input.tenantId + "/document-branding/" + input.orphanFileId + ".png";
         const orphanUpload = await fetch(objectUrl(orphanPath), {
           method: "POST",
           headers: {
@@ -729,7 +737,10 @@ async function verifyAuthenticatedTenant(scenario) {
     );
     assert.equal(brandingChecks.ownDownloadStatus, 200);
     assert.equal(brandingChecks.ownLogoDigestMatches, true);
-    assert.ok(brandingChecks.publicReadStatus >= 400, "branding logo must not be publicly readable");
+    assert.ok(
+      brandingChecks.publicReadStatus >= 400,
+      "branding logo must not be publicly readable",
+    );
     if (otherBrandingPath) {
       assert.ok(
         brandingChecks.crossTenantReadStatus >= 400,
@@ -749,7 +760,6 @@ async function verifyAuthenticatedTenant(scenario) {
         scenario.email +
         ": authenticated settings saved a private PNG letterhead, verified SHA-256, denied public/cross-tenant access, and cleaned an orphan",
     );
-
 
     console.log(
       `PASS ${scenario.email}: authenticated UI restored historical DOCX version 2 as version 4 and reattached the original bytes`,
