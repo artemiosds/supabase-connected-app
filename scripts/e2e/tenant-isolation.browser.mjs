@@ -510,7 +510,7 @@ async function verifyAuthenticatedTenant(scenario) {
 
     await page.getByRole("button", { name: "Histórico", exact: true }).click();
     await page.getByRole("heading", { name: "Histórico de versões", exact: true }).waitFor();
-    await page.getByText("Versão 4", { exact: true }).waitFor();
+    await page.getByRole("dialog").getByText("Versão 4", { exact: true }).waitFor();
 
     const uiRestoreChecks = await page.evaluate(
       async ({ apiUrl, publicKey, token, tenantId, templateId, expectedBase64 }) => {
