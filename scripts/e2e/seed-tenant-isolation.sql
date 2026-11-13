@@ -5,7 +5,10 @@ BEGIN;
 
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  email_confirmed_at, confirmation_token, recovery_token,
+  email_change_token_new, email_change_token_current,
+  phone_change_token, reauthentication_token,
+  raw_app_meta_data, raw_user_meta_data,
   created_at, updated_at
 ) VALUES
   (
@@ -16,6 +19,12 @@ INSERT INTO auth.users (
     'e2e.secretaria.a@example.invalid',
     extensions.crypt('GfsE2E!2026-OnlyLocal', extensions.gen_salt('bf')),
     pg_catalog.now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"full_name":"Usuário E2E Secretaria A"}'::jsonb,
     pg_catalog.now(),
