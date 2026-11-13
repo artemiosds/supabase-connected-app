@@ -118,3 +118,34 @@ export function notificationDryRun(value: unknown): boolean {
   }
   return value !== false;
 }
+
+
+export type NotificationRuntimeConfiguration = {
+  supabaseUrl?: string | null;
+  serviceRoleKey?: string | null;
+  resendApiKey?: string | null;
+  from?: string | null;
+  appUrl?: string | null;
+  dryRun: boolean;
+};
+
+export function missingNotificationConfiguration(
+  configuration: NotificationRuntimeConfiguration,
+): string[] {
+  const required: Array<[string, string | null | undefined]> = [
+    ["SUPABASE_URL", configuration.supabaseUrl],
+    ["SUPABASE_SERVICE_ROLE_KEY", configuration.serviceRoleKey],
+  ];
+
+  if (!configuration.dryRun) {
+    required.push(
+      ["RESEND_API_KEY", configuration.resendApiKey],
+      ["EXPIRY_ALERTS_FROM", configuration.from],
+      ["APP_URL", configuration.appUrl],
+    );
+  }
+
+  return required
+    .filter(([, value]) => !value?.trim())
+    .map(([name]) => name);
+}

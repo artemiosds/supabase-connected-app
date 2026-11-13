@@ -11,6 +11,7 @@ import {
   utcDateOnly,
   sanitizeEmailSubject,
   notificationDryRun,
+  missingNotificationConfiguration,
   type ExpiryAlertLevel,
 } from "../_shared/expiry-notification.ts";
 
@@ -405,26 +406,6 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("EXPIRY_ALERTS_FROM");
-  const appUrl = Deno.env.get("APP_URL");
-  if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !from || !appUrl) {
-    return jsonResponse({ error: "Alertas automáticos não configurados no servidor." }, 503);
-  }
-
-  let appOrigin: string;
-  try {
-    const parsed = new URL(appUrl);
-    if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
-      throw new Error("Invalid application origin.");
-    }
-    appOrigin = parsed.origin;
-  } catch {
-    return jsonResponse({ error: "APP_URL precisa ser uma origem HTTPS válida." }, 503);
-  }
-
   let batchSize = DEFAULT_BATCH_SIZE;
   let offset = 0;
   let dryRun = true;
@@ -450,6 +431,36 @@ Deno.serve(async (request: Request) => {
     }
   } catch {
     return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+  const from = Deno.env.get("EXPIRY_ALERTS_FROM") ?? "";
+  const appUrl = Deno.env.get("APP_URL") ?? "";
+  const missingConfiguration = missingNotificationConfiguration({
+    supabaseUrl,
+    serviceRoleKey,
+    resendApiKey,
+    from,
+    appUrl,
+    dryRun,
+  });
+  if (missingConfiguration.length > 0) {
+    return jsonResponse({ error: "Alertas automáticos não configurados no servidor." }, 503);
+  }
+
+  let appOrigin = "";
+  if (!dryRun) {
+    try {
+      const parsed = new URL(appUrl);
+      if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
+        throw new Error("Invalid application origin.");
+      }
+      appOrigin = parsed.origin;
+    } catch {
+      return jsonResponse({ error: "APP_URL precisa ser uma origem HTTPS válida." }, 503);
+    }
   }
 
   const admin: AdminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {

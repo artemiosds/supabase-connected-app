@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_send:
-        description: "Confirm that real notification emails may be sent."
+        description: "Confirm real email delivery. Leave unchecked to run a safe dry-run without sending messages."
         required: true
         type: boolean
         default: false
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   send:
-    if: ${{ (github.event_name == 'schedule' && vars.EXPIRY_ALERTS_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.confirm_send == true) }}
+    if: ${{ (github.event_name == 'schedule' && vars.EXPIRY_ALERTS_ENABLED == 'true') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -45,9 +45,19 @@ jobs:
           set -euo pipefail
           endpoint="${SUPABASE_URL%/}/functions/v1/send-expiry-notifications"
           offset=0
+          dry_run=true
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "${{ inputs.confirm_send }}" = "true" ]; then
+            dry_run=false
+          fi
+
+          if [ "$dry_run" = "true" ]; then
+            echo "Manual dry-run selected: no email will be sent."
+          else
+            echo "Real notification delivery enabled by schedule/explicit confirmation."
+          fi
 
           for batch in $(seq 1 100); do
-            request_body="$(jq -n --argjson batch_size 100 --argjson offset "$offset" '{batch_size:$batch_size,offset:$offset,dry_run:false}')"
+            request_body="$(jq -n --argjson batch_size 100 --argjson offset "$offset" --argjson dry_run "$dry_run" '{batch_size:$batch_size,offset:$offset,dry_run:$dry_run}')" 
             response="$(curl --silent --show-error --fail-with-body \
               --request POST "$endpoint" \
               --header "apikey: $SUPABASE_ANON_KEY" \
@@ -57,7 +67,11 @@ jobs:
               --data "$request_body")"
 
             echo "$response" | jq -c '{status,date,candidates,processed,sent,failed,skipped,uncertain,has_more}'
-            if ! echo "$response" | jq -e '.status == "processed" and .failed == 0 and .uncertain == 0' >/dev/null; then
+            expected_status="processed"
+            if [ "$dry_run" = "true" ]; then
+              expected_status="dry_run"
+            fi
+            if ! echo "$response" | jq -e --arg expected_status "$expected_status" '.status == $expected_status and .failed == 0 and .uncertain == 0' >/dev/null; then
               echo "::error::Notification batch failed or requires manual reconciliation."
               exit 1
             fi
