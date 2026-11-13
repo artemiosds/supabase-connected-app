@@ -30,6 +30,7 @@ INSERT INTO auth.users (
     'e2e.secretaria.b@example.invalid',
     extensions.crypt('GfsE2E!2026-OnlyLocal', extensions.gen_salt('bf')),
     pg_catalog.now(),
+    pg_catalog.now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"full_name":"Usuário E2E Secretaria B"}'::jsonb,
     pg_catalog.now(),
