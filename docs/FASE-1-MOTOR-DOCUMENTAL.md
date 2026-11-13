@@ -184,3 +184,14 @@ O teste usa apenas dados sintéticos e faz ROLLBACK; não grava no SMS2. A Fase 
 - A proteção contra senhas vazadas foi dispensada pelo responsável do projeto; permanece fora do escopo, sem upgrade do Supabase Free.
 
 **Resultado:** CI, segurança SQL, restauração sintética e E2E autenticado de isolamento + arquivos DOCX foram comprovados. Nenhuma migration nem dado foi alterado no SMS2 nesta etapa. A Fase 1 permanece em homologação e **NO-GO para produção/venda** até backup real recuperável, teste do fluxo visual de restauração, homologação de modelos oficiais e aceite formal.
+
+
+## Homologação DOCX pela interface autenticada — 13/11/2026
+
+- [x] E2E Playwright aprovado no run [43485365586](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365586), com duas contas sintéticas de Secretarias independentes.
+- [x] Para cada Secretaria, o teste faz login real no Supabase local, executa upload de três versões DOCX ao bucket privado, grava os vínculos de metadados, consulta o histórico e baixa as fontes com igualdade SHA-256 byte a byte.
+- [x] O teste comprova que a outra Secretaria não consegue ler objeto/metadado nem gravar no caminho do tenant alheio; um objeto órfão de fixture é removido pela API autenticada do Storage após falha simulada no vínculo.
+- [x] A interface autenticada abre o histórico e restaura a versão 2 como versão 4. O teste confirma o toast de sucesso, a versão atualizada, o novo vínculo de fonte e o download do DOCX original com bytes idênticos à versão histórica.
+- [x] As sete verificações unitárias de `document-source-upload.test.ts` cobrem upload parcial/falho, falha de metadados, falha de limpeza, troca de Secretaria durante upload e exceções lançadas por operações.
+
+**Limites mantidos:** os modelos e arquivos são fixtures sintéticas geradas para CI. O SMS2 não possui modelos/fontes/timbrados/documentos reais para comparação visual. A restauração foi testada no Supabase local descartável, não como restauração dos arquivos/dados reais de SMS2. Nenhum dado operacional ou migration foi gravado no SMS2. A Fase 1 permanece em homologação e **NO-GO para produção/venda** até backup real recuperável, modelos oficiais aprovados e aceite formal.

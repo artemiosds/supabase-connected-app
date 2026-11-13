@@ -1,6 +1,43 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-> **Estado atualizado em 12/11/2026 — prevalece sobre as fotografias históricas abaixo.** SMS2 foi consultado somente para leitura; a CI mais recente é do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`.
+## Estado consolidado mais recente — 13/11/2026
+
+**Decisão atual: NO-GO para produção e comercialização.** Os testes automatizados e o isolamento multitenant avançaram, mas ainda faltam comprovações externas e aceite visual/formal.
+
+**Código e banco**
+- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`; commit de código homologado nesta fotografia: `1d9102a8def82e009eeb7a647d03d10eece7cab4`.
+- SMS2: **88 migrations no repositório e 88 registradas no banco**, da `20261104131949` até `20261113145643`; nenhuma versão ausente ou extra.
+- Schema `public`: 40 tabelas, 40/40 com RLS, 29 com FORCE RLS, nenhuma view pública e nenhuma tabela com SELECT concedido a `anon`.
+- As 35 funções `SECURITY DEFINER` públicas executáveis por `authenticated` foram revisadas individualmente e protegidas por testes: 35/35 com `search_path=''`, 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O aviso do Advisor permanece porque são RPCs intencionais expostas a usuários autenticados; não revogar em massa.
+- Advisor de saúde sem findings. O Advisor de performance mostra 81 índices sem uso observado (INFO); não removê-los sem carga real e benchmark.
+
+**Evidências CI e E2E**
+- Validação de aplicação, build, TypeScript, Deno, lint, migrations em banco descartável, pgTAP e restauração sintética: [run 43485365636](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365636). Resultado: **22 arquivos SQL, 418 verificações pgTAP, PASS**.
+- Formatação: [run 43485365587](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365587).
+- E2E autenticado com duas Secretarias fictícias: [run 43485365586](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365586). Ambas as contas fizeram login, leram apenas os próprios dados, tiveram leituras/escritas cruzadas negadas e passaram pelo ciclo DOCX.
+- O E2E verificou três versões DOCX imutáveis no Storage privado, download e igualdade SHA-256, bloqueio de acesso cruzado e limpeza de objeto órfão. Pela própria interface, restaurou a versão histórica 2 como versão 4 e comprovou o reanexo dos bytes originais.
+- O dry-run da Edge Function processou 4 candidatos, com 0 enviados, 0 falhas e 0 incertos. Nenhum e-mail real foi enviado.
+- O pgTAP adicional da outbox verifica unicidade, reivindicação atômica, retry até cinco tentativas, conclusão como enviado e bloqueio de reprocessamento de estado ambíguo.
+
+**Limites e decisões**
+- O teste de criptografia/descriptografia restaura schema, dados, role e fixture DOCX sintéticos em PostgreSQL local descartável. **Ainda não é backup real do SMS2 nem restauração em outro projeto.**
+- O bucket `gfs-private-documents` no SMS2 é privado, limite 20 MiB e MIME allowlist configurada. As tabelas de modelos/fontes/timbrado/documentos e o bucket estão sem registros/objetos reais; por isso, a fidelidade visual com modelos oficiais não foi homologada.
+- A proteção contra senhas vazadas foi **dispensada por decisão do responsável**. Manter Supabase Free; não contratar Pro nem tentar contornar a limitação.
+- O repositório GitHub é público. Artefatos de backup só podem ser publicados criptografados; a identidade privada age deve ficar offline, fora do GitHub.
+- Nenhuma migration, fixture ou dado operacional foi gravado no SMS2 nesta rodada de homologação.
+
+### Pendências que realmente bloqueiam o encerramento
+1. Configurar os secrets do backup (`SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, variável pública `AGE_RECIPIENT`) e guardar a identidade privada age fora do GitHub; executar backup real e restaurar em banco/projeto isolado.
+2. Configurar SMTP/Resend e domínio de envio, validar SPF/DKIM/DMARC, Auth URLs e origens permitidas; executar um envio controlado para endereço de teste. Manter o agendamento automático desligado até essa aprovação.
+3. Receber modelos DOCX oficiais anonimizados e brasões/timbrados autorizados para comparação visual de Word/PDF, paginação e recursos não suportados.
+4. Obter aceite formal da Secretaria para os fluxos, documentos e operação antes de qualquer liberação comercial.
+
+Google Drive OAuth e gateway/webhooks de pagamento continuam como integrações próprias; não são comprovados pelos testes atuais nem devem ser declarados concluídos por existirem telas/configurações.
+
+---
+
+
+> **Fotografia histórica de 12/11/2026.** Os números e pendências deste bloco foram substituídos pelo estado consolidado acima; mantidos apenas para rastreabilidade. SMS2 foi consultado somente para leitura; a CI mais recente é do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`.
 > - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 82 arquivos SQL e oito migrations futuras não aplicadas ao SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, guardas do workflow de contratação, FORCE RLS da fonte DOCX, cobertura de índices FK e remoção de políticas SELECT redundantes.
 > - Há 1 Secretaria, 1 vínculo municipal, 2 perfis e 2 identidades Auth; não há fornecedores, documentos operacionais, processos ou contratos. O catálogo global contém 5 modelos.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. Ativa não significa que e-mail real ou scheduler esteja homologado.
@@ -265,7 +302,7 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 **NO-GO para produção/venda permanece.** SMS2 não recebeu migrations nem dados de teste nesta atualização.
 
 
-## Advisor remoto SMS2 — leitura somente em 13/11/2026
+## Registro histórico do Advisor remoto SMS2 — leitura de 13/11/2026 (antes das verificações mais recentes)
 
 - [x] Histórico remoto consultado: 74 migrations, última `20261112123300`; as oito migrations futuras do repositório permanecem não aplicadas.
 - [x] Advisor de saúde: nenhum finding.

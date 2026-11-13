@@ -86,3 +86,19 @@ A consulta dos Advisors confirmou: health sem findings; 36 avisos de `SECURITY D
 - As sete políticas `p_master_support_read_*` repetem o mesmo predicado `app_auth.is_platform_admin()` que já existe nas respectivas políticas permissivas SELECT principais. As políticas restritivas `p_commercial_select_*` continuam aplicando as condições de situação comercial e módulo.
 - Os seis índices da migration `20261112150000` não existem no catálogo SMS2; a migration segue pendente.
 - Nenhuma migration foi aplicada e nenhum dado/configuração foi alterado no SMS2.
+
+
+## Reconciliação atual confirmada — 13/11/2026
+
+A consulta somente-leitura mais recente confirma que o `main` e o SMS2 estão sincronizados:
+
+- Arquivos de migration no `main`: **88**.
+- Versões registradas em `supabase_migrations.schema_migrations` no SMS2: **88**.
+- Primeira versão: `20261104131949`.
+- Última versão: `20261113145643`.
+- Versões do repositório ausentes no SMS2: **0**.
+- Versões extras no SMS2: **0**.
+
+As oito migrations antes descritas como futuras foram aplicadas e registradas no SMS2 na rodada anterior, incluindo fonte DOCX/timbrado, guardas de workflow, RLS e privilégios da rotina de notificações. Portanto, as seções anteriores que indicam 74 versões, oito migrations pendentes ou ausência de `document_template_sources`/`tenant_document_branding` são fotografias históricas, não o estado atual.
+
+Esta confirmação não executou migrations, não alterou histórico e não modificou dados do SMS2. Não reaplicar migrations já registradas. A sincronização do histórico também não substitui o backup/restore real, que permanece pendente.
