@@ -2,7 +2,7 @@
 -- Run only with the complete disposable local Supabase migration set.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(6);
+SELECT extensions.plan(10);
 
 SELECT extensions.ok(
   EXISTS (
@@ -62,6 +62,47 @@ SELECT extensions.ok(
       AND indexdef ILIKE '%(updated_by)%'
   ),
   'supplier sanction updater FK is indexed'
+);
+
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_indexes
+    WHERE schemaname='public' AND tablename='document_template_sources'
+      AND indexname='idx_document_template_sources_created_by'
+      AND indexdef ILIKE '%(created_by)%'
+  ),
+  'DOCX source creator FK is indexed'
+);
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_indexes
+    WHERE schemaname='public' AND tablename='document_template_sources'
+      AND indexname='idx_document_template_sources_template_tenant'
+      AND indexdef ILIKE '%(template_id, tenant_id)%'
+  ),
+  'DOCX source composite template/tenant FK is indexed in key order'
+);
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_indexes
+    WHERE schemaname='public' AND tablename='tenant_document_branding'
+      AND indexname='idx_tenant_document_branding_created_by'
+      AND indexdef ILIKE '%(created_by)%'
+  ),
+  'tenant branding creator FK is indexed'
+);
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_indexes
+    WHERE schemaname='public' AND tablename='tenant_document_branding'
+      AND indexname='idx_tenant_document_branding_updated_by'
+      AND indexdef ILIKE '%(updated_by)%'
+  ),
+  'tenant branding updater FK is indexed'
 );
 
 SELECT * FROM extensions.finish();
