@@ -14,7 +14,7 @@ Na recuperação em outro projeto, será necessário recriar o bucket privado e 
 
 ## Pré-requisitos
 
-No GitHub privado `artemiosds/supabase-connected-app`, abra **Settings → Secrets and variables → Actions**.
+No repositório GitHub `artemiosds/supabase-connected-app`, abra **Settings → Secrets and variables → Actions**. Atenção: o repositório está atualmente **público**. Pessoas com acesso de leitura podem baixar os artefatos do Actions; por isso, o workflow envia somente o pacote `.age` criptografado e seu checksum, nunca o TAR aberto. Mantenha a identidade privada do age fora do GitHub e fora do computador/conta que armazena os artefatos. Não altere o workflow para publicar arquivos sem criptografia.
 
 Configure os seguintes **Repository secrets**:
 
