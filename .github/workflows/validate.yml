@@ -89,3 +89,10 @@ jobs:
 
       - name: Run database security regression tests
         run: supabase test db
+
+      - name: Verify encrypted synthetic backup restores into disposable PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age postgresql-client
+          eval "$(supabase status -o env)"
+          BACKUP_RESTORE_DATABASE_URL="$DB_URL" bash scripts/test_backup_encryption_roundtrip.sh
