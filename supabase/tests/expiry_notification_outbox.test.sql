@@ -82,8 +82,9 @@ SELECT extensions.ok(
   AND has_table_privilege('service_role','public.tenant_memberships','SELECT')
   AND has_table_privilege('service_role','public.membership_roles','SELECT')
   AND has_table_privilege('service_role','public.profiles','SELECT')
-  AND has_table_privilege('service_role','public.tenant_roles','SELECT'),
-  'service role can read only the required expiry notification source tables'
+  AND has_table_privilege('service_role','public.tenant_roles','SELECT')
+  AND has_table_privilege('service_role','public.contracts','SELECT'),
+  'service role can read the required expiry notification source tables'
 );
 SELECT extensions.ok(
   NOT has_table_privilege('service_role','public.tenants','INSERT')

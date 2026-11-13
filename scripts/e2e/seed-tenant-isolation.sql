@@ -113,7 +113,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000001',
     'active',
-    '{"fornecedores":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true}'::jsonb
   ),
   (
     '91000000-0000-4000-8000-000000000002',
@@ -122,7 +122,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000002',
     'active',
-    '{"fornecedores":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true}'::jsonb
   )
 ON CONFLICT (id) DO NOTHING;
 
@@ -217,6 +217,42 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Synthetic contract and document expiry events for the notification dry-run.
+-- These fixtures exist only in the disposable CI database.
+INSERT INTO public.contracts(
+  id,tenant_id,number,object,supplier_id,start_date,end_date,total_value,status,created_by,updated_by
+)
+VALUES(
+  '95000000-0000-4000-8000-000000000001',
+  '91000000-0000-4000-8000-000000000001',
+  'E2E-2026-A',
+  'Contrato sintético para teste de vencimento',
+  '94000000-0000-4000-8000-000000000001',
+  CURRENT_DATE-30,
+  CURRENT_DATE+15,
+  1000,
+  'vigente',
+  '90000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000001'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.supplier_documents(
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+)
+VALUES(
+  '96000000-0000-4000-8000-000000000001',
+  '91000000-0000-4000-8000-000000000001',
+  '94000000-0000-4000-8000-000000000001',
+  'Certidão federal sintética E2E A',
+  'certidao_federal',
+  CURRENT_DATE-30,
+  CURRENT_DATE+10,
+  'external_link',
+  'active'
+)
+ON CONFLICT (id) DO NOTHING;
+
 SELECT pg_catalog.set_config(
   'request.jwt.claim.sub',
   '90000000-0000-4000-8000-000000000002',
@@ -234,6 +270,40 @@ VALUES (
   '98765432000198',
   'Fornecedor Sintético Exclusivo B',
   'outros',
+  'active'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.contracts(
+  id,tenant_id,number,object,supplier_id,start_date,end_date,total_value,status,created_by,updated_by
+)
+VALUES(
+  '95000000-0000-4000-8000-000000000002',
+  '91000000-0000-4000-8000-000000000002',
+  'E2E-2026-B',
+  'Contrato sintético para teste de vencimento',
+  '94000000-0000-4000-8000-000000000002',
+  CURRENT_DATE-30,
+  CURRENT_DATE+20,
+  1000,
+  'vigente',
+  '90000000-0000-4000-8000-000000000002',
+  '90000000-0000-4000-8000-000000000002'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.supplier_documents(
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+)
+VALUES(
+  '96000000-0000-4000-8000-000000000002',
+  '91000000-0000-4000-8000-000000000002',
+  '94000000-0000-4000-8000-000000000002',
+  'Certidão federal sintética E2E B',
+  'certidao_federal',
+  CURRENT_DATE-30,
+  CURRENT_DATE+10,
+  'external_link',
   'active'
 )
 ON CONFLICT (id) DO NOTHING;

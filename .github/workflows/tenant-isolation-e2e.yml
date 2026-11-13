@@ -129,7 +129,7 @@ jobs:
 
           echo "$dry_run_response" | jq -c '{status,date,candidates,processed,sent,failed,skipped,uncertain}'
           if ! echo "$dry_run_response" | jq -e \
-            '.status == "dry_run" and .sent == 0 and .failed == 0 and .uncertain == 0' >/dev/null; then
+            '.status == "dry_run" and .candidates == 4 and .processed == 4 and .sent == 0 and .failed == 0 and .uncertain == 0' >/dev/null; then
             echo "::error::Expiry notification dry-run returned an unexpected or unsafe delivery result."
             exit 1
           fi
