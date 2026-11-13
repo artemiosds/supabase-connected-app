@@ -149,3 +149,14 @@ O CI comprova a suíte automatizada e as migrations em banco descartável; não 
 - [ ] E2E autenticado entre duas Secretarias, com perfis e Storage, continua pendente.
 
 O teste usa apenas dados sintéticos e faz ROLLBACK; não grava no SMS2. A Fase 1 continua em homologação e NO-GO para produção/venda.
+
+
+## Atualização de correções assíncronas — 13/11/2026, commit `01d35ab49fe6750175b18ae2d5186c5fe2a460a6`
+
+- [x] O salvamento de modelo interrompe o fluxo antes do upload se a Secretaria ativa mudou enquanto a consulta da origem binária estava em andamento.
+- [x] A limpeza de upload temporário após troca de Secretaria e após falha no vínculo dos metadados permanece protegida e reporta falhas de limpeza.
+- [x] CI integral aprovado no run [43306515714](https://github.com/artemiosds/supabase-connected-app/actions/runs/43306515714): `validate` e `database-security` concluídos com sucesso; migrations aplicadas em Supabase local descartável e regressões pgTAP aprovadas.
+- [ ] O repositório ainda não possui configuração Playwright/Cypress nem suíte E2E de navegador. O ciclo DOCX e o isolamento com duas Secretarias ainda precisam de ambiente de homologação autenticado, usuários sintéticos e modelos DOCX anonimizados.
+- [ ] Backup/restauração em projeto separado e aceite visual da Secretaria continuam pendentes.
+
+**Estado:** CI integral verde no commit `01d35ab`. Não foi executada homologação autenticada de navegador e não houve alteração no SMS2. A Fase 1 permanece em homologação e NO-GO para produção/venda.

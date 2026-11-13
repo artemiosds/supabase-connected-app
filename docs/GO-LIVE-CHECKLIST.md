@@ -252,3 +252,14 @@ A CI verde comprova a suíte automatizada e migrations em ambiente descartável,
 - [ ] E2E autenticado com dois tenants reais de teste, perfis diferentes e tentativas de acesso cruzado ainda pendente.
 
 As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamental não substitui a homologação autenticada entre duas Secretarias. SMS2 não foi alterado; NO-GO comercial permanece.
+
+
+## Atualização de status — 13/11/2026
+
+- [x] Commit `01d35ab49fe6750175b18ae2d5186c5fe2a460a6` corrige a corrida que poderia iniciar upload de DOCX após troca da Secretaria durante a consulta da origem existente.
+- [x] CI integral do commit aprovado no run [43306515714](https://github.com/artemiosds/supabase-connected-app/actions/runs/43306515714), incluindo build, testes, TypeScript, Deno, lint, migrations em banco descartável e pgTAP.
+- [ ] E2E autenticado do ciclo DOCX, falhas parciais/retry, duas Secretarias e Storage ainda não executado. Não há Playwright/Cypress configurado no repositório neste momento.
+- [ ] Homologação visual de modelos reais anonimizados e backup/restauração em projeto isolado continuam pendentes.
+- [ ] Aceite formal da Secretaria e auditoria funcional final continuam pendentes.
+
+**NO-GO para produção/venda permanece.** SMS2 não recebeu migrations nem dados de teste nesta atualização.
