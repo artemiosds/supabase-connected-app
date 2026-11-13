@@ -2,7 +2,7 @@
 -- All fixtures are synthetic and rolled back; run only in disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(10);
+SELECT extensions.plan(15);
 
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -160,6 +160,75 @@ SELECT extensions.throws_ok(
  )$test$,
  '42501',NULL,
  'tenant A cannot upload a DOCX object under tenant B path'
+);
+
+-- Simulate the application restore flow with tenant A's own historical version.
+-- Two edits create immutable versions 2 and 3 while retaining version 1.
+UPDATE public.document_templates
+SET content='A edited source fixture', change_summary='Synthetic revision'
+WHERE id='55000000-0000-4000-8000-000000000001'
+  AND tenant_id='52000000-0000-4000-8000-000000000001';
+
+UPDATE public.document_templates
+SET content='A source fixture', change_summary='Restauração sintética da versão 1'
+WHERE id='55000000-0000-4000-8000-000000000001'
+  AND tenant_id='52000000-0000-4000-8000-000000000001';
+
+SELECT extensions.is(
+ (SELECT version::integer FROM public.document_templates
+  WHERE id='55000000-0000-4000-8000-000000000001'
+    AND tenant_id='52000000-0000-4000-8000-000000000001'),
+ 3,
+ 'restoring an old DOCX template creates a new current version instead of rewinding history'
+);
+
+SELECT extensions.ok(
+ EXISTS (SELECT 1 FROM public.document_template_versions
+         WHERE template_id='55000000-0000-4000-8000-000000000001'
+           AND tenant_id='52000000-0000-4000-8000-000000000001'
+           AND version=1 AND content='A source fixture')
+ AND EXISTS (SELECT 1 FROM public.document_template_versions
+             WHERE template_id='55000000-0000-4000-8000-000000000001'
+               AND tenant_id='52000000-0000-4000-8000-000000000001'
+               AND version=2 AND content='A edited source fixture')
+ AND EXISTS (SELECT 1 FROM public.document_template_versions
+             WHERE template_id='55000000-0000-4000-8000-000000000001'
+               AND tenant_id='52000000-0000-4000-8000-000000000001'
+               AND version=3 AND content='A source fixture'),
+ 'restoration preserves the original, edited and restored snapshots as separate immutable versions'
+);
+
+SELECT extensions.lives_ok(
+ $test$INSERT INTO storage.objects(bucket_id,name,owner,owner_id,metadata)
+ VALUES (
+  'gfs-private-documents',
+  '52000000-0000-4000-8000-000000000001/template-sources/55000000-0000-4000-8000-000000000001/v3/56000000-0000-4000-8000-000000000005.docx',
+  '51000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '{"mimetype":"application/vnd.openxmlformats-officedocument.wordprocessingml.document","size":128}'::jsonb
+ )$test$,
+ 'restoring a version can upload a new immutable DOCX object under the new version path'
+);
+
+SELECT extensions.lives_ok(
+ $test$INSERT INTO public.document_template_sources(tenant_id,template_id,version,storage_path,file_name,file_size)
+ VALUES (
+  '52000000-0000-4000-8000-000000000001',
+  '55000000-0000-4000-8000-000000000001',
+  3,
+  '52000000-0000-4000-8000-000000000001/template-sources/55000000-0000-4000-8000-000000000001/v3/56000000-0000-4000-8000-000000000005.docx',
+  'tenant-a-restored.docx',128
+ )$test$,
+ 'restored DOCX source is linked to the new historical version'
+);
+
+SELECT extensions.is(
+ (SELECT count(*)::integer FROM public.document_template_sources
+  WHERE tenant_id='52000000-0000-4000-8000-000000000001'
+    AND template_id='55000000-0000-4000-8000-000000000001'
+    AND version IN (1,3)),
+ 2,
+ 'restoration preserves the original source and adds a separate source attachment for the restored version'
 );
 
 SELECT * FROM extensions.finish();
