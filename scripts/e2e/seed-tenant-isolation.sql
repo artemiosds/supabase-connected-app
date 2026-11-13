@@ -113,7 +113,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000001',
     'active',
-    '{"fornecedores":true,"contratos":true,"documentos":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true}'::jsonb
   ),
   (
     '91000000-0000-4000-8000-000000000002',
@@ -131,7 +131,9 @@ VALUES
   ('org:view', 'Visualizar organização', 'Permissão E2E sintética', 'org'),
   ('suppliers:view', 'Visualizar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:create', 'Cadastrar fornecedores', 'Permissão E2E sintética', 'suppliers'),
-  ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers')
+  ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
+  ('documents:view', 'Visualizar modelos', 'Permissão E2E sintética', 'documents'),
+  ('documents:manage_templates', 'Gerenciar modelos', 'Permissão E2E sintética', 'documents')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.tenant_roles(id, tenant_id, name, slug, description, is_system)
@@ -162,7 +164,10 @@ WHERE roles.id IN (
     '92000000-0000-4000-8000-000000000001',
     '92000000-0000-4000-8000-000000000002'
   )
-  AND permissions.code IN ('org:view', 'suppliers:view', 'suppliers:create', 'suppliers:update')
+  AND permissions.code IN (
+    'org:view', 'suppliers:view', 'suppliers:create', 'suppliers:update',
+    'documents:view', 'documents:manage_templates'
+  )
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)
@@ -214,6 +219,20 @@ VALUES (
   'Fornecedor Sintético Exclusivo A',
   'outros',
   'active'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Synthetic immutable DOCX template for real authenticated Storage E2E.
+INSERT INTO public.document_templates(
+  id,tenant_id,title,content,created_by,updated_by
+)
+VALUES (
+  '97000000-0000-4000-8000-000000000001',
+  '91000000-0000-4000-8000-000000000001',
+  'Modelo DOCX E2E Secretaria A',
+  'CONTEUDO ORIGINAL A',
+  '90000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000001'
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -271,6 +290,19 @@ VALUES (
   'Fornecedor Sintético Exclusivo B',
   'outros',
   'active'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.document_templates(
+  id,tenant_id,title,content,created_by,updated_by
+)
+VALUES (
+  '97000000-0000-4000-8000-000000000002',
+  '91000000-0000-4000-8000-000000000002',
+  'Modelo DOCX E2E Secretaria B',
+  'CONTEUDO ORIGINAL B',
+  '90000000-0000-4000-8000-000000000002',
+  '90000000-0000-4000-8000-000000000002'
 )
 ON CONFLICT (id) DO NOTHING;
 
