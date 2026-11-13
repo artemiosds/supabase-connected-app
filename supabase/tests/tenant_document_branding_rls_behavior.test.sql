@@ -140,13 +140,15 @@ SELECT extensions.is(
 SELECT extensions.lives_ok(
   $test$UPDATE public.tenant_document_branding
         SET header_title = 'Tenant A updated'
-        WHERE tenant_id = '20000000-0000-4000-8000-000000000001'$test$,
+        WHERE tenant_id = '20000000-0000-4000-8000-000000000001'
+          AND header_title = 'Tenant A private heading'$test$,
   'tenant A user can update its own letterhead'
 );
 
 SELECT extensions.is(
   (SELECT updated_by::text FROM public.tenant_document_branding
-   WHERE tenant_id = '20000000-0000-4000-8000-000000000001'),
+   WHERE tenant_id = '20000000-0000-4000-8000-000000000001'
+     AND header_title = 'Tenant A updated'),
   '10000000-0000-4000-8000-000000000001',
   'letterhead update records the authenticated actor'
 );
@@ -171,7 +173,7 @@ SELECT extensions.is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE tenant_id = '20000000-0000-4000-8000-000000000001'
      AND entity = 'tenant_document_branding'),
-  2,
+  3,
   'insert and update operations produce tenant-scoped audit events'
 );
 
