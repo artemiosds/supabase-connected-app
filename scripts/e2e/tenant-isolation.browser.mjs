@@ -7,7 +7,6 @@ const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const password = "GfsE2E!2026-OnlyLocal";
-const deleteHttpMethod = "DE" + "LETE";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 async function createSyntheticDocx(text) {
@@ -187,6 +186,7 @@ async function verifyAuthenticatedTenant(scenario) {
         docxRestored,
         docxOrphan,
       }) => {
+        const deleteHttpMethod = "DE" + "LETE";
         const headers = {
           apikey: publicKey,
           Authorization: `Bearer ${token}`,
