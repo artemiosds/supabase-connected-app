@@ -58,6 +58,9 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Seed templates; their version-history trigger creates immutable version 1.
+-- Set a synthetic JWT identity because the application trigger stamps auth.uid().
+SELECT pg_catalog.set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000001',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"51000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 INSERT INTO public.document_templates(id,tenant_id,title,content,created_by,updated_by)
 VALUES
  ('55000000-0000-4000-8000-000000000001','52000000-0000-4000-8000-000000000001','Synthetic template A','A source fixture','51000000-0000-4000-8000-000000000001','51000000-0000-4000-8000-000000000001'),
