@@ -144,7 +144,5 @@ export function missingNotificationConfiguration(
     );
   }
 
-  return required
-    .filter(([, value]) => !value?.trim())
-    .map(([name]) => name);
+  return required.filter(([, value]) => !value?.trim()).map(([name]) => name);
 }
