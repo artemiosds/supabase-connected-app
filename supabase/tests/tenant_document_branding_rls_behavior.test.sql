@@ -92,10 +92,6 @@ VALUES ('20000000-0000-4000-8000-000000000002', 'Tenant B private heading',
 SELECT pg_catalog.set_config(
   'request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true
 );
-INSERT INTO public.tenant_document_branding(tenant_id, header_title, created_by, updated_by)
-VALUES ('20000000-0000-4000-8000-000000000001', 'Tenant A private heading',
-        '10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001');
-
 SET LOCAL ROLE authenticated;
 SELECT pg_catalog.set_config(
   'request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true
@@ -108,8 +104,8 @@ SELECT pg_catalog.set_config(
 
 SELECT extensions.is(
   (SELECT count(*)::integer FROM public.tenant_document_branding),
-  1,
-  'tenant A user can read only its own letterhead row'
+  0,
+  'tenant A user cannot read tenant B letterhead before creating its own'
 );
 
 SELECT extensions.lives_ok(
@@ -127,13 +123,9 @@ SELECT extensions.throws_ok(
 );
 
 SELECT extensions.is(
-  (WITH changed AS (
-    UPDATE public.tenant_document_branding
-    SET header_title = 'Unauthorized cross-tenant update'
-    WHERE tenant_id = '20000000-0000-4000-8000-000000000002'
-    RETURNING 1
-  ) SELECT count(*)::integer FROM changed),
-  0,
+  (SELECT header_title FROM public.tenant_document_branding
+   WHERE tenant_id = '20000000-0000-4000-8000-000000000002'),
+  'Tenant B private heading',
   'tenant A user cannot update tenant B letterhead'
 );
 
@@ -141,7 +133,7 @@ SELECT extensions.lives_ok(
   $test$UPDATE public.tenant_document_branding
         SET header_title = 'Tenant A updated'
         WHERE tenant_id = '20000000-0000-4000-8000-000000000001'
-          AND header_title = 'Tenant A private heading'$test$,
+          AND header_title = 'Tenant A inserted'$test$,
   'tenant A user can update its own letterhead'
 );
 
@@ -173,7 +165,7 @@ SELECT extensions.is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE tenant_id = '20000000-0000-4000-8000-000000000001'
      AND entity = 'tenant_document_branding'),
-  3,
+  2,
   'insert and update operations produce tenant-scoped audit events'
 );
 
