@@ -5,19 +5,20 @@
 **Decisão atual: NO-GO para produção e comercialização.** Os testes automatizados e o isolamento multitenant avançaram, mas ainda faltam comprovações externas e aceite visual/formal.
 
 **Código e banco**
-- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`; commit de código homologado nesta fotografia: `1d9102a8def82e009eeb7a647d03d10eece7cab4`.
+- Repositório oficial: `artemiosds/supabase-connected-app`, branch `main`; commit de código homologado nesta fotografia: `612a26a2592dd3d9e5cd671dbe922c86e8fab6f3`.
 - SMS2: **88 migrations no repositório e 88 registradas no banco**, da `20261104131949` até `20261113145643`; nenhuma versão ausente ou extra.
 - Schema `public`: 40 tabelas, 40/40 com RLS, 29 com FORCE RLS, nenhuma view pública e nenhuma tabela com SELECT concedido a `anon`.
 - As 35 funções `SECURITY DEFINER` públicas executáveis por `authenticated` foram revisadas individualmente e protegidas por testes: 35/35 com `search_path=''`, 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O aviso do Advisor permanece porque são RPCs intencionais expostas a usuários autenticados; não revogar em massa.
 - Advisor de saúde sem findings. O Advisor de performance mostra 81 índices sem uso observado (INFO); não removê-los sem carga real e benchmark.
 
 **Evidências CI e E2E**
-- Validação de aplicação, build, TypeScript, Deno, lint, migrations em banco descartável, pgTAP e restauração sintética: [run 43485365636](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365636). Resultado: **22 arquivos SQL, 418 verificações pgTAP, PASS**.
-- Formatação: [run 43485365587](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365587).
-- E2E autenticado com duas Secretarias fictícias: [run 43485365586](https://github.com/artemiosds/supabase-connected-app/actions/runs/43485365586). Ambas as contas fizeram login, leram apenas os próprios dados, tiveram leituras/escritas cruzadas negadas e passaram pelo ciclo DOCX.
+- Validação de aplicação, build, TypeScript, Deno, lint, migrations em banco descartável, pgTAP, restauração sintética e testes do transporte de e-mail: [run 43487193588](https://github.com/artemiosds/supabase-connected-app/actions/runs/43487193588). Resultado: **22 arquivos de testes SQL, 418 verificações pgTAP e 22 arquivos Vitest com 136 testes, PASS**.
+- Formatação: [run 43487193600](https://github.com/artemiosds/supabase-connected-app/actions/runs/43487193600).
+- E2E autenticado com duas Secretarias fictícias: [run 43487193705](https://github.com/artemiosds/supabase-connected-app/actions/runs/43487193705). Ambas as contas fizeram login HTTP 200, leram apenas os próprios dados, tiveram leituras/escritas cruzadas negadas e passaram pelo ciclo DOCX.
 - O E2E verificou três versões DOCX imutáveis no Storage privado, download e igualdade SHA-256, bloqueio de acesso cruzado e limpeza de objeto órfão. Pela própria interface, restaurou a versão histórica 2 como versão 4 e comprovou o reanexo dos bytes originais.
 - O dry-run da Edge Function processou 4 candidatos, com 0 enviados, 0 falhas e 0 incertos. Nenhum e-mail real foi enviado.
 - O pgTAP adicional da outbox verifica unicidade, reivindicação atômica, retry até cinco tentativas, conclusão como enviado e bloqueio de reprocessamento de estado ambíguo.
+- O transporte Resend foi isolado em função testável; cinco testes usam um provedor simulado para sucesso, HTTP 4xx, HTTP 5xx, resposta sem ID e erro de rede. O código mantém resultados ambíguos sem retry automático. A nova lógica foi validada em CI, mas **não foi implantada no SMS2** e nenhum envio real foi feito.
 
 **Limites e decisões**
 - O teste de criptografia/descriptografia restaura schema, dados, role e fixture DOCX sintéticos em PostgreSQL local descartável. **Ainda não é backup real do SMS2 nem restauração em outro projeto.**
