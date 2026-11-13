@@ -128,6 +128,7 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.permissions(code, name, description, module)
 VALUES
+  ('org:view', 'Visualizar organização', 'Permissão E2E sintética', 'org'),
   ('suppliers:view', 'Visualizar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:create', 'Cadastrar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers')
@@ -139,7 +140,7 @@ VALUES
     '92000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000001',
     'Administrador E2E A',
-    'e2e-admin-a',
+    'admin',
     'Papel sintético exclusivo dos testes automatizados.',
     false
   ),
@@ -147,7 +148,7 @@ VALUES
     '92000000-0000-4000-8000-000000000002',
     '91000000-0000-4000-8000-000000000002',
     'Administrador E2E B',
-    'e2e-admin-b',
+    'admin',
     'Papel sintético exclusivo dos testes automatizados.',
     false
   )
@@ -161,7 +162,7 @@ WHERE roles.id IN (
     '92000000-0000-4000-8000-000000000001',
     '92000000-0000-4000-8000-000000000002'
   )
-  AND permissions.code IN ('suppliers:view', 'suppliers:create', 'suppliers:update')
+  AND permissions.code IN ('org:view', 'suppliers:view', 'suppliers:create', 'suppliers:update')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)
