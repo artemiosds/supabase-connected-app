@@ -129,6 +129,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.permissions(code, name, description, module)
 VALUES
   ('org:view', 'Visualizar organização', 'Permissão E2E sintética', 'org'),
+  ('org:edit', 'Editar organização', 'Permissão E2E sintética', 'org'),
   ('suppliers:view', 'Visualizar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:create', 'Cadastrar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
@@ -165,7 +166,7 @@ WHERE roles.id IN (
     '92000000-0000-4000-8000-000000000002'
   )
   AND permissions.code IN (
-    'org:view', 'suppliers:view', 'suppliers:create', 'suppliers:update',
+    'org:view', 'org:edit', 'suppliers:view', 'suppliers:create', 'suppliers:update',
     'documents:view', 'documents:manage_templates'
   )
 ON CONFLICT DO NOTHING;
