@@ -12,7 +12,7 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 backup_dir="$work_dir/backup"
 restored_dir="$work_dir/restored"
-mkdir -p "$backup_dir/database" "$backup_dir/storage/gfs-private-documents" "$restored_dir"
+mkdir -p "$backup_dir/database" "$backup_dir/storage/gfs-private-documents/tenant-fixture" "$restored_dir"
 
 printf '%s\n' 'CREATE TABLE synthetic_backup_probe(id integer PRIMARY KEY);' > "$backup_dir/database/schema.sql"
 printf '%s\n' 'INSERT INTO synthetic_backup_probe VALUES (20261113);' > "$backup_dir/database/data.sql"
