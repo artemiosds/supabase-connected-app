@@ -2,7 +2,7 @@ import {
   createClient,
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
-import { sendResendEmail } from "../../../src/lib/expiry-notification-provider.ts";
+import { sendResendEmail } from "../_shared/expiry-notification-provider.ts";
 import {
   alertLevelForDays,
   daysUntilDate,
