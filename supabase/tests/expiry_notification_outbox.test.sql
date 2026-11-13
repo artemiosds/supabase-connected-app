@@ -81,7 +81,8 @@ SELECT extensions.ok(
   AND has_table_privilege('service_role','public.suppliers','SELECT')
   AND has_table_privilege('service_role','public.tenant_memberships','SELECT')
   AND has_table_privilege('service_role','public.membership_roles','SELECT')
-  AND has_table_privilege('service_role','public.profiles','SELECT'),
+  AND has_table_privilege('service_role','public.profiles','SELECT')
+  AND has_table_privilege('service_role','public.tenant_roles','SELECT'),
   'service role can read only the required expiry notification source tables'
 );
 SELECT extensions.ok(
@@ -102,7 +103,10 @@ SELECT extensions.ok(
   AND NOT has_table_privilege('service_role','public.membership_roles','DELETE')
   AND NOT has_table_privilege('service_role','public.profiles','INSERT')
   AND NOT has_table_privilege('service_role','public.profiles','UPDATE')
-  AND NOT has_table_privilege('service_role','public.profiles','DELETE'),
+  AND NOT has_table_privilege('service_role','public.profiles','DELETE')
+  AND NOT has_table_privilege('service_role','public.tenant_roles','INSERT')
+  AND NOT has_table_privilege('service_role','public.tenant_roles','UPDATE')
+  AND NOT has_table_privilege('service_role','public.tenant_roles','DELETE'),
   'service role source-table privileges remain read-only'
 );
 SELECT extensions.ok(
@@ -111,7 +115,8 @@ SELECT extensions.ok(
   AND NOT has_table_privilege('anon','public.suppliers','SELECT')
   AND NOT has_table_privilege('anon','public.tenant_memberships','SELECT')
   AND NOT has_table_privilege('anon','public.membership_roles','SELECT')
-  AND NOT has_table_privilege('anon','public.profiles','SELECT'),
+  AND NOT has_table_privilege('anon','public.profiles','SELECT')
+  AND NOT has_table_privilege('anon','public.tenant_roles','SELECT'),
   'anon cannot read expiry notification source tables'
 );
 
