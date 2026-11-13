@@ -2,6 +2,7 @@ import {
   createClient,
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
+import { sendResendEmail } from "../../../src/lib/expiry-notification-provider.ts";
 import {
   alertLevelForDays,
   daysUntilDate,
@@ -18,7 +19,6 @@ import {
 const PAGE_SIZE = 500;
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 100;
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 import type { Database } from "../../../src/integrations/supabase/types.ts";
 
 type AdminClient = SupabaseClient<Database>;
@@ -332,54 +332,27 @@ async function deliverTask(
     dueOn: task.dueOn,
   });
 
-  let providerMessageId: string | null = null;
-  let errorCode: string | null = null;
-  try {
-    const response = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      signal: AbortSignal.timeout(15000),
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey,
-      },
-      body: JSON.stringify({
-        from,
-        to: [task.recipientEmail],
-        subject: email.subject,
-        html: email.html,
-      }),
-    });
+  const providerResult = await sendResendEmail({
+    apiKey,
+    from,
+    to: task.recipientEmail,
+    subject: email.subject,
+    html: email.html,
+    idempotencyKey,
+  });
 
-    const responseBody = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      if (response.status >= 500) return "uncertain";
-      errorCode = `RESEND_HTTP_${response.status}`;
-    } else {
-      providerMessageId = typeof responseBody?.id === "string" ? responseBody.id : null;
-    }
-  } catch {
-    // The provider may have accepted the request before the connection failed.
-    // Do not mark this as retryable; keep the row "sending" for manual reconciliation.
-    return "uncertain";
-  }
+  if (providerResult.status === "uncertain") return "uncertain";
 
-  if (errorCode) {
+  if (providerResult.status === "rejected") {
     const { data: markedFailed, error: finishError } = await admin.rpc(
       "finish_expiry_notification_delivery",
       {
         p_delivery_id: deliveryId,
         p_status: "failed",
-        p_error_code: errorCode,
+        p_error_code: providerResult.errorCode,
       },
     );
     return finishError || markedFailed !== true ? "uncertain" : "failed";
-  }
-
-  if (!providerMessageId) {
-    // A 2xx without a provider message ID is ambiguous. Keep the row in
-    // "sending" so an operator can reconcile it instead of risking a duplicate.
-    return "uncertain";
   }
 
   const { data: completed, error: completionError } = await admin.rpc(
@@ -387,7 +360,7 @@ async function deliverTask(
     {
       p_delivery_id: deliveryId,
       p_status: "sent",
-      p_provider_message_id: providerMessageId,
+      p_provider_message_id: providerResult.providerMessageId,
     },
   );
   return completionError || completed !== true ? "uncertain" : "sent";
