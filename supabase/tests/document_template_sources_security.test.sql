@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(8);
+SELECT extensions.plan(10);
 
 SELECT extensions.has_table('public', 'document_template_sources', 'private model sources have a metadata table');
 SELECT extensions.ok(
@@ -56,5 +56,32 @@ SELECT extensions.ok(
   ),
   'private source metadata has an explicit tenant-scoped read policy'
 );
+
+SELECT extensions.ok(
+  (SELECT
+     qual LIKE '%has_tenant_data_permission%'
+     AND qual LIKE '%documents:view%'
+     AND qual LIKE '%is_tenant_in_good_standing%'
+     AND qual LIKE '%is_tenant_module_enabled%'
+   FROM pg_catalog.pg_policies
+   WHERE schemaname='storage' AND tablename='objects'
+     AND policyname='gfs_private_template_sources_read'
+     AND cmd='SELECT'),
+  'linked DOCX downloads require tenant view permission, commercial standing and module access'
+);
+
+SELECT extensions.ok(
+  (SELECT
+     with_check LIKE '%documents:manage_templates%'
+     AND with_check LIKE '%document_templates%'
+     AND with_check LIKE '%tenant_id%'
+     AND with_check LIKE '%version%'
+   FROM pg_catalog.pg_policies
+   WHERE schemaname='storage' AND tablename='objects'
+     AND policyname='gfs_private_template_sources_upload'
+     AND cmd='INSERT'),
+  'DOCX uploads are restricted to a tenant-managed template and its exact version path'
+);
+
 SELECT * FROM extensions.finish();
 ROLLBACK;
