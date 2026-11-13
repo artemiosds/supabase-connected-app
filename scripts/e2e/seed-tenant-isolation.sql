@@ -44,7 +44,7 @@ SET encrypted_password = EXCLUDED.encrypted_password,
 
 -- GoTrue email/password login resolves email identities as well as auth.users.
 INSERT INTO auth.identities(
-  provider_id, user_id, identity_data, provider, email, created_at, updated_at
+  provider_id, user_id, identity_data, provider, created_at, updated_at
 )
 VALUES
   (
@@ -52,7 +52,6 @@ VALUES
     '90000000-0000-4000-8000-000000000001',
     '{"sub":"90000000-0000-4000-8000-000000000001","email":"e2e.secretaria.a@example.invalid","email_verified":true}'::jsonb,
     'email',
-    'e2e.secretaria.a@example.invalid',
     pg_catalog.now(),
     pg_catalog.now()
   ),
@@ -61,14 +60,12 @@ VALUES
     '90000000-0000-4000-8000-000000000002',
     '{"sub":"90000000-0000-4000-8000-000000000002","email":"e2e.secretaria.b@example.invalid","email_verified":true}'::jsonb,
     'email',
-    'e2e.secretaria.b@example.invalid',
     pg_catalog.now(),
     pg_catalog.now()
   )
 ON CONFLICT (provider_id, provider) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     identity_data = EXCLUDED.identity_data,
-    email = EXCLUDED.email,
     updated_at = pg_catalog.now();
 
 INSERT INTO public.profiles(id, full_name)
