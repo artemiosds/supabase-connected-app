@@ -1,11 +1,53 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
+import JSZip from "jszip";
 
 const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const password = "GfsE2E!2026-OnlyLocal";
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+async function createSyntheticDocx(text) {
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      "</Types>",
+  );
+  zip.folder("_rels")?.file(
+    ".rels",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      "</Relationships>",
+  );
+  const escaped = text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  zip.folder("word")?.file(
+    "document.xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      "<w:body><w:p><w:r><w:t>" +
+      escaped +
+      "</w:t></w:r></w:p><w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>" +
+      '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/>' +
+      "</w:sectPr></w:body></w:document>",
+  );
+  return zip.generateAsync({ type: "base64", compression: "DEFLATE" });
+}
+
+const syntheticDocx = {
+  original: await createSyntheticDocx("MODELO ORIGINAL - SECRETARIA"),
+  edited: await createSyntheticDocx("MODELO EDITADO - SECRETARIA"),
+  restored: await createSyntheticDocx("MODELO RESTAURADO - SECRETARIA"),
+  orphan: await createSyntheticDocx("OBJETO ORFAO PARA LIMPEZA"),
+};
 
 assert.ok(supabaseUrl, "SUPABASE_URL must be set by the local Supabase CLI");
 assert.ok(anonKey, "SUPABASE_ANON_KEY must be set by the local Supabase CLI");
@@ -19,6 +61,17 @@ const scenarios = [
     ownSupplier: "Fornecedor Sintético Exclusivo A",
     otherSupplier: "Fornecedor Sintético Exclusivo B",
     attemptedCnpj: "45678912000155",
+    templateId: "97000000-0000-4000-8000-000000000001",
+    otherTemplateId: "97000000-0000-4000-8000-000000000002",
+    sourceFileIds: [
+      "57000000-0000-4000-8000-000000000001",
+      "57000000-0000-4000-8000-000000000003",
+      "57000000-0000-4000-8000-000000000005",
+    ],
+    orphanFileId: "57000000-0000-4000-8000-000000000007",
+    crossWriteFileId: "58000000-0000-4000-8000-000000000001",
+    otherInitialSourcePath:
+      "91000000-0000-4000-8000-000000000002/template-sources/97000000-0000-4000-8000-000000000002/v1/57000000-0000-4000-8000-000000000002.docx",
   },
   {
     email: "e2e.secretaria.b@example.invalid",
@@ -28,6 +81,17 @@ const scenarios = [
     ownSupplier: "Fornecedor Sintético Exclusivo B",
     otherSupplier: "Fornecedor Sintético Exclusivo A",
     attemptedCnpj: "45678912000155",
+    templateId: "97000000-0000-4000-8000-000000000002",
+    otherTemplateId: "97000000-0000-4000-8000-000000000001",
+    sourceFileIds: [
+      "57000000-0000-4000-8000-000000000002",
+      "57000000-0000-4000-8000-000000000004",
+      "57000000-0000-4000-8000-000000000006",
+    ],
+    orphanFileId: "57000000-0000-4000-8000-000000000008",
+    crossWriteFileId: "58000000-0000-4000-8000-000000000002",
+    otherInitialSourcePath:
+      "91000000-0000-4000-8000-000000000001/template-sources/97000000-0000-4000-8000-000000000001/v1/57000000-0000-4000-8000-000000000001.docx",
   },
 ];
 
@@ -134,6 +198,152 @@ async function verifyAuthenticatedTenant(scenario) {
           }),
         });
 
+        const docxHeaders = {
+          ...headers,
+          "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        };
+        const encodeStoragePath = (path) =>
+          path.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+        const objectUrl = (path) =>
+          `${apiUrl}/storage/v1/object/gfs-private-documents/${encodeStoragePath(path)}`;
+        const authenticatedObjectUrl = (path) =>
+          `${apiUrl}/storage/v1/object/authenticated/gfs-private-documents/${encodeStoragePath(path)}`;
+        const decodeBase64 = (value) => {
+          const binary = atob(value);
+          return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        };
+        const storageUpload = async (path, base64) =>
+          fetch(objectUrl(path), {
+            method: "POST",
+            headers: { ...docxHeaders, "x-upsert": "false" },
+            body: new Blob([decodeBase64(base64)], { type: docxHeaders["Content-Type"] }),
+          });
+        const sourceInsert = async (version, path, fileName, fileSize) =>
+          fetch(`${apiUrl}/rest/v1/document_template_sources`, {
+            method: "POST",
+            headers: {
+              ...headers,
+              "Content-Type": "application/json",
+              Prefer: "return=representation",
+            },
+            body: JSON.stringify({
+              tenant_id: ownTenantId,
+              template_id: templateId,
+              version,
+              storage_path: path,
+              file_name: fileName,
+              file_size: fileSize,
+            }),
+          });
+        const archiveVersion = async (content, expectedVersion) => {
+          const response = await fetch(
+            `${apiUrl}/rest/v1/document_templates?id=eq.${templateId}&tenant_id=eq.${ownTenantId}`,
+            {
+              method: "PATCH",
+              headers: {
+                ...headers,
+                "Content-Type": "application/json",
+                Prefer: "return=representation",
+              },
+              body: JSON.stringify({
+                content,
+                change_summary: "Homologação sintética DOCX E2E",
+              }),
+            },
+          );
+          const rows = await response.json();
+          if (!response.ok || rows.length !== 1 || rows[0].version !== expectedVersion) {
+            throw new Error(
+              `Template version transition failed: HTTP ${response.status} ${JSON.stringify(rows)}`,
+            );
+          }
+          return rows[0].version;
+        };
+        const uploadAndRegister = async (version, fileId, base64, fileName) => {
+          const path =
+            `${ownTenantId}/template-sources/${templateId}/v${version}/${fileId}.docx`;
+          const bytes = decodeBase64(base64);
+          const uploaded = await storageUpload(path, base64);
+          const uploadBody = await uploaded.text();
+          if (!uploaded.ok) {
+            throw new Error(`DOCX Storage upload failed: HTTP ${uploaded.status} ${uploadBody}`);
+          }
+          const linked = await sourceInsert(version, path, fileName, bytes.byteLength);
+          const linkedBody = await linked.text();
+          if (!linked.ok) {
+            throw new Error(`DOCX metadata insert failed: HTTP ${linked.status} ${linkedBody}`);
+          }
+          return { path, size: bytes.byteLength };
+        };
+
+        const initialContent =
+          ownTenantId.endsWith("0001") ? "CONTEUDO ORIGINAL A" : "CONTEUDO ORIGINAL B";
+        const v1 = await uploadAndRegister(1, sourceFileIds[0], docxOriginal, "modelo-original.docx");
+        const version2 = await archiveVersion("CONTEUDO EDITADO E2E", 2);
+        const v2 = await uploadAndRegister(
+          version2,
+          sourceFileIds[1],
+          docxEdited,
+          "modelo-editado.docx",
+        );
+        const version3 = await archiveVersion(initialContent, 3);
+        const v3 = await uploadAndRegister(
+          version3,
+          sourceFileIds[2],
+          docxRestored,
+          "modelo-restaurado.docx",
+        );
+        const sourceRowsResponse = await fetch(
+          `${apiUrl}/rest/v1/document_template_sources?select=version,storage_path,file_name&tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&order=version.asc`,
+          { headers },
+        );
+        const sourceRows = await sourceRowsResponse.json();
+        const archivedVersionsResponse = await fetch(
+          `${apiUrl}/rest/v1/document_template_versions?select=version&tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&order=version.asc`,
+          { headers },
+        );
+        const archivedVersions = await archivedVersionsResponse.json();
+        const originalDownload = await fetch(authenticatedObjectUrl(v1.path), { headers });
+        const restoredDownload = await fetch(authenticatedObjectUrl(v3.path), { headers });
+        const crossTenantObjectRead = await fetch(
+          authenticatedObjectUrl(otherInitialSourcePath),
+          { headers },
+        );
+        const crossTenantMetadataRead = await fetch(
+          `${apiUrl}/rest/v1/document_template_sources?select=template_id&tenant_id=eq.${otherTenantId}`,
+          { headers },
+        );
+        const crossTenantMetadataRows = await crossTenantMetadataRead.json();
+        const crossWritePath =
+          `${otherTenantId}/template-sources/${otherTemplateId}/v1/${crossWriteFileId}.docx`;
+        const crossTenantObjectWrite = await storageUpload(crossWritePath, docxOriginal);
+        const immutableMetadataUpdate = await fetch(
+          `${apiUrl}/rest/v1/document_template_sources?tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&version=eq.1`,
+          {
+            method: "PATCH",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ file_name: "arquivo-alterado.docx" }),
+          },
+        );
+        const immutableMetadataDelete = await fetch(
+          `${apiUrl}/rest/v1/document_template_sources?tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&version=eq.1`,
+          { method: "DELETE", headers },
+        );
+
+        const orphanPath =
+          `${ownTenantId}/template-sources/${templateId}/v3/${orphanFileId}.docx`;
+        const orphanUpload = await storageUpload(orphanPath, docxOrphan);
+        const orphanMetadata = await sourceInsert(3, orphanPath, "orphan.docx", 0);
+        const orphanCleanup = await fetch(
+          `${apiUrl}/storage/v1/object/delete/gfs-private-documents`,
+          {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ prefixes: [orphanPath] }),
+          },
+        );
+        const orphanAfterCleanup = await fetch(authenticatedObjectUrl(orphanPath), { headers });
+
         return {
           ownStatus: ownResponse.status,
           ownRows,
@@ -141,6 +351,27 @@ async function verifyAuthenticatedTenant(scenario) {
           crossTenantRows,
           crossWriteStatus: crossTenantWrite.status,
           crossWriteBody: await crossTenantWrite.text(),
+          docx: {
+            sourceRowsStatus: sourceRowsResponse.status,
+            sourceVersions: sourceRows.map((row) => row.version),
+            archivedVersionsStatus: archivedVersionsResponse.status,
+            archivedVersions: archivedVersions.map((row) => row.version),
+            originalDownloadStatus: originalDownload.status,
+            originalDownloadSize: (await originalDownload.arrayBuffer()).byteLength,
+            restoredDownloadStatus: restoredDownload.status,
+            restoredDownloadSize: (await restoredDownload.arrayBuffer()).byteLength,
+            crossTenantObjectReadStatus: crossTenantObjectRead.status,
+            crossTenantMetadataStatus: crossTenantMetadataRead.status,
+            crossTenantMetadataRows,
+            crossTenantObjectWriteStatus: crossTenantObjectWrite.status,
+            immutableMetadataUpdateStatus: immutableMetadataUpdate.status,
+            immutableMetadataDeleteStatus: immutableMetadataDelete.status,
+            orphanUploadStatus: orphanUpload.status,
+            orphanMetadataStatus: orphanMetadata.status,
+            orphanCleanupStatus: orphanCleanup.status,
+            orphanAfterCleanupStatus: orphanAfterCleanup.status,
+            uploadedSizes: [v1.size, v2.size, v3.size],
+          },
         };
       },
       {
@@ -150,6 +381,16 @@ async function verifyAuthenticatedTenant(scenario) {
         ownTenantId: scenario.tenantId,
         otherTenantId: scenario.otherTenantId,
         cnpj: scenario.attemptedCnpj,
+        templateId: scenario.templateId,
+        otherTemplateId: scenario.otherTemplateId,
+        sourceFileIds: scenario.sourceFileIds,
+        orphanFileId: scenario.orphanFileId,
+        crossWriteFileId: scenario.crossWriteFileId,
+        otherInitialSourcePath: scenario.otherInitialSourcePath,
+        docxOriginal: syntheticDocx.original,
+        docxEdited: syntheticDocx.edited,
+        docxRestored: syntheticDocx.restored,
+        docxOrphan: syntheticDocx.orphan,
       },
     );
 
@@ -175,8 +416,29 @@ async function verifyAuthenticatedTenant(scenario) {
       `cross-tenant INSERT must be rejected; received HTTP ${apiChecks.crossWriteStatus}: ${apiChecks.crossWriteBody}`,
     );
 
+    const docxChecks = apiChecks.docx;
+    assert.equal(docxChecks.sourceRowsStatus, 200);
+    assert.deepEqual(docxChecks.sourceVersions, [1, 2, 3]);
+    assert.equal(docxChecks.archivedVersionsStatus, 200);
+    assert.deepEqual(docxChecks.archivedVersions, [1, 2, 3]);
+    assert.equal(docxChecks.originalDownloadStatus, 200);
+    assert.ok(docxChecks.originalDownloadSize > 100);
+    assert.equal(docxChecks.restoredDownloadStatus, 200);
+    assert.ok(docxChecks.restoredDownloadSize > 100);
+    assert.ok(docxChecks.crossTenantObjectReadStatus >= 400);
+    assert.equal(docxChecks.crossTenantMetadataStatus, 200);
+    assert.deepEqual(docxChecks.crossTenantMetadataRows, []);
+    assert.ok(docxChecks.crossTenantObjectWriteStatus >= 400);
+    assert.ok(docxChecks.immutableMetadataUpdateStatus >= 400);
+    assert.ok(docxChecks.immutableMetadataDeleteStatus >= 400);
+    assert.equal(docxChecks.orphanUploadStatus, 200);
+    assert.ok(docxChecks.orphanMetadataStatus >= 400);
+    assert.equal(docxChecks.orphanCleanupStatus, 200);
+    assert.ok(docxChecks.orphanAfterCleanupStatus >= 400);
+    assert.ok(docxChecks.uploadedSizes.every((size) => size > 100));
+
     console.log(
-      `PASS ${scenario.email}: login, UI isolation, own-tenant read, cross-tenant read denied, cross-tenant write denied`,
+      `PASS ${scenario.email}: login, tenant isolation, private DOCX upload/download, immutable versions 1-3, restore, cross-tenant denial and orphan cleanup`,
     );
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
