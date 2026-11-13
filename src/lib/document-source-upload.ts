@@ -40,7 +40,9 @@ export async function uploadAndLinkDocumentSource(input: {
     } catch (error) {
       cleanupError = toDocumentSourceError(error);
     }
-    return { status: "upload_failed", error: uploadError, cleanupError };
+    return cleanupError
+      ? { status: "upload_failed", error: uploadError, cleanupError }
+      : { status: "upload_failed", error: uploadError };
   }
 
   if (!input.isTenantCurrent()) {
@@ -50,7 +52,7 @@ export async function uploadAndLinkDocumentSource(input: {
     } catch (error) {
       cleanupError = toDocumentSourceError(error);
     }
-    return { status: "tenant_changed", cleanupError };
+    return cleanupError ? { status: "tenant_changed", cleanupError } : { status: "tenant_changed" };
   }
 
   let metadataError: DocumentSourceError | null;
@@ -68,5 +70,7 @@ export async function uploadAndLinkDocumentSource(input: {
   } catch (error) {
     cleanupError = toDocumentSourceError(error);
   }
-  return { status: "metadata_failed", error: metadataError, cleanupError };
+  return cleanupError
+    ? { status: "metadata_failed", error: metadataError, cleanupError }
+    : { status: "metadata_failed", error: metadataError };
 }
