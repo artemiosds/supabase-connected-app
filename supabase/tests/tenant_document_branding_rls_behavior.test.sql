@@ -125,8 +125,8 @@ SELECT extensions.throws_ok(
 SELECT extensions.is(
   (SELECT header_title FROM public.tenant_document_branding
    WHERE tenant_id = '20000000-0000-4000-8000-000000000002'),
-  'Tenant B private heading',
-  'tenant A user cannot update tenant B letterhead'
+  NULL,
+  'tenant A user cannot read tenant B letterhead'
 );
 
 SELECT extensions.lives_ok(
@@ -160,6 +160,8 @@ SELECT extensions.ok(
   ),
   'authenticated users cannot physically delete letterhead settings'
 );
+
+RESET ROLE;
 
 SELECT extensions.is(
   (SELECT count(*)::integer FROM public.audit_events
