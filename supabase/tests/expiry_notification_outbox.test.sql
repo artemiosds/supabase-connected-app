@@ -129,7 +129,7 @@ SELECT extensions.ok(
   AND NOT has_table_privilege('service_role','public.profiles','REFERENCES')
   AND NOT has_table_privilege('service_role','public.profiles','TRIGGER'),
   'service role source-table privileges remain read-only'
-)
+);
 SELECT extensions.ok(
   NOT has_table_privilege('anon','public.tenants','SELECT')
   AND NOT has_table_privilege('anon','public.supplier_documents','SELECT')
