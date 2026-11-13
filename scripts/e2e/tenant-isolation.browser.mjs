@@ -321,7 +321,20 @@ async function verifyAuthenticatedTenant(scenario) {
         );
         const archivedVersions = await archivedVersionsResponse.json();
         const originalDownload = await fetch(authenticatedObjectUrl(v1.path), { headers });
+        const editedDownload = await fetch(authenticatedObjectUrl(v2.path), { headers });
         const restoredDownload = await fetch(authenticatedObjectUrl(v3.path), { headers });
+        const sha256 = async (bytes) => {
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          return Array.from(new Uint8Array(digest))
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+        };
+        const originalDownloadedBytes = await originalDownload.arrayBuffer();
+        const editedDownloadedBytes = await editedDownload.arrayBuffer();
+        const restoredDownloadedBytes = await restoredDownload.arrayBuffer();
+        const originalUploadedBytes = decodeBase64(docxOriginal);
+        const editedUploadedBytes = decodeBase64(docxEdited);
+        const restoredUploadedBytes = decodeBase64(docxRestored);
         const crossTenantObjectRead = await fetch(
           authenticatedObjectUrl(otherInitialSourcePath),
           { headers },
@@ -352,9 +365,9 @@ async function verifyAuthenticatedTenant(scenario) {
         const orphanUpload = await storageUpload(orphanPath, docxOrphan);
         const orphanMetadata = await sourceInsert(3, orphanPath, "orphan.docx", 0);
         const orphanCleanup = await fetch(
-          `${apiUrl}/storage/v1/object/delete/gfs-private-documents`,
+          `${apiUrl}/storage/v1/object/gfs-private-documents`,
           {
-            method: "POST",
+            method: "DELETE",
             headers: { ...headers, "Content-Type": "application/json" },
             body: JSON.stringify({ prefixes: [orphanPath] }),
           },
@@ -374,9 +387,14 @@ async function verifyAuthenticatedTenant(scenario) {
             archivedVersionsStatus: archivedVersionsResponse.status,
             archivedVersions: archivedVersions.map((row) => row.version),
             originalDownloadStatus: originalDownload.status,
-            originalDownloadSize: (await originalDownload.arrayBuffer()).byteLength,
+            originalDownloadSize: originalDownloadedBytes.byteLength,
+            editedDownloadStatus: editedDownload.status,
+            editedDownloadSize: editedDownloadedBytes.byteLength,
             restoredDownloadStatus: restoredDownload.status,
-            restoredDownloadSize: (await restoredDownload.arrayBuffer()).byteLength,
+            restoredDownloadSize: restoredDownloadedBytes.byteLength,
+            originalDigestMatches: (await sha256(originalDownloadedBytes)) === (await sha256(originalUploadedBytes)),
+            editedDigestMatches: (await sha256(editedDownloadedBytes)) === (await sha256(editedUploadedBytes)),
+            restoredDigestMatches: (await sha256(restoredDownloadedBytes)) === (await sha256(restoredUploadedBytes)),
             crossTenantObjectReadStatus: crossTenantObjectRead.status,
             crossTenantMetadataStatus: crossTenantMetadataRead.status,
             crossTenantMetadataRows,
@@ -440,8 +458,13 @@ async function verifyAuthenticatedTenant(scenario) {
     assert.deepEqual(docxChecks.archivedVersions, [1, 2, 3]);
     assert.equal(docxChecks.originalDownloadStatus, 200);
     assert.ok(docxChecks.originalDownloadSize > 100);
+    assert.equal(docxChecks.editedDownloadStatus, 200);
+    assert.ok(docxChecks.editedDownloadSize > 100);
     assert.equal(docxChecks.restoredDownloadStatus, 200);
     assert.ok(docxChecks.restoredDownloadSize > 100);
+    assert.equal(docxChecks.originalDigestMatches, true);
+    assert.equal(docxChecks.editedDigestMatches, true);
+    assert.equal(docxChecks.restoredDigestMatches, true);
     assert.ok(docxChecks.crossTenantObjectReadStatus >= 400);
     assert.equal(docxChecks.crossTenantMetadataStatus, 200);
     assert.deepEqual(docxChecks.crossTenantMetadataRows, []);
