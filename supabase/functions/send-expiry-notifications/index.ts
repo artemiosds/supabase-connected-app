@@ -19,9 +19,9 @@ import {
 const PAGE_SIZE = 500;
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 100;
-import type { Database } from "../../../src/integrations/supabase/types.ts";
-
-type AdminClient = SupabaseClient<Database>;
+// Keep the Edge Function self-contained for Supabase deployment. Query
+// results are validated by the explicit row types below and bounded casts.
+type AdminClient = SupabaseClient;
 
 type TenantRow = {
   id: string;
@@ -436,7 +436,7 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  const admin: AdminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
+  const admin: AdminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
