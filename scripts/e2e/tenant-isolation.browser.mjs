@@ -486,6 +486,99 @@ async function verifyAuthenticatedTenant(scenario) {
     assert.ok(docxChecks.orphanAfterCleanupStatus >= 400);
     assert.ok(docxChecks.uploadedSizes.every((size) => size > 100));
 
+    // Exercise the actual authenticated Documentos screen restore action,
+    // not only the equivalent REST/database sequence above.
+    await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
+    await page.getByRole("tab", { name: /Modelos/ }).click();
+    await page.getByRole("button", { name: "Histórico", exact: true }).click();
+    await page.getByRole("heading", { name: "Histórico de versões", exact: true }).waitFor();
+
+    const uiRestoreButtons = page.getByRole("button", {
+      name: "Restaurar esta versão",
+      exact: true,
+    });
+    assert.equal(await uiRestoreButtons.count(), 2, "versions 1 and 2 must be restorable");
+    page.once("dialog", async (dialog) => {
+      assert.match(dialog.message(), /Restaurar a versão 2/);
+      await dialog.accept();
+    });
+    await uiRestoreButtons.first().click();
+    await page
+      .getByText("Versão restaurada com o Word original preservado.", { exact: true })
+      .waitFor({ timeout: 30_000 });
+
+    await page.getByRole("button", { name: "Histórico", exact: true }).click();
+    await page.getByRole("heading", { name: "Histórico de versões", exact: true }).waitFor();
+    await page.getByText("Versão 4", { exact: true }).waitFor();
+
+    const uiRestoreChecks = await page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, templateId, expectedBase64 }) => {
+        const headers = { apikey: publicKey, Authorization: `Bearer ${token}` };
+        const [templateResponse, sourceResponse] = await Promise.all([
+          fetch(
+            `${apiUrl}/rest/v1/document_templates?select=version,content&id=eq.${templateId}&tenant_id=eq.${tenantId}`,
+            { headers },
+          ),
+          fetch(
+            `${apiUrl}/rest/v1/document_template_sources?select=storage_path,file_name,file_size&tenant_id=eq.${tenantId}&template_id=eq.${templateId}&version=eq.4`,
+            { headers },
+          ),
+        ]);
+        const templates = await templateResponse.json();
+        const sources = await sourceResponse.json();
+        if (!templateResponse.ok || !sourceResponse.ok || templates.length !== 1 || sources.length !== 1) {
+          throw new Error(
+            `UI restore metadata missing: template HTTP ${templateResponse.status}, source HTTP ${sourceResponse.status}`,
+          );
+        }
+        const path = sources[0].storage_path
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/");
+        const download = await fetch(
+          `${apiUrl}/storage/v1/object/authenticated/gfs-private-documents/${path}`,
+          { headers },
+        );
+        const downloaded = await download.arrayBuffer();
+        const expectedBinary = Uint8Array.from(atob(expectedBase64), (character) =>
+          character.charCodeAt(0),
+        );
+        const digest = async (bytes) =>
+          Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+        return {
+          templateVersion: templates[0].version,
+          templateContent: templates[0].content,
+          sourceCount: sources.length,
+          sourceFileName: sources[0].file_name,
+          sourceFileSize: sources[0].file_size,
+          downloadStatus: download.status,
+          restoredDocxMatchesOriginalHistoricalBytes:
+            (await digest(downloaded)) === (await digest(expectedBinary)),
+        };
+      },
+      {
+        apiUrl: supabaseUrl,
+        publicKey: anonKey,
+        token: accessToken,
+        tenantId: scenario.tenantId,
+        templateId: scenario.templateId,
+        expectedBase64: syntheticDocx.edited,
+      },
+    );
+    assert.equal(uiRestoreChecks.templateVersion, 4);
+    assert.equal(uiRestoreChecks.templateContent, "CONTEUDO EDITADO E2E");
+    assert.equal(uiRestoreChecks.sourceCount, 1);
+    assert.equal(uiRestoreChecks.sourceFileName, "modelo-editado.docx");
+    assert.ok(uiRestoreChecks.sourceFileSize > 100);
+    assert.equal(uiRestoreChecks.downloadStatus, 200);
+    assert.equal(uiRestoreChecks.restoredDocxMatchesOriginalHistoricalBytes, true);
+
+    console.log(
+      `PASS ${scenario.email}: authenticated UI restored historical DOCX version 2 as version 4 and reattached the original bytes`,
+    );
     console.log(
       `PASS ${scenario.email}: login, tenant isolation, private DOCX upload/download, immutable versions 1-3, restore, cross-tenant denial and orphan cleanup`,
     );
