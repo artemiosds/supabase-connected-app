@@ -160,3 +160,27 @@ O teste usa apenas dados sintéticos e faz ROLLBACK; não grava no SMS2. A Fase 
 - [ ] Backup/restauração em projeto separado e aceite visual da Secretaria continuam pendentes.
 
 **Estado:** CI integral verde no commit `01d35ab`. Não foi executada homologação autenticada de navegador e não houve alteração no SMS2. A Fase 1 permanece em homologação e NO-GO para produção/venda.
+
+
+## Homologação automatizada adicional — 13/11/2026, commit `17bee678be754da3306121f9f2ebe75cd299c9be`
+
+- [x] CI completo aprovado no run [43478089251](https://github.com/artemiosds/supabase-connected-app/actions/runs/43478089251): jobs `validate` e `database-security` verdes. Testes unitários, build, TypeScript, Deno, lint e aplicação das migrations no Supabase local descartável passaram.
+- [x] As regressões pgTAP passaram: 21 arquivos, 399 assertions (`Files=21, Tests=399`).
+- [x] A rotina de backup sintético criptografou, verificou SHA-256, descriptografou e restaurou schema/dados/role em schema isolado no PostgreSQL descartável. O registro sintético foi consultado e removido ao final.
+- [x] E2E autenticado de navegador aprovado no run [43478089257](https://github.com/artemiosds/supabase-connected-app/actions/runs/43478089257): duas contas `.invalid`, login HTTP 200, isolamento de fornecedores e tentativas cross-tenant negadas.
+- [x] O E2E acrescentou fixtures DOCX sintéticas para as duas Secretarias e verificou pelo Storage privado: upload de três versões, vínculo dos metadados, histórico 1–3, download das três fontes e igualdade SHA-256 byte a byte entre upload e download.
+- [x] O mesmo teste verifica que o usuário da outra Secretaria não lê o objeto nem os metadados, não consegue enviar arquivo para o caminho alheio, não consegue alterar/excluir os metadados imutáveis e que um arquivo órfão de fixture é removido pela API oficial do Storage após falha simulada no vínculo do metadado.
+- [x] O dry-run da Edge Function foi repetido no E2E: 4 candidatos, 4 processados, 0 enviados, 0 falhas e 0 incertos.
+- [x] Formatação aprovada no run [43478089255](https://github.com/artemiosds/supabase-connected-app/actions/runs/43478089255).
+- [x] Auditoria somente-leitura do SMS2: 88 migrations registradas; 40/40 tabelas do schema `public` com RLS habilitado; 29 também com FORCE RLS; nenhuma view em `public`; nenhuma permissão de tabela para `anon`; bucket `gfs-private-documents` privado e com limite de 20 MB.
+
+### Limites que continuam explícitos
+
+- O E2E de DOCX usa chamadas REST/Storage autenticadas com os JWTs sintéticos; ele não clica no botão de restauração da interface nem substitui a homologação completa do fluxo visual da tela Documentos.
+- O pacote/restore validado é sintético e local. Ainda não existe evidência de um backup criptografado real do SMS2 nem de restauração dos dados reais em outro projeto. Isso depende de `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, destinatário público age e identidade privada guardada fora do GitHub.
+- Os registros de modelos, fontes DOCX, timbrado e documentos no SMS2 estão vazios; a fidelidade visual com modelos oficiais aprovados pela Secretaria não pode ser declarada homologada sem receber e validar esses arquivos.
+- Nenhum e-mail real foi enviado. A entrega real continua dependendo da configuração segura do provedor e de teste controlado; o agendamento diário permanece desativado.
+- O Security Advisor ainda mostra 35 avisos sobre funções `SECURITY DEFINER` executáveis por `authenticated`. A revisão individual e as regressões verificam identidade, permissões, `search_path` vazio, ausência de execução por `anon` e ausência de concessão herdada de `PUBLIC`; não se deve remover em lote funções/RPC legítimas para zerar o aviso.
+- A proteção contra senhas vazadas foi dispensada pelo responsável do projeto; permanece fora do escopo, sem upgrade do Supabase Free.
+
+**Resultado:** CI, segurança SQL, restauração sintética e E2E autenticado de isolamento + arquivos DOCX foram comprovados. Nenhuma migration nem dado foi alterado no SMS2 nesta etapa. A Fase 1 permanece em homologação e **NO-GO para produção/venda** até backup real recuperável, teste do fluxo visual de restauração, homologação de modelos oficiais e aceite formal.
