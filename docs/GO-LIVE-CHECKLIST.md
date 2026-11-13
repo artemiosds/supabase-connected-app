@@ -276,3 +276,17 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] Advisor também reporta 72 índices sem uso observado; não remover automaticamente, pois o projeto ainda tem baixo histórico de uso e vários índices protegem FKs/consultas futuras.
 
 **Decisão:** findings foram registrados como itens de revisão e rollout, não como autorização para alterar o SMS2. Nenhuma migration, configuração Auth ou dado remoto foi alterado durante esta auditoria.
+
+
+## Atualização de segurança e CI — 13/11/2026, commit `d2ce13fe2c9990d96a151d3d49e4ba660dac057d`
+
+- [x] CI completo aprovado: validação [run 43417500383](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500383) — jobs `validate` e `database-security` concluídos com sucesso; formatação [run 43417500282](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500282) aprovada.
+- [x] Novo teste pgTAP `security_definer_public_api.test.sql` adiciona sete guardas sobre a API SECURITY DEFINER exposta a `authenticated`: search_path vazio, ausência de EXECUTE para `anon`/PUBLIC e verificação de identidade/autorização.
+- [x] Auditoria de leitura do SMS2: 36 funções SECURITY DEFINER acessíveis a `authenticated`; 36/36 fixam `search_path=""`, 0 concedem EXECUTE a `anon`, 0 herdam EXECUTE de PUBLIC e 0 não contêm referência a `auth.uid()` ou `app_auth.`.
+- [x] Revisão de catálogo confirmou que as sete políticas Master redundantes repetem o predicado já presente nas políticas SELECT principais; as sete políticas restritivas comerciais permanecem separadas e intactas.
+- [x] Consulta de índices confirmou ausência dos seis índices planejados no SMS2; a migration aditiva continua pendente e não foi aplicada.
+- [ ] Completar testes comportamentais de RLS/Storage para fontes DOCX e timbrado por Secretaria, com duas identidades e tenants sintéticos.
+- [ ] Completar cenários positivos e negativos do workflow documental, incluindo duas aprovações por atores distintos e isolamento cruzado.
+- [ ] E2E autenticado, recuperação de upload DOCX, homologação visual e backup/restore em projeto isolado continuam pendentes.
+
+Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 nesta etapa. Os avisos do Advisor não foram tratados como vulnerabilidades automáticas nem removidos em massa. Estado comercial permanece **NO-GO**.

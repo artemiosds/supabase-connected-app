@@ -76,3 +76,13 @@ O repositório passou a conter 82 arquivos SQL. O SMS2 permanece em 74 versões 
 ## Advisor remoto SMS2 — leitura somente em 13/11/2026
 
 A consulta dos Advisors confirmou: health sem findings; 36 avisos de `SECURITY DEFINER` executáveis por `authenticated` (revisão individual obrigatória, sem revogação em massa); proteção de senha vazada desabilitada; seis FKs sem índice de cobertura; sete conjuntos de políticas SELECT permissivas redundantes; 72 índices sem uso observado. As migrations `20261112150000` e `20261112162000` já preparam os seis índices e a remoção das sete políticas redundantes, mas permanecem não aplicadas no SMS2. Não remover índices automaticamente em ambiente com baixo histórico de uso. Nenhuma configuração, migration ou dado remoto foi alterado nesta consulta.
+
+
+## Verificação complementar — 13/11/2026
+
+- CI do commit `d2ce13fe2c9990d96a151d3d49e4ba660dac057d` concluído com sucesso: [validação e segurança](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500383) e [formatação](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500282).
+- O teste `security_definer_public_api.test.sql` acrescenta sete assertions de regressão para a superfície SECURITY DEFINER autenticada.
+- Consulta somente leitura ao catálogo SMS2 confirmou 36 funções SECURITY DEFINER com EXECUTE para authenticated; todas fixam search_path vazio, nenhuma permite EXECUTE a anon ou PUBLIC e todas referenciam auth.uid() ou app_auth.
+- As sete políticas `p_master_support_read_*` repetem o mesmo predicado `app_auth.is_platform_admin()` que já existe nas respectivas políticas permissivas SELECT principais. As políticas restritivas `p_commercial_select_*` continuam aplicando as condições de situação comercial e módulo.
+- Os seis índices da migration `20261112150000` não existem no catálogo SMS2; a migration segue pendente.
+- Nenhuma migration foi aplicada e nenhum dado/configuração foi alterado no SMS2.
