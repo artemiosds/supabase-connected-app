@@ -48,6 +48,7 @@ import {
   isMissingDocumentTemplateSourcesTable,
   valuesForUneditedSource,
 } from "@/lib/document-source";
+import { uploadAndLinkDocumentSource } from "@/lib/document-source-upload";
 import {
   buildDocumentTemplateSchema,
   buildDocumentVariableValues,
@@ -1023,34 +1024,38 @@ function Documentos() {
       let avisoOrigem: string | null = null;
       if (arquivoOriginal) {
         const path = `${tenantId}/template-sources/${modeloHistorico.id}/v${restored.version}/${crypto.randomUUID()}.docx`;
-        const { error: uploadError } = await db.storage
-          .from("gfs-private-documents")
-          .upload(path, arquivoOriginal, {
-            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            upsert: false,
-          });
-        if (uploadError) {
-          avisoOrigem = `Versão restaurada, mas o Word original não foi reanexado: ${uploadError.message}`;
-        } else if (tenantIdRef.current !== tenantId) {
-          await db.storage.from("gfs-private-documents").remove([path]);
-          return;
-        } else {
-          const { error: metadataError } = await db.from("document_template_sources").insert({
-            tenant_id: tenantId,
-            template_id: modeloHistorico.id,
-            version: restored.version,
-            storage_path: path,
-            file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
-            file_size: arquivoOriginal.size,
-          });
-          if (metadataError) {
-            const { error: cleanupError } = await db.storage
-              .from("gfs-private-documents")
-              .remove([path]);
-            avisoOrigem = cleanupError
-              ? `Versão restaurada, mas o Word original não foi vinculado (${metadataError.message}) e a limpeza do arquivo órfão falhou (${cleanupError.message}).`
-              : `Versão restaurada, mas o Word original não foi vinculado: ${metadataError.message}`;
+        const sourceResult = await uploadAndLinkDocumentSource({
+          upload: async () =>
+            await db.storage.from("gfs-private-documents").upload(path, arquivoOriginal, {
+              contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              upsert: false,
+            }),
+          insertMetadata: async () =>
+            await db.from("document_template_sources").insert({
+              tenant_id: tenantId,
+              template_id: modeloHistorico.id,
+              version: restored.version,
+              storage_path: path,
+              file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
+              file_size: arquivoOriginal.size,
+            }),
+          remove: async () => await db.storage.from("gfs-private-documents").remove([path]),
+          isTenantCurrent: () => tenantIdRef.current === tenantId,
+        });
+        if (sourceResult.status === "tenant_changed") {
+          if (sourceResult.cleanupError) {
+            toast.error("A troca de Secretaria interrompeu a restauração, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.");
           }
+          return;
+        }
+        if (sourceResult.status === "upload_failed") {
+          avisoOrigem = sourceResult.cleanupError
+            ? `Versão restaurada, mas o Word original não foi reanexado (${sourceResult.error.message}) e a limpeza do arquivo temporário falhou (${sourceResult.cleanupError.message}).`
+            : `Versão restaurada, mas o Word original não foi reanexado: ${sourceResult.error.message}`;
+        } else if (sourceResult.status === "metadata_failed") {
+          avisoOrigem = sourceResult.cleanupError
+            ? `Versão restaurada, mas o Word original não foi vinculado (${sourceResult.error.message}) e a limpeza do arquivo órfão falhou (${sourceResult.cleanupError.message}).`
+            : `Versão restaurada, mas o Word original não foi vinculado: ${sourceResult.error.message}`;
         }
       }
 
@@ -1157,42 +1162,41 @@ function Documentos() {
       }
       if (tenantIdRef.current !== tenantId) return;
       const path = `${tenantId}/template-sources/${result.data.id}/v${result.data.version}/${crypto.randomUUID()}.docx`;
-      const { error: uploadError } = await db.storage
-        .from("gfs-private-documents")
-        .upload(path, arquivoOriginal, {
-          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          upsert: false,
-        });
-      if (uploadError) {
-        if (tenantIdRef.current !== tenantId) return;
-        setSalvandoModelo(false);
-        setModeloEditando(result.data);
-        toast.error(`Texto salvo, mas o Word original não foi enviado: ${uploadError.message}`);
-        return;
-      }
-      if (tenantIdRef.current !== tenantId) {
-        await db.storage.from("gfs-private-documents").remove([path]);
-        return;
-      }
-      const { error: metadataError } = await db.from("document_template_sources").insert({
-        tenant_id: tenantId,
-        template_id: result.data.id,
-        version: result.data.version,
-        storage_path: path,
-        file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
-        file_size: arquivoOriginal.size,
+      const sourceResult = await uploadAndLinkDocumentSource({
+        upload: async () =>
+          await db.storage.from("gfs-private-documents").upload(path, arquivoOriginal, {
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            upsert: false,
+          }),
+        insertMetadata: async () =>
+          await db.from("document_template_sources").insert({
+            tenant_id: tenantId,
+            template_id: result.data.id,
+            version: result.data.version,
+            storage_path: path,
+            file_name: nomeSeguroArquivo(arquivoOriginal.name) || "modelo.docx",
+            file_size: arquivoOriginal.size,
+          }),
+        remove: async () => await db.storage.from("gfs-private-documents").remove([path]),
+        isTenantCurrent: () => tenantIdRef.current === tenantId,
       });
-      if (metadataError) {
-        const { error: cleanupError } = await db.storage
-          .from("gfs-private-documents")
-          .remove([path]);
+      if (sourceResult.status === "tenant_changed") {
+        if (sourceResult.cleanupError) {
+          toast.error("A troca de Secretaria interrompeu o salvamento, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.");
+        }
+        return;
+      }
+      if (sourceResult.status === "upload_failed" || sourceResult.status === "metadata_failed") {
         if (tenantIdRef.current !== tenantId) return;
         setSalvandoModelo(false);
         setModeloEditando(result.data);
+        const isUploadFailure = sourceResult.status === "upload_failed";
+        const stageMessage = isUploadFailure ? "não foi enviado" : "não foi vinculado";
+        const cleanupMessage = sourceResult.cleanupError
+          ? ` e a limpeza do arquivo órfão falhou (${sourceResult.cleanupError.message})`
+          : "";
         toast.error(
-          cleanupError
-            ? `Texto salvo, mas o Word original não foi vinculado (${metadataError.message}) e a limpeza do arquivo órfão falhou (${cleanupError.message}).`
-            : `Texto salvo, mas o Word original não foi vinculado: ${metadataError.message}`,
+          `Texto salvo, mas o Word original ${stageMessage}: ${sourceResult.error.message}${cleanupMessage}`,
         );
         return;
       }
