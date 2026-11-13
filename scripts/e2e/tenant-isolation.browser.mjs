@@ -53,11 +53,27 @@ async function verifyAuthenticatedTenant(scenario) {
   const context = await browser.newContext();
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      console.error(`Browser console error: ${message.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => {
+    console.error(`Browser page error: ${error.message}`);
+  });
+  page.on("response", (response) => {
+    if (response.url().includes("/auth/v1/token?grant_type=password")) {
+      console.log(`Auth password-grant HTTP ${response.status()}`);
+    }
+  });
 
   try {
     await page.goto(`${appUrl}/entrar?portal=secretaria`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
     });
+    // The route is server-rendered; wait for the client bundle to hydrate
+    // before submitting so the native form cannot reload without React handlers.
+    await page.waitForTimeout(400);
     await page.getByLabel("E-mail").fill(scenario.email);
     await page.getByLabel("Senha").fill(password);
 
