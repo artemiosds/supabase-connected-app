@@ -1,10 +1,13 @@
 BEGIN;
 
 -- Avoid an RLS cycle: the source INSERT policy checks Storage, while the
--- Storage SELECT policy checks source metadata. This narrowly-scoped helper
--- checks only whether the exact object exists and runs as the table owner,
--- bypassing storage.objects RLS for this integrity check.
-CREATE OR REPLACE FUNCTION public.document_template_source_object_exists(p_storage_path text)
+-- Storage SELECT policy checks source metadata. The helper bypasses Storage
+-- RLS only for an exact object-existence check and independently enforces
+-- the caller's tenant permission before revealing that boolean.
+CREATE OR REPLACE FUNCTION public.document_template_source_object_exists(
+  p_tenant_id uuid,
+  p_storage_path text
+)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -12,17 +15,22 @@ SECURITY DEFINER
 SET search_path = ''
 SET row_security = off
 AS $function$
-  SELECT EXISTS (
-    SELECT 1
-    FROM storage.objects o
-    WHERE o.bucket_id = 'gfs-private-documents'
-      AND o.name = p_storage_path
-  );
+  SELECT
+    p_storage_path LIKE p_tenant_id::text || '/template-sources/%'
+    AND (SELECT app_auth.has_tenant_data_permission(p_tenant_id, 'documents:manage_templates'))
+    AND (SELECT app_auth.is_tenant_in_good_standing(p_tenant_id))
+    AND (SELECT app_auth.is_tenant_module_enabled(p_tenant_id, 'modelos'))
+    AND EXISTS (
+      SELECT 1
+      FROM storage.objects o
+      WHERE o.bucket_id = 'gfs-private-documents'
+        AND o.name = p_storage_path
+    );
 $function$;
 
-REVOKE ALL ON FUNCTION public.document_template_source_object_exists(text)
+REVOKE ALL ON FUNCTION public.document_template_source_object_exists(uuid, text)
   FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.document_template_source_object_exists(text)
+GRANT EXECUTE ON FUNCTION public.document_template_source_object_exists(uuid, text)
   TO authenticated;
 
 DROP POLICY IF EXISTS document_template_sources_insert
@@ -37,10 +45,10 @@ CREATE POLICY document_template_sources_insert
     AND (SELECT app_auth.has_tenant_data_permission(tenant_id, 'documents:manage_templates'))
     AND (SELECT app_auth.is_tenant_in_good_standing(tenant_id))
     AND (SELECT app_auth.is_tenant_module_enabled(tenant_id, 'modelos'))
-    AND (SELECT public.document_template_source_object_exists(storage_path))
+    AND (SELECT public.document_template_source_object_exists(tenant_id, storage_path))
   );
 
-COMMENT ON FUNCTION public.document_template_source_object_exists(text) IS
-  'Verifica a existência do objeto DOCX exato durante a inserção dos metadados, evitando recursão entre políticas RLS de Storage e document_template_sources.';
+COMMENT ON FUNCTION public.document_template_source_object_exists(uuid, text) IS
+  'Verifica a existência do objeto DOCX exato para o tenant autorizado durante a inserção dos metadados, evitando recursão entre políticas RLS de Storage e document_template_sources.';
 
 COMMIT;
