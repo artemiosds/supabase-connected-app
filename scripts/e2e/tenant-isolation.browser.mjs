@@ -591,9 +591,7 @@ async function verifyAuthenticatedTenant(scenario) {
 
     // Exercise the real Secretaria settings screen, including private logo upload.
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
-    await page
-      .getByRole("heading", { name: "Timbrado dos documentos oficiais", exact: true })
-      .waitFor();
+    await page.getByText("Timbrado dos documentos oficiais", { exact: true }).waitFor();
     const brandingHeader = "Cabeçalho E2E " + scenario.tenantName;
     await page.getByLabel("Nome no cabeçalho").fill(brandingHeader);
     await page.getByLabel("Subtítulo institucional").fill("Homologação sintética de timbrado");
