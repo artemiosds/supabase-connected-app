@@ -96,19 +96,41 @@ jobs:
             sleep 2
           done
 
-          dry_run_response="$(curl --silent --show-error --fail-with-body \
+          set +e
+          dry_run_http_status="$(curl --silent --show-error \
+            --output /tmp/gfs-expiry-dry-run-response.json \
+            --write-out '%{http_code}' \
             --request POST http://127.0.0.1:54321/functions/v1/send-expiry-notifications \
             --header "apikey: $ANON_KEY" \
             --header "Authorization: Bearer $ANON_KEY" \
             --header "x-expiry-alert-secret: $EXPIRY_ALERTS_CRON_SECRET" \
             --header "Content-Type: application/json" \
             --data '{"dry_run":true,"batch_size":100,"offset":0}')"
+          dry_run_curl_exit=$?
+          set -e
+          dry_run_response="$(cat /tmp/gfs-expiry-dry-run-response.json 2>/dev/null || true)"
+
+          if [ "$dry_run_curl_exit" -ne 0 ] || [ "$dry_run_http_status" != "200" ]; then
+            echo "Expiry notification dry-run returned HTTP $dry_run_http_status (curl exit $dry_run_curl_exit)."
+            echo "Sanitized response body:"
+            echo "$dry_run_response" | jq -c '{error,status,date,candidates,processed,sent,failed,skipped,uncertain}' 2>/dev/null || true
+            echo "::group::Expiry notification function diagnostics"
+            cat /tmp/gfs-expiry-functions.log || true
+            for container_id in $(docker ps -aq --filter name=edge_runtime); do
+              docker logs "$container_id" 2>&1 | grep -Ei "error|exception|failed|panic|TENANT_QUERY|MEMBERSHIP|PROFILE|Expiry notification" | tail -n 80 || true
+            done
+            echo "::endgroup::"
+            mkdir -p artifacts
+            cp /tmp/gfs-expiry-functions.log artifacts/expiry-notification-function.log 2>/dev/null || true
+            cp /tmp/gfs-expiry-dry-run-response.json artifacts/expiry-notification-response.json 2>/dev/null || true
+            echo "::error::Expiry notification dry-run endpoint failed before the no-send assertion."
+            exit 1
+          fi
 
           echo "$dry_run_response" | jq -c '{status,date,candidates,processed,sent,failed,skipped,uncertain}'
           if ! echo "$dry_run_response" | jq -e \
             '.status == "dry_run" and .sent == 0 and .failed == 0 and .uncertain == 0' >/dev/null; then
-            cat /tmp/gfs-expiry-functions.log
-            echo "::error::Expiry notification dry-run failed or attempted a delivery."
+            echo "::error::Expiry notification dry-run returned an unexpected or unsafe delivery result."
             exit 1
           fi
 
