@@ -1044,7 +1044,9 @@ function Documentos() {
         });
         if (sourceResult.status === "tenant_changed") {
           if (sourceResult.cleanupError) {
-            toast.error("A troca de Secretaria interrompeu a restauração, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.");
+            toast.error(
+              "A troca de Secretaria interrompeu a restauração, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.",
+            );
           }
           return;
         }
@@ -1182,7 +1184,9 @@ function Documentos() {
       });
       if (sourceResult.status === "tenant_changed") {
         if (sourceResult.cleanupError) {
-          toast.error("A troca de Secretaria interrompeu o salvamento, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.");
+          toast.error(
+            "A troca de Secretaria interrompeu o salvamento, e a limpeza do arquivo temporário falhou. Solicite uma verificação administrativa.",
+          );
         }
         return;
       }
