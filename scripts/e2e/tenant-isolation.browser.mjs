@@ -165,7 +165,24 @@ async function verifyAuthenticatedTenant(scenario) {
     assert.ok(accessToken, "the authenticated UI session must persist a JWT");
 
     const apiChecks = await page.evaluate(
-      async ({ apiUrl, publicKey, token, ownTenantId, otherTenantId, cnpj }) => {
+      async ({
+        apiUrl,
+        publicKey,
+        token,
+        ownTenantId,
+        otherTenantId,
+        cnpj,
+        templateId,
+        otherTemplateId,
+        sourceFileIds,
+        orphanFileId,
+        crossWriteFileId,
+        otherInitialSourcePath,
+        docxOriginal,
+        docxEdited,
+        docxRestored,
+        docxOrphan,
+      }) => {
         const headers = {
           apikey: publicKey,
           Authorization: `Bearer ${token}`,
