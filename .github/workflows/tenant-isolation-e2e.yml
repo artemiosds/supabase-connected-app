@@ -69,6 +69,50 @@ jobs:
 
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/e2e/seed-tenant-isolation.sql
 
+          # Exercise the deployed handler logic against disposable local Supabase.
+          # Only a synthetic cron secret is supplied; no Resend/provider settings
+          # are present, and dry_run=true must guarantee zero email delivery.
+          export EXPIRY_ALERTS_CRON_SECRET="gfs-e2e-local-only-secret-2026-11-13"
+          edge_env_file="$(mktemp)"
+          printf 'SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nEXPIRY_ALERTS_CRON_SECRET=%s\n' \
+            "$API_URL" "$SERVICE_ROLE_KEY" "$EXPIRY_ALERTS_CRON_SECRET" > "$edge_env_file"
+
+          supabase functions serve send-expiry-notifications \
+            --no-verify-jwt \
+            --env-file "$edge_env_file" \
+            > /tmp/gfs-expiry-functions.log 2>&1 &
+          echo "$!" > /tmp/gfs-expiry-functions.pid
+
+          for attempt in $(seq 1 60); do
+            function_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:54321/functions/v1/send-expiry-notifications || true)"
+            if [ "$function_status" = "405" ]; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/gfs-expiry-functions.log
+              echo "::error::Expiry notification Edge Function did not become ready."
+              exit 1
+            fi
+            sleep 2
+          done
+
+          dry_run_response="$(curl --silent --show-error --fail-with-body \
+            --request POST http://127.0.0.1:54321/functions/v1/send-expiry-notifications \
+            --header "apikey: $ANON_KEY" \
+            --header "Authorization: Bearer $ANON_KEY" \
+            --header "x-expiry-alert-secret: $EXPIRY_ALERTS_CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"dry_run":true,"batch_size":100,"offset":0}')"
+
+          echo "$dry_run_response" | jq -c '{status,date,candidates,processed,sent,failed,skipped,uncertain}'
+          if ! echo "$dry_run_response" | jq -e \
+            '.status == "dry_run" and .sent == 0 and .failed == 0 and .uncertain == 0' >/dev/null; then
+            cat /tmp/gfs-expiry-functions.log
+            echo "::error::Expiry notification dry-run failed or attempted a delivery."
+            exit 1
+          fi
+
           bun run dev -- --host 127.0.0.1 --port 4173 --strictPort > /tmp/gfs-vite.log 2>&1 &
           echo "$!" > /tmp/gfs-vite.pid
 
