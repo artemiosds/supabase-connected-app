@@ -89,10 +89,9 @@ SELECT extensions.is(
 
 SELECT extensions.lives_ok(
  $test$INSERT INTO public.document_template_sources(tenant_id,template_id,version,storage_path,file_name,file_size)
- SELECT '52000000-0000-4000-8000-000000000001',t.id,1,
+ VALUES ('52000000-0000-4000-8000-000000000001','55000000-0000-4000-8000-000000000001',1,
   '52000000-0000-4000-8000-000000000001/template-sources/55000000-0000-4000-8000-000000000001/v1/56000000-0000-4000-8000-000000000001.docx',
-  'tenant-a.docx',128
- FROM public.document_templates t WHERE t.tenant_id='52000000-0000-4000-8000-000000000001'$test$,
+  'tenant-a.docx',128)$test$,
  'tenant A can attach a private DOCX to its own archived template version'
 );
 
@@ -116,10 +115,9 @@ SELECT extensions.is(
 
 SELECT extensions.throws_ok(
  $test$INSERT INTO public.document_template_sources(tenant_id,template_id,version,storage_path,file_name,file_size)
- SELECT '52000000-0000-4000-8000-000000000002',t.id,1,
+ VALUES ('52000000-0000-4000-8000-000000000002','55000000-0000-4000-8000-000000000002',1,
   '52000000-0000-4000-8000-000000000002/template-sources/55000000-0000-4000-8000-000000000002/v1/56000000-0000-4000-8000-000000000002.docx',
-  'cross-tenant.docx',128
- FROM public.document_templates t WHERE t.tenant_id='52000000-0000-4000-8000-000000000002'$test$,
+  'cross-tenant.docx',128)$test$,
  '42501',NULL,
  'tenant A cannot register a DOCX source against tenant B template'
 );
