@@ -74,8 +74,7 @@ jobs:
           # are present, and dry_run=true must guarantee zero email delivery.
           export EXPIRY_ALERTS_CRON_SECRET="gfs-e2e-local-only-secret-2026-11-13"
           edge_env_file="$(mktemp)"
-          printf 'SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nEXPIRY_ALERTS_CRON_SECRET=%s\n' \
-            "$API_URL" "$SERVICE_ROLE_KEY" "$EXPIRY_ALERTS_CRON_SECRET" > "$edge_env_file"
+          printf 'EXPIRY_ALERTS_CRON_SECRET=%s\n' "$EXPIRY_ALERTS_CRON_SECRET" > "$edge_env_file"
 
           supabase functions serve send-expiry-notifications \
             --no-verify-jwt \
