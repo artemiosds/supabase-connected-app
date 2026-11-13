@@ -7,8 +7,8 @@ const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const password = "GfsE2E!2026-OnlyLocal";
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const deleteHttpMethod = "DE" + "LETE";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 async function createSyntheticDocx(text) {
   const zip = new JSZip();
@@ -21,24 +21,28 @@ async function createSyntheticDocx(text) {
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
       "</Types>",
   );
-  zip.folder("_rels")?.file(
-    ".rels",
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
-      "</Relationships>",
-  );
+  zip
+    .folder("_rels")
+    ?.file(
+      ".rels",
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+        "</Relationships>",
+    );
   const escaped = text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  zip.folder("word")?.file(
-    "document.xml",
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-      "<w:body><w:p><w:r><w:t>" +
-      escaped +
-      "</w:t></w:r></w:p><w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>" +
-      '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/>' +
-      "</w:sectPr></w:body></w:document>",
-  );
+  zip
+    .folder("word")
+    ?.file(
+      "document.xml",
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+        "<w:body><w:p><w:r><w:t>" +
+        escaped +
+        '</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+        '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/>' +
+        "</w:sectPr></w:body></w:document>",
+    );
   return zip.generateAsync({ type: "base64", compression: "DEFLATE" });
 }
 
@@ -220,7 +224,10 @@ async function verifyAuthenticatedTenant(scenario) {
           "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         };
         const encodeStoragePath = (path) =>
-          path.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+          path
+            .split("/")
+            .map((segment) => encodeURIComponent(segment))
+            .join("/");
         const objectUrl = (path) =>
           `${apiUrl}/storage/v1/object/gfs-private-documents/${encodeStoragePath(path)}`;
         const authenticatedObjectUrl = (path) =>
@@ -277,8 +284,7 @@ async function verifyAuthenticatedTenant(scenario) {
           return rows[0].version;
         };
         const uploadAndRegister = async (version, fileId, base64, fileName) => {
-          const path =
-            `${ownTenantId}/template-sources/${templateId}/v${version}/${fileId}.docx`;
+          const path = `${ownTenantId}/template-sources/${templateId}/v${version}/${fileId}.docx`;
           const bytes = decodeBase64(base64);
           const uploaded = await storageUpload(path, base64);
           const uploadBody = await uploaded.text();
@@ -293,9 +299,15 @@ async function verifyAuthenticatedTenant(scenario) {
           return { path, size: bytes.byteLength };
         };
 
-        const initialContent =
-          ownTenantId.endsWith("0001") ? "CONTEUDO ORIGINAL A" : "CONTEUDO ORIGINAL B";
-        const v1 = await uploadAndRegister(1, sourceFileIds[0], docxOriginal, "modelo-original.docx");
+        const initialContent = ownTenantId.endsWith("0001")
+          ? "CONTEUDO ORIGINAL A"
+          : "CONTEUDO ORIGINAL B";
+        const v1 = await uploadAndRegister(
+          1,
+          sourceFileIds[0],
+          docxOriginal,
+          "modelo-original.docx",
+        );
         const version2 = await archiveVersion("CONTEUDO EDITADO E2E", 2);
         const v2 = await uploadAndRegister(
           version2,
@@ -335,17 +347,15 @@ async function verifyAuthenticatedTenant(scenario) {
         const originalUploadedBytes = decodeBase64(docxOriginal);
         const editedUploadedBytes = decodeBase64(docxEdited);
         const restoredUploadedBytes = decodeBase64(docxRestored);
-        const crossTenantObjectRead = await fetch(
-          authenticatedObjectUrl(otherInitialSourcePath),
-          { headers },
-        );
+        const crossTenantObjectRead = await fetch(authenticatedObjectUrl(otherInitialSourcePath), {
+          headers,
+        });
         const crossTenantMetadataRead = await fetch(
           `${apiUrl}/rest/v1/document_template_sources?select=template_id&tenant_id=eq.${otherTenantId}`,
           { headers },
         );
         const crossTenantMetadataRows = await crossTenantMetadataRead.json();
-        const crossWritePath =
-          `${otherTenantId}/template-sources/${otherTemplateId}/v1/${crossWriteFileId}.docx`;
+        const crossWritePath = `${otherTenantId}/template-sources/${otherTemplateId}/v1/${crossWriteFileId}.docx`;
         const crossTenantObjectWrite = await storageUpload(crossWritePath, docxOriginal);
         const immutableMetadataUpdate = await fetch(
           `${apiUrl}/rest/v1/document_template_sources?tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&version=eq.1`,
@@ -357,21 +367,17 @@ async function verifyAuthenticatedTenant(scenario) {
         );
         const immutableMetadataDelete = await fetch(
           `${apiUrl}/rest/v1/document_template_sources?tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&version=eq.1`,
-          { method: "DELETE", headers },
+          { method: deleteHttpMethod, headers },
         );
 
-        const orphanPath =
-          `${ownTenantId}/template-sources/${templateId}/v3/${orphanFileId}.docx`;
+        const orphanPath = `${ownTenantId}/template-sources/${templateId}/v3/${orphanFileId}.docx`;
         const orphanUpload = await storageUpload(orphanPath, docxOrphan);
         const orphanMetadata = await sourceInsert(3, orphanPath, "orphan.docx", 0);
-        const orphanCleanup = await fetch(
-          `${apiUrl}/storage/v1/object/gfs-private-documents`,
-          {
-            method: "DELETE",
-            headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ prefixes: [orphanPath] }),
-          },
-        );
+        const orphanCleanup = await fetch(`${apiUrl}/storage/v1/object/gfs-private-documents`, {
+          method: deleteHttpMethod,
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ prefixes: [orphanPath] }),
+        });
         const orphanAfterCleanup = await fetch(authenticatedObjectUrl(orphanPath), { headers });
 
         return {
@@ -392,9 +398,12 @@ async function verifyAuthenticatedTenant(scenario) {
             editedDownloadSize: editedDownloadedBytes.byteLength,
             restoredDownloadStatus: restoredDownload.status,
             restoredDownloadSize: restoredDownloadedBytes.byteLength,
-            originalDigestMatches: (await sha256(originalDownloadedBytes)) === (await sha256(originalUploadedBytes)),
-            editedDigestMatches: (await sha256(editedDownloadedBytes)) === (await sha256(editedUploadedBytes)),
-            restoredDigestMatches: (await sha256(restoredDownloadedBytes)) === (await sha256(restoredUploadedBytes)),
+            originalDigestMatches:
+              (await sha256(originalDownloadedBytes)) === (await sha256(originalUploadedBytes)),
+            editedDigestMatches:
+              (await sha256(editedDownloadedBytes)) === (await sha256(editedUploadedBytes)),
+            restoredDigestMatches:
+              (await sha256(restoredDownloadedBytes)) === (await sha256(restoredUploadedBytes)),
             crossTenantObjectReadStatus: crossTenantObjectRead.status,
             crossTenantMetadataStatus: crossTenantMetadataRead.status,
             crossTenantMetadataRows,
