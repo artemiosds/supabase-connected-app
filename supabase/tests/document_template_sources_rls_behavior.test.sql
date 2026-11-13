@@ -2,7 +2,7 @@
 -- All fixtures are synthetic and rolled back; run only in disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(8);
+SELECT extensions.plan(10);
 
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -135,6 +135,31 @@ SELECT extensions.ok(
  (SELECT relrowsecurity AND relforcerowsecurity FROM pg_catalog.pg_class
   WHERE oid='public.document_template_sources'::regclass),
  'DOCX source metadata forces row-level security'
+);
+
+SELECT extensions.lives_ok(
+ $test$INSERT INTO storage.objects(bucket_id,name,owner,owner_id,metadata)
+ VALUES (
+  'gfs-private-documents',
+  '52000000-0000-4000-8000-000000000001/template-sources/55000000-0000-4000-8000-000000000001/v1/56000000-0000-4000-8000-000000000003.docx',
+  '51000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '{"mimetype":"application/vnd.openxmlformats-officedocument.wordprocessingml.document","size":128}'::jsonb
+ )$test$,
+ 'tenant A can upload a private DOCX object under its own tenant path'
+);
+
+SELECT extensions.throws_ok(
+ $test$INSERT INTO storage.objects(bucket_id,name,owner,owner_id,metadata)
+ VALUES (
+  'gfs-private-documents',
+  '52000000-0000-4000-8000-000000000002/template-sources/55000000-0000-4000-8000-000000000002/v1/56000000-0000-4000-8000-000000000004.docx',
+  '51000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '{"mimetype":"application/vnd.openxmlformats-officedocument.wordprocessingml.document","size":128}'::jsonb
+ )$test$,
+ '42501',NULL,
+ 'tenant A cannot upload a DOCX object under tenant B path'
 );
 
 SELECT * FROM extensions.finish();
