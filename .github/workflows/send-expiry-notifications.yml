@@ -57,7 +57,7 @@ jobs:
           fi
 
           for batch in $(seq 1 100); do
-            request_body="$(jq -n --argjson batch_size 100 --argjson offset "$offset" --argjson dry_run "$dry_run" '{batch_size:$batch_size,offset:$offset,dry_run:$dry_run}')" 
+            request_body="$(jq -n --argjson batch_size 100 --argjson offset "$offset" --argjson dry_run "$dry_run" '{batch_size:$batch_size,offset:$offset,dry_run:$dry_run}')"
             response="$(curl --silent --show-error --fail-with-body \
               --request POST "$endpoint" \
               --header "apikey: $SUPABASE_ANON_KEY" \

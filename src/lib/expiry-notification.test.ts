@@ -109,7 +109,6 @@ describe("notification simulation default", () => {
   });
 });
 
-
 describe("notification runtime configuration", () => {
   it("allows a dry-run with database credentials only", () => {
     expect(

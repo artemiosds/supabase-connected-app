@@ -119,7 +119,6 @@ export function notificationDryRun(value: unknown): boolean {
   return value !== false;
 }
 
-
 export type NotificationRuntimeConfiguration = {
   supabaseUrl?: string | null;
   serviceRoleKey?: string | null;
