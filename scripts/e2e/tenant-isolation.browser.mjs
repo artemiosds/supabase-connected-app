@@ -527,7 +527,12 @@ async function verifyAuthenticatedTenant(scenario) {
         ]);
         const templates = await templateResponse.json();
         const sources = await sourceResponse.json();
-        if (!templateResponse.ok || !sourceResponse.ok || templates.length !== 1 || sources.length !== 1) {
+        if (
+          !templateResponse.ok ||
+          !sourceResponse.ok ||
+          templates.length !== 1 ||
+          sources.length !== 1
+        ) {
           throw new Error(
             `UI restore metadata missing: template HTTP ${templateResponse.status}, source HTTP ${sourceResponse.status}`,
           );
