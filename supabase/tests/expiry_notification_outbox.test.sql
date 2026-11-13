@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(12);
+SELECT extensions.plan(15);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.expiry_notification_deliveries') IS NOT NULL,
@@ -74,5 +74,46 @@ SELECT extensions.ok(
    WHERE p.oid='public.claim_expiry_notification_delivery(uuid)'::regprocedure),
   'ambiguous sending rows are never reclaimed automatically'
 );
+
+SELECT extensions.ok(
+  has_table_privilege('service_role','public.tenants','SELECT')
+  AND has_table_privilege('service_role','public.supplier_documents','SELECT')
+  AND has_table_privilege('service_role','public.suppliers','SELECT')
+  AND has_table_privilege('service_role','public.tenant_memberships','SELECT')
+  AND has_table_privilege('service_role','public.membership_roles','SELECT')
+  AND has_table_privilege('service_role','public.profiles','SELECT'),
+  'service role can read only the required expiry notification source tables'
+);
+SELECT extensions.ok(
+  NOT has_table_privilege('service_role','public.tenants','INSERT')
+  AND NOT has_table_privilege('service_role','public.tenants','UPDATE')
+  AND NOT has_table_privilege('service_role','public.tenants','DELETE')
+  AND NOT has_table_privilege('service_role','public.supplier_documents','INSERT')
+  AND NOT has_table_privilege('service_role','public.supplier_documents','UPDATE')
+  AND NOT has_table_privilege('service_role','public.supplier_documents','DELETE')
+  AND NOT has_table_privilege('service_role','public.suppliers','INSERT')
+  AND NOT has_table_privilege('service_role','public.suppliers','UPDATE')
+  AND NOT has_table_privilege('service_role','public.suppliers','DELETE')
+  AND NOT has_table_privilege('service_role','public.tenant_memberships','INSERT')
+  AND NOT has_table_privilege('service_role','public.tenant_memberships','UPDATE')
+  AND NOT has_table_privilege('service_role','public.tenant_memberships','DELETE')
+  AND NOT has_table_privilege('service_role','public.membership_roles','INSERT')
+  AND NOT has_table_privilege('service_role','public.membership_roles','UPDATE')
+  AND NOT has_table_privilege('service_role','public.membership_roles','DELETE')
+  AND NOT has_table_privilege('service_role','public.profiles','INSERT')
+  AND NOT has_table_privilege('service_role','public.profiles','UPDATE')
+  AND NOT has_table_privilege('service_role','public.profiles','DELETE'),
+  'service role source-table privileges remain read-only'
+);
+SELECT extensions.ok(
+  NOT has_table_privilege('anon','public.tenants','SELECT')
+  AND NOT has_table_privilege('anon','public.supplier_documents','SELECT')
+  AND NOT has_table_privilege('anon','public.suppliers','SELECT')
+  AND NOT has_table_privilege('anon','public.tenant_memberships','SELECT')
+  AND NOT has_table_privilege('anon','public.membership_roles','SELECT')
+  AND NOT has_table_privilege('anon','public.profiles','SELECT'),
+  'anon cannot read expiry notification source tables'
+);
+
 SELECT * FROM extensions.finish();
 ROLLBACK;
