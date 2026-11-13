@@ -82,14 +82,20 @@ describe("DOCX source upload and metadata linking", () => {
   });
 
   it("cleans up after thrown upload and metadata operations", async () => {
-    const uploadFlow = setup({ upload: async () => { throw new Error("upload threw"); } });
+    const uploadFlow = setup({
+      upload: async () => {
+        throw new Error("upload threw");
+      },
+    });
     await expect(uploadFlow.run()).resolves.toMatchObject({
       status: "upload_failed",
       error: { message: "upload threw" },
     });
 
     const metadataFlow = setup({
-      insertMetadata: async () => { throw new Error("insert threw"); },
+      insertMetadata: async () => {
+        throw new Error("insert threw");
+      },
     });
     await expect(metadataFlow.run()).resolves.toMatchObject({
       status: "metadata_failed",
