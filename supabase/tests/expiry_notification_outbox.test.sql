@@ -86,7 +86,7 @@ SELECT extensions.ok(
   'service role can read only the required expiry notification source tables'
 );
 SELECT extensions.ok(
-  AND NOT has_table_privilege('service_role','public.tenants','INSERT')
+  NOT has_table_privilege('service_role','public.tenants','INSERT')
   AND NOT has_table_privilege('service_role','public.tenants','UPDATE')
   AND NOT has_table_privilege('service_role','public.tenants','DELETE')
   AND NOT has_table_privilege('service_role','public.tenants','TRUNCATE')
