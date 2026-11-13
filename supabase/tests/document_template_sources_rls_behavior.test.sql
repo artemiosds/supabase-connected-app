@@ -58,10 +58,10 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Seed templates; their version-history trigger creates immutable version 1.
-INSERT INTO public.document_templates(tenant_id,title,content,created_by,updated_by)
+INSERT INTO public.document_templates(id,tenant_id,title,content,created_by,updated_by)
 VALUES
- ('52000000-0000-4000-8000-000000000001','Synthetic template A','A source fixture','51000000-0000-4000-8000-000000000001','51000000-0000-4000-8000-000000000001'),
- ('52000000-0000-4000-8000-000000000002','Synthetic template B','B source fixture','51000000-0000-4000-8000-000000000002','51000000-0000-4000-8000-000000000002');
+ ('55000000-0000-4000-8000-000000000001','52000000-0000-4000-8000-000000000001','Synthetic template A','A source fixture','51000000-0000-4000-8000-000000000001','51000000-0000-4000-8000-000000000001'),
+ ('55000000-0000-4000-8000-000000000002','52000000-0000-4000-8000-000000000002','Synthetic template B','B source fixture','51000000-0000-4000-8000-000000000002','51000000-0000-4000-8000-000000000002');
 
 -- Private objects and tenant B source are seeded by the test owner, not production.
 INSERT INTO storage.objects(bucket_id,name,owner_id,metadata)
