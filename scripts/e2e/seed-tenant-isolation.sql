@@ -5,7 +5,7 @@ BEGIN;
 
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  email_confirmed_at, confirmed_at, raw_app_meta_data, raw_user_meta_data,
   created_at, updated_at
 ) VALUES
   (
@@ -15,6 +15,7 @@ INSERT INTO auth.users (
     'authenticated',
     'e2e.secretaria.a@example.invalid',
     extensions.crypt('GfsE2E!2026-OnlyLocal', extensions.gen_salt('bf')),
+    pg_catalog.now(),
     pg_catalog.now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"full_name":"Usuário E2E Secretaria A"}'::jsonb,
@@ -37,8 +38,39 @@ INSERT INTO auth.users (
 ON CONFLICT (id) DO UPDATE
 SET encrypted_password = EXCLUDED.encrypted_password,
     email_confirmed_at = EXCLUDED.email_confirmed_at,
+    confirmed_at = EXCLUDED.confirmed_at,
     raw_app_meta_data = EXCLUDED.raw_app_meta_data,
     raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+    updated_at = pg_catalog.now();
+
+
+-- GoTrue email/password login resolves email identities as well as auth.users.
+INSERT INTO auth.identities(
+  provider_id, user_id, identity_data, provider, email, created_at, updated_at
+)
+VALUES
+  (
+    'e2e.secretaria.a@example.invalid',
+    '90000000-0000-4000-8000-000000000001',
+    '{"sub":"90000000-0000-4000-8000-000000000001","email":"e2e.secretaria.a@example.invalid","email_verified":true}'::jsonb,
+    'email',
+    'e2e.secretaria.a@example.invalid',
+    pg_catalog.now(),
+    pg_catalog.now()
+  ),
+  (
+    'e2e.secretaria.b@example.invalid',
+    '90000000-0000-4000-8000-000000000002',
+    '{"sub":"90000000-0000-4000-8000-000000000002","email":"e2e.secretaria.b@example.invalid","email_verified":true}'::jsonb,
+    'email',
+    'e2e.secretaria.b@example.invalid',
+    pg_catalog.now(),
+    pg_catalog.now()
+  )
+ON CONFLICT (provider_id, provider) DO UPDATE
+SET user_id = EXCLUDED.user_id,
+    identity_data = EXCLUDED.identity_data,
+    email = EXCLUDED.email,
     updated_at = pg_catalog.now();
 
 INSERT INTO public.profiles(id, full_name)
