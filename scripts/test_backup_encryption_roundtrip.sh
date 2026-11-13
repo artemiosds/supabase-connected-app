@@ -74,5 +74,22 @@ for item in manifest["objects"]:
     assert hashlib.sha256(content).hexdigest() == item["sha256"]
 PY
 
+if [[ -n "${BACKUP_RESTORE_DATABASE_URL:-}" ]]; then
+  psql "$BACKUP_RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$restored_dir/database/roles.sql"
+  psql "$BACKUP_RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$restored_dir/database/schema.sql"
+  psql "$BACKUP_RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$restored_dir/database/data.sql"
+  restored_value="$(psql "$BACKUP_RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc \
+    "SELECT id FROM backup_fixture.synthetic_backup_probe WHERE id = 20261113")"
+  test "$restored_value" = "20261113"
+  psql "$BACKUP_RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+    "DROP SCHEMA backup_fixture CASCADE; DROP ROLE synthetic_backup_probe;"
+  echo "PASS: decrypted synthetic SQL schema, data and role restored and queried in disposable PostgreSQL."
+fi
+
 echo "PASS: synthetic backup package encrypted, checksummed, decrypted and restored byte-for-byte."
-echo "NOTE: this validates packaging and file integrity only; it does not access SMS2 or prove a live database restore."
+if [[ -n "${BACKUP_RESTORE_DATABASE_URL:-}" ]]; then
+  echo "PASS: synthetic database restore was verified in an isolated schema on disposable local Supabase."
+else
+  echo "NOTE: this validates package integrity only; set BACKUP_RESTORE_DATABASE_URL to additionally verify SQL restore."
+fi
+echo "NOTE: this synthetic test does not access SMS2 or prove a live SMS2 backup restore."
