@@ -263,3 +263,16 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] Aceite formal da Secretaria e auditoria funcional final continuam pendentes.
 
 **NO-GO para produção/venda permanece.** SMS2 não recebeu migrations nem dados de teste nesta atualização.
+
+
+## Advisor remoto SMS2 — leitura somente em 13/11/2026
+
+- [x] Histórico remoto consultado: 74 migrations, última `20261112123300`; as oito migrations futuras do repositório permanecem não aplicadas.
+- [x] Advisor de saúde: nenhum finding.
+- [ ] Advisor de segurança: 36 avisos de funções `SECURITY DEFINER` executáveis por `authenticated`. A regra do projeto exige revisão individual; não revogar em massa, pois várias são RPCs intencionais e devem validar autorização no corpo. Revisar especificamente as RPCs documentais e de suporte.
+- [ ] Advisor de segurança: proteção de senha vazada do Supabase Auth está desabilitada; ativação depende de configuração Auth no painel e avaliação do impacto para os usuários.
+- [ ] Advisor de performance: 6 FKs sem índice de cobertura, incluindo `generated_documents(template_id, tenant_id)`. A migration aditiva `20261112150000_complete_foreign_key_index_coverage.sql` contém os seis índices, mas ainda não foi aplicada ao SMS2.
+- [ ] Advisor de performance: 7 conjuntos de políticas SELECT permissivas duplicadas, incluindo documentos/modelos/processos. A migration `20261112162000_remove_redundant_master_select_policies.sql` remove somente políticas redundantes cujo predicado Master já está incluído nas políticas principais; ainda não aplicada ao SMS2.
+- [ ] Advisor também reporta 72 índices sem uso observado; não remover automaticamente, pois o projeto ainda tem baixo histórico de uso e vários índices protegem FKs/consultas futuras.
+
+**Decisão:** findings foram registrados como itens de revisão e rollout, não como autorização para alterar o SMS2. Nenhuma migration, configuração Auth ou dado remoto foi alterado durante esta auditoria.

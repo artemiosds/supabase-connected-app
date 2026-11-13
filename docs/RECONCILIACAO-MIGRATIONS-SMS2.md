@@ -71,3 +71,8 @@ A migration é `20261112150000_complete_foreign_key_index_coverage.sql`. Nenhum 
 ## Atualização de contagem — 12/11/2026
 
 O repositório passou a conter 82 arquivos SQL. O SMS2 permanece em 74 versões até `20261112123300`; portanto, há oito migrations futuras não aplicadas, listadas acima. Todas as 82 migrations foram aplicadas em banco Supabase local descartável no CI do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b` ([run 43302243085](https://github.com/artemiosds/supabase-connected-app/actions/runs/43302243085)). Isso não autoriza aplicação no SMS2: backup/restore isolado e janela de implantação permanecem gates obrigatórios.
+
+
+## Advisor remoto SMS2 — leitura somente em 13/11/2026
+
+A consulta dos Advisors confirmou: health sem findings; 36 avisos de `SECURITY DEFINER` executáveis por `authenticated` (revisão individual obrigatória, sem revogação em massa); proteção de senha vazada desabilitada; seis FKs sem índice de cobertura; sete conjuntos de políticas SELECT permissivas redundantes; 72 índices sem uso observado. As migrations `20261112150000` e `20261112162000` já preparam os seis índices e a remoção das sete políticas redundantes, mas permanecem não aplicadas no SMS2. Não remover índices automaticamente em ambiente com baixo histórico de uso. Nenhuma configuração, migration ou dado remoto foi alterado nesta consulta.
