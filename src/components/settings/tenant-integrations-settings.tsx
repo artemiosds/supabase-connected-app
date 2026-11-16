@@ -31,6 +31,7 @@ type IntegrationSettings = {
   has_drive_client_secret: boolean;
   has_drive_refresh_token: boolean;
   drive_connected_at: string | null;
+  drive_last_sync_at: string | null;
   drive_root_folder_id: string;
   retention_days: string;
   retention_policy_version: string;
@@ -57,6 +58,7 @@ const EMPTY: IntegrationSettings = {
   has_drive_client_secret: false,
   has_drive_refresh_token: false,
   drive_connected_at: null,
+  drive_last_sync_at: null,
   drive_root_folder_id: "",
   retention_days: "2555",
   retention_policy_version: "",
@@ -370,6 +372,7 @@ export function TenantIntegrationsSettings() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">A sincronização copia até 20 documentos privados por execução. Os originais permanecem no armazenamento da plataforma; resultados incertos não são reenviados automaticamente para evitar duplicatas.</p>
+              {settings.drive_last_sync_at && <p className="text-xs text-muted-foreground">Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}.</p>}
             </section>
 
             <section className="space-y-3 border-t pt-6">
