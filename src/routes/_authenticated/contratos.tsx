@@ -959,7 +959,9 @@ function NovoAditivo(props: {
   const [numero, setNumero] = useState("");
   const [tipo, setTipo] = useState("prorrogacao");
   const [novaData, setNovaData] = useState("");
-  const [dataAssinatura, setDataAssinatura] = useState(() => new Date().toLocaleDateString("sv-SE"));
+  const [dataAssinatura, setDataAssinatura] = useState(() =>
+    new Date().toLocaleDateString("sv-SE"),
+  );
   const [valor, setValor] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
