@@ -182,6 +182,43 @@ Deno.serve(async (request: Request) => {
     return response({ configuration: publicSettings(data as Record<string, unknown> | null) }, 200, origin);
   }
 
+  if (action === "start_drive_oauth") {
+    const { data: row, error: rowError } = await admin
+      .from("tenant_integration_settings")
+      .select("drive_client_id,drive_client_secret_ciphertext")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    const redirectUri = Deno.env.get("GOOGLE_DRIVE_REDIRECT_URI") ?? "";
+    if (rowError || !row?.drive_client_id || !row.drive_client_secret_ciphertext || !redirectUri) {
+      return response({ error: "Informe o OAuth Client ID/Secret e configure GOOGLE_DRIVE_REDIRECT_URI no servidor." }, 409, origin);
+    }
+    try {
+      const stateBytes = crypto.getRandomValues(new Uint8Array(32));
+      const state = toBase64(stateBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state));
+      const stateHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const { error: stateError } = await admin.from("tenant_drive_oauth_states").insert({
+        state_hash: stateHash,
+        tenant_id: tenantId,
+        actor_id: auth.user.id,
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      });
+      if (stateError) throw new Error("OAUTH_STATE_STORE_FAILED");
+      const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      url.searchParams.set("client_id", row.drive_client_id);
+      url.searchParams.set("redirect_uri", redirectUri);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("scope", "https://www.googleapis.com/auth/drive.file");
+      url.searchParams.set("access_type", "offline");
+      url.searchParams.set("prompt", "consent");
+      url.searchParams.set("include_granted_scopes", "true");
+      url.searchParams.set("state", state);
+      return response({ authorization_url: url.toString() }, 200, origin);
+    } catch {
+      return response({ error: "Não foi possível iniciar a autorização do Google Drive." }, 500, origin);
+    }
+  }
+
   if (action === "test_email") {
     const { data: row, error: rowError } = await admin
       .from("tenant_integration_settings")
