@@ -195,3 +195,18 @@ O teste usa apenas dados sintéticos e faz ROLLBACK; não grava no SMS2. A Fase 
 - [x] As sete verificações unitárias de `document-source-upload.test.ts` cobrem upload parcial/falho, falha de metadados, falha de limpeza, troca de Secretaria durante upload e exceções lançadas por operações.
 
 **Limites mantidos:** os modelos e arquivos são fixtures sintéticas geradas para CI. O SMS2 não possui modelos/fontes/timbrados/documentos reais para comparação visual. A restauração foi testada no Supabase local descartável, não como restauração dos arquivos/dados reais de SMS2. Nenhum dado operacional ou migration foi gravado no SMS2. A Fase 1 permanece em homologação e **NO-GO para produção/venda** até backup real recuperável, modelos oficiais aprovados e aceite formal.
+
+
+## Homologação DOCX, timbrado e aprovação — 16/11/2026
+
+- [x] CI de validação e banco descartável aprovado no commit de código `44029d506284f56becb54085fdc396f360ae2f28`: [run 43857620006](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857620006), com build, TypeScript, Deno, lint e migrations.
+- [x] Suíte SQL: 23 arquivos, 423 assertions pgTAP, PASS. Inclui workflow documental: autor envia; autoaprovação é negada; leitor sem permissão não aprova; usuário distinto autorizado aprova; devolução exige justificativa; histórico de eventos permanece imutável e restrito à Secretaria.
+- [x] Suíte Vitest: 22 arquivos, 136 testes, incluindo importação DOCX, geração Word/PDF, variáveis, branding e transporte simulado do Resend.
+- [x] E2E Playwright aprovado: [run 43857619955](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857619955). Duas Secretarias fictícias fizeram login autenticado, provaram isolamento de dados e Storage e tiveram leituras/escritas cruzadas negadas.
+- [x] A interface Documentos restaurou a versão histórica 2 como versão 4, preservando o arquivo Word original, comprovado por igualdade SHA-256 dos bytes.
+- [x] A interface Configurações salvou um timbrado e brasão PNG sintéticos para cada Secretaria. O teste verificou metadata, download privado, SHA-256, negação de leitura pública, bloqueio cross-tenant e limpeza de objetos órfãos.
+- [x] O dry-run de alertas foi exercitado no Supabase local: quatro candidatos processados, nenhum envio, nenhuma falha, nenhum resultado incerto.
+- [ ] A interface de aprovação ainda não foi exercitada com o terceiro usuário aprovador no Playwright. A separação de funções está coberta por pgTAP, mas falta o cenário visual login do aprovador, ausência de permissão de criação, aprovação do documento de outro usuário e consulta do histórico.
+- [ ] A aparência e fidelidade dos arquivos oficiais permanecem pendentes: SMS2 não possui modelos DOCX, fontes, timbrados, documentos gerados ou objetos reais para comparar. São necessários modelos e brasões oficiais anonimizados/fornecidos pela Secretaria.
+
+**Limites e decisão:** o E2E usa apenas contas `.invalid` e fixtures sintéticas no Supabase descartável; o SMS2 permanece sem fixtures operacionais. O backup criptografado/restore também foi validado somente com pacote sintético em PostgreSQL local. Nenhum backup real de SMS2 foi realizado, nenhum e-mail foi enviado e o agendamento está desativado. A Fase 1 continua em homologação e **NO-GO para produção/venda** até backup/restore real, homologação de arquivos oficiais e aceite formal.
