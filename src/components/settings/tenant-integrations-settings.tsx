@@ -77,6 +77,10 @@ export function TenantIntegrationsSettings() {
   const [requestType, setRequestType] = useState("access");
   const [requestDescription, setRequestDescription] = useState("");
   const [submittingPrivacy, setSubmittingPrivacy] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewDecision, setReviewDecision] = useState<"approved" | "rejected">("approved");
+  const [reviewLegalBasis, setReviewLegalBasis] = useState("");
+  const [reviewNotes, setReviewNotes] = useState("");
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
     setSettings((current) => ({ ...current, [key]: value }));
@@ -171,6 +175,30 @@ export function TenantIntegrationsSettings() {
     }
     setRequestDescription("");
     toast.success("Solicitação registrada para análise.");
+    await load();
+  }
+
+  async function reviewPrivacyRequest(requestId: string) {
+    if (!selecionado?.id) return;
+    setReviewingId(requestId);
+    const { data, error } = await db.functions.invoke("tenant-integration-settings", {
+      body: {
+        action: "review_privacy_request",
+        tenant_id: selecionado.id,
+        request_id: requestId,
+        decision: reviewDecision,
+        legal_basis_review: reviewLegalBasis,
+        decision_notes: reviewNotes,
+      },
+    });
+    setReviewingId(null);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível registrar a decisão.");
+      return;
+    }
+    setReviewLegalBasis("");
+    setReviewNotes("");
+    toast.success(data.message ?? "Análise registrada.");
     await load();
   }
 
@@ -315,6 +343,16 @@ export function TenantIntegrationsSettings() {
                         <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{request.request_type.toUpperCase()} · {request.status}</span><span className="text-xs text-muted-foreground">{new Date(request.created_at).toLocaleString("pt-BR")}</span></div>
                         <p className="mt-1 text-xs text-muted-foreground">{request.requester_email ?? "Solicitante autenticado"}</p>
                         <p className="mt-2 whitespace-pre-wrap">{request.subject_description}</p>
+                        {canEdit && ["received", "under_review", "awaiting_identity"].includes(request.status) && (
+                          <div className="mt-3 space-y-2 border-t pt-3">
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <div className="space-y-1"><Label htmlFor={`privacy-decision-${request.id}`}>Decisão</Label><select id={`privacy-decision-${request.id}`} className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs" value={reviewDecision} onChange={(e) => setReviewDecision(e.target.value as "approved" | "rejected")}><option value="approved">Aprovar solicitação</option><option value="rejected">Rejeitar solicitação</option></select></div>
+                              <div className="space-y-1"><Label htmlFor={`privacy-basis-${request.id}`}>Análise da base legal</Label><Input id={`privacy-basis-${request.id}`} value={reviewLegalBasis} onChange={(e) => setReviewLegalBasis(e.target.value)} maxLength={2000} placeholder="Base legal e obrigações de guarda" /></div>
+                            </div>
+                            <div className="space-y-1"><Label htmlFor={`privacy-notes-${request.id}`}>Justificativa da decisão</Label><Textarea id={`privacy-notes-${request.id}`} rows={2} value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} maxLength={4000} /></div>
+                            <Button type="button" size="sm" variant="outline" disabled={reviewingId === request.id || !reviewLegalBasis.trim() || !reviewNotes.trim()} onClick={() => void reviewPrivacyRequest(request.id)}>{reviewingId === request.id ? "Registrando..." : "Registrar decisão"}</Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
