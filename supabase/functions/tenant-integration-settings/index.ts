@@ -498,6 +498,16 @@ Deno.serve(async (request: Request) => {
     return response({ error: "Não foi possível proteger as credenciais." }, 500, origin);
   }
 
+  const emailCredentialChanged =
+    (typeof body.email_api_secret === "string" && body.email_api_secret.length > 0) ||
+    existing?.email_provider !== provider ||
+    existing?.email_from_address !== fromAddress;
+  if (emailCredentialChanged) {
+    next.email_domain_verified_at = null;
+    next.email_last_test_at = null;
+    next.email_last_test_status = null;
+  }
+
   const policyText = textValue(body.retention_policy_text, 8000);
   const policyVersion = textValue(body.retention_policy_version, 40);
   if (body.approve_retention_policy === true) {
