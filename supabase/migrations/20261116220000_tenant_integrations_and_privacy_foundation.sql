@@ -99,4 +99,28 @@ COMMENT ON COLUMN public.tenant_integration_settings.drive_refresh_token_ciphert
 COMMENT ON TABLE public.tenant_privacy_requests IS
   'LGPD data-subject requests. Deletion requests require a separate legal-basis review and are never auto-executed.';
 
+
+CREATE TABLE IF NOT EXISTS public.tenant_drive_oauth_states (
+  state_hash text PRIMARY KEY CHECK (state_hash ~ '^[0-9a-f]{64}
+),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now()
+);
+CREATE INDEX IF NOT EXISTS idx_tenant_drive_oauth_states_expiry
+  ON public.tenant_drive_oauth_states(expires_at);
+ALTER TABLE public.tenant_drive_oauth_states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_drive_oauth_states FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states;
+CREATE POLICY p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.tenant_drive_oauth_states FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_drive_oauth_states TO service_role;
+COMMENT ON TABLE public.tenant_drive_oauth_states IS
+  'Single-use, hashed, short-lived OAuth state values for tenant Google Drive authorization.';
+
 COMMIT;
