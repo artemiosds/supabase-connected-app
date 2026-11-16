@@ -974,7 +974,7 @@ function NovoAditivo(props: {
     setDataAssinatura(new Date().toLocaleDateString("sv-SE"));
     setValor("");
     setObservacoes("");
-  }, [props.contrato?.id]);
+  }, [props.contrato]);
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
