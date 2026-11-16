@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(38);
+SELECT extensions.plan(41);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -86,6 +86,34 @@ SELECT extensions.ok(
 )
 FROM reviewed r
 ORDER BY r.signature;
+
+SELECT extensions.ok(
+ (SELECT p.prosecdef
+    AND COALESCE(p.proconfig,ARRAY[]::text[]) @> ARRAY['search_path=""']
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.fn_guard_generated_document()'::regprocedure),
+ 'generated document write guard uses SECURITY DEFINER with an empty search_path'
+);
+
+SELECT extensions.ok(
+ NOT pg_catalog.has_function_privilege('authenticated','public.fn_guard_generated_document()','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('anon','public.fn_guard_generated_document()','EXECUTE'),
+ 'generated document write guard is not executable by authenticated or anon'
+);
+
+SELECT extensions.ok(
+ NOT EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_proc p
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+  ) AS acl
+  WHERE p.oid='public.fn_guard_generated_document()'::regprocedure
+    AND acl.grantee=0
+    AND acl.privilege_type='EXECUTE'
+ ),
+ 'generated document write guard has no EXECUTE grant inherited from PUBLIC'
+);
 
 SELECT * FROM extensions.finish();
 ROLLBACK;
