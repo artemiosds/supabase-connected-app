@@ -229,7 +229,7 @@ Deno.serve(async (request: Request) => {
       if (jobId) {
         const { data: claimed, error: claimError } = await admin.from("tenant_drive_sync_jobs").update({
           status: "processing",
-          attempts: existing.attempts + 1,
+          attempts: (existing?.attempts ?? 0) + 1,
           last_error_code: null,
           updated_at: new Date().toISOString(),
         }).eq("id", jobId).eq("status", "failed").select("id").maybeSingle();
