@@ -781,10 +781,151 @@ async function verifyAuthenticatedTenant(scenario) {
   }
 }
 
+async function verifyDocumentApprovalWorkflow() {
+  const documentTitle = "Documento E2E — aprovação por usuário distinto";
+  const tenantId = "91000000-0000-4000-8000-000000000001";
+  const documentId = "98000000-0000-4000-8000-000000000001";
+  const authorId = "90000000-0000-4000-8000-000000000001";
+  const reviewerId = "90000000-0000-4000-8000-000000000003";
+
+  async function signInAndOpenGeneratedDocuments(email) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(30_000);
+    await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
+    await page.getByLabel("E-mail").fill(email);
+    await page.getByLabel("Senha").fill(password);
+    await Promise.all([
+      page.waitForURL(/\\/painel(?:[/?#]|$)/),
+      page.getByRole("button", { name: "Entrar", exact: true }).click(),
+    ]);
+    await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
+    await page.getByRole("tab", { name: /Gerados/ }).click();
+    return { context, page };
+  }
+
+  const author = await signInAndOpenGeneratedDocuments("e2e.secretaria.a@example.invalid");
+  try {
+    const row = author.page.getByRole("row").filter({ hasText: documentTitle });
+    await row.waitFor();
+    await row.getByRole("button", { name: "Enviar para aprovação", exact: true }).click();
+    await row.getByText("Aguardando aprovação", { exact: true }).waitFor();
+
+    const authorToken = await readAccessToken(author.page);
+    const submittedEvents = await author.page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, documentId }) => {
+        const response = await fetch(
+          `${apiUrl}/rest/v1/generated_document_workflow_events?select=actor_id,action,to_status&tenant_id=eq.${tenantId}&document_id=eq.${documentId}`,
+          { headers: { apikey: publicKey, Authorization: `Bearer ${token}` } },
+        );
+        return { status: response.status, events: await response.json() };
+      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token: authorToken, tenantId, documentId },
+    );
+    assert.equal(submittedEvents.status, 200);
+    assert.ok(
+      submittedEvents.events.some(
+        (event) =>
+          event.action === "submitted" &&
+          event.actor_id === authorId &&
+          event.to_status === "pending_approval",
+      ),
+      "submission history must record the document author's identity",
+    );
+  } finally {
+    await author.context.close();
+  }
+
+  const reviewer = await signInAndOpenGeneratedDocuments("reviewer.secretaria.a@example.invalid");
+  try {
+    assert.equal(
+      await reviewer.page.getByRole("button", { name: "Gerar documento", exact: true }).count(),
+      0,
+      "the reviewer without documents:create must not see the document creation action",
+    );
+    assert.equal(
+      await reviewer.page.getByRole("button", { name: "Registrar documento", exact: true }).count(),
+      0,
+      "the reviewer without documents:create must not see the supplier-document creation action",
+    );
+
+    const attemptedInsert = await reviewer.page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId }) => {
+        const response = await fetch(`${apiUrl}/rest/v1/generated_documents`, {
+          method: "POST",
+          headers: {
+            apikey: publicKey,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({
+            tenant_id: tenantId,
+            title: "Tentativa de criação pelo aprovador E2E",
+            content_snapshot: "Este registro não deve ser criado.",
+            status: "draft",
+          }),
+        });
+        return { status: response.status, body: await response.text() };
+      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token: await readAccessToken(reviewer.page), tenantId },
+    );
+    const deniedInsertRows =
+      attemptedInsert.body.trim().startsWith("[") ? JSON.parse(attemptedInsert.body) : null;
+    assert.ok(
+      attemptedInsert.status >= 400 || (Array.isArray(deniedInsertRows) && deniedInsertRows.length === 0),
+      `the reviewer must not create a document through the Data API (HTTP ${attemptedInsert.status})`,
+    );
+
+    const row = reviewer.page.getByRole("row").filter({ hasText: documentTitle });
+    await row.getByText("Aguardando aprovação", { exact: true }).waitFor();
+    await row.getByRole("button", { name: "Aprovar", exact: true }).click();
+    await row.getByText("Aprovado", { exact: true }).waitFor();
+
+    const reviewerToken = await readAccessToken(reviewer.page);
+    const finalEvents = await reviewer.page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, documentId }) => {
+        const response = await fetch(
+          `${apiUrl}/rest/v1/generated_document_workflow_events?select=actor_id,action,to_status&tenant_id=eq.${tenantId}&document_id=eq.${documentId}`,
+          { headers: { apikey: publicKey, Authorization: `Bearer ${token}` } },
+        );
+        return { status: response.status, events: await response.json() };
+      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token: reviewerToken, tenantId, documentId },
+    );
+    assert.equal(finalEvents.status, 200);
+    assert.ok(
+      finalEvents.events.some(
+        (event) =>
+          event.action === "submitted" &&
+          event.actor_id === authorId &&
+          event.to_status === "pending_approval",
+      ),
+      "review history must retain the submitting author's identity",
+    );
+    assert.ok(
+      finalEvents.events.some(
+        (event) =>
+          event.action === "approved" &&
+          event.actor_id === reviewerId &&
+          event.to_status === "approved",
+      ),
+      "review history must record the distinct approver's identity",
+    );
+    console.log(
+      "PASS document approval workflow: author submission, separate reviewer approval, create permission denial, and both audit actors",
+    );
+  } finally {
+    await reviewer.context.close();
+  }
+}
+
 try {
   for (const scenario of scenarios) {
     await verifyAuthenticatedTenant(scenario);
   }
+  await verifyDocumentApprovalWorkflow();
   console.log(
     "PASS authenticated multitenant browser E2E: both synthetic tenant accounts are isolated.",
   );

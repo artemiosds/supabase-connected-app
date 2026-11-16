@@ -304,6 +304,21 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- A synthetic draft is submitted and approved in the authenticated browser E2E.
+INSERT INTO public.generated_documents(
+  id, tenant_id, title, content_snapshot, status, created_by, updated_by
+)
+VALUES (
+  '98000000-0000-4000-8000-000000000001',
+  '91000000-0000-4000-8000-000000000001',
+  'Documento E2E — aprovação por usuário distinto',
+  'Conteúdo sintético completo para testar envio e aprovação por usuários distintos.',
+  'draft',
+  '90000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000001'
+)
+ON CONFLICT (id) DO NOTHING;
+
 -- Synthetic contract and document expiry events for the notification dry-run.
 -- These fixtures exist only in the disposable CI database.
 INSERT INTO public.contracts(
