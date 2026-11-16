@@ -801,7 +801,13 @@ async function verifyDocumentApprovalWorkflow() {
       page.getByRole("button", { name: "Entrar", exact: true }).click(),
     ]);
     await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
+    try {
+      await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
+    } catch (error) {
+      console.error(`Document approval page debug (${email}): URL=${page.url()}`);
+      console.error((await page.locator("body").innerText()).slice(0, 3000));
+      throw error;
+    }
     await page.getByRole("tab", { name: /Gerados/ }).click();
     return { context, page };
   }
