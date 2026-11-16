@@ -1106,7 +1106,7 @@ async function verifyProcurementLifecycle() {
     await page.getByRole("button", { name: /Itens e saldo/ }).click();
     const itemPanel = page.locator("section").filter({ hasText: "Itens de " + contractNumber });
     await itemPanel.getByRole("button", { name: "Adicionar item", exact: true }).click();
-    const contractItemDescription = "Item contratual E2E " + tenantId.slice(-1);
+    let contractItemDescription = "Item contratual E2E " + tenantId.slice(-1);
     const itemForm = itemPanel.locator("form").filter({ hasText: "Descrição do item" });
     const itemFields = itemForm.locator("input");
     await itemFields.nth(0).fill(contractItemDescription);
@@ -1115,6 +1115,12 @@ async function verifyProcurementLifecycle() {
     await itemFields.nth(3).fill("2");
     await itemFields.nth(4).fill("10");
     await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
+    await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
+    await itemPanel.getByRole("button", { name: "Editar item", exact: true }).click();
+    contractItemDescription += " editado";
+    await itemPanel.locator("form").filter({ hasText: "Editar descrição do item" })
+      .locator("input").nth(0).fill(contractItemDescription);
+    await itemPanel.getByRole("button", { name: "Salvar alterações", exact: true }).click();
     await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
     await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).click();
     await itemPanel.getByLabel("Quantidade a consumir *").fill("1");
