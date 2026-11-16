@@ -197,8 +197,14 @@ SELECT extensions.ok(
   ) LIKE '%NEW.quantity_total < v_used_quantity%'
   AND pg_catalog.pg_get_functiondef(
     'public.fn_guard_contract_item_write()'::regprocedure
-  ) LIKE '%valor unitário não pode ser alterado após a primeira movimentação%',
-  'item edits cannot reduce consumed quantity or rewrite historical unit price'
+  ) LIKE '%NEW.unit IS DISTINCT FROM OLD.unit%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_item_write()'::regprocedure
+  ) LIKE '%NEW.unit_value IS DISTINCT FROM OLD.unit_value%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_item_write()'::regprocedure
+  ) LIKE '%unidade e o valor unitário não podem ser alterados após a primeira movimentação%',
+  'item edits preserve consumed quantity and historical unit and price semantics'
 );
 SELECT extensions.ok(
   pg_catalog.pg_get_functiondef(
