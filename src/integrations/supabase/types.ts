@@ -2654,6 +2654,10 @@ export type Database = {
           session_id: string;
         }[];
       };
+      cancel_generated_document_workflow: {
+        Args: { p_comment?: string | null; p_document_id: string; p_tenant_id: string };
+        Returns: string;
+      };
       transition_generated_document_workflow: {
         Args: {
           p_action: string;

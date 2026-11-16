@@ -933,6 +933,61 @@ async function verifyDocumentApprovalWorkflow() {
   } finally {
     await reviewer.context.close();
   }
+
+  const authorCanceller = await signInAndOpenGeneratedDocuments("e2e.secretaria.a@example.invalid");
+  try {
+    const row = authorCanceller.page.getByRole("row").filter({ hasText: documentTitle });
+    authorCanceller.page.once("dialog", async (dialog) => dialog.accept());
+    await row.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await row.getByText("Cancelado", { exact: true }).waitFor();
+
+    const cancellation = await authorCanceller.page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, documentId }) => {
+        const headers = { apikey: publicKey, Authorization: `Bearer ${token}` };
+        const [eventResponse, documentResponse] = await Promise.all([
+          fetch(
+            `${apiUrl}/rest/v1/generated_document_workflow_events?select=actor_id,action,from_status,to_status&tenant_id=eq.${tenantId}&document_id=eq.${documentId}&action=eq.cancelled`,
+            { headers },
+          ),
+          fetch(
+            `${apiUrl}/rest/v1/generated_documents?select=status&tenant_id=eq.${tenantId}&id=eq.${documentId}`,
+            { headers },
+          ),
+        ]);
+        return {
+          eventStatus: eventResponse.status,
+          events: await eventResponse.json(),
+          documentStatus: documentResponse.status,
+          documents: await documentResponse.json(),
+        };
+      },
+      {
+        apiUrl: supabaseUrl,
+        publicKey: anonKey,
+        token: await readAccessToken(authorCanceller.page),
+        tenantId,
+        documentId,
+      },
+    );
+    assert.equal(cancellation.eventStatus, 200);
+    assert.equal(cancellation.documentStatus, 200);
+    assert.equal(cancellation.documents[0]?.status, "cancelled");
+    assert.ok(
+      cancellation.events.some(
+        (event) =>
+          event.actor_id === authorId &&
+          event.action === "cancelled" &&
+          event.from_status === "approved" &&
+          event.to_status === "cancelled",
+      ),
+      "cancellation must close the approved workflow and record the cancelling actor",
+    );
+    console.log(
+      "PASS document cancellation workflow: approved document, confirmation, synchronized status, and actor history",
+    );
+  } finally {
+    await authorCanceller.context.close();
+  }
 }
 
 try {

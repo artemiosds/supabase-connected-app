@@ -1646,17 +1646,21 @@ function Documentos() {
   }
 
   async function cancelarGerado(d: DocumentoGerado) {
-    if (!selecionado || d.status === "signed") return;
-    const { error: updateError } = await db
-      .from("generated_documents")
-      .update({ status: "cancelled" })
-      .eq("id", d.id)
-      .eq("tenant_id", selecionado.id);
-    if (updateError) {
-      toast.error(updateError.message);
+    if (!selecionado || d.status === "signed" || d.status === "cancelled") return;
+    const confirmou = window.confirm(
+      "Confirma o cancelamento deste documento? O conteúdo e o histórico de aprovação serão preservados.",
+    );
+    if (!confirmou) return;
+    const { error } = await db.rpc("cancel_generated_document_workflow", {
+      p_tenant_id: selecionado.id,
+      p_document_id: d.id,
+      p_comment: null,
+    });
+    if (error) {
+      toast.error(error.message);
       return;
     }
-    toast.success("Documento cancelado.");
+    toast.success("Documento cancelado e fluxo encerrado.");
     await carregar();
   }
 
