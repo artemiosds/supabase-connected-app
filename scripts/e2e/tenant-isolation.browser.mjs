@@ -879,7 +879,6 @@ async function verifyDocumentApprovalWorkflow() {
     const deniedInsertRows = attemptedInsert.body.trim().startsWith("[")
       ? JSON.parse(attemptedInsert.body)
       : null;
-        : null;
     assert.ok(
       attemptedInsert.status >= 400 ||
         (Array.isArray(deniedInsertRows) && deniedInsertRows.length === 0),
