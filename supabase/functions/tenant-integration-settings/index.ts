@@ -277,7 +277,7 @@ Deno.serve(async (request: Request) => {
   if (action === "test_email") {
     const { data: row, error: rowError } = await admin
       .from("tenant_integration_settings")
-      .select("email_provider,email_from_name,email_from_address,email_api_secret_ciphertext")
+      .select("email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext")
       .eq("tenant_id", tenantId)
       .maybeSingle();
     if (rowError || !row || row.email_provider !== "resend" ||
@@ -306,6 +306,7 @@ Deno.serve(async (request: Request) => {
         },
         body: JSON.stringify({
           from,
+          ...(row.email_reply_to ? { reply_to: row.email_reply_to } : {}),
           to: [auth.user.email],
           subject: "Teste de configuração — Gestão de Fornecedores da Saúde",
           html: "<p>Este é um teste de configuração de e-mail solicitado por um administrador da sua Secretaria.</p>",
