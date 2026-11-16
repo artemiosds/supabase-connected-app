@@ -197,6 +197,13 @@ Deno.serve(async (request: Request) => {
       })),
     ].filter((source) => source.storagePath);
 
+    const { data: existingJobs, error: jobsError } = await admin.from("tenant_drive_sync_jobs")
+      .select("id,idempotency_key,status,attempts")
+      .eq("tenant_id", tenantId)
+      .limit(5000);
+    if (jobsError) return json({ error: "Não foi possível consultar o histórico de sincronização." }, 500, origin);
+    const jobsByKey = new Map((existingJobs ?? []).map((job) => [job.idempotency_key, job]));
+
     let synced = 0;
     let skipped = 0;
     let failed = 0;
@@ -205,10 +212,7 @@ Deno.serve(async (request: Request) => {
     for (const source of sources) {
       if (processed >= 20) break;
       const keyValue = await idempotencyKey(`${tenantId}:${source.sourceType}:${source.sourceId}:v${source.version}:${source.storagePath}`);
-      const { data: existing } = await admin.from("tenant_drive_sync_jobs")
-        .select("id,status,attempts")
-        .eq("idempotency_key", keyValue)
-        .maybeSingle();
+      const existing = jobsByKey.get(keyValue);
       if (existing?.status === "synced" || existing?.status === "uncertain" ||
           existing?.status === "processing" || (existing && existing.attempts >= 3)) {
         skipped += 1;
