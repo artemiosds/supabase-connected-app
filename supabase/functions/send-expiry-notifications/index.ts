@@ -276,6 +276,12 @@ function addCandidateTasks(
   }
 }
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 function decodeBase64(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -285,13 +291,13 @@ async function decryptTenantEmailSecret(ciphertext: string): Promise<string> {
   const encodedKey = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
   const keyBytes = decodeBase64(encodedKey);
   if (keyBytes.length !== 32) throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
-  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+  const key = await crypto.subtle.importKey("raw", asArrayBuffer(keyBytes), "AES-GCM", false, ["decrypt"]);
   const [version, iv, encrypted] = ciphertext.split(".");
   if (version !== "v1" || !iv || !encrypted) throw new Error("EMAIL_SECRET_INVALID");
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: decodeBase64(iv) },
+    { name: "AES-GCM", iv: asArrayBuffer(decodeBase64(iv)) },
     key,
-    decodeBase64(encrypted),
+    asArrayBuffer(decodeBase64(encrypted)),
   );
   return new TextDecoder().decode(plain);
 }
