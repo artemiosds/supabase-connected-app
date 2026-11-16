@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(17);
+SELECT extensions.plan(19);
 
 SELECT extensions.has_table('public','tenant_integration_settings',
   'tenant integration settings table exists');
@@ -95,6 +95,19 @@ SELECT extensions.ok(
     WHERE conrelid='public.tenant_drive_sync_jobs'::regclass
       AND conname='tenant_drive_sync_job_synced_consistency'),
   'Drive jobs are service-only and enforce consistent synchronization state');
+
+
+SELECT extensions.has_table('public','tenant_drive_sync_jobs',
+  'Google Drive sync job queue exists');
+SELECT extensions.ok(
+  (SELECT relrowsecurity AND relforcerowsecurity
+   FROM pg_catalog.pg_class WHERE oid='public.tenant_drive_sync_jobs'::regclass)
+  AND NOT pg_catalog.has_table_privilege('authenticated','public.tenant_drive_sync_jobs','SELECT')
+  AND NOT pg_catalog.has_table_privilege('authenticated','public.tenant_drive_sync_jobs','INSERT')
+  AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
+    WHERE conrelid='public.tenant_drive_sync_jobs'::regclass
+      AND conname='tenant_drive_sync_job_synced_consistency'),
+  'Drive queue is service-only and preserves idempotent sync status integrity');
 
 SELECT * FROM extensions.finish();
 ROLLBACK;
