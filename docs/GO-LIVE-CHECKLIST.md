@@ -15,11 +15,11 @@
 
 ### Evidências automatizadas — aprovação e cancelamento visuais em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb`
 
-- **Validação, build, TypeScript, Deno, lint e segurança do banco descartável:** [run 43877853292](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853292) — jobs `validate` e `database-security` concluídos com sucesso.
+- **Validação, build, TypeScript, Deno, lint e segurança do banco descartável:** [run 43878865833](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865833) — jobs `validate` e `database-security` concluídos com sucesso no commit documental `f46258b`.
 - **pgTAP:** 23 arquivos SQL, 423 verificações, resultado PASS. Inclui segurança multitenant, Storage privado, timbrado, workflow documental, outbox/idempotência de notificações e regras de contratação.
 - **Vitest:** 22 arquivos, 136 testes aprovados. Inclui DOCX, importação, preenchimento de variáveis, timbrado e transporte simulado do Resend.
-- **Formatação:** [run 43877853406](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853406) — sucesso.
-- **E2E autenticado:** [run 43877853528](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853528) — sucesso no `main` atual, com duas Secretarias fictícias e contas `.invalid`. Além do GED, testa envio, aprovação por segundo usuário e cancelamento autorizado pela interface. Confirma a negação de criação pelo aprovador, a sincronização dos dois estados para cancelado e o registro do ator de cancelamento no histórico.
+- **Formatação:** [run 43878865720](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865720) — sucesso no commit documental `f46258b`.
+- **E2E autenticado:** [run 43878866355](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878866355) — sucesso no commit documental `f46258b`, com duas Secretarias fictícias e contas `.invalid`. Valida isolamento de fornecedores, fontes DOCX privadas, timbrado e aprovação/cancelamento pela interface. Confirma a negação de criação pelo aprovador, estados sincronizados de cancelamento e ator no histórico. O ciclo de compras/contratos e o GED de documentos de fornecedores ainda não estão neste E2E.
 - **Timbrado/brasão pela interface:** o mesmo E2E salvou para cada Secretaria uma configuração e um PNG sintético no bucket privado; verificou metadados, SHA-256 do download privado, bloqueio de leitura pública, acesso cruzado e limpeza de objeto órfão.
 - **Notificações — dry-run:** 4 candidatos, 4 processados, 0 enviados, 0 falhas, 0 incertos. Nenhum e-mail real foi enviado.
 - **Backup sintético:** pacote criptografado, checksum verificado, descriptografado e restaurado em PostgreSQL descartável. Isso **não é** backup real do SMS2 nem restauração de dados reais em outro projeto.
@@ -40,7 +40,7 @@
 4. **Aprovação visual ponta a ponta:** coberta por E2E sintético na CI. Continua pendente homologar o fluxo com usuários e documentos reais da Secretaria.
 5. **Aceite e integrações:** obter aceite formal da Secretaria; concluir a homologação de Google Drive OAuth e dos webhooks/gateway de cobrança antes de anunciar essas integrações como prontas.
 
-**Resultado:** as verificações automatizadas da CI cobrem o commit `55ce046`. A paridade atual de migrations com o SMS2 continua sem confirmação; a última reconciliação remota registrada é até `20261113194249`. **A Fase 1 permanece em homologação e NO-GO para produção/venda** até concluir os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados e aceite formal.
+**Resultado verificado em 16/11/2026:** `main` está no commit documental `f46258b`; o código de aplicação está no pai `8ee4e17`. Validação/segurança ([run 43878865833](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865833)), formatação ([run 43878865720](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865720)) e E2E autenticado ([run 43878866355](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878866355)) passaram nesse head. A reconciliação somente leitura confirmou 89 migrations no SMS2 contra 91 no `main`; as duas pendentes estão identificadas no início deste checklist e não foram aplicadas. **O sistema permanece NO-GO para produção/venda** até concluir os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, cobertura navegador de compras/contratos e aceite formal.
 
 
 ---

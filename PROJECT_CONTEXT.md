@@ -23,7 +23,7 @@
 
 ## Banco e relações principais
 
-Schema `public` no SMS2 consultado em 2026-11-12: 38 tabelas, todas com RLS habilitada; 27 com FORCE RLS e 133 políticas. O histórico remoto contém 74 versões até `20261112123300`. O repositório `main` possui 82 migrations SQL; oito migrations futuras permanecem sem aplicação no SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos não configurados, cobertura final de índices FK e remoção de políticas SELECT redundantes. A baseline `20261106194000` está registrada como marcador vazio. Não executar `db push` indiscriminadamente; consultar `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
+Rechecagem somente leitura em 2026-11-16: `public` tem 40 tabelas, todas com RLS habilitada; 29 usam FORCE RLS. O histórico SMS2 registra 89 migrations até `20261113194249`; o `main` tem 91 arquivos. As únicas pendentes são `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`. Nenhuma foi aplicada ao SMS2. A baseline `20261106194000` permanece um marcador vazio. Não executar `db push` indiscriminadamente; consultar `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 
 - Identidade e multitenancy: `profiles`, `tenants`, `tenant_memberships`, `permissions`, `tenant_roles`, `tenant_role_permissions`, `membership_roles`, `platform_admins`, `audit_events`.
 - Fornecedores e documentos: `suppliers`, `supplier_documents`, `document_templates`, `generated_documents`, `document_template_catalog`, `document_template_versions`.
@@ -51,9 +51,9 @@ Autenticação e recuperação; administração e provisionamento de Secretarias
 
 O Painel Master tem uma aba Configuração técnica com instruções para SMTP, alertas, backup e cobrança, além dos limites atuais de Drive, PDF e assinatura. A tela não coleta segredos nem confirma configuração externa.
 
-O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. A migration versionada também substitui as constraints de etapa nas duas tabelas e permanece não aplicada ao SMS2.
+O workflow de contratação foi expandido para dez etapas sem renomear os identificadores já usados; cada atividade do checklist pode receber responsável e prazo. As migrations correspondentes constam no histórico SMS2 até `20261113194249`; a cobertura de navegador do ciclo completo continua pendente.
 
-O motor documental agora possui catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato; substituição de campos divididos entre runs; linhas repetíveis de itens; geração Word a partir do DOCX original privado por versão; e prévia/lista de campos pendentes. O editor continua textual: se o conteúdo for alterado, o vínculo com o DOCX original é descartado; ao reabrir/editar ou restaurar uma versão sem alterar texto, o sistema recupera e preserva o original. A RPC de tramitação bloqueia envio à aprovação quando permanecem `[PREENCHER: ...]`, `[CAMPO NÃO CONFIGURADO: ...]` ou `{{...}}`. A exportação PDF agora usa renderizador próprio com cabeçalho, rodapé, margens, paginação e brasão configuráveis por Secretaria; não é conversor Word completo, portanto recursos incompatíveis são sinalizados ou bloqueados. As migrations de fonte DOCX, timbrado e bloqueio de campos ainda não foram aplicadas ao SMS2. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, PDF server-side, assinatura qualificada ICP-Brasil, WhatsApp, gateway de pagamento/webhooks e validação de isolamento com duas Secretarias. PDF atual usa impressão do navegador; assinatura existente é simples.
+O motor documental agora possui catálogo comum de placeholders para Secretaria, fornecedor, processo e contrato; substituição de campos divididos entre runs; linhas repetíveis de itens; geração Word a partir do DOCX original privado por versão; e prévia/lista de campos pendentes. O editor continua textual: se o conteúdo for alterado, o vínculo com o DOCX original é descartado; ao reabrir/editar ou restaurar uma versão sem alterar texto, o sistema recupera e preserva o original. A RPC de tramitação bloqueia envio à aprovação quando permanecem `[PREENCHER: ...]`, `[CAMPO NÃO CONFIGURADO: ...]` ou `{{...}}`. A exportação PDF agora usa renderizador próprio com cabeçalho, rodapé, margens, paginação e brasão configuráveis por Secretaria; não é conversor Word completo, portanto recursos incompatíveis são sinalizados ou bloqueados. As migrations de fonte DOCX, timbrado e bloqueio de campos constam no histórico remoto consultado até `20261113194249`. Em 16/11/2026, as únicas migrations pendentes são as duas proteções do workflow documental listadas acima. O E2E autenticado cobre duas Secretarias fictícias, fornecedores, fontes DOCX privadas, timbrado e aprovação/cancelamento de documentos; ainda não cobre o ciclo completo de compras/contratos nem o GED de documentos de fornecedores. Também dependem de configuração ou homologação: Google Drive OAuth/sincronização, SMTP e entrega real de e-mails, restauração de backup em projeto isolado, comparação visual de PDF oficial, assinatura qualificada ICP-Brasil, WhatsApp e gateway de pagamento/webhooks. O PDF atual usa renderizador client-side com `pdf-lib`; não é conversor Word completo. A assinatura existente é simples.
 
 
 
@@ -73,19 +73,19 @@ As medidas administrativas de fornecedores estão em código com migration versi
 
 ## Pendências conhecidas
 
-- O CI do commit `ab00a6b53065f205a436a52d57ccd57b60563371` passou em formatação, testes unitários, build, TypeScript, Deno nas cinco Edge Functions, lint, aplicação das migrations em Supabase descartável e pgTAP. Isso não comprova E2E autenticado, inspeção visual da interface em dispositivos nem integrações externas.
+- No código `8ee4e17`, validação, segurança SQL, formatação e E2E autenticado passaram; os três workflows foram reexecutados e passaram também no commit documental `f46258b`. O E2E ainda não percorre o ciclo de compras/contratos. CI verde não comprova inspeção visual em dispositivos nem integrações externas.
 - Não liberar comercialmente até terminar a homologação real, revisão operacional/jurídica e gates de e-mail, backup, integrações e isolamento multi-tenant.
 
 
 ## Saldo de contratos e Atas — em construção
 
-- A migration versionada `20261111200821_contract_arp_item_balances.sql` adiciona tipo de instrumento (contrato/ARP), itens com limite financeiro, saldo por item e livro razão imutável de consumo/estorno.
+- A migration de saldo contrato/ARP entrou no histórico do SMS2 como `20261112123300_contract_arp_item_balances`; preserve o ledger imutável de consumo/estorno.
 - RPCs de consumo e estorno validam sessão, Secretaria ativa, módulo habilitado, permissão, vigência, saldo e justificativa; os movimentos não podem ser inseridos ou editados diretamente por usuários autenticados.
 - A migration inclui RLS forçada, chaves compostas com tenant, índices e eventos de auditoria sem gravar valores pessoais nos detalhes.
-- A migration permanece no repositório e **não foi aplicada ao SMS2**. A tela de contratos permite classificar contrato/ARP, cadastrar itens, consultar saldo, registrar consumo com justificativa e estornar sem apagar o histórico. O CI do commit `9f2dc569b886b8a9564b73e42a0c2cab01001595` passou migrations em banco descartável e pgTAP; homologação visual/E2E por papéis permanece pendente.
+- A estrutura de saldo contrato/ARP está incluída no histórico SMS2 consultado até `20261113194249`; a tela permite classificar o instrumento, cadastrar itens, consultar saldo, registrar consumo e estornar com justificativa. Ainda falta E2E autenticado no navegador para esse fluxo e papéis distintos; os testes SQL em banco descartável não substituem essa etapa.
 
 
-- Validação local do saldo de contratos/Atas: 3 testes unitários passaram; `tsc --noEmit` passou no snapshot local sincronizado com os tipos novos. Build, lint e pipeline oficial passaram no commit `9f2dc56`. A migration continua sem aplicação no SMS2.
+- Nota histórica de implementação: testes unitários, TypeScript, build e lint passaram no commit `9f2dc56`; o estado atual de schema e CI está resumido no início deste arquivo.
 
 
 ## Relatórios e exportação
@@ -114,14 +114,14 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A migration `20261112124000_document_template_binary_source.sql` cria `document_template_sources` imutável por `(template_id, version)`, chaves compostas e políticas de Storage privado em `gfs-private-documents`.
 - A migration `20261112124500_tenant_document_branding.sql` cria configurações por Secretaria para título, subtítulo, rodapé, brasão PNG/JPEG privado, margens e numeração de páginas, com RLS, políticas de Storage e auditoria.
 - A migration `20261112125000_block_unconfigured_document_fields.sql` reforça o bloqueio server-side de envio para aprovação quando restam campos ausentes ou não configurados.
-- As três migrations estão no `main`, testadas em Supabase descartável/pgTAP, mas não foram aplicadas no SMS2.
+- Essas três migrations foram aplicadas ao SMS2 depois da fotografia de 12/11; a reconciliação de 16/11 as confirma no histórico remoto até `20261113194249`.
 - O DOCX original é carregado por versão, preservado ao editar metadados/restaurar versão e usado na exportação Word quando o texto não foi alterado. O editor da página ainda é textual; editar o texto desvincula o original. Editor visual rico preservando formatação durante edição permanece pendente.
 - O PDF usa renderizador `pdf-lib` a partir do modelo; logo, margens, cabeçalho/rodapé e paginação são testados. Não é conversão Word completa: recursos incompatíveis são bloqueados e alguns estilos de fonte/cor/tabela podem ser simplificados.
-- A homologação de modelos reais, duas Secretarias, perfis, downloads autenticados, comparação visual Word/PDF e aplicação segura das migrations continuam pendentes.
+- A homologação visual com modelos oficiais, usuários municipais e comparação Word/PDF continua pendente. O E2E sintético agora cobre duas Secretarias, fontes DOCX e timbrado, mas não o ciclo completo de compras/contratos nem o GED de documentos de fornecedores.
 - No commit `1e6207cec299912a8212595a0ffd57c5928f5dc7`, o PDF passou a centralizar brasão, cabeçalho e rodapé pela largura real da página, inclusive paisagem. O teste automatizado cobre as duas larguras.
 - O leitor DOCX agora verifica o tamanho descompactado declarado de cada entrada e o total do pacote antes de inflar qualquer arquivo; teste ZIP comprimido excessivamente grande incluído.
 - CI completo aprovado no run [43271911944](https://github.com/artemiosds/supabase-connected-app/actions/runs/43271911944): testes, build, tipos, Deno, lint, aplicação das 79 migrations em banco descartável e pgTAP.
-- SMS2 permanece inalterado: 74 migrations até `20261112123300`; as tabelas `document_template_sources` e `tenant_document_branding` não existem nele.
+- Fotografia daquela data: 74 migrations e tabelas DOCX/timbrado ausentes. A rechecagem de 16/11 confirma 89 migrations no SMS2 e essas estruturas registradas; consulte o resumo atualizado no início do arquivo.
 
 
 ## Reconciliação de migrations — auditoria de 12/11/2026

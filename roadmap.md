@@ -1,14 +1,14 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-> **Estado atualizado em 12/11/2026.** A fotografia atual e o diagnóstico por fases estão em [docs/DIAGNOSTICO-FASES-2026-11-12.md](docs/DIAGNOSTICO-FASES-2026-11-12.md). Use esse documento como referência; os blocos históricos abaixo são registro de evolução, não estado atual.
-
-- SMS2: 74 migrations, 38 tabelas públicas com RLS, 27 com FORCE RLS e 133 políticas.
-- 1 Secretaria, 1 vínculo municipal, 1 Master ativo, 2 identidades Auth; zero fornecedores, arquivos GED, processos, contratos, sanções, funcionários internos ou técnicos de suporte.
-- Cinco Edge Functions ativas (convites municipais, cobrança, suporte, equipe interna e alertas de vencimento).
-- Código no `main`: motor documental com aprovação, preservação de DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria, lista/bloqueio de campos pendentes, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
-- Pendências principais: editor visual rico, E2E com duas Secretarias, GED autenticado, homologação DOCX/PDF real, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
-- SMS2 permanece com 74 migrations; oito migrations futuras estão no `main` e não foram aplicadas: fonte DOCX, timbrado, bloqueio de campos pendentes, guardas de workflow, FORCE RLS de DOCX, índices FK e remoção de políticas SELECT redundantes.
-- **NO-GO comercial** até conclusão dos gates descritos no diagnóstico.
+> **Estado verificado em 16/11/2026.** O diagnóstico operacional está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md); registros abaixo de datas anteriores são históricos, não o estado atual.
+>
+> - SMS2: 89 migrations até `20261113194249`; `main`: 91. As únicas pendentes são `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`; ambas passaram no Supabase descartável da CI e não foram aplicadas ao SMS2.
+> - Schema público confirmado com 40 tabelas, todas com RLS; 29 também usam FORCE RLS. O Advisor de segurança aponta 35 RPCs `SECURITY DEFINER` acessíveis a `authenticated`; foram revisadas individualmente na CI, sem revogação em massa.
+> - Cinco Edge Functions estão ACTIVE: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. Isso não comprova e-mail entregue ou scheduler homologado.
+> - CI do código no commit `8ee4e17` passou validação/segurança, formatação e E2E autenticado; os workflows também passaram após o commit documental `f46258b`. O E2E cobre duas Secretarias sintéticas, fornecedores, fontes DOCX privadas, timbrado e fluxo de aprovação/cancelamento.
+> - O ciclo completo de compras/contratos, GED de documentos de fornecedores e homologação visual com documentos oficiais ainda não estão cobertos ponta a ponta. Integrações externas de Drive, cobrança e entrega recorrente de e-mail continuam pendentes.
+> - Backup criptografado/restauração sintéticos passaram em ambiente descartável. Backup real recuperável do SMS2, usuários/documentos oficiais e aceite municipal ainda faltam.
+> - **NO-GO para produção/comercialização** até fechar os gates do checklist. Próximo marco de código: E2E autenticado do ciclo de compras/contratos, com fixtures apenas no Supabase descartável.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
 
@@ -42,17 +42,17 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 
 | Fase | Situação | Próximo marco |
 | --- | --- | --- |
-| 0 — Base técnica | Estrutura pronta | Proteção de branch e publicação final |
-| 1 — Multitenant/RLS | Estrutura implantada | E2E com duas Secretarias |
-| 2 — Fornecedores/GED/Documentos | Módulos implementados | GED real, Drive, PDF e assinatura definidos |
-| 3 — Compras/Contratos | Núcleo implementado | Homologação completa no navegador |
-| 4 — Usuários/Equipe/Suporte | Estrutura implantada | SMTP e ciclo completo de convites |
-| 5 — Alertas/Integrações | Parcial | Alertas agendados, OAuth Drive, gateway |
-| 6 — Backup/Continuidade | Código preparado | Backup e restore comprovados |
-| 7 — Comercial/Produção | Não concluída | Cobrança, jurídico, domínio, SLA e piloto |
+| 0 — Base técnica | CI de código aprovada | Proteção de branch, publicação e operação |
+| 1 — Multitenant/RLS | E2E sintético de duas Secretarias aprovado | Homologar com usuários e perfis municipais |
+| 2 — Fornecedores/GED/Documentos | Fornecedores, DOCX e timbrado cobertos parcialmente no E2E | GED de fornecedor e documentos oficiais |
+| 3 — Compras/Contratos | Schema, telas e testes SQL presentes; E2E amplo pendente | Percorrer processo, cotações, orçamento, contrato e aditivos |
+| 4 — Usuários/Equipe/Suporte | Estrutura e Edge Functions ativas | Testar ciclo de convites e entrega de e-mail |
+| 5 — Alertas/Integrações | Dry-run disponível; integrações externas não homologadas | Agenda/email, Drive OAuth e gateway em sandbox |
+| 6 — Backup/Continuidade | Restauração sintética aprovada | Backup e restore reais em projeto isolado |
+| 7 — Comercial/Produção | Bloqueada | Domínio, jurídico, SLA, aceite e piloto |
 
 ## Decisão
-**NO-GO para produção comercial.** Não reconstruir Fases 1 e 2. DOCX já importa parágrafos e tabelas simples como texto editável; alertas visuais cobrem contratos e documentos. Priorizar fluxo de convites, provar isolamento com duas Secretarias, testar GED e recuperar backup antes de inserir dados reais.
+**NO-GO para produção comercial.** Não reconstruir os módulos já implementados. Priorizar E2E de compras/contratos e GED de documentos de fornecedores no banco descartável; depois seguir para homologação municipal, restore real e integrações controladas. Alertas visuais não significam envio automático de e-mail.
 
 ## Atualização de implantação — 10/11/2026, conferência direta
 
