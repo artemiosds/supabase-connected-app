@@ -2,7 +2,7 @@
 -- The transaction rolls back all fixtures and must run on disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(13);
+SELECT extensions.plan(18);
 
 INSERT INTO auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
  raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -28,7 +28,8 @@ INSERT INTO public.permissions(code,name,description,module)
 VALUES
  ('documents:view','View documents','Synthetic workflow test','documents'),
  ('documents:create','Create documents','Synthetic workflow test','documents'),
- ('documents:approve','Approve documents','Synthetic workflow test','documents')
+ ('documents:approve','Approve documents','Synthetic workflow test','documents'),
+ ('documents:sign','Sign documents','Synthetic workflow test','documents')
 ON CONFLICT(code) DO NOTHING;
 
 INSERT INTO public.tenant_roles(id,tenant_id,name,slug,description,is_system)
@@ -41,7 +42,7 @@ ON CONFLICT(id) DO NOTHING;
 INSERT INTO public.tenant_role_permissions(role_id,permission_id)
 SELECT r.id,p.id FROM public.tenant_roles r CROSS JOIN public.permissions p
 WHERE (r.id='63000000-0000-4000-8000-000000000001' AND p.code IN ('documents:view','documents:create','documents:approve'))
- OR (r.id='63000000-0000-4000-8000-000000000002' AND p.code IN ('documents:view','documents:approve'))
+ OR (r.id='63000000-0000-4000-8000-000000000002' AND p.code IN ('documents:view','documents:approve','documents:sign'))
  OR (r.id='63000000-0000-4000-8000-000000000003' AND p.code='documents:view')
 ON CONFLICT DO NOTHING;
 
@@ -100,6 +101,41 @@ SELECT extensions.is(
 );
 
 SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000001',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000001","role":"authenticated","email":"workflow-author@example.invalid"}',true);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000001' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ '42501',NULL,'an approved document cannot be signed by a user without documents:sign'
+);
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000002',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000002","role":"authenticated","email":"workflow-approver@example.invalid"}',true);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000002' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ 'P0001',NULL,'an approver cannot sign a document that has not been approved'
+);
+SELECT extensions.lives_ok(
+ $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000001' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ 'authorized approver can sign an approved document'
+);
+SELECT extensions.ok(
+ EXISTS (
+  SELECT 1 FROM public.generated_documents
+  WHERE id='65000000-0000-4000-8000-000000000001'
+    AND status='signed'
+    AND signed_by='61000000-0000-4000-8000-000000000002'
+    AND signed_name='Synthetic Approver'
+    AND signed_email='workflow-approver@example.invalid'
+    AND signed_at IS NOT NULL
+    AND signature_statement IS NOT NULL
+ ),
+ 'signature actor, confirmed name, JWT email, timestamp and statement are recorded'
+);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET title='Tampered after signing' WHERE id='65000000-0000-4000-8000-000000000001' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ 'P0001',NULL,'a signed document cannot be altered'
+);
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000001',true);
 SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 SELECT extensions.is(
  public.transition_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002','submit',NULL),
@@ -138,7 +174,7 @@ SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-80
 SELECT extensions.is(
  (SELECT count(*)::integer FROM public.generated_document_workflows
   WHERE tenant_id='62000000-0000-4000-8000-000000000001'
-    AND ((document_id='65000000-0000-4000-8000-000000000001' AND status='approved')
+    AND ((document_id='65000000-0000-4000-8000-000000000001' AND status='signed')
       OR (document_id='65000000-0000-4000-8000-000000000002' AND status='rejected'))),
  2,'approved and rejected decisions persist with their correct workflow states'
 );
@@ -146,7 +182,7 @@ SELECT extensions.is(
  (SELECT count(*)::integer FROM public.generated_document_workflow_events
   WHERE tenant_id='62000000-0000-4000-8000-000000000001'
     AND document_id IN ('65000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002')),
- 6,'submission and decisions produce a complete immutable event trail'
+ 7,'submission, approval, signature and rejection produce a complete immutable event trail'
 );
 
 SELECT * FROM extensions.finish();
