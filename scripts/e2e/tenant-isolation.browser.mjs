@@ -1109,7 +1109,7 @@ async function verifyProcurementLifecycle() {
     const contractRows = await readRows(
       "contracts",
       { tenant_id: tenantId, number: contractNumber },
-      "id,process_id,supplier_id,total_value,status",
+      "id,process_id,supplier_id,total_value,status,end_date",
     );
     assert.equal(contractRows.status, 200);
     assert.equal(contractRows.body.length, 1);
@@ -1244,9 +1244,28 @@ async function verifyProcurementLifecycle() {
     assert.equal(crossTenantItems.status, 200);
     assert.equal(crossTenantItems.body.length, 0, "tenant A cannot read tenant B contract items");
 
-    // Amendment behavior: each type updates only its intended contract field.
+    // Invalid extension dates must be rejected without creating an amendment.
     await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
     let amendmentDialog = page
+      .getByRole("dialog")
+      .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
+    await amendmentDialog.locator("input").nth(0).fill("Aditivo inválido E2E");
+    await amendmentDialog.locator("input[type=date]").nth(0).fill(contractRows.body[0].end_date);
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page
+      .getByText("A nova data final deve ser posterior à vigência atual do contrato.")
+      .waitFor();
+    const rejectedAmendments = await readRows(
+      "contract_amendments",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+      "id",
+    );
+    assert.equal(rejectedAmendments.body.length, 0);
+    await amendmentDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+
+    // Amendment behavior: each type updates only its intended contract field.
+    await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
+    amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
     await amendmentDialog.locator("input").nth(0).fill("1º Aditivo E2E");
