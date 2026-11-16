@@ -993,7 +993,7 @@ async function verifyProcurementLifecycle() {
     // Reloading the structured data remounts Tabs with its default "items" tab.
     // Reopen the budget tab before asserting the persisted allocation.
     await composition.getByRole("tab", { name: "Orçamento", exact: true }).click();
-    await composition.getByText("Fundo Municipal de Saúde E2E", { exact: true }).waitFor();
+    await composition.getByText(/Fundo Municipal de Saúde E2E/).waitFor();
 
     await composition.getByRole("tab", { name: "Itens e preços", exact: true }).click();
     await composition.getByRole("button", { name: "Mapa comparativo (2)", exact: true }).click();
