@@ -311,9 +311,10 @@ async function deliverTask(
 ): Promise<"sent" | "failed" | "skipped" | "uncertain"> {
   let effectiveApiKey = apiKey;
   let effectiveFrom = from;
+  let effectiveReplyTo: string | undefined;
   const { data: tenantEmail, error: tenantEmailError } = await admin
     .from("tenant_integration_settings")
-    .select("email_provider,email_from_name,email_from_address,email_api_secret_ciphertext")
+    .select("email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext")
     .eq("tenant_id", task.tenantId)
     .maybeSingle();
   if (tenantEmailError) return "failed";
@@ -331,6 +332,7 @@ async function deliverTask(
       effectiveFrom = tenantEmail.email_from_name
         ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
         : tenantEmail.email_from_address;
+      effectiveReplyTo = typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
     } catch {
       console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
       return "failed";
@@ -389,6 +391,7 @@ async function deliverTask(
   const providerResult = await sendResendEmail({
     apiKey: effectiveApiKey,
     from: effectiveFrom,
+    replyTo: effectiveReplyTo,
     to: task.recipientEmail,
     subject: email.subject,
     html: email.html,
