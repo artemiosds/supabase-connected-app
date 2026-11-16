@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(14);
+SELECT extensions.plan(15);
 
 SELECT extensions.has_table('public','tenant_integration_settings',
   'tenant integration settings table exists');
@@ -38,6 +38,11 @@ SELECT extensions.ok(
     WHERE conrelid='public.tenant_integration_settings'::regclass
       AND conname='tenant_integration_email_address_check'),
   'email configuration validates port and sender address');
+SELECT extensions.ok(
+  EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
+    WHERE conrelid='public.tenant_integration_settings'::regclass
+      AND conname='tenant_integration_email_domain_check'),
+  'institutional sender domain has a database validation constraint');
 SELECT extensions.has_table('public','tenant_privacy_requests',
   'LGPD data-subject request register exists');
 SELECT extensions.ok(
