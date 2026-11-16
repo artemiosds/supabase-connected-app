@@ -1,0 +1,48 @@
+name: Temporary format integration implementation
+
+on:
+  push:
+    branches:
+      - feat/integracoes-configuraveis-tenant
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/integracoes-configuraveis-tenant
+      - uses: oven-sh/setup-bun@v2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Format integration implementation
+        run: |
+          bunx prettier --write \
+            src/components/settings/tenant-integrations-settings.tsx \
+            src/routes/_authenticated/configuracoes.tsx \
+            supabase/functions/tenant-integration-settings/index.ts \
+            supabase/functions/google-drive-oauth-callback/index.ts \
+            supabase/functions/google-drive-sync/index.ts \
+            supabase/functions/send-expiry-notifications/index.ts \
+            supabase/functions/_shared/expiry-notification-provider.ts \
+            docs/configuracao-manual-integracoes.md
+      - name: Commit formatting changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add \
+              src/components/settings/tenant-integrations-settings.tsx \
+              src/routes/_authenticated/configuracoes.tsx \
+              supabase/functions/tenant-integration-settings/index.ts \
+              supabase/functions/google-drive-oauth-callback/index.ts \
+              supabase/functions/google-drive-sync/index.ts \
+              supabase/functions/send-expiry-notifications/index.ts \
+              supabase/functions/_shared/expiry-notification-provider.ts \
+              docs/configuracao-manual-integracoes.md
+            git commit -m "style: format integration settings implementation"
+            git push origin HEAD:feat/integracoes-configuraveis-tenant
+          fi
