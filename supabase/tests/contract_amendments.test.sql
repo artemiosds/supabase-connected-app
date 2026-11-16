@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(6);
+SELECT extensions.plan(7);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.contract_amendments') IS NOT NULL,
@@ -73,6 +73,16 @@ SELECT extensions.ok(
     'public.fn_apply_contract_amendment()'::regprocedure
   ) LIKE '%NEW.signed_at > CURRENT_DATE%',
   'future amendment signature dates are rejected by the database'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_apply_contract_amendment()'::regprocedure
+  ) LIKE '%v_items_total > v_contract_total + NEW.value_change%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_apply_contract_amendment()'::regprocedure
+  ) LIKE '%Ajuste os itens antes do aditivo%',
+  'a suppression cannot reduce contract value below the sum of its registered items'
 );
 
 SELECT * FROM extensions.finish();
