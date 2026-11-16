@@ -796,7 +796,7 @@ async function verifyDocumentApprovalWorkflow() {
     await page.getByLabel("E-mail").fill(email);
     await page.getByLabel("Senha").fill(password);
     await Promise.all([
-      page.waitForURL(/\\/painel(?:[/?#]|$)/),
+      page.waitForURL(/\/painel(?:[/?#]|$)/),
       page.getByRole("button", { name: "Entrar", exact: true }).click(),
     ]);
     await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
