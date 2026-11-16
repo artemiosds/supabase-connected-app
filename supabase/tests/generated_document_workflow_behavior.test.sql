@@ -2,7 +2,7 @@
 -- The transaction rolls back all fixtures and must run on disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(18);
+SELECT extensions.plan(20);
 
 INSERT INTO auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
  raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -110,6 +110,10 @@ SELECT extensions.throws_ok(
 SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000002',true);
 SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000002","role":"authenticated","email":"workflow-approver@example.invalid"}',true);
 SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET title='Altered after approval' WHERE id='65000000-0000-4000-8000-000000000001' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ '42501',NULL,'a submitted and approved document cannot have its title altered through the table API'
+);
+SELECT extensions.throws_ok(
  $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000002' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
  'P0001',NULL,'an approver cannot sign a document that has not been approved'
 );
@@ -143,7 +147,11 @@ SELECT extensions.is(
 );
 
 SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000002',true);
-SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000002","role":"authenticated","email":"workflow-approver@example.invalid"}',true);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET content_snapshot='Altered while pending approval' WHERE id='65000000-0000-4000-8000-000000000002' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ '42501',NULL,'a pending approval document cannot have its content snapshot altered through the table API'
+);
 SELECT extensions.throws_ok(
  $test$SELECT public.transition_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002','reject','Não')$test$,
  'P0001',NULL,'rejection requires a reason of at least five characters'
