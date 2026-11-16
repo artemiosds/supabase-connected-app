@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(5);
+SELECT extensions.plan(6);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.contract_amendments') IS NOT NULL,
@@ -66,6 +66,13 @@ SELECT extensions.ok(
       AND is_nullable = 'NO'
   ),
   'the signed date is required and stored as a calendar date'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_apply_contract_amendment()'::regprocedure
+  ) LIKE '%NEW.signed_at > CURRENT_DATE%',
+  'future amendment signature dates are rejected by the database'
 );
 
 SELECT * FROM extensions.finish();
