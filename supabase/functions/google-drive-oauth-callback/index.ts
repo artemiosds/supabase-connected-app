@@ -5,7 +5,8 @@ function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   copy.set(bytes);
   return copy.buffer;
 }
-\nfunction base64Bytes(value: string): Uint8Array {
+
+function base64Bytes(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
