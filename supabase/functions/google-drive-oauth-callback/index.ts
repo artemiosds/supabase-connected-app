@@ -52,9 +52,8 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "GET") return new Response("Método não permitido.", { status: 405 });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const clientId = Deno.env.get("GOOGLE_DRIVE_OAUTH_CLIENT_ID") ?? "";
   const redirectUri = Deno.env.get("GOOGLE_DRIVE_REDIRECT_URI") ?? "";
-  if (!supabaseUrl || !serviceRoleKey || !clientId || !redirectUri) {
+  if (!supabaseUrl || !serviceRoleKey || !redirectUri) {
     return redirect("error", "oauth_not_configured");
   }
   const url = new URL(request.url);
@@ -85,7 +84,7 @@ Deno.serve(async (request: Request) => {
       .eq("tenant_id", stateRow.tenant_id)
       .maybeSingle();
     if (settingsError || !settings?.drive_client_id || !settings.drive_client_secret_ciphertext ||
-        settings.drive_client_id !== clientId) {
+        false) {
       return redirect("error", "tenant_oauth_configuration_changed");
     }
 
@@ -97,7 +96,7 @@ Deno.serve(async (request: Request) => {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id: clientId,
+        client_id: settings.drive_client_id,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
