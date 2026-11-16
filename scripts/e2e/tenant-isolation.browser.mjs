@@ -1151,13 +1151,16 @@ async function verifyProcurementLifecycle() {
     await itemPanel.getByLabel("Motivo do consumo *").fill("Consumo de homologação E2E");
     await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).last().click();
     await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).waitFor();
+    const contractItemRows = await readRows(
+      "contract_items",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+      "id",
+    );
+    assert.equal(contractItemRows.body.length, 1);
+    const contractItemId = contractItemRows.body[0].id;
     const excessConsumption = await callRpc("record_contract_item_consumption", {
       p_tenant_id: tenantId,
-      p_contract_item_id: (await readRows(
-        "contract_items",
-        { tenant_id: tenantId, contract_id: contractRows.body[0].id },
-        "id",
-      )).body[0].id,
+      p_contract_item_id: contractItemId,
       p_quantity: 2,
       p_reason: "Tentativa de consumo acima do saldo",
       p_reference_number: null,
@@ -1178,12 +1181,7 @@ async function verifyProcurementLifecycle() {
     const originalConsumption = movementRows.body.find(
       (movement) =>
         movement.movement_type === "consumption" &&
-        movement.contract_item_id ===
-          (await readRows(
-            "contract_items",
-            { tenant_id: tenantId, contract_id: contractRows.body[0].id },
-            "id",
-          )).body[0].id,
+        movement.contract_item_id === contractItemId,
     );
     assert.ok(originalConsumption, "the original consumption must remain in the ledger");
     const duplicateReversal = await callRpc("reverse_contract_item_consumption", {
