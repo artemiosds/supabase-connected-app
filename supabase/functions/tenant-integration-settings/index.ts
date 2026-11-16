@@ -77,6 +77,7 @@ function publicSettings(row: Record<string, unknown> | null) {
     email_from_name: row.email_from_name,
     email_from_address: row.email_from_address,
     email_reply_to: row.email_reply_to,
+    email_domain: row.email_domain,
     email_smtp_host: row.email_smtp_host,
     email_smtp_port: row.email_smtp_port,
     email_smtp_security: row.email_smtp_security,
@@ -229,6 +230,44 @@ Deno.serve(async (request: Request) => {
     }
   }
 
+  if (action === "verify_email_domain") {
+    const { data: row, error: rowError } = await admin
+      .from("tenant_integration_settings")
+      .select("email_provider,email_domain,email_api_secret_ciphertext")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (rowError || row?.email_provider !== "resend" || !row.email_domain || !row.email_api_secret_ciphertext) {
+      return response({ error: "Configure domínio, provedor Resend e chave API antes da verificação." }, 409, origin);
+    }
+    try {
+      const apiKey = await decryptSecret(row.email_api_secret_ciphertext, await encryptionKey());
+      const domainResponse = await fetch("https://api.resend.com/domains", {
+        method: "GET",
+        signal: AbortSignal.timeout(15000),
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const payload = await domainResponse.json().catch(() => null);
+      if (!domainResponse.ok || !Array.isArray(payload?.data)) {
+        return response({ error: "Não foi possível consultar o domínio no provedor." }, 502, origin);
+      }
+      const domain = payload.data.find((item: { name?: string }) =>
+        typeof item.name === "string" && item.name.toLowerCase() === String(row.email_domain).toLowerCase()
+      );
+      const verified = domain?.status === "verified";
+      const { error: updateError } = await admin.from("tenant_integration_settings").update({
+        email_domain_verified_at: verified ? new Date().toISOString() : null,
+      }).eq("tenant_id", tenantId);
+      if (updateError) return response({ error: "Não foi possível registrar o estado do domínio." }, 500, origin);
+      return response({
+        verified,
+        provider_status: typeof domain?.status === "string" ? domain.status : "not_found",
+        message: verified ? "Domínio verificado pelo provedor." : "O domínio ainda não está verificado no provedor.",
+      }, 200, origin);
+    } catch {
+      return response({ error: "Não foi possível verificar o domínio com a credencial armazenada." }, 502, origin);
+    }
+  }
+
   if (action === "test_email") {
     const { data: row, error: rowError } = await admin
       .from("tenant_integration_settings")
@@ -378,6 +417,13 @@ Deno.serve(async (request: Request) => {
   const replyTo = textValue(body.email_reply_to, 254);
   if (fromAddress && !EMAIL.test(fromAddress)) return response({ error: "Remetente inválido." }, 400, origin);
   if (replyTo && !EMAIL.test(replyTo)) return response({ error: "E-mail de resposta inválido." }, 400, origin);
+  const emailDomain = textValue(body.email_domain, 253);
+  if (emailDomain && !/^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}$/i.test(emailDomain)) {
+    return response({ error: "Informe um domínio válido." }, 400, origin);
+  }
+  if (fromAddress && emailDomain && fromAddress.split("@")[1]?.toLowerCase() !== emailDomain.toLowerCase()) {
+    return response({ error: "O domínio informado precisa corresponder ao endereço do remetente." }, 400, origin);
+  }
 
   const smtpHost = textValue(body.email_smtp_host, 253);
   const smtpPort = body.email_smtp_port === null || body.email_smtp_port === ""
@@ -408,6 +454,7 @@ Deno.serve(async (request: Request) => {
     email_from_name: textValue(body.email_from_name, 160),
     email_from_address: fromAddress,
     email_reply_to: replyTo,
+    email_domain: textValue(body.email_domain, 253)?.toLowerCase() ?? null,
     email_smtp_host: smtpHost,
     email_smtp_port: smtpPort,
     email_smtp_security: smtpSecurity,
