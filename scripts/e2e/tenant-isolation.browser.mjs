@@ -507,8 +507,9 @@ async function verifyAuthenticatedTenant(scenario) {
       exact: true,
     });
     await page.waitForFunction(
-      () => document.querySelectorAll('button').length > 0 &&
-        [...document.querySelectorAll('button')].filter(
+      () =>
+        document.querySelectorAll("button").length > 0 &&
+        [...document.querySelectorAll("button")].filter(
           (button) => button.textContent?.trim() === "Restaurar esta versão",
         ).length === 2,
       { timeout: 30_000 },
