@@ -32,6 +32,12 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 function fromBase64(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -46,13 +52,13 @@ async function encryptionKey(): Promise<CryptoKey> {
     throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
   }
   if (raw.length !== 32) throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
-  return await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return await crypto.subtle.importKey("raw", asArrayBuffer(raw), "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 async function encryptSecret(value: string, key: CryptoKey): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: asArrayBuffer(iv) },
     key,
     new TextEncoder().encode(value),
   );
@@ -63,9 +69,9 @@ async function decryptSecret(value: string, key: CryptoKey): Promise<string> {
   const parts = value.split(".");
   if (parts.length !== 3 || parts[0] !== "v1") throw new Error("CIPHERTEXT_INVALID");
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromBase64(parts[1]) },
+    { name: "AES-GCM", iv: asArrayBuffer(fromBase64(parts[1])) },
     key,
-    fromBase64(parts[2]),
+    asArrayBuffer(fromBase64(parts[2])),
   );
   return new TextDecoder().decode(decrypted);
 }
