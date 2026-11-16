@@ -329,7 +329,7 @@ async function deliverTask(
     try {
       effectiveApiKey = await decryptTenantEmailSecret(tenantEmail.email_api_secret_ciphertext);
       effectiveFrom = tenantEmail.email_from_name
-        ? `${String(tenantEmail.email_from_name).replace(/[<>\\r\\n]/g, "")} <${tenantEmail.email_from_address}>`
+        ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
         : tenantEmail.email_from_address;
     } catch {
       console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
