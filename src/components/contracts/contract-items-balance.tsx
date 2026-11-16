@@ -459,7 +459,7 @@ export function ContractItemsBalance(props: {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium">
-                          {item.line_number}. {item.description}
+                          {item.line_number}. <span>{item.description}</span>
                         </p>
                         {item.specification && (
                           <p className="text-xs text-muted-foreground">{item.specification}</p>
