@@ -25,6 +25,7 @@ type IntegrationSettings = {
   drive_client_id: string;
   has_drive_client_secret: boolean;
   has_drive_refresh_token: boolean;
+  drive_connected_at: string | null;
   drive_root_folder_id: string;
   retention_days: string;
   retention_policy_version: string;
@@ -48,6 +49,7 @@ const EMPTY: IntegrationSettings = {
   drive_client_id: "",
   has_drive_client_secret: false,
   has_drive_refresh_token: false,
+  drive_connected_at: null,
   drive_root_folder_id: "",
   retention_days: "2555",
   retention_policy_version: "",
@@ -66,6 +68,7 @@ export function TenantIntegrationsSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [connectingDrive, setConnectingDrive] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
@@ -104,6 +107,20 @@ export function TenantIntegrationsSettings() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function connectDrive() {
+    if (!selecionado?.id) return;
+    setConnectingDrive(true);
+    const { data, error } = await db.functions.invoke("tenant-integration-settings", {
+      body: { action: "start_drive_oauth", tenant_id: selecionado.id },
+    });
+    setConnectingDrive(false);
+    if (error || data?.error || !data?.authorization_url) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível iniciar a conexão.");
+      return;
+    }
+    window.location.assign(data.authorization_url);
+  }
 
   async function testEmail() {
     if (!selecionado?.id) return;
@@ -221,7 +238,15 @@ export function TenantIntegrationsSettings() {
                 <div className="space-y-2"><Label htmlFor="drive-client-secret">OAuth Client Secret {settings.has_drive_client_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label><Input id="drive-client-secret" type="password" autoComplete="new-password" value={driveClientSecret} onChange={(e) => setDriveClientSecret(e.target.value)} /></div>
                 <div className="space-y-2 sm:col-span-2"><Label htmlFor="drive-root-folder">ID da pasta raiz no Drive</Label><Input id="drive-root-folder" value={settings.drive_root_folder_id} onChange={(e) => update("drive_root_folder_id", e.target.value)} maxLength={512} /></div>
               </div>
-              <p className="text-xs text-muted-foreground">Não marque a integração como ativa ainda: a autorização OAuth, renovação de token e fila idempotente precisam ser implantadas e testadas antes de transferir documentos.</p>
+              {settings.has_drive_refresh_token && settings.drive_connected_at ? (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Conta Google autorizada em {new Date(settings.drive_connected_at).toLocaleString("pt-BR")}. A sincronização automática ainda não está habilitada.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Após salvar as credenciais, conecte a conta Google. A autorização usa escopo mínimo drive.file e não transfere arquivos automaticamente.</p>
+              )}
+              <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || (!driveClientSecret && !settings.has_drive_client_secret)} onClick={() => void connectDrive()}>
+                {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
+              </Button>
             </section>
 
             <section className="space-y-4 border-t pt-6">
