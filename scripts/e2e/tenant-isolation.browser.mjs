@@ -939,7 +939,12 @@ async function verifyDocumentApprovalWorkflow() {
     const row = authorCanceller.page.getByRole("row").filter({ hasText: documentTitle });
     authorCanceller.page.once("dialog", async (dialog) => dialog.accept());
     await row.getByRole("button", { name: "Cancelar", exact: true }).click();
-    await row.getByText("Cancelado", { exact: true }).waitFor();
+    await row.getByText("Cancelado", { exact: true }).first().waitFor();
+    assert.equal(
+      await row.getByText("Cancelado", { exact: true }).count(),
+      2,
+      "both the document and its approval workflow must show cancelled status",
+    );
 
     const cancellation = await authorCanceller.page.evaluate(
       async ({ apiUrl, publicKey, token, tenantId, documentId }) => {
