@@ -783,7 +783,6 @@ async function verifyAuthenticatedTenant(scenario) {
 
 async function verifyProcurementLifecycle() {
   const tenantId = "91000000-0000-4000-8000-000000000001";
-  const otherTenantId = "91000000-0000-4000-8000-000000000002";
   const supplierId = "94000000-0000-4000-8000-000000000001";
   const processNumber = "E2E-PROC-2026-001";
   const processTitle = "Aquisição sintética de insumos de saúde";
@@ -890,12 +889,18 @@ async function verifyProcurementLifecycle() {
     assert.equal(checklist.body.length, 17, "the standard checklist must be created atomically");
     assert.equal(checklist.body.filter((item) => item.stage === "planejamento" && item.is_done).length, 2);
 
-    const crossTenantRead = await readRows("procurement_processes", {
-      tenant_id: otherTenantId,
-      number: processNumber,
-    }, "id");
+    const crossTenantRead = await readRows(
+      "procurement_processes",
+      { number: processNumber },
+      "id,tenant_id,number",
+    );
     assert.equal(crossTenantRead.status, 200);
-    assert.deepEqual(crossTenantRead.body, [], "another tenant must not read this procurement process");
+    assert.equal(crossTenantRead.body.length, 1);
+    assert.equal(
+      crossTenantRead.body[0].tenant_id,
+      tenantId,
+      "an unscoped query must not reveal the other tenant's process with the same number",
+    );
 
     await detailDialog.getByRole("button", { name: "Itens, preços e orçamento", exact: false }).click();
     const composition = page.getByRole("dialog").filter({
@@ -971,7 +976,10 @@ async function verifyProcurementLifecycle() {
     await mapDialog.getByText(/15,00/).waitFor();
     await mapDialog.getByText(/Frete rateado pela quantidade cotada/).waitFor();
     await mapDialog.getByRole("button", { name: "Fechar mapa", exact: true }).click();
-    await composition.getByRole("button", { name: "Usar como referência", exact: true }).first().click();
+    const supplierQuote = composition
+      .getByText("Fornecedor Sintético Exclusivo A", { exact: true })
+      .locator("xpath=../..");
+    await supplierQuote.getByRole("button", { name: "Usar como referência", exact: true }).click();
     await composition.getByText("Referência escolhida", { exact: true }).waitFor();
 
     const items = await readRows("procurement_items", {

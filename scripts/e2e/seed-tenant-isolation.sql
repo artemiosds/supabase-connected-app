@@ -367,6 +367,19 @@ SELECT pg_catalog.set_config(
   '{"sub":"90000000-0000-4000-8000-000000000002","role":"authenticated"}',
   true
 );
+SELECT public.create_procurement_process_with_checklist(
+  '91000000-0000-4000-8000-000000000002',
+  'E2E-PROC-2026-001',
+  'Processo reservado da Secretaria E2E B',
+  'Fixture para verificar isolamento de processos entre Secretarias.',
+  'pregao',
+  'normal',
+  'Compras B',
+  'Equipe sintética B',
+  140,
+  CURRENT_DATE + 30
+);
+
 INSERT INTO public.suppliers(id, tenant_id, cnpj, legal_name, category, status)
 VALUES (
   '94000000-0000-4000-8000-000000000002',
