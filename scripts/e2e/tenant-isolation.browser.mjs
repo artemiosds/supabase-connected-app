@@ -781,6 +781,304 @@ async function verifyAuthenticatedTenant(scenario) {
   }
 }
 
+async function verifyProcurementLifecycle() {
+  const tenantId = "91000000-0000-4000-8000-000000000001";
+  const otherTenantId = "91000000-0000-4000-8000-000000000002";
+  const supplierId = "94000000-0000-4000-8000-000000000001";
+  const processNumber = "E2E-PROC-2026-001";
+  const processTitle = "Aquisição sintética de insumos de saúde";
+  const itemDescription = "Seringa descartável E2E";
+  const contractNumber = "E2E-CONTRATO-2026-001";
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.addInitScript((id) => localStorage.setItem("gfs:organizacao-id", id), tenantId);
+  page.setDefaultTimeout(30_000);
+
+  try {
+    await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
+    await page.getByLabel("E-mail").fill("e2e.secretaria.a@example.invalid");
+    await page.getByLabel("Senha").fill(password);
+    await Promise.all([
+      page.waitForURL(/\/painel(?:[/?#]|$)/),
+      page.getByRole("button", { name: "Entrar", exact: true }).click(),
+    ]);
+
+    const token = await readAccessToken(page);
+    assert.ok(token, "the procurement workflow must use an authenticated session");
+    const readRows = async (table, filters, select = "*") =>
+      page.evaluate(
+        async ({ apiUrl, publicKey, token, table, filters, select }) => {
+          const url = new URL(`/rest/v1/${table}`, apiUrl);
+          url.searchParams.set("select", select);
+          for (const [column, value] of Object.entries(filters)) {
+            url.searchParams.set(column, `eq.${value}`);
+          }
+          const response = await fetch(url, {
+            headers: { apikey: publicKey, Authorization: `Bearer ${token}` },
+          });
+          return { status: response.status, body: await response.json() };
+        },
+        { apiUrl: supabaseUrl, publicKey: anonKey, token, table, filters, select },
+      );
+
+    await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Processos de contratação", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Novo processo", exact: false }).click();
+    const createDialog = page
+      .getByRole("dialog")
+      .filter({ hasText: "Novo processo de contratação" });
+    const processForm = createDialog.locator("form");
+    const processInputs = processForm.locator("input");
+    await processInputs.nth(0).fill(processNumber);
+    await processInputs.nth(1).fill(processTitle);
+    await processInputs.nth(2).fill("Farmácia E2E");
+    await processInputs.nth(3).fill("Equipe sintética");
+    await processInputs.nth(4).fill("140");
+    await createDialog.getByRole("button", { name: "Criar processo", exact: true }).click();
+    await createDialog.waitFor({ state: "hidden" });
+
+    const processCard = page
+      .getByRole("button")
+      .filter({ hasText: processNumber })
+      .filter({ hasText: processTitle });
+    await processCard.waitFor();
+    await processCard.click();
+    const detailDialog = page.getByRole("dialog").filter({ hasText: processNumber });
+    await detailDialog.getByText("Etapa atual:", { exact: false }).waitFor();
+
+    await detailDialog.getByRole("button", { name: "Avançar etapa", exact: false }).click();
+    await page.getByText(/Conclua os 2 item\(ns\) pendente\(s\)/).waitFor();
+    const beforeAdvance = await readRows("procurement_processes", {
+      tenant_id: tenantId,
+      number: processNumber,
+    }, "id,stage,status");
+    assert.equal(beforeAdvance.status, 200);
+    assert.equal(beforeAdvance.body.length, 1);
+    assert.equal(beforeAdvance.body[0].stage, "planejamento");
+
+    await detailDialog
+      .getByRole("checkbox", { name: "Concluir: DFD — Documento de Formalização da Demanda" })
+      .click();
+    await detailDialog.getByRole("checkbox", { name: "Concluir: Previsão no PCA" }).click();
+    await detailDialog.getByRole("button", { name: "Avançar etapa", exact: false }).click();
+
+    let transitioned = false;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const current = await readRows("procurement_processes", {
+        tenant_id: tenantId,
+        number: processNumber,
+      }, "id,stage,status");
+      if (current.body?.[0]?.stage === "estudos") {
+        transitioned = true;
+        break;
+      }
+      await page.waitForTimeout(250);
+    }
+    assert.equal(transitioned, true, "the process must advance after its current-stage checklist is complete");
+    const createdProcess = await readRows("procurement_processes", {
+      tenant_id: tenantId,
+      number: processNumber,
+    }, "id,stage,status");
+    const processId = createdProcess.body[0].id;
+    assert.equal(createdProcess.body[0].status, "em_andamento");
+
+    const checklist = await readRows("process_items", {
+      tenant_id: tenantId,
+      process_id: processId,
+    }, "stage,title,is_done");
+    assert.equal(checklist.status, 200);
+    assert.equal(checklist.body.length, 17, "the standard checklist must be created atomically");
+    assert.equal(checklist.body.filter((item) => item.stage === "planejamento" && item.is_done).length, 2);
+
+    const crossTenantRead = await readRows("procurement_processes", {
+      tenant_id: otherTenantId,
+      number: processNumber,
+    }, "id");
+    assert.equal(crossTenantRead.status, 200);
+    assert.deepEqual(crossTenantRead.body, [], "another tenant must not read this procurement process");
+
+    await detailDialog.getByRole("button", { name: "Itens, preços e orçamento", exact: false }).click();
+    const composition = page.getByRole("dialog").filter({
+      hasText: `Composição da contratação — ${processNumber}`,
+    });
+    await composition.waitFor();
+
+    await composition.getByRole("button", { name: "Adicionar item", exact: true }).click();
+    const itemForm = composition.locator("form").filter({ hasText: "Descrição do item *" });
+    const itemInputs = itemForm.locator("input");
+    await itemInputs.nth(0).fill(itemDescription);
+    await itemInputs.nth(1).fill("unidade");
+    await itemInputs.nth(2).fill("2");
+    await itemInputs.nth(3).fill("70");
+    await itemInputs.nth(4).fill("Almoxarifado sintético");
+    await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
+    await composition.getByText(itemDescription, { exact: true }).waitFor();
+
+    async function addQuote(source, unitPrice, deliveryCost, referenceUrl, supplierName = null) {
+      await composition.getByRole("button", { name: "Nova cotação", exact: true }).click();
+      const quoteForm = composition.locator("form").filter({
+        hasText: "Fonte da cotação / fornecedor *",
+      });
+      if (supplierName) {
+        await quoteForm.getByRole("combobox").click();
+        await page.getByRole("option", { name: supplierName, exact: true }).click();
+      }
+      const quoteInputs = quoteForm.locator("input");
+      await quoteInputs.nth(0).fill(source);
+      await quoteInputs.nth(1).fill("2026-11-16");
+      await quoteInputs.nth(2).fill("2");
+      await quoteInputs.nth(3).fill(unitPrice);
+      await quoteInputs.nth(4).fill(deliveryCost);
+      await quoteInputs.nth(5).fill(referenceUrl);
+      await quoteForm.getByRole("button", { name: "Salvar cotação", exact: true }).click();
+      await composition.getByText(source, { exact: true }).waitFor();
+    }
+
+    await addQuote(
+      "Fornecedor Sintético Exclusivo A",
+      "10",
+      "10",
+      "https://example.invalid/e2e-cotacao-a",
+      "Fornecedor Sintético Exclusivo A",
+    );
+    await addQuote(
+      "Fonte pública sintética B",
+      "11",
+      "20",
+      "https://example.invalid/e2e-cotacao-b",
+    );
+
+    await composition.getByRole("tab", { name: "Orçamento", exact: true }).click();
+    await composition.getByRole("button", { name: "Adicionar dotação", exact: true }).click();
+    const budgetForm = composition.locator("form");
+    const budgetInputs = budgetForm.locator("input");
+    await budgetInputs.nth(0).fill("2026");
+    await budgetInputs.nth(1).fill("Fundo Municipal de Saúde E2E");
+    await budgetInputs.nth(2).fill("10.301.0001");
+    await budgetInputs.nth(3).fill("2.001");
+    await budgetInputs.nth(4).fill("3.3.90.30");
+    await budgetInputs.nth(5).fill("15000000");
+    await budgetInputs.nth(6).fill("140");
+    await budgetForm.getByRole("button", { name: "Salvar dotação", exact: true }).click();
+    await composition.getByText("Fundo Municipal de Saúde E2E", { exact: true }).waitFor();
+
+    await composition.getByRole("tab", { name: "Itens e preços", exact: true }).click();
+    await composition.getByRole("button", { name: "Mapa comparativo (2)", exact: true }).click();
+    const mapDialog = page.getByRole("dialog").filter({
+      hasText: `Mapa comparativo de preços — ${processNumber}`,
+    });
+    await mapDialog.getByText("2 cotação(ões) válidas", { exact: true }).waitFor();
+    await mapDialog.getByText(/15,00/).waitFor();
+    await mapDialog.getByText(/Frete rateado pela quantidade cotada/).waitFor();
+    await mapDialog.getByRole("button", { name: "Fechar mapa", exact: true }).click();
+    await composition.getByRole("button", { name: "Usar como referência", exact: true }).first().click();
+    await composition.getByText("Referência escolhida", { exact: true }).waitFor();
+
+    const items = await readRows("procurement_items", {
+      tenant_id: tenantId,
+      process_id: processId,
+    }, "id,description,quantity,estimated_unit_price,estimated_total,is_active");
+    assert.equal(items.status, 200);
+    assert.equal(items.body.length, 1);
+    assert.equal(items.body[0].description, itemDescription);
+    const quotes = await page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, itemId }) => {
+        const url = new URL("/rest/v1/procurement_price_quotes", apiUrl);
+        url.searchParams.set(
+          "select",
+          "id,source_name,supplier_id,selected_for_estimate,contract_id,total_price,unit_price,delivery_cost,quantity",
+        );
+        url.searchParams.set("tenant_id", `eq.${tenantId}`);
+        url.searchParams.set("procurement_item_id", `eq.${itemId}`);
+        const response = await fetch(url, {
+          headers: { apikey: publicKey, Authorization: `Bearer ${token}` },
+        });
+        return { status: response.status, body: await response.json() };
+      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token, tenantId, itemId: items.body[0].id },
+    );
+    assert.equal(quotes.status, 200);
+    assert.equal(quotes.body.length, 2);
+    const selectedQuote = quotes.body.find((quote) => quote.selected_for_estimate);
+    assert.ok(selectedQuote);
+    assert.equal(selectedQuote.supplier_id, supplierId);
+    assert.equal(selectedQuote.total_price, 30);
+
+    await page.goto(`${appUrl}/contratos`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Contratos e Atas", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Novo contrato", exact: false }).click();
+    const contractDialog = page.getByRole("dialog").filter({ hasText: "Novo contrato" });
+    await contractDialog.getByPlaceholder("042/2026").fill(contractNumber);
+    await contractDialog.locator("textarea").first().fill("Fornecimento sintético de seringas E2E");
+    const contractComboboxes = contractDialog.getByRole("combobox");
+    await contractComboboxes.nth(2).click();
+    await page.getByRole("option", { name: new RegExp(processNumber) }).click();
+    await contractComboboxes.nth(3).click();
+    await page.getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true }).click();
+    const contractInputs = contractDialog.locator("input");
+    await contractInputs.nth(1).fill("140");
+    await contractInputs.nth(2).fill("2026-11-16");
+    await contractInputs.nth(3).fill("2027-11-15");
+    await contractInputs.nth(4).fill("Gestor sintético");
+    await contractInputs.nth(5).fill("Fiscal sintético");
+    await contractDialog.getByRole("button", { name: "Salvar contrato", exact: true }).click();
+    await page.getByText(/Contrato cadastrado e 1 cotaç.*vinculada/).waitFor();
+    await page.getByText(contractNumber, { exact: true }).waitFor();
+
+    const contractRows = await readRows(
+      "contracts",
+      { tenant_id: tenantId, number: contractNumber },
+      "id,process_id,supplier_id,total_value,status",
+    );
+    assert.equal(contractRows.status, 200);
+    assert.equal(contractRows.body.length, 1);
+    assert.equal(contractRows.body[0].process_id, processId);
+    assert.equal(contractRows.body[0].supplier_id, supplierId);
+    assert.equal(contractRows.body[0].total_value, 140);
+
+    const linkedQuotes = await page.evaluate(
+      async ({ apiUrl, publicKey, token, tenantId, itemId }) => {
+        const url = new URL("/rest/v1/procurement_price_quotes", apiUrl);
+        url.searchParams.set("select", "contract_id,selected_for_estimate,supplier_id");
+        url.searchParams.set("tenant_id", `eq.${tenantId}`);
+        url.searchParams.set("procurement_item_id", `eq.${itemId}`);
+        const response = await fetch(url, {
+          headers: { apikey: publicKey, Authorization: `Bearer ${token}` },
+        });
+        return { status: response.status, body: await response.json() };
+      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token, tenantId, itemId: items.body[0].id },
+    );
+    assert.equal(linkedQuotes.status, 200);
+    assert.ok(
+      linkedQuotes.body.some(
+        (quote) =>
+          quote.contract_id === contractRows.body[0].id &&
+          quote.selected_for_estimate &&
+          quote.supplier_id === supplierId,
+      ),
+      "the contract must retain the selected supplier quote",
+    );
+    const budgets = await readRows(
+      "procurement_budget_allocations",
+      { tenant_id: tenantId, process_id: processId },
+      "id,fiscal_year,budget_unit,allocated_amount",
+    );
+    assert.equal(budgets.status, 200);
+    assert.equal(budgets.body.length, 1);
+    assert.equal(budgets.body[0].budget_unit, "Fundo Municipal de Saúde E2E");
+    console.log(
+      "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
+    );
+  } catch (error) {
+    await mkdir("artifacts", { recursive: true });
+    await page.screenshot({ path: "artifacts/procurement-e2e-failure.png", fullPage: true }).catch(() => {});
+    throw error;
+  } finally {
+    await context.close();
+  }
+}
+
 async function verifyDocumentApprovalWorkflow() {
   const documentTitle = "Documento E2E — aprovação por usuário distinto";
   const tenantId = "91000000-0000-4000-8000-000000000001";
@@ -990,6 +1288,7 @@ try {
     await verifyAuthenticatedTenant(scenario);
   }
   await verifyDocumentApprovalWorkflow();
+  await verifyProcurementLifecycle();
   console.log(
     "PASS authenticated multitenant browser E2E: both synthetic tenant accounts are isolated.",
   );

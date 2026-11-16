@@ -1,5 +1,6 @@
 -- Disposable authenticated E2E fixtures. This file is executed only against
 -- the local Supabase database started by the GitHub Actions E2E workflow.
+-- Includes procurement access only for synthetic UI tests; no SMS2 data is used.
 -- The email domain is reserved (.invalid); no real users or emails are used.
 BEGIN;
 
@@ -143,7 +144,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000001',
     'active',
-    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true,"processos":true}'::jsonb
   ),
   (
     '91000000-0000-4000-8000-000000000002',
@@ -199,7 +200,7 @@ WHERE roles.id IN (
   )
   AND permissions.code IN (
     'org:view', 'org:edit', 'suppliers:view', 'suppliers:create', 'suppliers:update',
-    'documents:view', 'documents:create', 'documents:approve', 'documents:manage_templates'
+    'documents:view', 'documents:create', 'documents:update', 'documents:approve', 'documents:manage_templates'
   )
 ON CONFLICT DO NOTHING;
 
