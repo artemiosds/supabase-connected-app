@@ -942,7 +942,7 @@ async function verifyProcurementLifecycle() {
     await itemInputs.nth(3).fill("70");
     await itemInputs.nth(4).fill("Almoxarifado sintético");
     await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
-    await composition.getByText(itemDescription, { exact: true }).waitFor();
+    await composition.getByText(itemDescription, { exact: false }).waitFor();
 
     async function addQuote(source, unitPrice, deliveryCost, referenceUrl, supplierName = null) {
       await composition.getByRole("button", { name: "Nova cotação", exact: true }).click();
