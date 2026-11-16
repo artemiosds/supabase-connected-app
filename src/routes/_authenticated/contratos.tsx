@@ -959,6 +959,7 @@ function NovoAditivo(props: {
   const [numero, setNumero] = useState("");
   const [tipo, setTipo] = useState("prorrogacao");
   const [novaData, setNovaData] = useState("");
+  const [dataAssinatura, setDataAssinatura] = useState(() => new Date().toLocaleDateString("sv-SE"));
   const [valor, setValor] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -966,6 +967,10 @@ function NovoAditivo(props: {
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!props.contrato) return;
+    if (!dataAssinatura || dataAssinatura > new Date().toLocaleDateString("sv-SE")) {
+      toast.error("Informe uma data de assinatura válida, não futura.");
+      return;
+    }
     const v = valor.trim() ? numeroDecimal(valor) : 0;
     if (tipo === "prorrogacao") {
       if (!novaData || novaData <= props.contrato.end_date) {
@@ -990,6 +995,7 @@ function NovoAditivo(props: {
       kind: tipo,
       new_end_date: tipo === "prorrogacao" ? novaData || null : null,
       value_change: tipo === "supressao" ? -Math.abs(v) : tipo === "acrescimo" ? Math.abs(v) : 0,
+      signed_at: dataAssinatura,
       notes: observacoes.trim() || null,
       created_by: props.userId,
       updated_by: props.userId,
@@ -1002,6 +1008,7 @@ function NovoAditivo(props: {
     toast.success("Aditivo registrado e contrato atualizado.");
     setNumero("");
     setNovaData("");
+    setDataAssinatura(new Date().toLocaleDateString("sv-SE"));
     setValor("");
     setObservacoes("");
     props.onFechar();
@@ -1056,6 +1063,15 @@ function NovoAditivo(props: {
               />
             </Campo>
           )}
+          <Campo label="Data da assinatura *">
+            <Input
+              type="date"
+              required
+              max={new Date().toLocaleDateString("sv-SE")}
+              value={dataAssinatura}
+              onChange={(event) => setDataAssinatura(event.target.value)}
+            />
+          </Campo>
           <Campo label="Observações e justificativa do aditivo">
             <Textarea
               rows={3}
