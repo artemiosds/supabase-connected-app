@@ -24,7 +24,7 @@ Convites, confirmação de cadastro e recuperação de senha são enviados pelo 
 
 Cadastre o OAuth Client ID e Client Secret do projeto Google Cloud na tela de configurações da Secretaria. No Google Cloud Console, adicione o valor de `GOOGLE_DRIVE_REDIRECT_URI` como URI de redirecionamento autorizado. Salve os dados e inicie “Conectar Google Drive”.
 
-A autorização usa `state` de uso único, expiração de 10 minutos, PKCE S256 e escopo `drive.file`. O refresh token é criptografado no servidor. A conexão OAuth não ativa sincronização de arquivos; a fila de sincronização, reconciliação e política de retenção de cópias ainda precisam ser implantadas e homologadas antes de transferir documentos.
+A autorização usa `state` de uso único, expiração de 10 minutos, PKCE S256 e escopo `drive.file`. O refresh token é criptografado no servidor. A tela permite iniciar uma sincronização manual de até 20 arquivos por execução: documentos privados de fornecedores e fontes DOCX de modelos. O worker cria uma pasta raiz quando não foi informada, registra jobs idempotentes e guarda o ID remoto. Os arquivos originais no Storage nunca são apagados nem substituídos. Resultados ambíguos são marcados como `uncertain` e não são reenviados automaticamente para evitar duplicatas; exigem reconciliação manual.
 
 ## Modelos DOCX
 
