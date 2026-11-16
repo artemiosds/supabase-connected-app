@@ -195,14 +195,16 @@ Deno.serve(async (request: Request) => {
         fileName: row.file_name,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       })),
-    ].filter((source) => source.storagePath).slice(0, 20);
+    ].filter((source) => source.storagePath);
 
     let synced = 0;
     let skipped = 0;
     let failed = 0;
     let uncertain = 0;
+    let processed = 0;
     for (const source of sources) {
-      const keyValue = await idempotencyKey(`${tenantId}:${source.sourceType}:${source.sourceId}:v${source.version}`);
+      if (processed >= 20) break;
+      const keyValue = await idempotencyKey(`${tenantId}:${source.sourceType}:${source.sourceId}:v${source.version}:${source.storagePath}`);
       const { data: existing } = await admin.from("tenant_drive_sync_jobs")
         .select("id,status,attempts")
         .eq("idempotency_key", keyValue)
@@ -212,6 +214,7 @@ Deno.serve(async (request: Request) => {
         skipped += 1;
         continue;
       }
+      processed += 1;
       let jobId = existing?.id as string | undefined;
       if (jobId) {
         const { error: claimError } = await admin.from("tenant_drive_sync_jobs").update({
@@ -315,11 +318,12 @@ Deno.serve(async (request: Request) => {
       action: "SYNC",
       entity: "google_drive",
       entity_id: tenantId,
-      details: { processed: sources.length, synced, skipped, failed, uncertain, originals_preserved: true },
+      details: { processed, total_candidates: sources.length, synced, skipped, failed, uncertain, originals_preserved: true },
     });
     return json({
       success: true,
-      processed: sources.length,
+      processed,
+      total_candidates: sources.length,
       synced,
       skipped,
       failed,
