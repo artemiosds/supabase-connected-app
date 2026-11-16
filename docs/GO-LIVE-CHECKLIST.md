@@ -1,17 +1,52 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-## Estado consolidado mais recente — 16/11/2026
+## Estado consolidado — 16/11/2026
 
-**Decisão: NO-GO para produção e comercialização.** O código de aplicação registrado no commit `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb` passou validação, segurança do banco descartável, formatação e E2E autenticado; este checklist foi atualizado em commit posterior, somente documental. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
+**Decisão: NO-GO para produção e comercialização.** O projeto segue em homologação técnica. Não anunciar integrações, backup real ou envio de e-mail como operacionais sem evidência verificável.
 
-### Repositório, banco e segurança
+### Repositório, banco e migrations
 
-- Repositório: `artemiosds/supabase-connected-app`, branch `main`; código funcional verificado em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb` (a última alteração subsequente neste arquivo foi apenas documental).
-- Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` contém **91 migrations**; após as 89 versões registradas no SMS2 até `20261113194249`, permanecem duas migrations pendentes: `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`. Nenhuma foi aplicada ao SMS2; a paridade atual continua pendente.
-- Schema `public`: **40 tabelas, 40/40 com RLS, 29 com FORCE RLS**, 0 views públicas e 0 tabelas com SELECT direto para `anon`.
-- As 35 funções públicas `SECURITY DEFINER` executáveis por `authenticated` têm `search_path=''`; 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O Security Advisor continua exibindo 35 avisos porque são RPCs expostas intencionalmente a usuários autenticados; não fazer revogação em massa, pois as funções verificam autorização internamente.
-- Advisor de saúde: sem findings. Advisor de performance: 81 índices sem uso observado (INFO); não removê-los sem histórico de carga e benchmark.
-- Security Advisor também mantém 1 aviso de proteção contra senhas vazadas. Essa proteção foi dispensada pelo responsável do projeto; manter o plano Free, sem upgrade nem tentativa de contorno.
+- Repositório: `artemiosds/supabase-connected-app`, branch `main`.
+- HEAD de aplicação consultado: `000ba78f62750fcfb1623b4617e514c174aab638`.
+- Supabase SMS2: projeto `rwbbznqtocunzrpcvjvk`.
+- Reconciliação consultada nesta conversa: **91 migrations aplicadas no SMS2**. As migrations `20261116120000_lock_generated_document_content_during_review` e `20261116131036_cancel_generated_document_workflow` constam como aplicadas. Não executar novamente.
+- As duas migrations foram revisadas antes da aplicação. A consulta posterior encontrou zero documentos/fluxos existentes e zero inconsistências de cancelamento a sincronizar.
+- Tabelas públicas consultadas: RLS habilitado e políticas presentes nas tabelas retornadas. Isso não substitui testes completos de autorização para cada papel/ação.
+
+### Segurança
+
+- Auditoria SQL consultada: 73 funções públicas `SECURITY DEFINER`; todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated`, exigindo revisão individual das autorizações internas. Não revogar permissões em massa.
+- Advisor de segurança e inspeção SQL devem ser reconciliados: avisos do advisor não equivalem automaticamente a vulnerabilidades exploráveis.
+- Advisor de performance reportou índices sem uso observado. Não remover sem histórico de carga e benchmark.
+- Proteção contra senhas vazadas: checklist anterior registra decisão de manter desabilitada no plano atual. Essa configuração continua sendo uma limitação de segurança a reavaliar antes da produção.
+
+### CI no HEAD de aplicação consultado
+
+- `Format procurement module`: sucesso — [run 43919452996](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452996).
+- `Validate application`: sucesso — [run 43919452974](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452974).
+- `Authenticated tenant isolation E2E`: em execução na última consulta — [run 43919452892](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452892). Ainda não declarar aprovado.
+- O E2E inicia com aplicação das migrations em banco descartável; a aprovação depende da conclusão de todas as etapas, inclusive testes de navegador autenticado.
+
+### Operação e homologação
+
+- Backup sintético criptografado em banco descartável não equivale a backup/restore real do SMS2.
+- Nenhum envio real de e-mail, domínio autenticado, OAuth Google Drive ou cobrança por gateway foi comprovado nesta rodada.
+- Homologação visual com modelos oficiais, usuários reais da Secretaria e aceite formal permanecem pendentes.
+- Nenhuma fixture sintética deve ser gravada no SMS2 de uso corrente.
+
+### Bloqueios para encerramento
+
+1. **CI autenticado:** concluir o E2E no HEAD atual; corrigir falhas comprovadas e repetir os workflows relevantes no mesmo HEAD.
+2. **Backup/continuidade:** configurar credenciais e chave age fora do chat/repositório; executar backup criptografado real e restaurar em projeto isolado; verificar banco, Storage e recuperação complementar de Auth/configurações/segredos.
+3. **E-mail:** verificar domínio, SPF/DKIM/DMARC, remetente, SMTP/Resend, segredos e URL; executar dry-run remoto e envio controlado autorizado; manter agendamento desabilitado até comprovar idempotência e entrega.
+4. **Documentos oficiais:** homologar modelos DOCX anonimizados/autorizados, timbrado, brasão, Word/PDF, paginação, tabelas e limitações do renderizador; obter aceite da Secretaria.
+5. **GED de fornecedores:** validar upload/download, URLs assinadas, MIME/tamanho, substituição, arquivamento, expiração e isolamento entre Secretarias.
+6. **Compras/contratos:** homologar processo, checklist, itens, cotações, frete, orçamento, seleção de referência, contrato, aditivos, saldos, limites e trilha de auditoria.
+7. **Convites e RBAC:** testar cadastro, convite, aceite, expiração, revogação, reenvio, suspensão/reativação e papéis com duas Secretarias.
+8. **Integrações:** implementar/homologar Google Drive OAuth por Secretaria e gateway/webhooks somente com provedores e credenciais definidos; não exibir essas integrações como disponíveis antes.
+9. **LGPD e produção:** retenção, exportação/exclusão, incidentes, termos, privacidade, contrato, domínio/TLS, monitoramento, SLA, suporte, custos e plano de rollback.
+
+**Resultado:** permanece **NO-GO para produção/venda**. Os itens acima são gates verificáveis; não marcar como concluídos apenas porque há telas, funções ou workflows configurados.
 
 ### Evidências automatizadas — aprovação e cancelamento visuais em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb`
 
