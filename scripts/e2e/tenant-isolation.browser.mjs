@@ -1045,7 +1045,7 @@ async function verifyProcurementLifecycle() {
     assert.equal(selectedQuote.total_price, 30);
 
     await page.goto(`${appUrl}/contratos`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Contratos e Atas", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Contratos e vencimentos", exact: true }).waitFor();
     await page.getByRole("button", { name: "Novo contrato", exact: false }).click();
     const contractDialog = page.getByRole("dialog").filter({ hasText: "Novo contrato" });
     await contractDialog.getByPlaceholder("042/2026").fill(contractNumber);
