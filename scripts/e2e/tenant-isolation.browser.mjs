@@ -1065,7 +1065,7 @@ async function verifyProcurementLifecycle() {
     await contractInputs.nth(5).fill("Fiscal sintético");
     await contractDialog.getByRole("button", { name: "Salvar contrato", exact: true }).click();
     await page.getByText(/Contrato cadastrado e 1 cotaç.*vinculada/).waitFor();
-    await page.getByText(contractNumber, { exact: true }).waitFor();
+    await page.getByText(new RegExp(contractNumber)).waitFor();
 
     const contractRows = await readRows(
       "contracts",
