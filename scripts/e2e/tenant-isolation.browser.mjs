@@ -820,6 +820,23 @@ async function verifyProcurementLifecycle() {
         { apiUrl: supabaseUrl, publicKey: anonKey, token, table, filters, select },
       );
 
+    const callRpc = async (functionName, args) =>
+      page.evaluate(
+        async ({ apiUrl, publicKey, token, functionName, args }) => {
+          const response = await fetch(`${apiUrl}/rest/v1/rpc/${functionName}`, {
+            method: "POST",
+            headers: {
+              apikey: publicKey,
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(args),
+          });
+          return { status: response.status, body: await response.json().catch(() => null) };
+        },
+        { apiUrl: supabaseUrl, publicKey: anonKey, token, functionName, args },
+      );
+
     await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Processos de contratação", exact: true }).waitFor();
     await page.getByRole("button", { name: "Novo processo", exact: false }).click();
@@ -1134,6 +1151,18 @@ async function verifyProcurementLifecycle() {
     await itemPanel.getByLabel("Motivo do consumo *").fill("Consumo de homologação E2E");
     await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).last().click();
     await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).waitFor();
+    const excessConsumption = await callRpc("record_contract_item_consumption", {
+      p_tenant_id: tenantId,
+      p_contract_item_id: (await readRows(
+        "contract_items",
+        { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+        "id",
+      )).body[0].id,
+      p_quantity: 2,
+      p_reason: "Tentativa de consumo acima do saldo",
+      p_reference_number: null,
+    });
+    assert.ok(excessConsumption.status >= 400, "consumption above the available balance must fail");
     await itemPanel.getByText("Histórico de movimentações (1)", { exact: true }).click();
     await itemPanel
       .getByPlaceholder("Justificativa do estorno (mínimo 10 caracteres)")
@@ -1141,6 +1170,35 @@ async function verifyProcurementLifecycle() {
     await itemPanel.getByRole("button", { name: /Estornar/ }).click();
     await itemPanel.getByText("Saldo: 2 unidade", { exact: true }).waitFor();
     await itemPanel.getByText("Histórico de movimentações (2)", { exact: true }).waitFor();
+    const movementRows = await readRows(
+      "contract_item_movements",
+      { tenant_id: tenantId },
+      "id,movement_type,reverses_movement_id,contract_item_id",
+    );
+    const originalConsumption = movementRows.body.find(
+      (movement) =>
+        movement.movement_type === "consumption" &&
+        movement.contract_item_id ===
+          (await readRows(
+            "contract_items",
+            { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+            "id",
+          )).body[0].id,
+    );
+    assert.ok(originalConsumption, "the original consumption must remain in the ledger");
+    const duplicateReversal = await callRpc("reverse_contract_item_consumption", {
+      p_tenant_id: tenantId,
+      p_movement_id: originalConsumption.id,
+      p_reason: "Tentativa de estorno duplicado",
+    });
+    assert.ok(duplicateReversal.status >= 400, "a consumption cannot be reversed twice");
+    const crossTenantItems = await readRows(
+      "contract_items",
+      { tenant_id: "91000000-0000-4000-8000-000000000002" },
+      "id",
+    );
+    assert.equal(crossTenantItems.status, 200);
+    assert.equal(crossTenantItems.body.length, 0, "tenant A cannot read tenant B contract items");
 
     // Amendment behavior: each type updates only its intended contract field.
     await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
