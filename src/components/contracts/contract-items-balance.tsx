@@ -446,7 +446,8 @@ export function ContractItemsBalance(props: {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Consumido: {quantity.format(used)} {item.unit} · Valor consumido: {currency.format(used * Number(item.unit_value))}
+                      Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
+                      {currency.format(used * Number(item.unit_value))}
                     </p>
                     <Button
                       type="button"
