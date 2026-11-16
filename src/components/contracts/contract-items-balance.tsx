@@ -110,7 +110,10 @@ export function ContractItemsBalance(props: {
       setLoading(false);
       return;
     }
-    const nextItems = itemRows ?? [];
+    const nextItems: Item[] = (itemRows ?? []).map((row) => ({
+      ...row,
+      total_value: Number(row.total_value ?? row.quantity_total * row.unit_value),
+    }));
     setItems(nextItems);
     if (nextItems.length === 0) {
       setMovements([]);

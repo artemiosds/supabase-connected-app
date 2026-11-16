@@ -289,7 +289,7 @@ export function AdminMasterStaff() {
     setBusy(true);
     try {
       const { error } = await db.rpc("save_platform_staff_role", {
-        p_role_id: editingRole?.id ?? null,
+        p_role_id: (editingRole?.id ?? null) as string,
         p_slug: roleSlug.trim().toLowerCase(),
         p_name: roleName.trim(),
         p_description: roleDescription.trim(),

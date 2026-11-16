@@ -400,10 +400,10 @@ function Usuarios() {
     try {
       const { error } = await db.rpc("save_tenant_role_with_permissions", {
         p_tenant_id: selecionado.id,
-        p_role_id: roleEditing?.id ?? null,
+        p_role_id: (roleEditing?.id ?? null) as string,
         p_name: roleName.trim(),
         p_slug: roleSlug.trim().toLowerCase(),
-        p_description: roleDescription.trim() || null,
+        p_description: (roleDescription.trim() || null) as string,
         p_permission_ids: selectedPermissionIds,
       });
       if (error) throw error;

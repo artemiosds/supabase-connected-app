@@ -1610,7 +1610,7 @@ function Documentos() {
       p_tenant_id: selecionado.id,
       p_document_id: d.id,
       p_action: action,
-      p_comment: comment?.trim() ?? null,
+      ...(comment?.trim() ? { p_comment: comment.trim() } : {}),
     });
     if (error) {
       toast.error(error.message);
@@ -1654,7 +1654,6 @@ function Documentos() {
     const { error } = await db.rpc("cancel_generated_document_workflow", {
       p_tenant_id: selecionado.id,
       p_document_id: d.id,
-      p_comment: null,
     });
     if (error) {
       toast.error(error.message);
