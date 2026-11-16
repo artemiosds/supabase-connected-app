@@ -2,11 +2,11 @@
 
 ## Estado consolidado mais recente — 16/11/2026
 
-**Decisão: NO-GO para produção e comercialização.** O `main` atual (`156edfdfdaf92e2362dae89925782f01523d985e`) passou validação, segurança do banco descartável, formatação e E2E autenticado. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
+**Decisão: NO-GO para produção e comercialização.** O código de aplicação registrado no commit `156edfdfdaf92e2362dae89925782f01523d985e` passou validação, segurança do banco descartável, formatação e E2E autenticado; este checklist foi atualizado em commit posterior, somente documental. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
 
 ### Repositório, banco e segurança
 
-- Repositório: `artemiosds/supabase-connected-app`, branch `main`; commit atual conferido em 16/11/2026: `156edfdfdaf92e2362dae89925782f01523d985e`.
+- Repositório: `artemiosds/supabase-connected-app`, branch `main`; código funcional verificado em `156edfdfdaf92e2362dae89925782f01523d985e` (a última alteração subsequente neste arquivo foi apenas documental).
 - Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` atual contém **90 arquivos de migration**, incluindo `20261116120000_lock_generated_document_content_during_review.sql`. A aplicação dessa 90ª migration ao SMS2 ainda não foi confirmada; a paridade atual está pendente.
 - Schema `public`: **40 tabelas, 40/40 com RLS, 29 com FORCE RLS**, 0 views públicas e 0 tabelas com SELECT direto para `anon`.
 - As 35 funções públicas `SECURITY DEFINER` executáveis por `authenticated` têm `search_path=''`; 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O Security Advisor continua exibindo 35 avisos porque são RPCs expostas intencionalmente a usuários autenticados; não fazer revogação em massa, pois as funções verificam autorização internamente.
