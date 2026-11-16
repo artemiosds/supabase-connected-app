@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS public.tenant_drive_oauth_states (
 ),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  code_verifier_ciphertext text NOT NULL,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT pg_catalog.now()
 );
