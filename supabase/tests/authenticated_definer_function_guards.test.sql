@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(41);
+SELECT extensions.plan(45);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -11,8 +11,8 @@ SELECT extensions.is(
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='public' AND p.prosecdef
     AND pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')),
- 35,
- 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 35 functions'
+ 36,
+ 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 36 functions'
 );
 
 SELECT extensions.is(
@@ -73,6 +73,7 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.set_platform_support_agent_status(uuid,text)','set_platform_support_agent_status requires scoped support-management permission and confirmed Auth identity before reactivation',ARRAY['%app_auth.can_manage_platform_support_team()%','%email_confirmed_at%']::text[]),
  ('public.set_platform_support_assignment(uuid,uuid,boolean,boolean,boolean,boolean)','set_platform_support_assignment requires support management and an active target agent',ARRAY['%app_auth.can_manage_platform_support_team()%','%a.user_id=p_agent_user_id%','%a.status=''active''%']::text[]),
  ('public.start_platform_support_session(uuid,text)','start_platform_support_session binds the actor, active assignment and time-limited session',ARRAY['%auth.uid()%','%platform_support_assignments%','%expires_at%']::text[]),
+ ('public.cancel_generated_document_workflow(uuid,uuid,text)','cancel_generated_document_workflow binds the current actor and requires tenant update permission, standing and the document module',ARRAY['%auth.uid()%','%has_tenant_data_permission%','%documents:update%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%generated_document_workflow_events%','%audit_events%']::text[]),
  ('public.transition_generated_document_workflow(uuid,uuid,text,text)','transition_generated_document_workflow binds the actor and requires approval permission for decisions',ARRAY['%auth.uid()%','%documents:approve%','%generated_document_workflow_events%']::text[])
 )
 SELECT extensions.ok(
@@ -113,6 +114,35 @@ SELECT extensions.ok(
     AND acl.privilege_type='EXECUTE'
  ),
  'generated document write guard has no EXECUTE grant inherited from PUBLIC'
+);
+
+SELECT extensions.ok(
+ (SELECT p.prosecdef
+    AND COALESCE(p.proconfig,ARRAY[]::text[]) @> ARRAY['search_path=""']
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.fn_require_generated_document_workflow_cancellation()'::regprocedure),
+ 'document cancellation trigger uses SECURITY DEFINER with an empty search_path'
+);
+
+SELECT extensions.ok(
+ NOT pg_catalog.has_function_privilege('authenticated','public.fn_require_generated_document_workflow_cancellation()','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('anon','public.fn_require_generated_document_workflow_cancellation()','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('service_role','public.fn_require_generated_document_workflow_cancellation()','EXECUTE'),
+ 'document cancellation trigger is not executable by API or service roles'
+);
+
+SELECT extensions.ok(
+ NOT EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_proc p
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+  ) AS acl
+  WHERE p.oid='public.fn_require_generated_document_workflow_cancellation()'::regprocedure
+    AND acl.grantee=0
+    AND acl.privilege_type='EXECUTE'
+ ),
+ 'document cancellation trigger has no EXECUTE grant inherited from PUBLIC'
 );
 
 SELECT * FROM extensions.finish();
