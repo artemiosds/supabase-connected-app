@@ -420,6 +420,10 @@ export function ContractItemsBalance(props: {
           )}
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : erro ? (
+            <p className="text-sm text-destructive">
+              Saldo indisponível até que o histórico de movimentações seja carregado com sucesso.
+            </p>
           ) : items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Nenhum item cadastrado neste instrumento.
