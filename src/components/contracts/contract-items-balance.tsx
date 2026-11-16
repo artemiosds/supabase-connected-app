@@ -151,6 +151,9 @@ export function ContractItemsBalance(props: {
     [movements],
   );
   const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
+  const itemEditandoTemMovimentos =
+    itemEditandoId !== null &&
+    movements.some((movement) => movement.contract_item_id === itemEditandoId);
 
   async function salvarItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -329,6 +332,7 @@ export function ContractItemsBalance(props: {
                   id={`item-unit-${props.contract.id}`}
                   required
                   maxLength={40}
+                  disabled={itemEditandoTemMovimentos}
                   placeholder="unidade, caixa, frasco"
                   value={itemForm.unit}
                   onChange={(event) =>
@@ -378,6 +382,7 @@ export function ContractItemsBalance(props: {
                   min="0"
                   step="0.0001"
                   required
+                  disabled={itemEditandoTemMovimentos}
                   value={itemForm.unit_value}
                   onChange={(event) =>
                     setItemForm((current) => ({
@@ -387,6 +392,12 @@ export function ContractItemsBalance(props: {
                   }
                 />
               </div>
+              {itemEditandoTemMovimentos && (
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  Unidade e valor unitário ficam bloqueados após a primeira movimentação para
+                  preservar o histórico de consumo e estornos.
+                </p>
+              )}
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={salvando}>
                   {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
