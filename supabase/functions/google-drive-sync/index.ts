@@ -14,6 +14,12 @@ function json(payload: Record<string, unknown>, status: number, origin: string) 
     },
   });
 }
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 function b64(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -21,15 +27,15 @@ function b64(value: string): Uint8Array {
 async function secretKey(): Promise<CryptoKey> {
   const raw = b64(Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "");
   if (raw.length !== 32) throw new Error("INVALID_SECRET_KEY");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  return crypto.subtle.importKey("raw", asArrayBuffer(raw), "AES-GCM", false, ["decrypt"]);
 }
 async function decrypt(value: string, key: CryptoKey): Promise<string> {
   const [version, iv, ciphertext] = value.split(".");
   if (version !== "v1" || !iv || !ciphertext) throw new Error("INVALID_CIPHERTEXT");
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: b64(iv) },
+    { name: "AES-GCM", iv: asArrayBuffer(b64(iv)) },
     key,
-    b64(ciphertext),
+    asArrayBuffer(b64(ciphertext)),
   );
   return new TextDecoder().decode(plain);
 }
