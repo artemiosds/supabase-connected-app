@@ -164,7 +164,10 @@ Deno.serve(async (request: Request) => {
     return response({ error: "Não foi possível validar suas permissões." }, 403, origin);
   }
   const capability = Array.isArray(capabilities) ? capabilities[0] : null;
-  if (!capability || (action === "get" ? capability.can_view !== true : capability.can_edit !== true)) {
+  const canSubmitPrivacy = action === "submit_privacy_request";
+  if (!capability || ((action === "get" || canSubmitPrivacy)
+      ? capability.can_view !== true
+      : capability.can_edit !== true)) {
     return response({ error: "Você não tem permissão para esta configuração." }, 403, origin);
   }
 
@@ -281,6 +284,88 @@ Deno.serve(async (request: Request) => {
       return response({ error: "O provedor rejeitou o teste. Confira domínio, remetente e credencial no painel do provedor." }, 502, origin);
     }
     return response({ success: true, message: `E-mail de teste aceito para ${auth.user.email}.` }, 200, origin);
+  }
+
+  if (action === "submit_privacy_request") {
+    const requestType = textValue(body.request_type, 30);
+    const description = textValue(body.subject_description, 4000);
+    const requesterEmail = textValue(body.requester_email, 254) ?? auth.user.email ?? null;
+    if (!["access", "correction", "export", "deletion", "objection"].includes(requestType ?? "")) {
+      return response({ error: "Tipo de solicitação LGPD inválido." }, 400, origin);
+    }
+    if (!description || description.length < 10) {
+      return response({ error: "Descreva a solicitação com pelo menos 10 caracteres." }, 400, origin);
+    }
+    const { data: created, error: createError } = await admin
+      .from("tenant_privacy_requests")
+      .insert({
+        tenant_id: tenantId,
+        requester_user_id: auth.user.id,
+        requester_email: requesterEmail,
+        request_type: requestType,
+        subject_description: description,
+      })
+      .select("id,status,created_at")
+      .single();
+    if (createError || !created) {
+      console.error("Falha ao registrar solicitação LGPD:", createError?.message);
+      return response({ error: "Não foi possível registrar a solicitação." }, 500, origin);
+    }
+    await admin.from("audit_events").insert({
+      tenant_id: tenantId,
+      actor_id: auth.user.id,
+      action: "CREATE",
+      entity: "tenant_privacy_requests",
+      entity_id: created.id,
+      details: { request_type: requestType, status: "received" },
+    });
+    return response({ request: created }, 201, origin);
+  }
+
+  if (action === "list_privacy_requests") {
+    const { data: requests, error: requestsError } = await admin
+      .from("tenant_privacy_requests")
+      .select("id,requester_email,request_type,subject_description,status,legal_basis_review,decision_notes,reviewed_at,completed_at,created_at")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (requestsError) return response({ error: "Não foi possível carregar as solicitações LGPD." }, 500, origin);
+    return response({ requests: requests ?? [] }, 200, origin);
+  }
+
+  if (action === "review_privacy_request") {
+    const requestId = typeof body.request_id === "string" ? body.request_id : "";
+    const decision = textValue(body.decision, 20);
+    const legalBasis = textValue(body.legal_basis_review, 2000);
+    const notes = textValue(body.decision_notes, 4000);
+    if (!UUID.test(requestId) || !["approved", "rejected"].includes(decision ?? "") || !legalBasis || !notes) {
+      return response({ error: "Informe solicitação, decisão, análise da base legal e justificativa." }, 400, origin);
+    }
+    const { data: reviewed, error: reviewError } = await admin
+      .from("tenant_privacy_requests")
+      .update({
+        status: decision,
+        legal_basis_review: legalBasis,
+        decision_notes: notes,
+        reviewed_by: auth.user.id,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", requestId)
+      .eq("tenant_id", tenantId)
+      .in("status", ["received", "under_review", "awaiting_identity"])
+      .select("id,status,reviewed_at")
+      .maybeSingle();
+    if (reviewError || !reviewed) return response({ error: "Solicitação não encontrada ou já decidida." }, 409, origin);
+    await admin.from("audit_events").insert({
+      tenant_id: tenantId,
+      actor_id: auth.user.id,
+      action: "REVIEW",
+      entity: "tenant_privacy_requests",
+      entity_id: requestId,
+      details: { decision, legal_basis_reviewed: true, no_data_deleted: true },
+    });
+    return response({ request: reviewed, message: "Decisão registrada. Nenhum dado foi excluído." }, 200, origin);
   }
 
   if (action !== "save") return response({ error: "Ação não reconhecida." }, 400, origin);
