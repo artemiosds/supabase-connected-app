@@ -515,6 +515,18 @@ Deno.serve(async (request: Request) => {
     next.retention_approved_by = existing.retention_approved_by;
   }
 
+  const approvedPolicyChanged = Boolean(existing?.retention_approved_at) && (
+    Number(next.retention_days) !== Number(existing?.retention_days) ||
+    next.retention_policy_text !== existing?.retention_policy_text ||
+    next.retention_policy_version !== existing?.retention_policy_version
+  );
+  if (approvedPolicyChanged && body.approve_retention_policy !== true) {
+    return response({ error: "A política aprovada foi alterada. Revise e aprove uma nova versão antes de salvar." }, 409, origin);
+  }
+  if (approvedPolicyChanged && next.retention_policy_version === existing?.retention_policy_version) {
+    return response({ error: "Uma alteração na política exige um novo número de versão." }, 409, origin);
+  }
+
   const { data: saved, error: saveError } = await admin
     .from("tenant_integration_settings")
     .upsert(next, { onConflict: "tenant_id" })
@@ -535,6 +547,7 @@ Deno.serve(async (request: Request) => {
       smtp_configured: Boolean(smtpHost && smtpPort && next.email_smtp_secret_ciphertext),
       drive_enabled: next.drive_enabled,
       retention_days: next.retention_days,
+      retention_policy_version: next.retention_policy_version ?? null,
       retention_policy_approved: Boolean(next.retention_approved_at),
     },
   });
