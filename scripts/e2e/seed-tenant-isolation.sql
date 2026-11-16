@@ -123,7 +123,7 @@ VALUES
 ON CONFLICT (provider_id, provider) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     identity_data = EXCLUDED.identity_data,
-    updated_at = pg_catalog.now();
+    updated_at = EXCLUDED.updated_at;
 
 INSERT INTO public.profiles(id, full_name)
 VALUES
@@ -166,6 +166,7 @@ VALUES
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('documents:view', 'Visualizar modelos', 'Permissão E2E sintética', 'documents'),
   ('documents:create', 'Criar documentos', 'Permissão E2E sintética', 'documents'),
+  ('documents:update', 'Editar documentos e restaurar versões', 'Permissão E2E sintética', 'documents'),
   ('documents:approve', 'Aprovar documentos', 'Permissão E2E sintética', 'documents'),
   ('documents:manage_templates', 'Gerenciar modelos', 'Permissão E2E sintética', 'documents')
 ON CONFLICT (code) DO NOTHING;
