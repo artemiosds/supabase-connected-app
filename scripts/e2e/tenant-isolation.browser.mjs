@@ -1226,8 +1226,7 @@ async function verifyProcurementLifecycle() {
     );
     const originalConsumption = movementRows.body.find(
       (movement) =>
-        movement.movement_type === "consumption" &&
-        movement.contract_item_id === contractItemId,
+        movement.movement_type === "consumption" && movement.contract_item_id === contractItemId,
     );
     assert.ok(originalConsumption, "the original consumption must remain in the ledger");
     const duplicateReversal = await callRpc("reverse_contract_item_consumption", {
