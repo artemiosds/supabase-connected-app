@@ -117,6 +117,8 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.fn_guard_generated_document() FROM PUBLIC, anon, authenticated;
+
 COMMENT ON FUNCTION public.fn_guard_generated_document() IS
   'Validates generated document identity, tenant relations, signature metadata and prevents edits while pending approval, approved, signed or cancelled.';
 
