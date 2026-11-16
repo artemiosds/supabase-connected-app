@@ -1001,7 +1001,7 @@ async function verifyProcurementLifecycle() {
       hasText: `Mapa comparativo de preços — ${processNumber}`,
     });
     await mapDialog.getByText("2 cotação(ões) válidas", { exact: true }).waitFor();
-    await mapDialog.getByText(/15,00/).waitFor();
+    await mapDialog.getByText(/15,00/).first().waitFor();
     await mapDialog.getByText(/Frete rateado pela quantidade cotada/).waitFor();
     await mapDialog.getByRole("button", { name: "Fechar mapa", exact: true }).click();
     const supplierQuote = composition
