@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.tenant-integration-settings]
 verify_jwt = true
+
+[functions.google-drive-oauth-callback]
+verify_jwt = false
