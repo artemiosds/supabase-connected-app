@@ -52,6 +52,27 @@ INSERT INTO auth.users (
     '{"full_name":"Usuário E2E Secretaria B"}'::jsonb,
     pg_catalog.now(),
     pg_catalog.now()
+  ),
+  (
+    '90000000-0000-4000-8000-000000000003',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'reviewer.secretaria.a@example.invalid',
+    extensions.crypt('GfsE2E!2026-OnlyLocal', extensions.gen_salt('bf')),
+    pg_catalog.now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"Aprovador Sintético E2E A"}'::jsonb,
+    pg_catalog.now(),
+    pg_catalog.now()
   )
 ON CONFLICT (id) DO UPDATE
 SET encrypted_password = EXCLUDED.encrypted_password,
@@ -89,6 +110,14 @@ VALUES
     'email',
     pg_catalog.now(),
     pg_catalog.now()
+  ),
+  (
+    'reviewer.secretaria.a@example.invalid',
+    '90000000-0000-4000-8000-000000000003',
+    '{"sub":"90000000-0000-4000-8000-000000000003","email":"reviewer.secretaria.a@example.invalid","email_verified":true}'::jsonb,
+    'email',
+    pg_catalog.now(),
+    pg_catalog.now()
   )
 ON CONFLICT (provider_id, provider) DO UPDATE
 SET user_id = EXCLUDED.user_id,
@@ -98,7 +127,8 @@ SET user_id = EXCLUDED.user_id,
 INSERT INTO public.profiles(id, full_name)
 VALUES
   ('90000000-0000-4000-8000-000000000001', 'Usuário E2E Secretaria A'),
-  ('90000000-0000-4000-8000-000000000002', 'Usuário E2E Secretaria B')
+  ('90000000-0000-4000-8000-000000000002', 'Usuário E2E Secretaria B'),
+  ('90000000-0000-4000-8000-000000000003', 'Aprovador Sintético E2E A')
 ON CONFLICT (id) DO UPDATE
 SET full_name = EXCLUDED.full_name;
 
@@ -134,6 +164,8 @@ VALUES
   ('suppliers:create', 'Cadastrar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('documents:view', 'Visualizar modelos', 'Permissão E2E sintética', 'documents'),
+  ('documents:create', 'Criar documentos', 'Permissão E2E sintética', 'documents'),
+  ('documents:approve', 'Aprovar documentos', 'Permissão E2E sintética', 'documents'),
   ('documents:manage_templates', 'Gerenciar modelos', 'Permissão E2E sintética', 'documents')
 ON CONFLICT (code) DO NOTHING;
 
@@ -167,7 +199,7 @@ WHERE roles.id IN (
   )
   AND permissions.code IN (
     'org:view', 'org:edit', 'suppliers:view', 'suppliers:create', 'suppliers:update',
-    'documents:view', 'documents:manage_templates'
+    'documents:view', 'documents:create', 'documents:approve', 'documents:manage_templates'
   )
 ON CONFLICT DO NOTHING;
 
@@ -200,6 +232,41 @@ VALUES
     '91000000-0000-4000-8000-000000000002'
   )
 ON CONFLICT DO NOTHING;
+-- Separate synthetic reviewer: documents:view + documents:approve, never documents:create.
+INSERT INTO public.tenant_roles(id, tenant_id, name, slug, description, is_system)
+VALUES (
+  '92000000-0000-4000-8000-000000000003',
+  '91000000-0000-4000-8000-000000000001',
+  'Aprovador E2E Secretaria A',
+  'e2e-approver',
+  'Papel sintético exclusivo para testar segregação de aprovação.',
+  false
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.tenant_role_permissions(role_id, permission_id)
+SELECT '92000000-0000-4000-8000-000000000003', id
+FROM public.permissions
+WHERE code IN ('documents:view', 'documents:approve')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)
+VALUES (
+  '93000000-0000-4000-8000-000000000003',
+  '91000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000003',
+  'active'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.membership_roles(membership_id, role_id, tenant_id)
+VALUES (
+  '93000000-0000-4000-8000-000000000003',
+  '92000000-0000-4000-8000-000000000003',
+  '91000000-0000-4000-8000-000000000001'
+)
+ON CONFLICT DO NOTHING;
+
 
 -- The insert trigger stamps the authenticated actor and appends audit events.
 SELECT pg_catalog.set_config(
