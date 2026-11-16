@@ -847,10 +847,14 @@ async function verifyProcurementLifecycle() {
 
     await detailDialog.getByRole("button", { name: "Avançar etapa", exact: false }).click();
     await page.getByText(/Conclua os 2 item\(ns\) pendente\(s\)/).waitFor();
-    const beforeAdvance = await readRows("procurement_processes", {
-      tenant_id: tenantId,
-      number: processNumber,
-    }, "id,stage,status");
+    const beforeAdvance = await readRows(
+      "procurement_processes",
+      {
+        tenant_id: tenantId,
+        number: processNumber,
+      },
+      "id,stage,status",
+    );
     assert.equal(beforeAdvance.status, 200);
     assert.equal(beforeAdvance.body.length, 1);
     assert.equal(beforeAdvance.body[0].stage, "planejamento");
@@ -863,31 +867,50 @@ async function verifyProcurementLifecycle() {
 
     let transitioned = false;
     for (let attempt = 0; attempt < 20; attempt++) {
-      const current = await readRows("procurement_processes", {
-        tenant_id: tenantId,
-        number: processNumber,
-      }, "id,stage,status");
+      const current = await readRows(
+        "procurement_processes",
+        {
+          tenant_id: tenantId,
+          number: processNumber,
+        },
+        "id,stage,status",
+      );
       if (current.body?.[0]?.stage === "estudos") {
         transitioned = true;
         break;
       }
       await page.waitForTimeout(250);
     }
-    assert.equal(transitioned, true, "the process must advance after its current-stage checklist is complete");
-    const createdProcess = await readRows("procurement_processes", {
-      tenant_id: tenantId,
-      number: processNumber,
-    }, "id,stage,status");
+    assert.equal(
+      transitioned,
+      true,
+      "the process must advance after its current-stage checklist is complete",
+    );
+    const createdProcess = await readRows(
+      "procurement_processes",
+      {
+        tenant_id: tenantId,
+        number: processNumber,
+      },
+      "id,stage,status",
+    );
     const processId = createdProcess.body[0].id;
     assert.equal(createdProcess.body[0].status, "em_andamento");
 
-    const checklist = await readRows("process_items", {
-      tenant_id: tenantId,
-      process_id: processId,
-    }, "stage,title,is_done");
+    const checklist = await readRows(
+      "process_items",
+      {
+        tenant_id: tenantId,
+        process_id: processId,
+      },
+      "stage,title,is_done",
+    );
     assert.equal(checklist.status, 200);
     assert.equal(checklist.body.length, 17, "the standard checklist must be created atomically");
-    assert.equal(checklist.body.filter((item) => item.stage === "planejamento" && item.is_done).length, 2);
+    assert.equal(
+      checklist.body.filter((item) => item.stage === "planejamento" && item.is_done).length,
+      2,
+    );
 
     const crossTenantRead = await readRows(
       "procurement_processes",
@@ -902,7 +925,9 @@ async function verifyProcurementLifecycle() {
       "an unscoped query must not reveal the other tenant's process with the same number",
     );
 
-    await detailDialog.getByRole("button", { name: "Itens, preços e orçamento", exact: false }).click();
+    await detailDialog
+      .getByRole("button", { name: "Itens, preços e orçamento", exact: false })
+      .click();
     const composition = page.getByRole("dialog").filter({
       hasText: `Composição da contratação — ${processNumber}`,
     });
@@ -979,13 +1004,19 @@ async function verifyProcurementLifecycle() {
     const supplierQuote = composition
       .getByText("Fornecedor Sintético Exclusivo A", { exact: true })
       .locator("xpath=../..");
-    await supplierQuote.getByRole("button", { name: "Usar como referência", exact: true }).click();
+    await supplierQuote
+      .getByRole("button", { name: "Usar como referência", exact: true })
+      .click();
     await composition.getByText("Referência escolhida", { exact: true }).waitFor();
 
-    const items = await readRows("procurement_items", {
-      tenant_id: tenantId,
-      process_id: processId,
-    }, "id,description,quantity,estimated_unit_price,estimated_total,is_active");
+    const items = await readRows(
+      "procurement_items",
+      {
+        tenant_id: tenantId,
+        process_id: processId,
+      },
+      "id,description,quantity,estimated_unit_price,estimated_total,is_active",
+    );
     assert.equal(items.status, 200);
     assert.equal(items.body.length, 1);
     assert.equal(items.body[0].description, itemDescription);
@@ -1020,9 +1051,13 @@ async function verifyProcurementLifecycle() {
     await contractDialog.locator("textarea").first().fill("Fornecimento sintético de seringas E2E");
     const contractComboboxes = contractDialog.getByRole("combobox");
     await contractComboboxes.nth(2).click();
-    await page.getByRole("option", { name: new RegExp(processNumber) }).click();
+    await page
+      .getByRole("option", { name: new RegExp(processNumber) })
+      .click();
     await contractComboboxes.nth(3).click();
-    await page.getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true }).click();
+    await page
+      .getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true })
+      .click();
     const contractInputs = contractDialog.locator("input");
     await contractInputs.nth(1).fill("140");
     await contractInputs.nth(2).fill("2026-11-16");
@@ -1080,7 +1115,9 @@ async function verifyProcurementLifecycle() {
     );
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
-    await page.screenshot({ path: "artifacts/procurement-e2e-failure.png", fullPage: true }).catch(() => {});
+    await page
+      .screenshot({ path: "artifacts/procurement-e2e-failure.png", fullPage: true })
+      .catch(() => {});
     throw error;
   } finally {
     await context.close();
