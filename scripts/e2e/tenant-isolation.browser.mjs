@@ -1316,7 +1316,9 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input").nth(1).fill("130");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await page
-      .getByText(/A supressao nao pode reduzir o valor do contrato abaixo da soma dos itens cadastrados/)
+      .getByText(
+        /A supressao nao pode reduzir o valor do contrato abaixo da soma dos itens cadastrados/,
+      )
       .waitFor();
     amendmentContract = await readRows(
       "contracts",
