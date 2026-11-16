@@ -291,7 +291,9 @@ async function decryptTenantEmailSecret(ciphertext: string): Promise<string> {
   const encodedKey = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
   const keyBytes = decodeBase64(encodedKey);
   if (keyBytes.length !== 32) throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
-  const key = await crypto.subtle.importKey("raw", asArrayBuffer(keyBytes), "AES-GCM", false, ["decrypt"]);
+  const key = await crypto.subtle.importKey("raw", asArrayBuffer(keyBytes), "AES-GCM", false, [
+    "decrypt",
+  ]);
   const [version, iv, encrypted] = ciphertext.split(".");
   if (version !== "v1" || !iv || !encrypted) throw new Error("EMAIL_SECRET_INVALID");
   const plain = await crypto.subtle.decrypt(
@@ -314,7 +316,9 @@ async function deliverTask(
   let effectiveReplyTo: string | undefined;
   const { data: tenantEmail, error: tenantEmailError } = await admin
     .from("tenant_integration_settings")
-    .select("email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext")
+    .select(
+      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext",
+    )
     .eq("tenant_id", task.tenantId)
     .maybeSingle();
   if (tenantEmailError) return "failed";
@@ -332,7 +336,8 @@ async function deliverTask(
       effectiveFrom = tenantEmail.email_from_name
         ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
         : tenantEmail.email_from_address;
-      effectiveReplyTo = typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
+      effectiveReplyTo =
+        typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
     } catch {
       console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
       return "failed";

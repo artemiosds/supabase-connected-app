@@ -11,7 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type PrivacyRequest = { id: string; requester_email: string | null; request_type: string; subject_description: string; status: string; created_at: string };
+type PrivacyRequest = {
+  id: string;
+  requester_email: string | null;
+  request_type: string;
+  subject_description: string;
+  status: string;
+  created_at: string;
+};
 
 type IntegrationSettings = {
   email_provider: "none" | "resend" | "smtp_gateway";
@@ -178,7 +185,9 @@ export function TenantIntegrationsSettings() {
       toast.error(data?.error ?? error?.message ?? "A sincronização falhou.");
       return;
     }
-    toast.success(`Drive: ${data.synced} enviado(s), ${data.skipped} ignorado(s), ${data.failed} falha(s), ${data.uncertain} resultado(s) incerto(s).`);
+    toast.success(
+      `Drive: ${data.synced} enviado(s), ${data.skipped} ignorado(s), ${data.failed} falha(s), ${data.uncertain} resultado(s) incerto(s).`,
+    );
     await load();
   }
 
@@ -277,43 +286,90 @@ export function TenantIntegrationsSettings() {
       <CardHeader>
         <CardTitle className="text-base">Integrações e conformidade da Secretaria</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Credenciais por Secretaria. Senhas e tokens são criptografados no servidor e nunca retornam ao navegador.
+          Credenciais por Secretaria. Senhas e tokens são criptografados no servidor e nunca
+          retornam ao navegador.
         </p>
       </CardHeader>
       <CardContent>
         {!selecionado ? (
-          <Alert><AlertTitle>Selecione uma Secretaria</AlertTitle><AlertDescription>As integrações são isoladas por organização.</AlertDescription></Alert>
+          <Alert>
+            <AlertTitle>Selecione uma Secretaria</AlertTitle>
+            <AlertDescription>As integrações são isoladas por organização.</AlertDescription>
+          </Alert>
         ) : loading ? (
-          <div className="flex h-24 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
         ) : loadError ? (
-          <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Configuração indisponível</AlertTitle><AlertDescription>{loadError} Verifique se a migration e a Edge Function foram implantadas.</AlertDescription></Alert>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Configuração indisponível</AlertTitle>
+            <AlertDescription>
+              {loadError} Verifique se a migration e a Edge Function foram implantadas.
+            </AlertDescription>
+          </Alert>
         ) : (
           <form onSubmit={save} className="space-y-8">
             <section className="space-y-4">
               <div>
                 <h3 className="font-medium">E-mail institucional</h3>
-                <p className="text-sm text-muted-foreground">Remetente e credenciais operacionais da Secretaria.</p>
+                <p className="text-sm text-muted-foreground">
+                  Remetente e credenciais operacionais da Secretaria.
+                </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="integration-email-from-name">Nome do remetente</Label>
-                  <Input id="integration-email-from-name" maxLength={160} value={settings.email_from_name} onChange={(e) => update("email_from_name", e.target.value)} />
+                  <Input
+                    id="integration-email-from-name"
+                    maxLength={160}
+                    value={settings.email_from_name}
+                    onChange={(e) => update("email_from_name", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="integration-email-from">E-mail do remetente</Label>
-                  <Input id="integration-email-from" type="email" maxLength={254} value={settings.email_from_address} onChange={(e) => update("email_from_address", e.target.value)} />
+                  <Input
+                    id="integration-email-from"
+                    type="email"
+                    maxLength={254}
+                    value={settings.email_from_address}
+                    onChange={(e) => update("email_from_address", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="integration-email-reply">Responder para</Label>
-                  <Input id="integration-email-reply" type="email" maxLength={254} value={settings.email_reply_to} onChange={(e) => update("email_reply_to", e.target.value)} />
+                  <Input
+                    id="integration-email-reply"
+                    type="email"
+                    maxLength={254}
+                    value={settings.email_reply_to}
+                    onChange={(e) => update("email_reply_to", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="integration-email-domain">Domínio institucional</Label>
-                  <Input id="integration-email-domain" maxLength={253} value={settings.email_domain} onChange={(e) => update("email_domain", e.target.value.toLowerCase())} placeholder="saude.municipio.gov.br" />
+                  <Input
+                    id="integration-email-domain"
+                    maxLength={253}
+                    value={settings.email_domain}
+                    onChange={(e) => update("email_domain", e.target.value.toLowerCase())}
+                    placeholder="saude.municipio.gov.br"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="integration-email-provider">Provedor operacional</Label>
-                  <select id="integration-email-provider" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={settings.email_provider} onChange={(e) => update("email_provider", e.target.value as IntegrationSettings["email_provider"])}>
+                  <select
+                    id="integration-email-provider"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={settings.email_provider}
+                    onChange={(e) =>
+                      update(
+                        "email_provider",
+                        e.target.value as IntegrationSettings["email_provider"],
+                      )
+                    }
+                  >
                     <option value="none">Ainda não configurado</option>
                     <option value="resend">Resend (API)</option>
                     <option value="smtp_gateway">SMTP (gateway externo necessário)</option>
@@ -322,120 +378,468 @@ export function TenantIntegrationsSettings() {
               </div>
               {settings.email_provider === "smtp_gateway" && (
                 <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-                  <div className="space-y-2"><Label htmlFor="smtp-host">Servidor SMTP</Label><Input id="smtp-host" value={settings.email_smtp_host} onChange={(e) => update("email_smtp_host", e.target.value)} placeholder="smtp.seudominio.gov.br" /></div>
-                  <div className="space-y-2"><Label htmlFor="smtp-port">Porta</Label><Input id="smtp-port" inputMode="numeric" value={settings.email_smtp_port} onChange={(e) => update("email_smtp_port", e.target.value)} /></div>
-                  <div className="space-y-2"><Label htmlFor="smtp-security">Segurança</Label><select id="smtp-security" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={settings.email_smtp_security} onChange={(e) => update("email_smtp_security", e.target.value as "tls" | "starttls")}><option value="tls">TLS</option><option value="starttls">STARTTLS</option></select></div>
-                  <div className="space-y-2"><Label htmlFor="smtp-user">Usuário SMTP</Label><Input id="smtp-user" autoComplete="off" value={settings.email_smtp_username} onChange={(e) => update("email_smtp_username", e.target.value)} /></div>
-                  <div className="space-y-2 sm:col-span-2"><Label htmlFor="smtp-password">Senha SMTP {settings.has_smtp_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label><Input id="smtp-password" type="password" autoComplete="new-password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} /></div>
-                  <Alert><AlertTitle>Limite de execução</AlertTitle><AlertDescription>Os dados ficam criptografados e isolados por Secretaria. O envio SMTP direto ainda exige um gateway de saída compatível com o ambiente Edge; salvar estes campos, sozinho, não ativa o envio.</AlertDescription></Alert>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                    <Input
+                      id="smtp-host"
+                      value={settings.email_smtp_host}
+                      onChange={(e) => update("email_smtp_host", e.target.value)}
+                      placeholder="smtp.seudominio.gov.br"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-port">Porta</Label>
+                    <Input
+                      id="smtp-port"
+                      inputMode="numeric"
+                      value={settings.email_smtp_port}
+                      onChange={(e) => update("email_smtp_port", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-security">Segurança</Label>
+                    <select
+                      id="smtp-security"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={settings.email_smtp_security}
+                      onChange={(e) =>
+                        update("email_smtp_security", e.target.value as "tls" | "starttls")
+                      }
+                    >
+                      <option value="tls">TLS</option>
+                      <option value="starttls">STARTTLS</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-user">Usuário SMTP</Label>
+                    <Input
+                      id="smtp-user"
+                      autoComplete="off"
+                      value={settings.email_smtp_username}
+                      onChange={(e) => update("email_smtp_username", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="smtp-password">
+                      Senha SMTP{" "}
+                      {settings.has_smtp_secret
+                        ? "(já cadastrada; deixe em branco para manter)"
+                        : ""}
+                    </Label>
+                    <Input
+                      id="smtp-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={smtpPassword}
+                      onChange={(e) => setSmtpPassword(e.target.value)}
+                    />
+                  </div>
+                  <Alert>
+                    <AlertTitle>Limite de execução</AlertTitle>
+                    <AlertDescription>
+                      Os dados ficam criptografados e isolados por Secretaria. O envio SMTP direto
+                      ainda exige um gateway de saída compatível com o ambiente Edge; salvar estes
+                      campos, sozinho, não ativa o envio.
+                    </AlertDescription>
+                  </Alert>
                 </div>
               )}
               {settings.email_provider === "resend" && (
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="email-api-secret">Chave API Resend {settings.has_email_api_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label>
-                    <Input id="email-api-secret" type="password" autoComplete="new-password" value={emailApiSecret} onChange={(e) => setEmailApiSecret(e.target.value)} />
+                    <Label htmlFor="email-api-secret">
+                      Chave API Resend{" "}
+                      {settings.has_email_api_secret
+                        ? "(já cadastrada; deixe em branco para manter)"
+                        : ""}
+                    </Label>
+                    <Input
+                      id="email-api-secret"
+                      type="password"
+                      autoComplete="new-password"
+                      value={emailApiSecret}
+                      onChange={(e) => setEmailApiSecret(e.target.value)}
+                    />
                   </div>
                   {settings.email_domain_verified_at ? (
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Domínio verificado em {new Date(settings.email_domain_verified_at).toLocaleString("pt-BR")}.</p>
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4" /> Domínio verificado em{" "}
+                      {new Date(settings.email_domain_verified_at).toLocaleString("pt-BR")}.
+                    </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Adicione e valide os registros DNS do domínio no painel do Resend antes de verificar aqui.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Adicione e valide os registros DNS do domínio no painel do Resend antes de
+                      verificar aqui.
+                    </p>
                   )}
-                  <Button type="button" variant="outline" disabled={verifyingDomain || saving || !settings.email_domain || !settings.has_email_api_secret} onClick={() => void verifyEmailDomain()}>
-                    {verifyingDomain ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Verificar domínio no Resend
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      verifyingDomain ||
+                      saving ||
+                      !settings.email_domain ||
+                      !settings.has_email_api_secret
+                    }
+                    onClick={() => void verifyEmailDomain()}
+                  >
+                    {verifyingDomain ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Verificar domínio no Resend
                   </Button>
                 </div>
               )}
-              <Alert><AlertTitle>SMTP do Supabase Auth</AlertTitle><AlertDescription>Convites, confirmação de conta e recuperação de senha usam o SMTP global do Supabase Auth. Configure esse serviço no painel do projeto Supabase, em Authentication → SMTP Settings; esta tela não altera essa configuração global.</AlertDescription></Alert>
+              <Alert>
+                <AlertTitle>SMTP do Supabase Auth</AlertTitle>
+                <AlertDescription>
+                  Convites, confirmação de conta e recuperação de senha usam o SMTP global do
+                  Supabase Auth. Configure esse serviço no painel do projeto Supabase, em
+                  Authentication → SMTP Settings; esta tela não altera essa configuração global.
+                </AlertDescription>
+              </Alert>
             </section>
 
             <section className="space-y-4 border-t pt-6">
-              <div><h3 className="font-medium">Google Drive</h3><p className="text-sm text-muted-foreground">Credenciais OAuth e pasta de destino. A sincronização só deve ser ativada após concluir o callback OAuth e validar a conexão.</p></div>
+              <div>
+                <h3 className="font-medium">Google Drive</h3>
+                <p className="text-sm text-muted-foreground">
+                  Credenciais OAuth e pasta de destino. A sincronização só deve ser ativada após
+                  concluir o callback OAuth e validar a conexão.
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2"><Label htmlFor="drive-client-id">OAuth Client ID</Label><Input id="drive-client-id" value={settings.drive_client_id} onChange={(e) => update("drive_client_id", e.target.value)} maxLength={512} /></div>
-                <div className="space-y-2"><Label htmlFor="drive-client-secret">OAuth Client Secret {settings.has_drive_client_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label><Input id="drive-client-secret" type="password" autoComplete="new-password" value={driveClientSecret} onChange={(e) => setDriveClientSecret(e.target.value)} /></div>
-                <div className="space-y-2 sm:col-span-2"><Label htmlFor="drive-root-folder">ID da pasta raiz no Drive</Label><Input id="drive-root-folder" value={settings.drive_root_folder_id} onChange={(e) => update("drive_root_folder_id", e.target.value)} maxLength={512} /></div>
+                <div className="space-y-2">
+                  <Label htmlFor="drive-client-id">OAuth Client ID</Label>
+                  <Input
+                    id="drive-client-id"
+                    value={settings.drive_client_id}
+                    onChange={(e) => update("drive_client_id", e.target.value)}
+                    maxLength={512}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="drive-client-secret">
+                    OAuth Client Secret{" "}
+                    {settings.has_drive_client_secret
+                      ? "(já cadastrada; deixe em branco para manter)"
+                      : ""}
+                  </Label>
+                  <Input
+                    id="drive-client-secret"
+                    type="password"
+                    autoComplete="new-password"
+                    value={driveClientSecret}
+                    onChange={(e) => setDriveClientSecret(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="drive-root-folder">ID da pasta raiz no Drive</Label>
+                  <Input
+                    id="drive-root-folder"
+                    value={settings.drive_root_folder_id}
+                    onChange={(e) => update("drive_root_folder_id", e.target.value)}
+                    maxLength={512}
+                  />
+                </div>
               </div>
               {settings.has_drive_refresh_token && settings.drive_connected_at ? (
-                <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Conta Google autorizada em {new Date(settings.drive_connected_at).toLocaleString("pt-BR")}. A sincronização automática ainda não está habilitada.</p>
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" /> Conta Google autorizada em{" "}
+                  {new Date(settings.drive_connected_at).toLocaleString("pt-BR")}. A sincronização
+                  automática ainda não está habilitada.
+                </p>
               ) : (
-                <p className="text-xs text-muted-foreground">Após salvar as credenciais, conecte a conta Google. A autorização usa escopo mínimo drive.file e não transfere arquivos automaticamente.</p>
+                <p className="text-xs text-muted-foreground">
+                  Após salvar as credenciais, conecte a conta Google. A autorização usa escopo
+                  mínimo drive.file e não transfere arquivos automaticamente.
+                </p>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || !settings.has_drive_client_secret} onClick={() => void connectDrive()}>
-                  {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                  {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    connectingDrive ||
+                    saving ||
+                    !settings.drive_client_id ||
+                    !settings.has_drive_client_secret
+                  }
+                  onClick={() => void connectDrive()}
+                >
+                  {connectingDrive ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  {connectingDrive
+                    ? "Conectando..."
+                    : settings.has_drive_refresh_token
+                      ? "Reautorizar Google Drive"
+                      : "Conectar Google Drive"}
                 </Button>
-                <Button type="button" disabled={syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token} onClick={() => void syncDrive()}>
+                <Button
+                  type="button"
+                  disabled={
+                    syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token
+                  }
+                  onClick={() => void syncDrive()}
+                >
                   {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 3)"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">A sincronização copia até 3 documentos privados por execução. Os originais permanecem no armazenamento da plataforma; resultados incertos não são reenviados automaticamente para evitar duplicatas.</p>
-              {settings.drive_last_sync_at && <p className="text-xs text-muted-foreground">Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}.</p>}
+              <p className="text-xs text-muted-foreground">
+                A sincronização copia até 3 documentos privados por execução. Os originais
+                permanecem no armazenamento da plataforma; resultados incertos não são reenviados
+                automaticamente para evitar duplicatas.
+              </p>
+              {settings.drive_last_sync_at && (
+                <p className="text-xs text-muted-foreground">
+                  Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}.
+                </p>
+              )}
             </section>
 
             <section className="space-y-3 border-t pt-6">
-              <div><h3 className="font-medium">Modelos oficiais DOCX</h3><p className="text-sm text-muted-foreground">O módulo Documentos já possui cadastro de modelos, fontes DOCX privadas, versões e motor de geração. Cadastre ou atualize os modelos oficiais por lá; não há uma segunda biblioteca de modelos nesta tela.</p></div>
-              <Button type="button" variant="outline" asChild><Link to="/documentos">Abrir gestão de modelos e documentos</Link></Button>
+              <div>
+                <h3 className="font-medium">Modelos oficiais DOCX</h3>
+                <p className="text-sm text-muted-foreground">
+                  O módulo Documentos já possui cadastro de modelos, fontes DOCX privadas, versões e
+                  motor de geração. Cadastre ou atualize os modelos oficiais por lá; não há uma
+                  segunda biblioteca de modelos nesta tela.
+                </p>
+              </div>
+              <Button type="button" variant="outline" asChild>
+                <Link to="/documentos">Abrir gestão de modelos e documentos</Link>
+              </Button>
             </section>
 
             <section className="space-y-4 border-t pt-6">
-              <div><h3 className="font-medium">LGPD e retenção documental</h3><p className="text-sm text-muted-foreground">Defina uma política institucional. O prazo não dispara exclusão automática de dados.</p></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2"><Label htmlFor="retention-days">Prazo de retenção (dias)</Label><Input id="retention-days" type="number" min={30} max={36500} value={settings.retention_days} onChange={(e) => update("retention_days", e.target.value)} /></div>
-                <div className="space-y-2"><Label htmlFor="retention-version">Versão da política</Label><Input id="retention-version" maxLength={40} value={settings.retention_policy_version} onChange={(e) => update("retention_policy_version", e.target.value)} placeholder="Ex.: 1.0 - 2026" /></div>
+              <div>
+                <h3 className="font-medium">LGPD e retenção documental</h3>
+                <p className="text-sm text-muted-foreground">
+                  Defina uma política institucional. O prazo não dispara exclusão automática de
+                  dados.
+                </p>
               </div>
-              <div className="space-y-2"><Label htmlFor="retention-text">Texto da política aprovada</Label><Textarea id="retention-text" rows={5} maxLength={8000} value={settings.retention_policy_text} onChange={(e) => update("retention_policy_text", e.target.value)} placeholder="Descreva finalidade, base legal, prazos, responsáveis, exceções legais e procedimento de descarte seguro." /></div>
-              <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={approvePolicy} onChange={(e) => setApprovePolicy(e.target.checked)} className="mt-1" /><span>Confirmo que esta política foi revisada e aprovada pela autoridade responsável da Secretaria. Não estou autorizando exclusão automática de registros.</span></label>
-              {settings.retention_approved_at && <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Política registrada em {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.</p>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="retention-days">Prazo de retenção (dias)</Label>
+                  <Input
+                    id="retention-days"
+                    type="number"
+                    min={30}
+                    max={36500}
+                    value={settings.retention_days}
+                    onChange={(e) => update("retention_days", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="retention-version">Versão da política</Label>
+                  <Input
+                    id="retention-version"
+                    maxLength={40}
+                    value={settings.retention_policy_version}
+                    onChange={(e) => update("retention_policy_version", e.target.value)}
+                    placeholder="Ex.: 1.0 - 2026"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="retention-text">Texto da política aprovada</Label>
+                <Textarea
+                  id="retention-text"
+                  rows={5}
+                  maxLength={8000}
+                  value={settings.retention_policy_text}
+                  onChange={(e) => update("retention_policy_text", e.target.value)}
+                  placeholder="Descreva finalidade, base legal, prazos, responsáveis, exceções legais e procedimento de descarte seguro."
+                />
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={approvePolicy}
+                  onChange={(e) => setApprovePolicy(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Confirmo que esta política foi revisada e aprovada pela autoridade responsável da
+                  Secretaria. Não estou autorizando exclusão automática de registros.
+                </span>
+              </label>
+              {settings.retention_approved_at && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" /> Política registrada em{" "}
+                  {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.
+                </p>
+              )}
               <div className="space-y-3 rounded-lg border p-4">
-                <div><h4 className="font-medium">Solicitações de titulares</h4><p className="text-xs text-muted-foreground">Registre pedidos de acesso, correção, exportação, oposição ou exclusão. Toda exclusão exige análise legal e decisão humana.</p></div>
+                <div>
+                  <h4 className="font-medium">Solicitações de titulares</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Registre pedidos de acesso, correção, exportação, oposição ou exclusão. Toda
+                    exclusão exige análise legal e decisão humana.
+                  </p>
+                </div>
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="privacy-request-type">Tipo de solicitação</Label>
-                    <select id="privacy-request-type" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={requestType} onChange={(e) => setRequestType(e.target.value)}>
-                      <option value="access">Acesso aos dados</option><option value="correction">Correção</option><option value="export">Exportação</option><option value="deletion">Exclusão (sujeita à análise legal)</option><option value="objection">Oposição</option>
+                    <select
+                      id="privacy-request-type"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={requestType}
+                      onChange={(e) => setRequestType(e.target.value)}
+                    >
+                      <option value="access">Acesso aos dados</option>
+                      <option value="correction">Correção</option>
+                      <option value="export">Exportação</option>
+                      <option value="deletion">Exclusão (sujeita à análise legal)</option>
+                      <option value="objection">Oposição</option>
                     </select>
                   </div>
-                  <div className="space-y-2"><Label htmlFor="privacy-request-description">Descrição e identificação do pedido</Label><Textarea id="privacy-request-description" rows={3} minLength={10} maxLength={4000} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} required placeholder="Descreva os dados envolvidos e o que está sendo solicitado." /></div>
-                  <Button type="button" variant="outline" disabled={submittingPrivacy || requestDescription.trim().length < 10} onClick={() => void submitPrivacyRequest()}>{submittingPrivacy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Registrar solicitação</Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="privacy-request-description">
+                      Descrição e identificação do pedido
+                    </Label>
+                    <Textarea
+                      id="privacy-request-description"
+                      rows={3}
+                      minLength={10}
+                      maxLength={4000}
+                      value={requestDescription}
+                      onChange={(e) => setRequestDescription(e.target.value)}
+                      required
+                      placeholder="Descreva os dados envolvidos e o que está sendo solicitado."
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={submittingPrivacy || requestDescription.trim().length < 10}
+                    onClick={() => void submitPrivacyRequest()}
+                  >
+                    {submittingPrivacy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Registrar solicitação
+                  </Button>
                 </div>
                 {canEdit && (
                   <div className="space-y-2 border-t pt-3">
                     <p className="text-sm font-medium">Pedidos registrados nesta Secretaria</p>
-                    {privacyRequests.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma solicitação registrada.</p> : privacyRequests.map((request) => (
-                      <div key={request.id} className="rounded-md bg-muted/40 p-3 text-sm">
-                        <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{request.request_type.toUpperCase()} · {request.status}</span><span className="text-xs text-muted-foreground">{new Date(request.created_at).toLocaleString("pt-BR")}</span></div>
-                        <p className="mt-1 text-xs text-muted-foreground">{request.requester_email ?? "Solicitante autenticado"}</p>
-                        <p className="mt-2 whitespace-pre-wrap">{request.subject_description}</p>
-                        {canEdit && ["received", "under_review", "awaiting_identity"].includes(request.status) && (
-                          <div className="mt-3 space-y-2 border-t pt-3">
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <div className="space-y-1"><Label htmlFor={`privacy-decision-${request.id}`}>Decisão</Label><select id={`privacy-decision-${request.id}`} className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs" value={reviewDecision} onChange={(e) => setReviewDecision(e.target.value as "approved" | "rejected")}><option value="approved">Aprovar solicitação</option><option value="rejected">Rejeitar solicitação</option></select></div>
-                              <div className="space-y-1"><Label htmlFor={`privacy-basis-${request.id}`}>Análise da base legal</Label><Input id={`privacy-basis-${request.id}`} value={reviewLegalBasis} onChange={(e) => setReviewLegalBasis(e.target.value)} maxLength={2000} placeholder="Base legal e obrigações de guarda" /></div>
-                            </div>
-                            <div className="space-y-1"><Label htmlFor={`privacy-notes-${request.id}`}>Justificativa da decisão</Label><Textarea id={`privacy-notes-${request.id}`} rows={2} value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} maxLength={4000} /></div>
-                            <Button type="button" size="sm" variant="outline" disabled={reviewingId === request.id || !reviewLegalBasis.trim() || !reviewNotes.trim()} onClick={() => void reviewPrivacyRequest(request.id)}>{reviewingId === request.id ? "Registrando..." : "Registrar decisão"}</Button>
+                    {privacyRequests.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhuma solicitação registrada.
+                      </p>
+                    ) : (
+                      privacyRequests.map((request) => (
+                        <div key={request.id} className="rounded-md bg-muted/40 p-3 text-sm">
+                          <div className="flex flex-wrap justify-between gap-2">
+                            <span className="font-medium">
+                              {request.request_type.toUpperCase()} · {request.status}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(request.created_at).toLocaleString("pt-BR")}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {request.requester_email ?? "Solicitante autenticado"}
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap">{request.subject_description}</p>
+                          {canEdit &&
+                            ["received", "under_review", "awaiting_identity"].includes(
+                              request.status,
+                            ) && (
+                              <div className="mt-3 space-y-2 border-t pt-3">
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`privacy-decision-${request.id}`}>
+                                      Decisão
+                                    </Label>
+                                    <select
+                                      id={`privacy-decision-${request.id}`}
+                                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                      value={reviewDecision}
+                                      onChange={(e) =>
+                                        setReviewDecision(e.target.value as "approved" | "rejected")
+                                      }
+                                    >
+                                      <option value="approved">Aprovar solicitação</option>
+                                      <option value="rejected">Rejeitar solicitação</option>
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label htmlFor={`privacy-basis-${request.id}`}>
+                                      Análise da base legal
+                                    </Label>
+                                    <Input
+                                      id={`privacy-basis-${request.id}`}
+                                      value={reviewLegalBasis}
+                                      onChange={(e) => setReviewLegalBasis(e.target.value)}
+                                      maxLength={2000}
+                                      placeholder="Base legal e obrigações de guarda"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label htmlFor={`privacy-notes-${request.id}`}>
+                                    Justificativa da decisão
+                                  </Label>
+                                  <Textarea
+                                    id={`privacy-notes-${request.id}`}
+                                    rows={2}
+                                    value={reviewNotes}
+                                    onChange={(e) => setReviewNotes(e.target.value)}
+                                    maxLength={4000}
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    reviewingId === request.id ||
+                                    !reviewLegalBasis.trim() ||
+                                    !reviewNotes.trim()
+                                  }
+                                  onClick={() => void reviewPrivacyRequest(request.id)}
+                                >
+                                  {reviewingId === request.id
+                                    ? "Registrando..."
+                                    : "Registrar decisão"}
+                                </Button>
+                              </div>
+                            )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
             </section>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
-              <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor</p>
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor
+              </p>
               <div className="flex flex-wrap gap-2">
                 {settings.email_provider === "resend" && (
-                  <Button type="button" variant="outline" disabled={testingEmail || saving} onClick={() => void testEmail()}>
-                    {testingEmail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={testingEmail || saving}
+                    onClick={() => void testEmail()}
+                  >
+                    {testingEmail ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
                     Enviar teste para meu e-mail
                   </Button>
                 )}
-                <Button type="submit" disabled={saving || testingEmail}><Save className="mr-2 h-4 w-4" />{saving ? "Salvando..." : "Salvar configurações"}</Button>
+                <Button type="submit" disabled={saving || testingEmail}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? "Salvando..." : "Salvar configurações"}
+                </Button>
               </div>
             </div>
           </form>

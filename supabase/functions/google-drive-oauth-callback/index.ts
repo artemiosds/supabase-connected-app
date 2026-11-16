@@ -19,7 +19,10 @@ async function keyFromEnvironment(): Promise<CryptoKey> {
   const encoded = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
   const raw = base64Bytes(encoded);
   if (raw.length !== 32) throw new Error("INVALID_ENCRYPTION_KEY");
-  return crypto.subtle.importKey("raw", asArrayBuffer(raw), "AES-GCM", false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey("raw", asArrayBuffer(raw), "AES-GCM", false, [
+    "encrypt",
+    "decrypt",
+  ]);
 }
 async function decrypt(value: string, key: CryptoKey): Promise<string> {
   const [version, iv, ciphertext] = value.split(".");
@@ -45,7 +48,8 @@ function redirect(status: "connected" | "error", reason?: string): Response {
   let target: URL;
   try {
     target = new URL("/configuracoes", appUrl);
-    if (target.protocol !== "https:" || target.username || target.password) throw new Error("invalid");
+    if (target.protocol !== "https:" || target.username || target.password)
+      throw new Error("invalid");
   } catch {
     return new Response("Configuração APP_URL inválida.", { status: 503 });
   }
@@ -74,7 +78,9 @@ Deno.serve(async (request: Request) => {
   });
   try {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state));
-    const stateHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    const stateHash = [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
     const { data: stateRow, error: stateError } = await admin
       .from("tenant_drive_oauth_states")
       .delete()
