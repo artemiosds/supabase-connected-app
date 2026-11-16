@@ -83,8 +83,7 @@ Deno.serve(async (request: Request) => {
       .select("drive_client_id,drive_client_secret_ciphertext,drive_refresh_token_ciphertext")
       .eq("tenant_id", stateRow.tenant_id)
       .maybeSingle();
-    if (settingsError || !settings?.drive_client_id || !settings.drive_client_secret_ciphertext ||
-        false) {
+    if (settingsError || !settings?.drive_client_id || !settings.drive_client_secret_ciphertext) {
       return redirect("error", "tenant_oauth_configuration_changed");
     }
 
