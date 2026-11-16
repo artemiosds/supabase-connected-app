@@ -368,10 +368,10 @@ export function TenantIntegrationsSettings() {
                 </Button>
                 <Button type="button" disabled={syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token} onClick={() => void syncDrive()}>
                   {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 20)"}
+                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 3)"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">A sincronização copia até 20 documentos privados por execução. Os originais permanecem no armazenamento da plataforma; resultados incertos não são reenviados automaticamente para evitar duplicatas.</p>
+              <p className="text-xs text-muted-foreground">A sincronização copia até 3 documentos privados por execução. Os originais permanecem no armazenamento da plataforma; resultados incertos não são reenviados automaticamente para evitar duplicatas.</p>
               {settings.drive_last_sync_at && <p className="text-xs text-muted-foreground">Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}.</p>}
             </section>
 
