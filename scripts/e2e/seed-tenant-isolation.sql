@@ -165,7 +165,6 @@ VALUES
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('documents:view', 'Visualizar modelos', 'Permissão E2E sintética', 'documents'),
   ('documents:create', 'Criar documentos', 'Permissão E2E sintética', 'documents'),
-  ('documents:update', 'Editar documentos gerados', 'Permissão E2E sintética', 'documents'),
   ('documents:approve', 'Aprovar documentos', 'Permissão E2E sintética', 'documents'),
   ('documents:manage_templates', 'Gerenciar modelos', 'Permissão E2E sintética', 'documents')
 ON CONFLICT (code) DO NOTHING;
@@ -234,14 +233,7 @@ VALUES
   )
 ON CONFLICT DO NOTHING;
 
--- The author may cancel a document after creation. The separate reviewer has no create or update grant.
-INSERT INTO public.tenant_role_permissions(role_id, permission_id)
-SELECT '92000000-0000-4000-8000-000000000001', id
-FROM public.permissions
-WHERE code = 'documents:update'
-ON CONFLICT DO NOTHING;
-
--- Separate synthetic reviewer: documents:view + documents:approve, never documents:create.
+-- Separate synthetic reviewer: documents:view + documents:approve + documents:update, never documents:create.
 INSERT INTO public.tenant_roles(id, tenant_id, name, slug, description, is_system)
 VALUES (
   '92000000-0000-4000-8000-000000000003',
@@ -256,7 +248,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tenant_role_permissions(role_id, permission_id)
 SELECT '92000000-0000-4000-8000-000000000003', id
 FROM public.permissions
-WHERE code IN ('org:view', 'documents:view', 'documents:approve')
+WHERE code IN ('org:view', 'documents:view', 'documents:approve', 'documents:update')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)

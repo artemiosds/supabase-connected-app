@@ -927,17 +927,7 @@ async function verifyDocumentApprovalWorkflow() {
       ),
       "review history must record the distinct approver's identity",
     );
-    console.log(
-      "PASS document approval workflow: author submission, separate reviewer approval, create permission denial, and both audit actors",
-    );
-  } finally {
-    await reviewer.context.close();
-  }
-
-  const authorCanceller = await signInAndOpenGeneratedDocuments("e2e.secretaria.a@example.invalid");
-  try {
-    const row = authorCanceller.page.getByRole("row").filter({ hasText: documentTitle });
-    authorCanceller.page.once("dialog", async (dialog) => dialog.accept());
+    reviewer.page.once("dialog", async (dialog) => dialog.accept());
     await row.getByRole("button", { name: "Cancelar", exact: true }).click();
     await row.getByText("Cancelado", { exact: true }).first().waitFor();
     assert.equal(
@@ -946,7 +936,7 @@ async function verifyDocumentApprovalWorkflow() {
       "both the document and its approval workflow must show cancelled status",
     );
 
-    const cancellation = await authorCanceller.page.evaluate(
+    const cancellation = await reviewer.page.evaluate(
       async ({ apiUrl, publicKey, token, tenantId, documentId }) => {
         const headers = { apikey: publicKey, Authorization: `Bearer ${token}` };
         const [eventResponse, documentResponse] = await Promise.all([
@@ -969,7 +959,7 @@ async function verifyDocumentApprovalWorkflow() {
       {
         apiUrl: supabaseUrl,
         publicKey: anonKey,
-        token: await readAccessToken(authorCanceller.page),
+        token: reviewerToken,
         tenantId,
         documentId,
       },
@@ -980,7 +970,7 @@ async function verifyDocumentApprovalWorkflow() {
     assert.ok(
       cancellation.events.some(
         (event) =>
-          event.actor_id === authorId &&
+          event.actor_id === reviewerId &&
           event.action === "cancelled" &&
           event.from_status === "approved" &&
           event.to_status === "cancelled",
@@ -988,10 +978,10 @@ async function verifyDocumentApprovalWorkflow() {
       "cancellation must close the approved workflow and record the cancelling actor",
     );
     console.log(
-      "PASS document cancellation workflow: approved document, confirmation, synchronized status, and actor history",
+      "PASS document workflow: separate approval, create permission denial, synchronized cancellation, and actor history",
     );
   } finally {
-    await authorCanceller.context.close();
+    await reviewer.context.close();
   }
 }
 
