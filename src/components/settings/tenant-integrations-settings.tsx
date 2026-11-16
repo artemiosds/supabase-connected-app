@@ -243,7 +243,7 @@ export function TenantIntegrationsSettings() {
               ) : (
                 <p className="text-xs text-muted-foreground">Após salvar as credenciais, conecte a conta Google. A autorização usa escopo mínimo drive.file e não transfere arquivos automaticamente.</p>
               )}
-              <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || (!driveClientSecret && !settings.has_drive_client_secret)} onClick={() => void connectDrive()}>
+              <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || !settings.has_drive_client_secret} onClick={() => void connectDrive()}>
                 {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
               </Button>
