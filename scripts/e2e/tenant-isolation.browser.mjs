@@ -506,6 +506,13 @@ async function verifyAuthenticatedTenant(scenario) {
       name: "Restaurar esta versão",
       exact: true,
     });
+    await page.waitForFunction(
+      () => document.querySelectorAll('button').length > 0 &&
+        [...document.querySelectorAll('button')].filter(
+          (button) => button.textContent?.trim() === "Restaurar esta versão",
+        ).length === 2,
+      { timeout: 30_000 },
+    );
     assert.equal(await uiRestoreButtons.count(), 2, "versions 1 and 2 must be restorable");
     page.once("dialog", async (dialog) => {
       assert.match(dialog.message(), /Restaurar a versão 2/);
