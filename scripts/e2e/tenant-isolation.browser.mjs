@@ -1189,10 +1189,11 @@ async function verifyProcurementLifecycle() {
     const amendmentRows = await readRows(
       "contract_amendments",
       { tenant_id: tenantId, contract_id: contractRows.body[0].id },
-      "number,kind,value_change,new_end_date",
+      "number,kind,value_change,new_end_date,signed_at",
     );
     assert.equal(amendmentRows.status, 200);
     assert.equal(amendmentRows.body.length, 4);
+    assert.ok(amendmentRows.body.every((row) => row.signed_at === "2026-11-16"));
     assert.deepEqual(
       amendmentRows.body.map((row) => row.kind).sort(),
       ["acrescimo", "outro", "prorrogacao", "supressao"],
