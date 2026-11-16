@@ -869,10 +869,17 @@ async function verifyDocumentApprovalWorkflow() {
         });
         return { status: response.status, body: await response.text() };
       },
-      { apiUrl: supabaseUrl, publicKey: anonKey, token: await readAccessToken(reviewer.page), tenantId },
+      {
+        apiUrl: supabaseUrl,
+        publicKey: anonKey,
+        token: await readAccessToken(reviewer.page),
+        tenantId,
+      },
     );
     const deniedInsertRows =
-      attemptedInsert.body.trim().startsWith("[") ? JSON.parse(attemptedInsert.body) : null;
+      attemptedInsert.body.trim().startsWith("[")
+        ? JSON.parse(attemptedInsert.body)
+        : null;
     assert.ok(
       attemptedInsert.status >= 400 || (Array.isArray(deniedInsertRows) && deniedInsertRows.length === 0),
       `the reviewer must not create a document through the Data API (HTTP ${attemptedInsert.status})`,
