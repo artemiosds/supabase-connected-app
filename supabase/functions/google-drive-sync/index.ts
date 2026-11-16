@@ -216,7 +216,7 @@ Deno.serve(async (request: Request) => {
     let uncertain = 0;
     let processed = 0;
     for (const source of sources) {
-      if (processed >= 20) break;
+      if (processed >= 3) break;
       const keyValue = await idempotencyKey(`${tenantId}:${source.sourceType}:${source.sourceId}:v${source.version}:${source.storagePath}`);
       const existing = jobsByKey.get(keyValue);
       if (existing?.status === "synced" || existing?.status === "uncertain" ||
@@ -338,7 +338,7 @@ Deno.serve(async (request: Request) => {
       skipped,
       failed,
       uncertain,
-      limit: 20,
+      limit: 3,
       originals_preserved: true,
       message: "Cópias enviadas ao Google Drive. Os arquivos originais privados continuam no sistema.",
     }, 200, origin);
