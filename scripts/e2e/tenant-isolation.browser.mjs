@@ -792,8 +792,6 @@ async function verifyDocumentApprovalWorkflow() {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.addInitScript((id) => localStorage.setItem("gfs:organizacao-id", id), tenantId);
-    const context = await browser.newContext();
-    const page = await context.newPage();
     page.setDefaultTimeout(30_000);
     await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
     await page.getByLabel("E-mail").fill(email);
