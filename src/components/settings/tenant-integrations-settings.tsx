@@ -77,6 +77,7 @@ export function TenantIntegrationsSettings() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [connectingDrive, setConnectingDrive] = useState(false);
+  const [syncingDrive, setSyncingDrive] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [privacyRequests, setPrivacyRequests] = useState<PrivacyRequest[]>([]);
@@ -161,6 +162,21 @@ export function TenantIntegrationsSettings() {
     }
     if (data.verified) toast.success(data.message);
     else toast.warning(data.message ?? "O domínio ainda não foi verificado.");
+    await load();
+  }
+
+  async function syncDrive() {
+    if (!selecionado?.id) return;
+    setSyncingDrive(true);
+    const { data, error } = await db.functions.invoke("google-drive-sync", {
+      body: { tenant_id: selecionado.id },
+    });
+    setSyncingDrive(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "A sincronização falhou.");
+      return;
+    }
+    toast.success(`Drive: ${data.synced} enviado(s), ${data.skipped} ignorado(s), ${data.failed} falha(s), ${data.uncertain} resultado(s) incerto(s).`);
     await load();
   }
 
@@ -343,10 +359,17 @@ export function TenantIntegrationsSettings() {
               ) : (
                 <p className="text-xs text-muted-foreground">Após salvar as credenciais, conecte a conta Google. A autorização usa escopo mínimo drive.file e não transfere arquivos automaticamente.</p>
               )}
-              <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || !settings.has_drive_client_secret} onClick={() => void connectDrive()}>
-                {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" disabled={connectingDrive || saving || !settings.drive_client_id || !settings.has_drive_client_secret} onClick={() => void connectDrive()}>
+                  {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
+                </Button>
+                <Button type="button" disabled={syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token} onClick={() => void syncDrive()}>
+                  {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 20)"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">A sincronização copia até 20 documentos privados por execução. Os originais permanecem no armazenamento da plataforma; resultados incertos não são reenviados automaticamente para evitar duplicatas.</p>
             </section>
 
             <section className="space-y-3 border-t pt-6">
