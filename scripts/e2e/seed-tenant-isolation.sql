@@ -247,7 +247,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tenant_role_permissions(role_id, permission_id)
 SELECT '92000000-0000-4000-8000-000000000003', id
 FROM public.permissions
-WHERE code IN ('documents:view', 'documents:approve')
+WHERE code IN ('org:view', 'documents:view', 'documents:approve')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)
