@@ -2,24 +2,24 @@
 
 ## Estado consolidado mais recente — 16/11/2026
 
-**Decisão: NO-GO para produção e comercialização.** O código de aplicação registrado no commit `156edfdfdaf92e2362dae89925782f01523d985e` passou validação, segurança do banco descartável, formatação e E2E autenticado; este checklist foi atualizado em commit posterior, somente documental. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
+**Decisão: NO-GO para produção e comercialização.** O código de aplicação registrado no commit `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb` passou validação, segurança do banco descartável, formatação e E2E autenticado; este checklist foi atualizado em commit posterior, somente documental. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
 
 ### Repositório, banco e segurança
 
-- Repositório: `artemiosds/supabase-connected-app`, branch `main`; código funcional verificado em `156edfdfdaf92e2362dae89925782f01523d985e` (a última alteração subsequente neste arquivo foi apenas documental).
-- Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` atual contém **90 arquivos de migration**, incluindo `20261116120000_lock_generated_document_content_during_review.sql`. A aplicação dessa 90ª migration ao SMS2 ainda não foi confirmada; a paridade atual está pendente.
+- Repositório: `artemiosds/supabase-connected-app`, branch `main`; código funcional verificado em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb` (a última alteração subsequente neste arquivo foi apenas documental).
+- Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` contém **91 migrations**; após as 89 versões registradas no SMS2 até `20261113194249`, permanecem duas migrations pendentes: `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`. Nenhuma foi aplicada ao SMS2; a paridade atual continua pendente.
 - Schema `public`: **40 tabelas, 40/40 com RLS, 29 com FORCE RLS**, 0 views públicas e 0 tabelas com SELECT direto para `anon`.
 - As 35 funções públicas `SECURITY DEFINER` executáveis por `authenticated` têm `search_path=''`; 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O Security Advisor continua exibindo 35 avisos porque são RPCs expostas intencionalmente a usuários autenticados; não fazer revogação em massa, pois as funções verificam autorização internamente.
 - Advisor de saúde: sem findings. Advisor de performance: 81 índices sem uso observado (INFO); não removê-los sem histórico de carga e benchmark.
 - Security Advisor também mantém 1 aviso de proteção contra senhas vazadas. Essa proteção foi dispensada pelo responsável do projeto; manter o plano Free, sem upgrade nem tentativa de contorno.
 
-### Evidências automatizadas — aprovação visual em `55ce04612b8452d28634a9249784ff8399d2c85d`; CI repetida em `156edfdfdaf92e2362dae89925782f01523d985e`
+### Evidências automatizadas — aprovação e cancelamento visuais em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb`
 
-- **Validação, build, TypeScript, Deno, lint e segurança do banco descartável:** [run 43869979811](https://github.com/artemiosds/supabase-connected-app/actions/runs/43869979811) — jobs `validate` e `database-security` concluídos com sucesso.
+- **Validação, build, TypeScript, Deno, lint e segurança do banco descartável:** [run 43877853292](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853292) — jobs `validate` e `database-security` concluídos com sucesso.
 - **pgTAP:** 23 arquivos SQL, 423 verificações, resultado PASS. Inclui segurança multitenant, Storage privado, timbrado, workflow documental, outbox/idempotência de notificações e regras de contratação.
 - **Vitest:** 22 arquivos, 136 testes aprovados. Inclui DOCX, importação, preenchimento de variáveis, timbrado e transporte simulado do Resend.
-- **Formatação:** [run 43869979869](https://github.com/artemiosds/supabase-connected-app/actions/runs/43869979869) — sucesso.
-- **E2E autenticado:** [run 43870688351](https://github.com/artemiosds/supabase-connected-app/actions/runs/43870688351) — sucesso no `main` atual, com duas Secretarias fictícias e contas `.invalid`. Além do GED, testa envio de documento para aprovação por um usuário e aprovação pela interface por um segundo usuário; verifica histórico com os dois atores e que o aprovador não consegue criar documentos.
+- **Formatação:** [run 43877853406](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853406) — sucesso.
+- **E2E autenticado:** [run 43877853528](https://github.com/artemiosds/supabase-connected-app/actions/runs/43877853528) — sucesso no `main` atual, com duas Secretarias fictícias e contas `.invalid`. Além do GED, testa envio, aprovação por segundo usuário e cancelamento autorizado pela interface. Confirma a negação de criação pelo aprovador, a sincronização dos dois estados para cancelado e o registro do ator de cancelamento no histórico.
 - **Timbrado/brasão pela interface:** o mesmo E2E salvou para cada Secretaria uma configuração e um PNG sintético no bucket privado; verificou metadados, SHA-256 do download privado, bloqueio de leitura pública, acesso cruzado e limpeza de objeto órfão.
 - **Notificações — dry-run:** 4 candidatos, 4 processados, 0 enviados, 0 falhas, 0 incertos. Nenhum e-mail real foi enviado.
 - **Backup sintético:** pacote criptografado, checksum verificado, descriptografado e restaurado em PostgreSQL descartável. Isso **não é** backup real do SMS2 nem restauração de dados reais em outro projeto.
@@ -29,7 +29,7 @@
 - Na última verificação registrada, as cinco Edge Functions estavam ACTIVE e o código publicado coincidia com o `main` daquele commit: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. A última usa `verify_jwt=false` e valida seu próprio segredo de cron.
 - Contagem somente-leitura no SMS2: 1 Secretaria, 2 perfis; 0 fornecedores, contratos, documentos de fornecedor, processos, modelos instalados, fontes DOCX, registros de timbrado, documentos gerados, fluxos/eventos de aprovação e objetos no bucket privado.
 - Bucket `gfs-private-documents`: privado, limite de 20 MiB. Nenhuma fixture usada pela CI foi gravada no SMS2.
-- O terceiro usuário fictício recebe `org:view`, `documents:view` e `documents:approve`, sem `documents:create`. O E2E autenticado concluiu a aprovação visual por outro usuário; isso cobre o fluxo sintético, não substitui homologação por usuários reais da Secretaria.
+- O terceiro usuário fictício recebe `org:view`, `documents:view`, `documents:approve` e `documents:update`, sem `documents:create`; a CI verifica aprovação e cancelamento sem permitir criação. O E2E autenticado concluiu a aprovação visual por outro usuário; isso cobre o fluxo sintético, não substitui homologação por usuários reais da Secretaria.
 - Os workflows [backup real](https://github.com/artemiosds/supabase-connected-app/actions/runs/43717347094) e [envio agendado](https://github.com/artemiosds/supabase-connected-app/actions/runs/43744597699) foram `skipped` pelos controles de ativação. Nenhum backup real ou e-mail real foi produzido.
 
 ### Pendências que realmente bloqueiam o encerramento

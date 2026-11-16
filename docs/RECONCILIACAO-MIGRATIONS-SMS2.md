@@ -1,5 +1,14 @@
 # Reconciliação de migrations — SMS2
 
+## Rechecagem somente leitura — 16/11/2026
+
+- SMS2 (projeto `rwbbznqtocunzrpcvjvk`) registra **89 migrations**, com última versão `20261113194249_fix_branding_storage_upload_preflight_size`.
+- `main` contém **91 migrations**. As duas não registradas no SMS2 são `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`.
+- A segunda migration adiciona cancelamento transacional do workflow documental e bloqueia cancelamento direto/edição posterior ao cancelamento; foi validada apenas em Supabase descartável na CI.
+- Esta verificação foi somente leitura. Nenhuma migration foi aplicada ao SMS2; backup/restore isolado e janela de implantação continuam obrigatórios antes de qualquer rollout.
+
+---
+
 **Auditoria de leitura somente em 12/11/2026.** Projeto Supabase SMS2: `rwbbznqtocunzrpcvjvk`. A fonte de código é `artemiosds/supabase-connected-app`, branch `main` (mais a branch de alinhamento referida abaixo).
 
 ## Estado remoto confirmado
