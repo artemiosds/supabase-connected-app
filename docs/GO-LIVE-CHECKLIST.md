@@ -2,18 +2,18 @@
 
 ## Estado consolidado mais recente — 16/11/2026
 
-**Decisão: NO-GO para produção e comercialização.** A base multitenant, a segurança SQL, o motor DOCX/timbrado, a homologação autenticada de Storage e o CI estão comprovados no ambiente descartável. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
+**Decisão: NO-GO para produção e comercialização.** As evidências automatizadas registradas anteriormente passaram em ambiente descartável. O `main` atual ainda precisa de CI no novo commit. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
 
 ### Repositório, banco e segurança
 
-- Repositório: `artemiosds/supabase-connected-app`, branch `main`; commit atual: `44029d506284f56becb54085fdc396f360ae2f28`.
-- SMS2 está ativo e sincronizado: **89 migrations no repositório e 89 no banco**, da `20261104131949` até `20261113194249`; 0 ausentes, 0 extras.
+- Repositório: `artemiosds/supabase-connected-app`, branch `main`; commit atual conferido em 16/11/2026: `4f3a5fc6b0a78c5d60badbbff5648238b4de1dae`.
+- Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` atual contém **90 arquivos de migration**, incluindo `20261116120000_lock_generated_document_content_during_review.sql`. A aplicação dessa 90ª migration ao SMS2 ainda não foi confirmada; a paridade atual está pendente.
 - Schema `public`: **40 tabelas, 40/40 com RLS, 29 com FORCE RLS**, 0 views públicas e 0 tabelas com SELECT direto para `anon`.
 - As 35 funções públicas `SECURITY DEFINER` executáveis por `authenticated` têm `search_path=''`; 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O Security Advisor continua exibindo 35 avisos porque são RPCs expostas intencionalmente a usuários autenticados; não fazer revogação em massa, pois as funções verificam autorização internamente.
 - Advisor de saúde: sem findings. Advisor de performance: 81 índices sem uso observado (INFO); não removê-los sem histórico de carga e benchmark.
 - Security Advisor também mantém 1 aviso de proteção contra senhas vazadas. Essa proteção foi dispensada pelo responsável do projeto; manter o plano Free, sem upgrade nem tentativa de contorno.
 
-### Evidências automatizadas — commit atual
+### Últimas evidências automatizadas registradas — commit `44029d506284f56becb54085fdc396f360ae2f28`
 
 - **Validação, build, TypeScript, Deno, lint, migrations em Supabase local descartável e restauração sintética:** [run 43857620006](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857620006) — jobs `validate` e `database-security` concluídos com sucesso.
 - **pgTAP:** 23 arquivos SQL, 423 verificações, resultado PASS. Inclui segurança multitenant, Storage privado, timbrado, workflow documental, outbox/idempotência de notificações e regras de contratação.
@@ -24,9 +24,9 @@
 - **Notificações — dry-run:** 4 candidatos, 4 processados, 0 enviados, 0 falhas, 0 incertos. Nenhum e-mail real foi enviado.
 - **Backup sintético:** pacote criptografado, checksum verificado, descriptografado e restaurado em PostgreSQL descartável. Isso **não é** backup real do SMS2 nem restauração de dados reais em outro projeto.
 
-### Estado atual do SMS2 e funções publicadas
+### Último estado remoto registrado do SMS2 e das funções publicadas
 
-- As cinco Edge Functions estão ACTIVE e o código publicado coincide com o `main`: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. A última usa `verify_jwt=false` e valida seu próprio segredo de cron.
+- Na última verificação registrada, as cinco Edge Functions estavam ACTIVE e o código publicado coincidia com o `main` daquele commit: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. A última usa `verify_jwt=false` e valida seu próprio segredo de cron.
 - Contagem somente-leitura no SMS2: 1 Secretaria, 2 perfis; 0 fornecedores, contratos, documentos de fornecedor, processos, modelos instalados, fontes DOCX, registros de timbrado, documentos gerados, fluxos/eventos de aprovação e objetos no bucket privado.
 - Bucket `gfs-private-documents`: privado, limite de 20 MiB. Nenhuma fixture usada pela CI foi gravada no SMS2.
 - O seed de testes agora inclui um terceiro usuário fictício com papel de aprovador separado. Entretanto, a execução atual do navegador ainda não usa esse terceiro usuário para aprovar pela interface. A segregação de funções está coberta por pgTAP (autor não aprova a si próprio; usuário distinto aprova), mas **não declarar E2E visual de aprovação concluído**.
@@ -40,7 +40,7 @@
 4. **Aprovação visual ponta a ponta:** ampliar o navegador para autenticar o terceiro papel de aprovador, comprovar que ele não pode criar documento, aprovar o documento enviado por outro usuário e verificar o histórico dos dois atores. A regra de negócio já passa nos testes SQL.
 5. **Aceite e integrações:** obter aceite formal da Secretaria; concluir a homologação de Google Drive OAuth e dos webhooks/gateway de cobrança antes de anunciar essas integrações como prontas.
 
-**Resultado:** a estrutura técnica, a paridade de migrations, o isolamento multitenant, o DOCX/Storage/timbrado sintético e a CI estão aprovados. **A Fase 1 permanece em homologação e NO-GO para produção/venda** até backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, E2E visual de aprovação e aceite formal.
+**Resultado:** as verificações documentadas anteriormente cobrem o commit `44029d5` e o estado remoto consultado até `20261113194249`. Para o `main` atual (`4f3a5fc`), CI e paridade de migrations ainda não foram confirmadas. **A Fase 1 permanece em homologação e NO-GO para produção/venda** até concluir essa reconciliação e os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, E2E visual de aprovação e aceite formal.
 
 
 ---
