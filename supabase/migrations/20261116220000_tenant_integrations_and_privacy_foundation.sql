@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.tenant_integration_settings (
   email_from_name text,
   email_from_address text,
   email_reply_to text,
+  email_domain text,
   email_smtp_host text,
   email_smtp_port integer,
   email_smtp_security text NOT NULL DEFAULT 'tls'
@@ -38,7 +39,183 @@ CREATE TABLE IF NOT EXISTS public.tenant_integration_settings (
   CONSTRAINT tenant_integration_smtp_port_check
     CHECK (email_smtp_port IS NULL OR email_smtp_port BETWEEN 1 AND 65535),
   CONSTRAINT tenant_integration_email_address_check
-    CHECK (email_from_address IS NULL OR email_from_address ~* '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$')
+    CHECK (email_from_address IS NULL OR email_from_address ~* '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+
+);
+
+CREATE TABLE IF NOT EXISTS public.tenant_privacy_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
+  requester_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  requester_email text,
+  request_type text NOT NULL CHECK (request_type IN ('access','correction','export','deletion','objection')),
+  subject_description text NOT NULL CHECK (length(btrim(subject_description)) BETWEEN 10 AND 4000),
+  status text NOT NULL DEFAULT 'received'
+    CHECK (status IN ('received','under_review','awaiting_identity','approved','rejected','completed')),
+  legal_basis_review text,
+  decision_notes text,
+  reviewed_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
+  reviewed_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  updated_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT tenant_privacy_request_review_consistency
+    CHECK ((reviewed_at IS NULL AND reviewed_by IS NULL) OR (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenant_privacy_requests_tenant_status_created
+  ON public.tenant_privacy_requests(tenant_id,status,created_at DESC);
+
+ALTER TABLE public.tenant_integration_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_integration_settings FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_privacy_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_privacy_requests FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS p_tenant_integration_settings_service_only
+  ON public.tenant_integration_settings;
+CREATE POLICY p_tenant_integration_settings_service_only
+  ON public.tenant_integration_settings
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+DROP POLICY IF EXISTS p_tenant_privacy_requests_service_only
+  ON public.tenant_privacy_requests;
+CREATE POLICY p_tenant_privacy_requests_service_only
+  ON public.tenant_privacy_requests
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+REVOKE ALL ON TABLE public.tenant_integration_settings FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.tenant_privacy_requests FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_integration_settings TO service_role;
+GRANT ALL ON TABLE public.tenant_privacy_requests TO service_role;
+
+COMMENT ON TABLE public.tenant_integration_settings IS
+  'Tenant integration metadata. Secret columns contain AES-GCM ciphertext written/read only by trusted Edge Functions.';
+COMMENT ON COLUMN public.tenant_integration_settings.email_smtp_secret_ciphertext IS
+  'Encrypted SMTP password; never expose through PostgREST or client-side code.';
+COMMENT ON COLUMN public.tenant_integration_settings.drive_client_secret_ciphertext IS
+  'Encrypted Google OAuth client secret; never expose through PostgREST or client-side code.';
+COMMENT ON COLUMN public.tenant_integration_settings.drive_refresh_token_ciphertext IS
+  'Encrypted Google Drive refresh token; never expose through PostgREST or client-side code.';
+COMMENT ON TABLE public.tenant_privacy_requests IS
+  'LGPD data-subject requests. Deletion requests require a separate legal-basis review and are never auto-executed.';
+
+
+CREATE TABLE IF NOT EXISTS public.tenant_drive_oauth_states (
+  state_hash text PRIMARY KEY CHECK (state_hash ~ '^[0-9a-f]{64}
+),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  code_verifier_ciphertext text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now()
+);
+CREATE INDEX IF NOT EXISTS idx_tenant_drive_oauth_states_expiry
+  ON public.tenant_drive_oauth_states(expires_at);
+ALTER TABLE public.tenant_drive_oauth_states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_drive_oauth_states FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states;
+CREATE POLICY p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.tenant_drive_oauth_states FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_drive_oauth_states TO service_role;
+COMMENT ON TABLE public.tenant_drive_oauth_states IS
+  'Single-use, hashed, short-lived OAuth state values for tenant Google Drive authorization.';
+
+COMMIT;
+),
+  CONSTRAINT tenant_integration_email_domain_check
+    CHECK (email_domain IS NULL OR email_domain ~* '^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}
+);
+
+CREATE TABLE IF NOT EXISTS public.tenant_privacy_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
+  requester_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  requester_email text,
+  request_type text NOT NULL CHECK (request_type IN ('access','correction','export','deletion','objection')),
+  subject_description text NOT NULL CHECK (length(btrim(subject_description)) BETWEEN 10 AND 4000),
+  status text NOT NULL DEFAULT 'received'
+    CHECK (status IN ('received','under_review','awaiting_identity','approved','rejected','completed')),
+  legal_basis_review text,
+  decision_notes text,
+  reviewed_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
+  reviewed_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  updated_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT tenant_privacy_request_review_consistency
+    CHECK ((reviewed_at IS NULL AND reviewed_by IS NULL) OR (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenant_privacy_requests_tenant_status_created
+  ON public.tenant_privacy_requests(tenant_id,status,created_at DESC);
+
+ALTER TABLE public.tenant_integration_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_integration_settings FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_privacy_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_privacy_requests FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS p_tenant_integration_settings_service_only
+  ON public.tenant_integration_settings;
+CREATE POLICY p_tenant_integration_settings_service_only
+  ON public.tenant_integration_settings
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+DROP POLICY IF EXISTS p_tenant_privacy_requests_service_only
+  ON public.tenant_privacy_requests;
+CREATE POLICY p_tenant_privacy_requests_service_only
+  ON public.tenant_privacy_requests
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+REVOKE ALL ON TABLE public.tenant_integration_settings FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.tenant_privacy_requests FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_integration_settings TO service_role;
+GRANT ALL ON TABLE public.tenant_privacy_requests TO service_role;
+
+COMMENT ON TABLE public.tenant_integration_settings IS
+  'Tenant integration metadata. Secret columns contain AES-GCM ciphertext written/read only by trusted Edge Functions.';
+COMMENT ON COLUMN public.tenant_integration_settings.email_smtp_secret_ciphertext IS
+  'Encrypted SMTP password; never expose through PostgREST or client-side code.';
+COMMENT ON COLUMN public.tenant_integration_settings.drive_client_secret_ciphertext IS
+  'Encrypted Google OAuth client secret; never expose through PostgREST or client-side code.';
+COMMENT ON COLUMN public.tenant_integration_settings.drive_refresh_token_ciphertext IS
+  'Encrypted Google Drive refresh token; never expose through PostgREST or client-side code.';
+COMMENT ON TABLE public.tenant_privacy_requests IS
+  'LGPD data-subject requests. Deletion requests require a separate legal-basis review and are never auto-executed.';
+
+
+CREATE TABLE IF NOT EXISTS public.tenant_drive_oauth_states (
+  state_hash text PRIMARY KEY CHECK (state_hash ~ '^[0-9a-f]{64}
+),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  code_verifier_ciphertext text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now()
+);
+CREATE INDEX IF NOT EXISTS idx_tenant_drive_oauth_states_expiry
+  ON public.tenant_drive_oauth_states(expires_at);
+ALTER TABLE public.tenant_drive_oauth_states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_drive_oauth_states FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states;
+CREATE POLICY p_tenant_drive_oauth_states_service_only
+  ON public.tenant_drive_oauth_states
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.tenant_drive_oauth_states FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_drive_oauth_states TO service_role;
+COMMENT ON TABLE public.tenant_drive_oauth_states IS
+  'Single-use, hashed, short-lived OAuth state values for tenant Google Drive authorization.';
+
+COMMIT;
+)
 );
 
 CREATE TABLE IF NOT EXISTS public.tenant_privacy_requests (
