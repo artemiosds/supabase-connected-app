@@ -1111,8 +1111,9 @@ async function verifyProcurementLifecycle() {
     const itemFields = itemForm.locator("input");
     await itemFields.nth(0).fill(contractItemDescription);
     await itemFields.nth(1).fill("unidade");
-    await itemFields.nth(2).fill("2");
-    await itemFields.nth(3).fill("10");
+    await itemFields.nth(2).fill("Item de teste");
+    await itemFields.nth(3).fill("2");
+    await itemFields.nth(4).fill("10");
     await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
     await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
     await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).click();
