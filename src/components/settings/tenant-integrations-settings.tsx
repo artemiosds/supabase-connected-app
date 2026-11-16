@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+type PrivacyRequest = { id: string; requester_email: string | null; request_type: string; subject_description: string; status: string; created_at: string };
+
 type IntegrationSettings = {
   email_provider: "none" | "resend" | "smtp_gateway";
   email_from_name: string;
@@ -70,6 +72,11 @@ export function TenantIntegrationsSettings() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [connectingDrive, setConnectingDrive] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [privacyRequests, setPrivacyRequests] = useState<PrivacyRequest[]>([]);
+  const [requestType, setRequestType] = useState("access");
+  const [requestDescription, setRequestDescription] = useState("");
+  const [submittingPrivacy, setSubmittingPrivacy] = useState(false);
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
     setSettings((current) => ({ ...current, [key]: value }));
@@ -88,6 +95,15 @@ export function TenantIntegrationsSettings() {
     if (error || data?.error) {
       setLoadError(data?.error ?? "Não foi possível carregar as configurações protegidas.");
       return;
+    }
+    setCanEdit(data?.can_edit === true);
+    if (data?.can_edit === true) {
+      const listed = await db.functions.invoke("tenant-integration-settings", {
+        body: { action: "list_privacy_requests", tenant_id: selecionado.id },
+      });
+      setPrivacyRequests(listed.data?.requests ?? []);
+    } else {
+      setPrivacyRequests([]);
     }
     const row = data?.configuration;
     if (!row) {
@@ -134,6 +150,28 @@ export function TenantIntegrationsSettings() {
       return;
     }
     toast.success(data.message ?? "Teste de e-mail aceito pelo provedor.");
+    await load();
+  }
+
+  async function submitPrivacyRequest(event: FormEvent) {
+    event.preventDefault();
+    if (!selecionado?.id) return;
+    setSubmittingPrivacy(true);
+    const { data, error } = await db.functions.invoke("tenant-integration-settings", {
+      body: {
+        action: "submit_privacy_request",
+        tenant_id: selecionado.id,
+        request_type: requestType,
+        subject_description: requestDescription,
+      },
+    });
+    setSubmittingPrivacy(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível registrar a solicitação.");
+      return;
+    }
+    setRequestDescription("");
+    toast.success("Solicitação registrada para análise.");
     await load();
   }
 
@@ -258,6 +296,31 @@ export function TenantIntegrationsSettings() {
               <div className="space-y-2"><Label htmlFor="retention-text">Texto da política aprovada</Label><Textarea id="retention-text" rows={5} maxLength={8000} value={settings.retention_policy_text} onChange={(e) => update("retention_policy_text", e.target.value)} placeholder="Descreva finalidade, base legal, prazos, responsáveis, exceções legais e procedimento de descarte seguro." /></div>
               <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={approvePolicy} onChange={(e) => setApprovePolicy(e.target.checked)} className="mt-1" /><span>Confirmo que esta política foi revisada e aprovada pela autoridade responsável da Secretaria. Não estou autorizando exclusão automática de registros.</span></label>
               {settings.retention_approved_at && <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Política registrada em {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.</p>}
+              <div className="space-y-3 rounded-lg border p-4">
+                <div><h4 className="font-medium">Solicitações de titulares</h4><p className="text-xs text-muted-foreground">Registre pedidos de acesso, correção, exportação, oposição ou exclusão. Toda exclusão exige análise legal e decisão humana.</p></div>
+                <form onSubmit={(event) => void submitPrivacyRequest(event)} className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="privacy-request-type">Tipo de solicitação</Label>
+                    <select id="privacy-request-type" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={requestType} onChange={(e) => setRequestType(e.target.value)}>
+                      <option value="access">Acesso aos dados</option><option value="correction">Correção</option><option value="export">Exportação</option><option value="deletion">Exclusão (sujeita à análise legal)</option><option value="objection">Oposição</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2"><Label htmlFor="privacy-request-description">Descrição e identificação do pedido</Label><Textarea id="privacy-request-description" rows={3} minLength={10} maxLength={4000} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} required placeholder="Descreva os dados envolvidos e o que está sendo solicitado." /></div>
+                  <Button type="submit" variant="outline" disabled={submittingPrivacy || requestDescription.trim().length < 10}>{submittingPrivacy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Registrar solicitação</Button>
+                </form>
+                {canEdit && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-sm font-medium">Pedidos registrados nesta Secretaria</p>
+                    {privacyRequests.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma solicitação registrada.</p> : privacyRequests.map((request) => (
+                      <div key={request.id} className="rounded-md bg-muted/40 p-3 text-sm">
+                        <div className="flex flex-wrap justify-between gap-2"><span className="font-medium">{request.request_type.toUpperCase()} · {request.status}</span><span className="text-xs text-muted-foreground">{new Date(request.created_at).toLocaleString("pt-BR")}</span></div>
+                        <p className="mt-1 text-xs text-muted-foreground">{request.requester_email ?? "Solicitante autenticado"}</p>
+                        <p className="mt-2 whitespace-pre-wrap">{request.subject_description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </section>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
