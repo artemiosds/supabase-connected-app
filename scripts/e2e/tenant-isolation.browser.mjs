@@ -1138,7 +1138,8 @@ async function verifyProcurementLifecycle() {
     await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
     let amendmentDialog = page.getByRole("dialog").filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
     await amendmentDialog.locator("input").nth(0).fill("1º Aditivo E2E");
-    await amendmentDialog.locator("input[type=date]").fill("2028-11-15");
+    await amendmentDialog.locator("input[type=date]").nth(0).fill("2028-11-15");
+    await amendmentDialog.locator("input[type=date]").nth(1).fill("2026-11-16");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
     let amendmentContract = await readRows(
