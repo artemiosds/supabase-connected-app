@@ -469,7 +469,9 @@ Deno.serve(async (request: Request) => {
     drive_enabled: body.drive_enabled === true,
     drive_client_id: textValue(body.drive_client_id, 512),
     drive_root_folder_id: textValue(body.drive_root_folder_id, 512),
-    retention_days: Number(body.retention_days ?? existing?.retention_days ?? 2555),
+    retention_days: body.retention_days === null || body.retention_days === ""
+      ? (existing?.retention_days ?? null)
+      : Number(body.retention_days),
     updated_by: auth.user.id,
     updated_at: new Date().toISOString(),
   };
@@ -480,7 +482,7 @@ Deno.serve(async (request: Request) => {
     next.email_domain_verified_at = existing.email_domain_verified_at;
   }
 
-  if (!Number.isInteger(next.retention_days) || Number(next.retention_days) < 30 || Number(next.retention_days) > 36500) {
+  if (next.retention_days !== null && (!Number.isInteger(next.retention_days) || Number(next.retention_days) < 30 || Number(next.retention_days) > 36500)) {
     return response({ error: "O prazo de retenção deve ficar entre 30 e 36.500 dias." }, 400, origin);
   }
 
@@ -518,8 +520,8 @@ Deno.serve(async (request: Request) => {
   const policyText = textValue(body.retention_policy_text, 8000);
   const policyVersion = textValue(body.retention_policy_version, 40);
   if (body.approve_retention_policy === true) {
-    if (!policyText || !policyVersion) {
-      return response({ error: "Informe o texto e a versão da política antes de aprovar." }, 400, origin);
+    if (!policyText || !policyVersion || next.retention_days === null) {
+      return response({ error: "Informe o prazo, o texto e a versão da política antes de aprovar." }, 400, origin);
     }
     next.retention_policy_text = policyText;
     next.retention_policy_version = policyVersion;
