@@ -7,9 +7,9 @@
 ### Repositório, banco e migrations
 
 - Repositório: `artemiosds/supabase-connected-app`, branch `main`.
-- HEAD de aplicação consultado: `000ba78f62750fcfb1623b4617e514c174aab638`.
+- HEAD de aplicação consultado: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
 - Supabase SMS2: projeto `rwbbznqtocunzrpcvjvk`.
-- Reconciliação consultada nesta conversa: **91 migrations aplicadas no SMS2**. As migrations `20261116120000_lock_generated_document_content_during_review` e `20261116131036_cancel_generated_document_workflow` constam como aplicadas. Não executar novamente.
+- Reconciliação consultada nesta conversa: **91 migrations aplicadas no SMS2 e 91 arquivos locais**, com correspondência exata entre todos os prefixos de versão. As duas migrations de 16/11 foram renomeadas no repositório para os identificadores efetivamente registrados no banco (`20261116172306` e `20261116172323`); o conteúdo SQL foi preservado. Não reaplicar nem executar `db push` sem nova reconciliação.
 - As duas migrations foram revisadas antes da aplicação. A consulta posterior encontrou zero documentos/fluxos existentes e zero inconsistências de cancelamento a sincronizar.
 - Tabelas públicas consultadas: RLS habilitado e políticas presentes nas tabelas retornadas. Isso não substitui testes completos de autorização para cada papel/ação.
 
@@ -20,12 +20,14 @@
 - Advisor de performance reportou índices sem uso observado. Não remover sem histórico de carga e benchmark.
 - Proteção contra senhas vazadas: checklist anterior registra decisão de manter desabilitada no plano atual. Essa configuração continua sendo uma limitação de segurança a reavaliar antes da produção.
 
-### CI no HEAD de aplicação consultado
+### CI no HEAD atual
 
-- `Format procurement module`: sucesso — [run 43919452996](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452996).
-- `Validate application`: sucesso — [run 43919452974](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452974).
-- `Authenticated tenant isolation E2E`: em execução na última consulta — [run 43919452892](https://github.com/artemiosds/supabase-connected-app/actions/runs/43919452892). Ainda não declarar aprovado.
-- O E2E inicia com aplicação das migrations em banco descartável; a aprovação depende da conclusão de todas as etapas, inclusive testes de navegador autenticado.
+- HEAD: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
+- `Format procurement module`: em execução — [run 43922908936](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908936).
+- `Validate application`: em execução — [run 43922908969](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908969).
+- `Authenticated tenant isolation E2E`: aguardando execução — [run 43922908975](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908975).
+- No commit anterior `7008ff10743766f7926bd43bb20a8f29d97685d0`, formatação e validação completa (incluindo banco descartável) passaram. O E2E avançou pelos dois tenants, DOCX privado, timbrado e workflow documental, mas encontrou uma expectativa incorreta de texto do cartão de contrato; a correção está no HEAD atual e aguarda nova execução.
+- O E2E aplica as migrations em banco descartável; não grava fixtures sintéticas no SMS2.
 
 ### Operação e homologação
 
