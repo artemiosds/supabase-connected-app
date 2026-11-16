@@ -74,7 +74,7 @@ Deno.serve(async (request: Request) => {
       .delete()
       .eq("state_hash", stateHash)
       .gt("expires_at", new Date().toISOString())
-      .select("tenant_id,actor_id")
+      .select("tenant_id,actor_id,code_verifier_ciphertext")
       .maybeSingle();
     if (stateError || !stateRow) return redirect("error", "invalid_or_expired_state");
 
@@ -89,6 +89,7 @@ Deno.serve(async (request: Request) => {
 
     const key = await keyFromEnvironment();
     const clientSecret = await decrypt(settings.drive_client_secret_ciphertext, key);
+    const codeVerifier = await decrypt(stateRow.code_verifier_ciphertext, key);
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       signal: AbortSignal.timeout(15000),
@@ -99,6 +100,7 @@ Deno.serve(async (request: Request) => {
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
+        code_verifier: codeVerifier,
       }),
     });
     const tokenBody = await tokenResponse.json().catch(() => null);
