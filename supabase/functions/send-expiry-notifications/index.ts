@@ -276,6 +276,26 @@ function addCandidateTasks(
   }
 }
 
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function decryptTenantEmailSecret(ciphertext: string): Promise<string> {
+  const encodedKey = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
+  const keyBytes = decodeBase64(encodedKey);
+  if (keyBytes.length !== 32) throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
+  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+  const [version, iv, encrypted] = ciphertext.split(".");
+  if (version !== "v1" || !iv || !encrypted) throw new Error("EMAIL_SECRET_INVALID");
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: decodeBase64(iv) },
+    key,
+    decodeBase64(encrypted),
+  );
+  return new TextDecoder().decode(plain);
+}
+
 async function deliverTask(
   admin: AdminClient,
   task: ExpiryTask,
@@ -283,6 +303,34 @@ async function deliverTask(
   from: string,
   appUrl: string,
 ): Promise<"sent" | "failed" | "skipped" | "uncertain"> {
+  let effectiveApiKey = apiKey;
+  let effectiveFrom = from;
+  const { data: tenantEmail, error: tenantEmailError } = await admin
+    .from("tenant_integration_settings")
+    .select("email_provider,email_from_name,email_from_address,email_api_secret_ciphertext")
+    .eq("tenant_id", task.tenantId)
+    .maybeSingle();
+  if (tenantEmailError) return "failed";
+  if (tenantEmail?.email_provider === "smtp_gateway") {
+    // The Edge runtime has no supported generic SMTP transport. Never silently
+    // send through the platform-wide provider when the tenant selected SMTP.
+    return "failed";
+  }
+  if (tenantEmail?.email_provider === "resend") {
+    if (!tenantEmail.email_api_secret_ciphertext || !tenantEmail.email_from_address) {
+      return "failed";
+    }
+    try {
+      effectiveApiKey = await decryptTenantEmailSecret(tenantEmail.email_api_secret_ciphertext);
+      effectiveFrom = tenantEmail.email_from_name
+        ? `${String(tenantEmail.email_from_name).replace(/[<>\\r\\n]/g, "")} <${tenantEmail.email_from_address}>`
+        : tenantEmail.email_from_address;
+    } catch {
+      console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
+      return "failed";
+    }
+  }
+
   const uniqueFilter = {
     tenant_id: task.tenantId,
     entity_type: task.entityType,
@@ -333,8 +381,8 @@ async function deliverTask(
   });
 
   const providerResult = await sendResendEmail({
-    apiKey,
-    from,
+    apiKey: effectiveApiKey,
+    from: effectiveFrom,
     to: task.recipientEmail,
     subject: email.subject,
     html: email.html,
