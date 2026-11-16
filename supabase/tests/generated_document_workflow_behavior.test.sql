@@ -2,7 +2,7 @@
 -- The transaction rolls back all fixtures and must run on disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(12);
+SELECT extensions.plan(13);
 
 INSERT INTO auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
  raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -111,6 +111,11 @@ SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-80
 SELECT extensions.throws_ok(
  $test$SELECT public.transition_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002','reject','Não')$test$,
  'P0001',NULL,'rejection requires a reason of at least five characters'
+);
+
+SELECT extensions.throws_ok(
+ $test$SELECT public.transition_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000003','submit',NULL)$test$,
+ '42501',NULL,'a reviewer with approval permission but without documents:create cannot submit documents'
 );
 SELECT extensions.is(
  public.transition_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002','reject','Falta documento fiscal.'),
