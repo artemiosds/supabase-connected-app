@@ -17,6 +17,8 @@ type IntegrationSettings = {
   email_from_name: string;
   email_from_address: string;
   email_reply_to: string;
+  email_domain: string;
+  email_domain_verified_at: string | null;
   email_smtp_host: string;
   email_smtp_port: string;
   email_smtp_security: "tls" | "starttls";
@@ -41,6 +43,8 @@ const EMPTY: IntegrationSettings = {
   email_from_name: "",
   email_from_address: "",
   email_reply_to: "",
+  email_domain: "",
+  email_domain_verified_at: null,
   email_smtp_host: "",
   email_smtp_port: "587",
   email_smtp_security: "starttls",
@@ -70,6 +74,7 @@ export function TenantIntegrationsSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [connectingDrive, setConnectingDrive] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
@@ -140,6 +145,22 @@ export function TenantIntegrationsSettings() {
       return;
     }
     window.location.assign(data.authorization_url);
+  }
+
+  async function verifyEmailDomain() {
+    if (!selecionado?.id) return;
+    setVerifyingDomain(true);
+    const { data, error } = await db.functions.invoke("tenant-integration-settings", {
+      body: { action: "verify_email_domain", tenant_id: selecionado.id },
+    });
+    setVerifyingDomain(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível verificar o domínio.");
+      return;
+    }
+    if (data.verified) toast.success(data.message);
+    else toast.warning(data.message ?? "O domínio ainda não foi verificado.");
+    await load();
   }
 
   async function testEmail() {
@@ -268,6 +289,10 @@ export function TenantIntegrationsSettings() {
                   <Input id="integration-email-reply" type="email" maxLength={254} value={settings.email_reply_to} onChange={(e) => update("email_reply_to", e.target.value)} />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="integration-email-domain">Domínio institucional</Label>
+                  <Input id="integration-email-domain" maxLength={253} value={settings.email_domain} onChange={(e) => update("email_domain", e.target.value.toLowerCase())} placeholder="saude.municipio.gov.br" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="integration-email-provider">Provedor operacional</Label>
                   <select id="integration-email-provider" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={settings.email_provider} onChange={(e) => update("email_provider", e.target.value as IntegrationSettings["email_provider"])}>
                     <option value="none">Ainda não configurado</option>
@@ -287,10 +312,19 @@ export function TenantIntegrationsSettings() {
                 </div>
               )}
               {settings.email_provider === "resend" && (
-                <div className="space-y-2">
-                  <Label htmlFor="email-api-secret">Chave API Resend {settings.has_email_api_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label>
-                  <Input id="email-api-secret" type="password" autoComplete="new-password" value={emailApiSecret} onChange={(e) => setEmailApiSecret(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">A validação de domínio e o teste de envio serão habilitados na etapa do conector de entrega.</p>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-api-secret">Chave API Resend {settings.has_email_api_secret ? "(já cadastrada; deixe em branco para manter)" : ""}</Label>
+                    <Input id="email-api-secret" type="password" autoComplete="new-password" value={emailApiSecret} onChange={(e) => setEmailApiSecret(e.target.value)} />
+                  </div>
+                  {settings.email_domain_verified_at ? (
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Domínio verificado em {new Date(settings.email_domain_verified_at).toLocaleString("pt-BR")}.</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Adicione e valide os registros DNS do domínio no painel do Resend antes de verificar aqui.</p>
+                  )}
+                  <Button type="button" variant="outline" disabled={verifyingDomain || saving || !settings.email_domain || !settings.has_email_api_secret} onClick={() => void verifyEmailDomain()}>
+                    {verifyingDomain ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Verificar domínio no Resend
+                  </Button>
                 </div>
               )}
               <Alert><AlertTitle>SMTP do Supabase Auth</AlertTitle><AlertDescription>Convites, confirmação de conta e recuperação de senha usam o SMTP global do Supabase Auth. Configure esse serviço no painel do projeto Supabase, em Authentication → SMTP Settings; esta tela não altera essa configuração global.</AlertDescription></Alert>
