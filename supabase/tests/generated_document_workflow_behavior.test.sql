@@ -28,6 +28,7 @@ INSERT INTO public.permissions(code,name,description,module)
 VALUES
  ('documents:view','View documents','Synthetic workflow test','documents'),
  ('documents:create','Create documents','Synthetic workflow test','documents'),
+ ('documents:update','Update documents','Synthetic workflow test','documents'),
  ('documents:approve','Approve documents','Synthetic workflow test','documents'),
  ('documents:sign','Sign documents','Synthetic workflow test','documents')
 ON CONFLICT(code) DO NOTHING;
@@ -41,7 +42,7 @@ ON CONFLICT(id) DO NOTHING;
 
 INSERT INTO public.tenant_role_permissions(role_id,permission_id)
 SELECT r.id,p.id FROM public.tenant_roles r CROSS JOIN public.permissions p
-WHERE (r.id='63000000-0000-4000-8000-000000000001' AND p.code IN ('documents:view','documents:create','documents:approve'))
+WHERE (r.id='63000000-0000-4000-8000-000000000001' AND p.code IN ('documents:view','documents:create','documents:update','documents:approve'))
  OR (r.id='63000000-0000-4000-8000-000000000002' AND p.code IN ('documents:view','documents:approve','documents:sign'))
  OR (r.id='63000000-0000-4000-8000-000000000003' AND p.code='documents:view')
 ON CONFLICT DO NOTHING;
