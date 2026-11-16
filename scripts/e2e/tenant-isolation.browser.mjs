@@ -1004,9 +1004,7 @@ async function verifyProcurementLifecycle() {
     const supplierQuote = composition
       .getByText("Fornecedor Sintético Exclusivo A", { exact: true })
       .locator("xpath=../..");
-    await supplierQuote
-      .getByRole("button", { name: "Usar como referência", exact: true })
-      .click();
+    await supplierQuote.getByRole("button", { name: "Usar como referência", exact: true }).click();
     await composition.getByText("Referência escolhida", { exact: true }).waitFor();
 
     const items = await readRows(
@@ -1051,9 +1049,7 @@ async function verifyProcurementLifecycle() {
     await contractDialog.locator("textarea").first().fill("Fornecimento sintético de seringas E2E");
     const contractComboboxes = contractDialog.getByRole("combobox");
     await contractComboboxes.nth(2).click();
-    await page
-      .getByRole("option", { name: new RegExp(processNumber) })
-      .click();
+    await page.getByRole("option", { name: new RegExp(processNumber) }).click();
     await contractComboboxes.nth(3).click();
     await page
       .getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true })
