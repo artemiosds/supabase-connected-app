@@ -1101,6 +1101,95 @@ async function verifyProcurementLifecycle() {
       ),
       "the contract must retain the selected supplier quote",
     );
+
+    // Contract/ARP item ledger: create, consume, inspect balance, reverse, and preserve history.
+    await page.getByRole("button", { name: /Itens e saldo/ }).click();
+    const itemPanel = page.locator("section").filter({ hasText: "Itens de " + contractNumber });
+    await itemPanel.getByRole("button", { name: "Adicionar item", exact: true }).click();
+    const contractItemDescription = "Item contratual E2E " + tenantId.slice(-1);
+    const itemForm = itemPanel.locator("form").filter({ hasText: "Descrição do item" });
+    const itemFields = itemForm.locator("input");
+    await itemFields.nth(0).fill(contractItemDescription);
+    await itemFields.nth(1).fill("unidade");
+    await itemFields.nth(2).fill("2");
+    await itemFields.nth(3).fill("10");
+    await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
+    await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
+    await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).click();
+    await itemPanel.getByLabel("Quantidade a consumir *").fill("1");
+    await itemPanel.getByLabel("Motivo do consumo *").fill("Consumo de homologação E2E");
+    await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).last().click();
+    await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).waitFor();
+    await itemPanel.getByText("Histórico de movimentações (1)", { exact: true }).click();
+    await itemPanel.getByPlaceholder("Justificativa do estorno (mínimo 10 caracteres)")
+      .fill("Estorno de homologação E2E");
+    await itemPanel.getByRole("button", { name: /Estornar/ }).click();
+    await itemPanel.getByText("Saldo: 2 unidade", { exact: true }).waitFor();
+    await itemPanel.getByText("Histórico de movimentações (2)", { exact: true }).waitFor();
+
+    // Amendment behavior: each type updates only its intended contract field.
+    await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
+    let amendmentDialog = page.getByRole("dialog").filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
+    await amendmentDialog.locator("input").nth(0).fill("1º Aditivo E2E");
+    await amendmentDialog.locator("input[type=date]").fill("2028-11-15");
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
+    let amendmentContract = await readRows(
+      "contracts",
+      { tenant_id: tenantId, number: contractNumber },
+      "id,total_value,end_date",
+    );
+    assert.equal(amendmentContract.body[0].end_date, "2028-11-15");
+
+    await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
+    amendmentDialog = page.getByRole("dialog").filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
+    await amendmentDialog.locator("input").nth(0).fill("2º Aditivo E2E");
+    await amendmentDialog.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Acréscimo de valor", exact: true }).click();
+    await amendmentDialog.locator("input").nth(1).fill("5");
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
+    amendmentContract = await readRows(
+      "contracts",
+      { tenant_id: tenantId, number: contractNumber },
+      "id,total_value,end_date",
+    );
+    assert.equal(amendmentContract.body[0].total_value, 145);
+
+    await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
+    amendmentDialog = page.getByRole("dialog").filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
+    await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
+    await amendmentDialog.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Supressão de valor", exact: true }).click();
+    await amendmentDialog.locator("input").nth(1).fill("3");
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
+    amendmentContract = await readRows(
+      "contracts",
+      { tenant_id: tenantId, number: contractNumber },
+      "id,total_value,end_date",
+    );
+    assert.equal(amendmentContract.body[0].total_value, 142);
+
+    await page.getByRole("button", { name: "Registrar aditivo", exact: true }).click();
+    amendmentDialog = page.getByRole("dialog").filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
+    await amendmentDialog.locator("input").nth(0).fill("4º Aditivo E2E");
+    await amendmentDialog.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Outro", exact: true }).click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
+    const amendmentRows = await readRows(
+      "contract_amendments",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+      "number,kind,value_change,new_end_date",
+    );
+    assert.equal(amendmentRows.status, 200);
+    assert.equal(amendmentRows.body.length, 4);
+    assert.deepEqual(
+      amendmentRows.body.map((row) => row.kind).sort(),
+      ["acrescimo", "outro", "prorrogacao", "supressao"],
+    );
+
     const budgets = await readRows(
       "procurement_budget_allocations",
       { tenant_id: tenantId, process_id: processId },
