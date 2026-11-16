@@ -182,7 +182,7 @@ Deno.serve(async (request: Request) => {
       console.error("Falha ao carregar configurações de integração:", error.message);
       return response({ error: "Não foi possível carregar as configurações." }, 500, origin);
     }
-    return response({ configuration: publicSettings(data as Record<string, unknown> | null) }, 200, origin);
+    return response({ configuration: publicSettings(data as Record<string, unknown> | null), can_edit: capability.can_edit === true }, 200, origin);
   }
 
   if (action === "start_drive_oauth") {
