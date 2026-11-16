@@ -173,23 +173,36 @@ export function ContractItemsBalance(props: {
       unit_value: unitValue,
       updated_by: props.userId,
     };
-    const { error: insertError } = itemEditandoId
-      ? await db
-          .from("contract_items")
-          .update(itemData)
-          .eq("tenant_id", props.tenantId)
-          .eq("contract_id", props.contract.id)
-          .eq("id", itemEditandoId)
-      : await db.from("contract_items").insert({
-          tenant_id: props.tenantId,
-          contract_id: props.contract.id,
-          line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
-          ...itemData,
-          created_by: props.userId,
-        });
+    let itemWriteError: string | null = null;
+    let updateFound = true;
+    if (itemEditandoId) {
+      const { data: updatedItem, error: updateError } = await db
+        .from("contract_items")
+        .update(itemData)
+        .eq("tenant_id", props.tenantId)
+        .eq("contract_id", props.contract.id)
+        .eq("id", itemEditandoId)
+        .select("id")
+        .maybeSingle();
+      itemWriteError = updateError?.message ?? null;
+      updateFound = !!updatedItem;
+    } else {
+      const { error: insertError } = await db.from("contract_items").insert({
+        tenant_id: props.tenantId,
+        contract_id: props.contract.id,
+        line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
+        ...itemData,
+        created_by: props.userId,
+      });
+      itemWriteError = insertError?.message ?? null;
+    }
     setSalvando(false);
-    if (insertError) {
-      toast.error(insertError.message);
+    if (itemWriteError) {
+      toast.error(itemWriteError);
+      return;
+    }
+    if (!updateFound) {
+      toast.error("Item não encontrado ou sem permissão para atualização.");
       return;
     }
     toast.success(itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.");
