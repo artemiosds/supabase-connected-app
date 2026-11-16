@@ -7,48 +7,46 @@
 ### Repositório, banco e migrations
 
 - Repositório: `artemiosds/supabase-connected-app`, branch `main`.
-- HEAD de aplicação consultado: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
+- HEAD atual: `44578d5aba8b58737c6705001b9cb6f880e5498e`.
 - Supabase SMS2: projeto `rwbbznqtocunzrpcvjvk`.
-- Reconciliação consultada nesta conversa: **91 migrations aplicadas no SMS2 e 91 arquivos locais**, com correspondência exata entre todos os prefixos de versão. As duas migrations de 16/11 foram renomeadas no repositório para os identificadores efetivamente registrados no banco (`20261116172306` e `20261116172323`); o conteúdo SQL foi preservado. Não reaplicar nem executar `db push` sem nova reconciliação.
-- As duas migrations foram revisadas antes da aplicação. A consulta posterior encontrou zero documentos/fluxos existentes e zero inconsistências de cancelamento a sincronizar.
-- Tabelas públicas consultadas: RLS habilitado e políticas presentes nas tabelas retornadas. Isso não substitui testes completos de autorização para cada papel/ação.
+- Reconciliação somente-leitura: **91 migrations aplicadas no SMS2 e 91 arquivos SQL locais**, com correspondência exata de todos os prefixos. As duas migrations de 16/11 foram alinhadas aos identificadores reais do banco (`20261116172306` e `20261116172323`), preservando o conteúdo SQL. Não reaplicar nem executar `db push` sem nova reconciliação.
+- Nenhuma fixture sintética foi gravada no SMS2.
 
-### Segurança
+### CI — os três workflows passaram no mesmo HEAD
 
-- Auditoria SQL consultada: 73 funções públicas `SECURITY DEFINER`; todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated`, exigindo revisão individual das autorizações internas. Não revogar permissões em massa.
-- Advisor de segurança e inspeção SQL devem ser reconciliados: avisos do advisor não equivalem automaticamente a vulnerabilidades exploráveis.
-- Advisor de performance reportou índices sem uso observado. Não remover sem histórico de carga e benchmark.
-- Proteção contra senhas vazadas: checklist anterior registra decisão de manter desabilitada no plano atual. Essa configuração continua sendo uma limitação de segurança a reavaliar antes da produção.
+- Formatação: [run 43923011042](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923011042) — sucesso.
+- Validação completa: [run 43923010880](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010880) — sucesso.
+- E2E autenticado de isolamento: [run 43923010973](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010973) — sucesso.
+- Todos os três executados no mesmo SHA `44578d5aba8b58737c6705001b9cb6f880e5498e`. A correção do seletor do título de contrato foi validada sem remover cenários.
 
-### CI no HEAD atual
+### Auditoria funcional de contratos e saldos
 
-- HEAD: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
-- `Format procurement module`: em execução — [run 43922908936](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908936).
-- `Validate application`: em execução — [run 43922908969](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908969).
-- `Authenticated tenant isolation E2E`: aguardando execução — [run 43922908975](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908975).
-- No commit anterior `7008ff10743766f7926bd43bb20a8f29d97685d0`, formatação e validação completa (incluindo banco descartável) passaram. O E2E avançou pelos dois tenants, DOCX privado, timbrado e workflow documental, mas encontrou uma expectativa incorreta de texto do cartão de contrato; a correção está no HEAD atual e aguarda nova execução.
-- O E2E aplica as migrations em banco descartável; não grava fixtures sintéticas no SMS2.
+- A rota `src/routes/_authenticated/contratos.tsx` contém cadastro/edição de contratos e registro/histórico de aditivos.
+- A migration `20261112123300_contract_arp_item_balances.sql` cria itens de contrato/ARP, ledger imutável de consumo/estorno, limites de saldo, validações, trilha de auditoria e RPCs protegidas.
+- **Lacuna confirmada:** a rota de contratos não consulta `contract_items` nem `contract_item_movements`, não apresenta saldo por item e não oferece a interface de cadastro de itens, consumo ou estorno. Existe teste unitário de cálculo de saldo, mas isso não comprova operação pela interface. Portanto o gate de contratos/ARP ainda não está fechado.
+- O formulário de aditivo oferece prorrogação, acréscimo, supressão e outro; os limites percentuais legais não estão codificados, deliberadamente, sem uma matriz normativa aprovada. Requer homologação jurídica/administrativa da Secretaria antes de automatizar limites.
 
-### Operação e homologação
+### Segurança e operação
 
-- Backup sintético criptografado em banco descartável não equivale a backup/restore real do SMS2.
-- Nenhum envio real de e-mail, domínio autenticado, OAuth Google Drive ou cobrança por gateway foi comprovado nesta rodada.
-- Homologação visual com modelos oficiais, usuários reais da Secretaria e aceite formal permanecem pendentes.
-- Nenhuma fixture sintética deve ser gravada no SMS2 de uso corrente.
+- Auditoria SQL registrada: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` exigem revisão individual da autorização interna. Não revogar permissões em massa.
+- RLS habilitado nas tabelas públicas consultadas, mas requer testes completos de autorização por papel e operação.
+- Proteção contra senhas vazadas continua desabilitada e precisa ser reavaliada antes da produção.
+- Backup sintético em banco descartável não equivale a backup/restauração real do SMS2.
+- Não foram comprovados envio real de e-mail, OAuth Google Drive nem cobrança por gateway.
 
 ### Bloqueios para encerramento
 
-1. **CI autenticado:** concluir o E2E no HEAD atual; corrigir falhas comprovadas e repetir os workflows relevantes no mesmo HEAD.
-2. **Backup/continuidade:** configurar credenciais e chave age fora do chat/repositório; executar backup criptografado real e restaurar em projeto isolado; verificar banco, Storage e recuperação complementar de Auth/configurações/segredos.
-3. **E-mail:** verificar domínio, SPF/DKIM/DMARC, remetente, SMTP/Resend, segredos e URL; executar dry-run remoto e envio controlado autorizado; manter agendamento desabilitado até comprovar idempotência e entrega.
-4. **Documentos oficiais:** homologar modelos DOCX anonimizados/autorizados, timbrado, brasão, Word/PDF, paginação, tabelas e limitações do renderizador; obter aceite da Secretaria.
-5. **GED de fornecedores:** validar upload/download, URLs assinadas, MIME/tamanho, substituição, arquivamento, expiração e isolamento entre Secretarias.
-6. **Compras/contratos:** homologar processo, checklist, itens, cotações, frete, orçamento, seleção de referência, contrato, aditivos, saldos, limites e trilha de auditoria.
-7. **Convites e RBAC:** testar cadastro, convite, aceite, expiração, revogação, reenvio, suspensão/reativação e papéis com duas Secretarias.
-8. **Integrações:** implementar/homologar Google Drive OAuth por Secretaria e gateway/webhooks somente com provedores e credenciais definidos; não exibir essas integrações como disponíveis antes.
+1. **Contratos e ARP:** implementar e testar interface de itens, saldos, consumos e estornos usando as RPCs existentes; validar limites financeiros, bloqueios e trilha de auditoria.
+2. **Aditivos:** testar todos os tipos, concorrência, datas, histórico e efeitos sobre o valor; aprovar regra normativa aplicável a limites percentuais antes de automatizá-los.
+3. **GED de fornecedores:** validar upload/download, URLs assinadas, MIME/tamanho, substituição, arquivamento, expiração e isolamento entre Secretarias.
+4. **Convites e RBAC:** testar cadastro, convite, aceite, expiração, revogação, reenvio, suspensão/reativação e papéis com duas Secretarias.
+5. **Backup/continuidade:** configurar credenciais e chave age fora do chat/repositório; executar backup criptografado real e restaurar em projeto isolado; verificar banco, Storage e recuperação complementar de Auth/configurações/segredos.
+6. **E-mail:** verificar domínio, SPF/DKIM/DMARC, remetente, SMTP/Resend, segredos e URL; executar dry-run remoto e envio controlado autorizado; manter agendamento desabilitado até comprovar idempotência e entrega.
+7. **Documentos oficiais:** homologar modelos DOCX anonimizados/autorizados, timbrado, brasão, Word/PDF, paginação e tabelas; obter aceite da Secretaria.
+8. **Integrações:** homologar Google Drive OAuth por Secretaria e gateway/webhooks somente com provedores e credenciais definidos.
 9. **LGPD e produção:** retenção, exportação/exclusão, incidentes, termos, privacidade, contrato, domínio/TLS, monitoramento, SLA, suporte, custos e plano de rollback.
 
-**Resultado:** permanece **NO-GO para produção/venda**. Os itens acima são gates verificáveis; não marcar como concluídos apenas porque há telas, funções ou workflows configurados.
+**Resultado:** os testes automatizados estão aprovados no mesmo commit, mas o sistema permanece **NO-GO para produção/venda** até fechar os gates acima.
 
 ### Evidências automatizadas — aprovação e cancelamento visuais em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb`
 
