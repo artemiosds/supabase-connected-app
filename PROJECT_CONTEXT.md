@@ -57,7 +57,7 @@ O motor documental agora possui catálogo comum de placeholders para Secretaria,
 
 
 
-As medidas administrativas de fornecedores estão em código com migration versionada `20261111160000_supplier_sanction_history.sql`; ela cria histórico por Secretaria, períodos, referência, fundamento legal, revogação auditável e RLS sem exclusão física. A interface oferece consulta, cadastro e sinalização de vigência, mas não altera automaticamente o status cadastral ou a habilitação. A migration não foi aplicada ao SMS2; validar o histórico remoto antes de qualquer implantação.
+As medidas administrativas de fornecedores têm histórico por Secretaria, períodos, fundamento, referência e revogação auditada. A migration foi registrada no SMS2 como `20261112123128_supplier_sanction_history`; o sistema não altera automaticamente o status cadastral nem decide habilitação em outro processo.
 
 ## Convenções de manutenção
 
@@ -69,7 +69,7 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - Não deixar dados fictícios no SMS2. Fixtures de banco devem rodar em transação e terminar em `ROLLBACK`; validar RLS localmente/CI com papéis representativos.
 - Verificações disponíveis no CI: `bun run test`, `bun run build`, `bunx tsc --noEmit`, `bun run lint`, `deno check` de todas as Edge Functions e testes `supabase test db` em banco local descartável.
 - `supabase start -x inbucket` é suficiente para o job de migrations/pgTAP e evita a porta Mailpit `54324`; nenhum teste de entrega de e-mail é feito nesse job.
-- CI verde não comprova E2E autenticado, interface em mobile/tablet/desktop, envio externo, restauração ou prontidão para venda.
+- CI sintética verde, inclusive o E2E autenticado com tenants fictícios, não comprova homologação por usuários municipais, inspeção visual em dispositivos, envio externo, restore real nem prontidão para venda.
 
 ## Pendências conhecidas
 
@@ -114,7 +114,7 @@ As medidas administrativas de fornecedores estão em código com migration versi
 - A migration `20261112124000_document_template_binary_source.sql` cria `document_template_sources` imutável por `(template_id, version)`, chaves compostas e políticas de Storage privado em `gfs-private-documents`.
 - A migration `20261112124500_tenant_document_branding.sql` cria configurações por Secretaria para título, subtítulo, rodapé, brasão PNG/JPEG privado, margens e numeração de páginas, com RLS, políticas de Storage e auditoria.
 - A migration `20261112125000_block_unconfigured_document_fields.sql` reforça o bloqueio server-side de envio para aprovação quando restam campos ausentes ou não configurados.
-- Essas três migrations foram aplicadas ao SMS2 depois da fotografia de 12/11; a reconciliação de 16/11 as confirma no histórico remoto até `20261113194249`.
+- Na fotografia de 12/11, essas três migrations ainda não constavam no SMS2. A reconciliação de 16/11 confirma essas estruturas no histórico remoto até `20261113194249`; as únicas pendentes agora são as duas migrations documentais listadas no início deste arquivo.
 - O DOCX original é carregado por versão, preservado ao editar metadados/restaurar versão e usado na exportação Word quando o texto não foi alterado. O editor da página ainda é textual; editar o texto desvincula o original. Editor visual rico preservando formatação durante edição permanece pendente.
 - O PDF usa renderizador `pdf-lib` a partir do modelo; logo, margens, cabeçalho/rodapé e paginação são testados. Não é conversão Word completa: recursos incompatíveis são bloqueados e alguns estilos de fonte/cor/tabela podem ser simplificados.
 - A homologação visual com modelos oficiais, usuários municipais e comparação Word/PDF continua pendente. O E2E sintético agora cobre duas Secretarias, fontes DOCX e timbrado, mas não o ciclo completo de compras/contratos nem o GED de documentos de fornecedores.
