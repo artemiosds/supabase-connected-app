@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(12);
+SELECT extensions.plan(14);
 
 SELECT extensions.has_table('public','tenant_integration_settings',
   'tenant integration settings table exists');
@@ -67,6 +67,16 @@ SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_catalog.pg_indexes
     WHERE schemaname='public' AND indexname='idx_tenant_privacy_requests_tenant_status_created'),
   'privacy requests have tenant-scoped status and chronology index');
+
+
+SELECT extensions.has_table('public','tenant_drive_oauth_states',
+  'Google Drive OAuth state table exists');
+SELECT extensions.ok(
+  (SELECT relrowsecurity AND relforcerowsecurity
+   FROM pg_catalog.pg_class WHERE oid='public.tenant_drive_oauth_states'::regclass)
+  AND NOT pg_catalog.has_table_privilege('authenticated','public.tenant_drive_oauth_states','SELECT')
+  AND NOT pg_catalog.has_table_privilege('authenticated','public.tenant_drive_oauth_states','INSERT'),
+  'OAuth state and encrypted PKCE verifier are server-only');
 
 SELECT * FROM extensions.finish();
 ROLLBACK;
