@@ -990,6 +990,9 @@ async function verifyProcurementLifecycle() {
     await budgetInputs.nth(5).fill("15000000");
     await budgetInputs.nth(6).fill("140");
     await budgetForm.getByRole("button", { name: "Salvar dotação", exact: true }).click();
+    // Reloading the structured data remounts Tabs with its default "items" tab.
+    // Reopen the budget tab before asserting the persisted allocation.
+    await composition.getByRole("tab", { name: "Orçamento", exact: true }).click();
     await composition.getByText("Fundo Municipal de Saúde E2E", { exact: true }).waitFor();
 
     await composition.getByRole("tab", { name: "Itens e preços", exact: true }).click();
