@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, CheckCircle2, Loader2, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTenant } from "@/hooks/use-tenant";
@@ -346,6 +347,11 @@ export function TenantIntegrationsSettings() {
                 {connectingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 {connectingDrive ? "Conectando..." : settings.has_drive_refresh_token ? "Reautorizar Google Drive" : "Conectar Google Drive"}
               </Button>
+            </section>
+
+            <section className="space-y-3 border-t pt-6">
+              <div><h3 className="font-medium">Modelos oficiais DOCX</h3><p className="text-sm text-muted-foreground">O módulo Documentos já possui cadastro de modelos, fontes DOCX privadas, versões e motor de geração. Cadastre ou atualize os modelos oficiais por lá; não há uma segunda biblioteca de modelos nesta tela.</p></div>
+              <Button type="button" variant="outline" asChild><Link to="/documentos">Abrir gestão de modelos e documentos</Link></Button>
             </section>
 
             <section className="space-y-4 border-t pt-6">
