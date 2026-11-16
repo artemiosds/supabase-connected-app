@@ -6,6 +6,7 @@ export type ResendDeliveryResult =
 export type ResendEmailInput = {
   apiKey: string;
   from: string;
+  replyTo?: string;
   to: string;
   subject: string;
   html: string;
@@ -37,6 +38,7 @@ export async function sendResendEmail(
       },
       body: JSON.stringify({
         from: input.from,
+        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         to: [input.to],
         subject: input.subject,
         html: input.html,
