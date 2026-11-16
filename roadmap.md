@@ -2,14 +2,14 @@
 
 > **Estado consolidado em 16/11/2026.** O diagnóstico operacional detalhado está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md).
 >
-> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. A última consulta encontrou o commit documental `80ac3ad9174f33d5928657edf4cd2e77d69df3c5`, que atualiza o checklist GO/NO-GO.
-> - SMS2: 91 migrations aplicadas na consulta mais recente; as duas migrations documentais de 16/11 constam como aplicadas. Não reaplicar nem executar `db push` sem reconciliação explícita do histórico.
-> - Schema público: tabelas retornadas com RLS e políticas. A cobertura de autorização deve continuar sendo comprovada por testes comportamentais, por papel e tenant.
-> - Auditoria SQL: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` exigem revisão individual de autorização interna.
-> - CI do commit de aplicação `000ba78f62750fcfb1623b4617e514c174aab638`: validação e formatação passaram; E2E autenticado estava em execução na última consulta. O commit documental posterior `80ac3ad` disparou nova validação; acompanhar seus resultados separadamente.
-> - O E2E de navegador inclui fluxo de compras/contratos e cenários de isolamento. Não declarar cobertura completa antes do resultado final e da revisão dos cenários executados.
+> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. HEAD de aplicação atual: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
+> - SMS2: 91 migrations aplicadas; repositório: 91 arquivos SQL. Todos os prefixos de versão estão reconciliados. As duas migrations aplicadas em 16/11 foram renomeadas no repositório para `20261116172306` e `20261116172323`, mantendo o SQL original. Não executar `db push` sem reconciliação futura.
+> - Auditoria SQL: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` aparecem no Advisor e exigem revisão individual de autorização interna. Proteção contra senhas vazadas continua desabilitada.
+> - Commit anterior `7008ff10743766f7926bd43bb20a8f29d97685d0`: formatação e validação completa (incluindo banco descartável) passaram. O E2E autenticado percorreu os dois tenants e o workflow documental; foi corrigida a expectativa do cartão de contrato e a nova execução está em andamento no HEAD atual.
+> - No HEAD atual, CI: formatação [run 43922908936](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908936), validação [run 43922908969](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908969) e E2E [run 43922908975](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908975).
+> - O E2E cobre duas Secretarias sintéticas, isolamento de fornecedores, DOCX privado/versionado, timbrado, aprovação/cancelamento documental e fluxo de compras com itens, cotações, frete, orçamento, referência e contrato vinculado. Aditivos/saldos ainda precisam de homologação comportamental no navegador.
 > - Backup criptografado/restauração sintéticos não equivalem a backup real recuperável do SMS2. Envio real de e-mail, Drive OAuth, gateway de cobrança, documentos oficiais, GED completo, homologação municipal e aceite formal permanecem pendentes.
-> - **NO-GO para produção/comercialização** até fechar os gates do checklist. Prioridade imediata: concluir CI/E2E no HEAD atual, corrigir falhas comprovadas e ampliar homologação do GED de fornecedores, aditivos, convites e permissões.
+> - **NO-GO para produção/comercialização** até fechar os gates do checklist.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
 
