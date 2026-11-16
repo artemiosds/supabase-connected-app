@@ -966,9 +966,27 @@ function NovoAditivo(props: {
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
 
+  useEffect(() => {
+    if (!props.contrato) return;
+    setNumero("");
+    setTipo("prorrogacao");
+    setNovaData("");
+    setDataAssinatura(new Date().toLocaleDateString("sv-SE"));
+    setValor("");
+    setObservacoes("");
+  }, [props.contrato?.id]);
+
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!props.contrato) return;
+    if (!props.userId) {
+      toast.error("Não foi possível identificar o usuário da sessão.");
+      return;
+    }
+    if (!numero.trim()) {
+      toast.error("Informe o número do termo aditivo.");
+      return;
+    }
     if (!dataAssinatura || dataAssinatura > new Date().toLocaleDateString("sv-SE")) {
       toast.error("Informe uma data de assinatura válida, não futura.");
       return;
@@ -1027,6 +1045,7 @@ function NovoAditivo(props: {
           <Campo label="Número do aditivo *">
             <Input
               required
+              maxLength={80}
               value={numero}
               onChange={(e) => setNumero(e.target.value)}
               placeholder="1º Termo Aditivo"
