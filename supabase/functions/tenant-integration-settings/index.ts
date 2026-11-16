@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target
 
 type JsonObject = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EMAIL = /^[^\s@]+@[^\s@]+\\.[^\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function response(payload: JsonObject, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
@@ -418,7 +418,7 @@ Deno.serve(async (request: Request) => {
   if (fromAddress && !EMAIL.test(fromAddress)) return response({ error: "Remetente inválido." }, 400, origin);
   if (replyTo && !EMAIL.test(replyTo)) return response({ error: "E-mail de resposta inválido." }, 400, origin);
   const emailDomain = textValue(body.email_domain, 253);
-  if (emailDomain && !/^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}$/i.test(emailDomain)) {
+  if (emailDomain && !/^[a-z0-9]+([.-][a-z0-9]+)*\.[a-z]{2,}$/i.test(emailDomain)) {
     return response({ error: "Informe um domínio válido." }, 400, origin);
   }
   if (fromAddress && emailDomain && fromAddress.split("@")[1]?.toLowerCase() !== emailDomain.toLowerCase()) {
