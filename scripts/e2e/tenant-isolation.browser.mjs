@@ -1104,7 +1104,10 @@ async function verifyProcurementLifecycle() {
 
     // Contract/ARP item ledger: create, consume, inspect balance, reverse, and preserve history.
     await page.getByRole("button", { name: "Itens e saldo", exact: true }).first().click();
-    const itemPanel = page.locator("section").filter({ hasText: "Itens de " + contractNumber });
+    const itemPanel = page
+      .locator("section")
+      .filter({ hasText: "Itens de " + contractNumber })
+      .first();
     await itemPanel.getByRole("button", { name: "Adicionar item", exact: true }).click();
     let contractItemDescription = "Item contratual E2E " + tenantId.slice(-1);
     const contractItemForm = itemPanel.locator("form").filter({ hasText: "Descrição do item" });
