@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target
 
 type JsonObject = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EMAIL = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\\.[^\s@]+$/;
 
 function response(payload: JsonObject, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
@@ -130,7 +130,7 @@ Deno.serve(async (request: Request) => {
     return response({ error: "Serviço de configurações indisponível." }, 503, origin);
   }
 
-  const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return response({ error: "Sessão autenticada obrigatória." }, 401, origin);
 
   let body: JsonObject;
@@ -194,7 +194,7 @@ Deno.serve(async (request: Request) => {
     }
     try {
       const stateBytes = crypto.getRandomValues(new Uint8Array(32));
-      const state = toBase64(stateBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+      const state = toBase64(stateBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state));
       const stateHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
       const { error: stateError } = await admin.from("tenant_drive_oauth_states").insert({
@@ -237,7 +237,7 @@ Deno.serve(async (request: Request) => {
       return response({ error: "A credencial protegida não pôde ser lida. Verifique a chave do cofre." }, 503, origin);
     }
     const from = row.email_from_name
-      ? `${row.email_from_name.replace(/[<>\\r\\n]/g, "")} <${row.email_from_address}>`
+      ? `${row.email_from_name.replace(/[<>\r\n]/g, "")} <${row.email_from_address}>`
       : row.email_from_address;
     let providerResponse: Response;
     try {
