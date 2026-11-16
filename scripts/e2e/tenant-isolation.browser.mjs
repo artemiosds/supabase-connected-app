@@ -876,12 +876,13 @@ async function verifyDocumentApprovalWorkflow() {
         tenantId,
       },
     );
-    const deniedInsertRows =
-      attemptedInsert.body.trim().startsWith("[")
-        ? JSON.parse(attemptedInsert.body)
+    const deniedInsertRows = attemptedInsert.body.trim().startsWith("[")
+      ? JSON.parse(attemptedInsert.body)
+      : null;
         : null;
     assert.ok(
-      attemptedInsert.status >= 400 || (Array.isArray(deniedInsertRows) && deniedInsertRows.length === 0),
+      attemptedInsert.status >= 400 ||
+        (Array.isArray(deniedInsertRows) && deniedInsertRows.length === 0),
       `the reviewer must not create a document through the Data API (HTTP ${attemptedInsert.status})`,
     );
 
