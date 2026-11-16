@@ -1,6 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
 
-function base64Bytes(value: string): Uint8Array {
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+\nfunction base64Bytes(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
@@ -13,22 +18,22 @@ async function keyFromEnvironment(): Promise<CryptoKey> {
   const encoded = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
   const raw = base64Bytes(encoded);
   if (raw.length !== 32) throw new Error("INVALID_ENCRYPTION_KEY");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey("raw", asArrayBuffer(raw), "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 async function decrypt(value: string, key: CryptoKey): Promise<string> {
   const [version, iv, ciphertext] = value.split(".");
   if (version !== "v1" || !iv || !ciphertext) throw new Error("INVALID_CIPHERTEXT");
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64Bytes(iv) },
+    { name: "AES-GCM", iv: asArrayBuffer(base64Bytes(iv)) },
     key,
-    base64Bytes(ciphertext),
+    asArrayBuffer(base64Bytes(ciphertext)),
   );
   return new TextDecoder().decode(plain);
 }
 async function encrypt(value: string, key: CryptoKey): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: asArrayBuffer(iv) },
     key,
     new TextEncoder().encode(value),
   );
