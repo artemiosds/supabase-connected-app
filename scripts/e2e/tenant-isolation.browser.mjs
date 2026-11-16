@@ -961,7 +961,7 @@ async function verifyProcurementLifecycle() {
       await quoteInputs.nth(4).fill(deliveryCost);
       await quoteInputs.nth(5).fill(referenceUrl);
       await quoteForm.getByRole("button", { name: "Salvar cotação", exact: true }).click();
-      await composition.getByText(source, { exact: true }).waitFor();
+      await page.getByText("Cotação registrada.", { exact: true }).waitFor();
     }
 
     await addQuote(
