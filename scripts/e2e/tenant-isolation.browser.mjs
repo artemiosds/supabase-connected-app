@@ -1310,9 +1310,28 @@ async function verifyProcurementLifecycle() {
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
-    await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
+    await amendmentDialog.locator("input").nth(0).fill("3º Aditivo inválido E2E");
     await amendmentDialog.getByRole("combobox").click();
     await page.getByRole("option", { name: "Supressão de valor", exact: true }).click();
+    await amendmentDialog.locator("input").nth(1).fill("130");
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await page
+      .getByText(/A supressao nao pode reduzir o valor do contrato abaixo da soma dos itens cadastrados/)
+      .waitFor();
+    amendmentContract = await readRows(
+      "contracts",
+      { tenant_id: tenantId, number: contractNumber },
+      "id,total_value,end_date",
+    );
+    assert.equal(amendmentContract.body[0].total_value, 145);
+    const rejectedSuppression = await readRows(
+      "contract_amendments",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+      "id",
+    );
+    assert.equal(rejectedSuppression.body.length, 2);
+
+    await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
     await amendmentDialog.locator("input").nth(1).fill("3");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
