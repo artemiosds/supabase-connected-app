@@ -195,12 +195,17 @@ Deno.serve(async (request: Request) => {
     try {
       const stateBytes = crypto.getRandomValues(new Uint8Array(32));
       const state = toBase64(stateBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      const verifierBytes = crypto.getRandomValues(new Uint8Array(48));
+      const codeVerifier = toBase64(verifierBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      const challengeDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier));
+      const codeChallenge = toBase64(new Uint8Array(challengeDigest)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state));
       const stateHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
       const { error: stateError } = await admin.from("tenant_drive_oauth_states").insert({
         state_hash: stateHash,
         tenant_id: tenantId,
         actor_id: auth.user.id,
+        code_verifier_ciphertext: await encryptSecret(codeVerifier, await encryptionKey()),
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
       if (stateError) throw new Error("OAUTH_STATE_STORE_FAILED");
@@ -213,6 +218,8 @@ Deno.serve(async (request: Request) => {
       url.searchParams.set("prompt", "consent");
       url.searchParams.set("include_granted_scopes", "true");
       url.searchParams.set("state", state);
+      url.searchParams.set("code_challenge", codeChallenge);
+      url.searchParams.set("code_challenge_method", "S256");
       return response({ authorization_url: url.toString() }, 200, origin);
     } catch {
       return response({ error: "Não foi possível iniciar a autorização do Google Drive." }, 500, origin);
