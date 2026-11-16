@@ -1,14 +1,15 @@
 # Roadmap — Gestão de Fornecedores da Saúde
 
-> **Estado verificado em 16/11/2026.** O diagnóstico operacional está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md); registros abaixo de datas anteriores são históricos, não o estado atual.
+> **Estado consolidado em 16/11/2026.** O diagnóstico operacional detalhado está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md).
 >
-> - SMS2: 89 migrations até `20261113194249`; `main`: 91. As únicas pendentes são `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`; ambas passaram no Supabase descartável da CI e não foram aplicadas ao SMS2.
-> - Schema público confirmado com 40 tabelas, todas com RLS; 29 também usam FORCE RLS. O Advisor de segurança aponta 35 RPCs `SECURITY DEFINER` acessíveis a `authenticated`; foram revisadas individualmente na CI, sem revogação em massa.
-> - Cinco Edge Functions estão ACTIVE: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. Isso não comprova e-mail entregue ou scheduler homologado.
-> - CI do código no commit `8ee4e17` passou validação/segurança, formatação e E2E autenticado; os workflows também passaram após o commit documental `f46258b`. O E2E cobre duas Secretarias sintéticas, fornecedores, fontes DOCX privadas, timbrado e fluxo de aprovação/cancelamento.
-> - O ciclo completo de compras/contratos, GED de documentos de fornecedores e homologação visual com documentos oficiais ainda não estão cobertos ponta a ponta. Integrações externas de Drive, cobrança e entrega recorrente de e-mail continuam pendentes.
-> - Backup criptografado/restauração sintéticos passaram em ambiente descartável. Backup real recuperável do SMS2, usuários/documentos oficiais e aceite municipal ainda faltam.
-> - **NO-GO para produção/comercialização** até fechar os gates do checklist. Próximo marco de código: E2E autenticado do ciclo de compras/contratos, com fixtures apenas no Supabase descartável.
+> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. A última consulta encontrou o commit documental `80ac3ad9174f33d5928657edf4cd2e77d69df3c5`, que atualiza o checklist GO/NO-GO.
+> - SMS2: 91 migrations aplicadas na consulta mais recente; as duas migrations documentais de 16/11 constam como aplicadas. Não reaplicar nem executar `db push` sem reconciliação explícita do histórico.
+> - Schema público: tabelas retornadas com RLS e políticas. A cobertura de autorização deve continuar sendo comprovada por testes comportamentais, por papel e tenant.
+> - Auditoria SQL: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` exigem revisão individual de autorização interna.
+> - CI do commit de aplicação `000ba78f62750fcfb1623b4617e514c174aab638`: validação e formatação passaram; E2E autenticado estava em execução na última consulta. O commit documental posterior `80ac3ad` disparou nova validação; acompanhar seus resultados separadamente.
+> - O E2E de navegador inclui fluxo de compras/contratos e cenários de isolamento. Não declarar cobertura completa antes do resultado final e da revisão dos cenários executados.
+> - Backup criptografado/restauração sintéticos não equivalem a backup real recuperável do SMS2. Envio real de e-mail, Drive OAuth, gateway de cobrança, documentos oficiais, GED completo, homologação municipal e aceite formal permanecem pendentes.
+> - **NO-GO para produção/comercialização** até fechar os gates do checklist. Prioridade imediata: concluir CI/E2E no HEAD atual, corrigir falhas comprovadas e ampliar homologação do GED de fornecedores, aditivos, convites e permissões.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
 
