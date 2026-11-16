@@ -28,8 +28,8 @@ CREATE TABLE public.tenant_integration_settings (
   drive_root_folder_id text,
   drive_connected_at timestamptz,
   drive_last_sync_at timestamptz,
-  retention_days integer NOT NULL DEFAULT 2555
-    CHECK (retention_days BETWEEN 30 AND 36500),
+  retention_days integer
+    CHECK (retention_days IS NULL OR retention_days BETWEEN 30 AND 36500),
   retention_policy_version text,
   retention_policy_text text,
   retention_approved_at timestamptz,
