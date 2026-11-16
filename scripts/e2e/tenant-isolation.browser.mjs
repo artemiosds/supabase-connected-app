@@ -837,6 +837,28 @@ async function verifyProcurementLifecycle() {
         { apiUrl: supabaseUrl, publicKey: anonKey, token, functionName, args },
       );
 
+    const updateRows = async (table, filters, values) =>
+      page.evaluate(
+        async ({ apiUrl, publicKey, token, table, filters, values }) => {
+          const url = new URL(`/rest/v1/${table}`, apiUrl);
+          for (const [column, value] of Object.entries(filters)) {
+            url.searchParams.set(column, `eq.${value}`);
+          }
+          const response = await fetch(url, {
+            method: "PATCH",
+            headers: {
+              apikey: publicKey,
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Prefer: "return=representation",
+            },
+            body: JSON.stringify(values),
+          });
+          return { status: response.status, body: await response.json().catch(() => null) };
+        },
+        { apiUrl: supabaseUrl, publicKey: anonKey, token, table, filters, values },
+      );
+
     await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Processos de contratação", exact: true }).waitFor();
     await page.getByRole("button", { name: "Novo processo", exact: false }).click();
@@ -1158,6 +1180,30 @@ async function verifyProcurementLifecycle() {
     );
     assert.equal(contractItemRows.body.length, 1);
     const contractItemId = contractItemRows.body[0].id;
+    const unitChangeAttempt = await updateRows(
+      "contract_items",
+      { tenant_id: tenantId, id: contractItemId },
+      { unit: "caixa" },
+    );
+    assert.ok(unitChangeAttempt.status >= 400, "unit changes after a movement must be rejected");
+    const unitPriceChangeAttempt = await updateRows(
+      "contract_items",
+      { tenant_id: tenantId, id: contractItemId },
+      { unit_value: 11 },
+    );
+    assert.ok(
+      unitPriceChangeAttempt.status >= 400,
+      "unit price changes after a movement must be rejected",
+    );
+    const quantityReductionAttempt = await updateRows(
+      "contract_items",
+      { tenant_id: tenantId, id: contractItemId },
+      { quantity_total: 0.5 },
+    );
+    assert.ok(
+      quantityReductionAttempt.status >= 400,
+      "item quantity cannot be reduced below net consumption",
+    );
     const excessConsumption = await callRpc("record_contract_item_consumption", {
       p_tenant_id: tenantId,
       p_contract_item_id: contractItemId,
