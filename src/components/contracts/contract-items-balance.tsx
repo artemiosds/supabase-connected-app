@@ -83,6 +83,7 @@ export function ContractItemsBalance(props: {
   const [items, setItems] = useState<Item[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [formAberto, setFormAberto] = useState(false);
+  const [itemEditandoId, setItemEditandoId] = useState<string | null>(null);
   const [itemForm, setItemForm] = useState<ItemForm>(EMPTY_ITEM);
   const [consumptionItemId, setConsumptionItemId] = useState<string | null>(null);
   const [consumptionForm, setConsumptionForm] = useState<ConsumptionForm>({
@@ -164,25 +165,36 @@ export function ContractItemsBalance(props: {
       return;
     }
     setSalvando(true);
-    const { error: insertError } = await db.from("contract_items").insert({
-      tenant_id: props.tenantId,
-      contract_id: props.contract.id,
-      line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
+    const itemData = {
       description: itemForm.description.trim(),
       specification: itemForm.specification.trim() || null,
       unit: itemForm.unit.trim(),
       quantity_total: total,
       unit_value: unitValue,
-      created_by: props.userId,
       updated_by: props.userId,
-    });
+    };
+    const { error: insertError } = itemEditandoId
+      ? await db
+          .from("contract_items")
+          .update(itemData)
+          .eq("tenant_id", props.tenantId)
+          .eq("contract_id", props.contract.id)
+          .eq("id", itemEditandoId)
+      : await db.from("contract_items").insert({
+          tenant_id: props.tenantId,
+          contract_id: props.contract.id,
+          line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
+          ...itemData,
+          created_by: props.userId,
+        });
     setSalvando(false);
     if (insertError) {
       toast.error(insertError.message);
       return;
     }
-    toast.success("Item incluído no contrato/ARP.");
+    toast.success(itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.");
     setItemForm(EMPTY_ITEM);
+    setItemEditandoId(null);
     setFormAberto(false);
     await carregar();
   }
@@ -262,7 +274,15 @@ export function ContractItemsBalance(props: {
                 {currency.format(Number(props.contract.total_value))}
               </p>
             </div>
-            <Button type="button" size="sm" onClick={() => setFormAberto((value) => !value)}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setItemEditandoId(null);
+                setItemForm(EMPTY_ITEM);
+                setFormAberto((value) => !value);
+              }}
+            >
               <Plus className="h-4 w-4" /> Adicionar item
             </Button>
           </div>
@@ -273,7 +293,9 @@ export function ContractItemsBalance(props: {
               className="grid gap-3 rounded-md bg-muted/30 p-3 sm:grid-cols-2"
             >
               <div className="sm:col-span-2">
-                <Label htmlFor={`item-description-${props.contract.id}`}>Descrição do item *</Label>
+                <Label htmlFor={`item-description-${props.contract.id}`}>
+                  {itemEditandoId ? "Editar descrição do item *" : "Descrição do item *"}
+                </Label>
                 <Input
                   id={`item-description-${props.contract.id}`}
                   required
@@ -354,9 +376,18 @@ export function ContractItemsBalance(props: {
               </div>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={salvando}>
-                  {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar item
+                  {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {itemEditandoId ? "Salvar alterações" : "Salvar item"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setFormAberto(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormAberto(false);
+                    setItemEditandoId(null);
+                    setItemForm(EMPTY_ITEM);
+                  }}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -415,8 +446,27 @@ export function ContractItemsBalance(props: {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Consumido: {quantity.format(used)} {item.unit}
+                      Consumido: {quantity.format(used)} {item.unit} · Valor consumido: {currency.format(used * Number(item.unit_value))}
                     </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={salvando}
+                      onClick={() => {
+                        setItemEditandoId(item.id);
+                        setItemForm({
+                          description: item.description,
+                          specification: item.specification ?? "",
+                          unit: item.unit,
+                          quantity_total: String(Number(item.quantity_total)),
+                          unit_value: String(Number(item.unit_value)),
+                        });
+                        setFormAberto(true);
+                      }}
+                    >
+                      Editar item
+                    </Button>
                     {consumptionItemId === item.id ? (
                       <form
                         onSubmit={(event) => void registrarConsumo(event, item)}
