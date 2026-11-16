@@ -153,8 +153,7 @@ export function TenantIntegrationsSettings() {
     await load();
   }
 
-  async function submitPrivacyRequest(event: FormEvent) {
-    event.preventDefault();
+  async function submitPrivacyRequest() {
     if (!selecionado?.id) return;
     setSubmittingPrivacy(true);
     const { data, error } = await db.functions.invoke("tenant-integration-settings", {
@@ -298,7 +297,7 @@ export function TenantIntegrationsSettings() {
               {settings.retention_approved_at && <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" /> Política registrada em {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.</p>}
               <div className="space-y-3 rounded-lg border p-4">
                 <div><h4 className="font-medium">Solicitações de titulares</h4><p className="text-xs text-muted-foreground">Registre pedidos de acesso, correção, exportação, oposição ou exclusão. Toda exclusão exige análise legal e decisão humana.</p></div>
-                <form onSubmit={(event) => void submitPrivacyRequest(event)} className="space-y-3">
+                <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="privacy-request-type">Tipo de solicitação</Label>
                     <select id="privacy-request-type" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={requestType} onChange={(e) => setRequestType(e.target.value)}>
@@ -306,8 +305,8 @@ export function TenantIntegrationsSettings() {
                     </select>
                   </div>
                   <div className="space-y-2"><Label htmlFor="privacy-request-description">Descrição e identificação do pedido</Label><Textarea id="privacy-request-description" rows={3} minLength={10} maxLength={4000} value={requestDescription} onChange={(e) => setRequestDescription(e.target.value)} required placeholder="Descreva os dados envolvidos e o que está sendo solicitado." /></div>
-                  <Button type="submit" variant="outline" disabled={submittingPrivacy || requestDescription.trim().length < 10}>{submittingPrivacy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Registrar solicitação</Button>
-                </form>
+                  <Button type="button" variant="outline" disabled={submittingPrivacy || requestDescription.trim().length < 10} onClick={() => void submitPrivacyRequest()}>{submittingPrivacy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Registrar solicitação</Button>
+                </div>
                 {canEdit && (
                   <div className="space-y-2 border-t pt-3">
                     <p className="text-sm font-medium">Pedidos registrados nesta Secretaria</p>
