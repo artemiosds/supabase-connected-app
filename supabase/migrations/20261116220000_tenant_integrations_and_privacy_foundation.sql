@@ -130,4 +130,39 @@ COMMENT ON TABLE public.tenant_privacy_requests IS
 COMMENT ON TABLE public.tenant_drive_oauth_states IS
   'Single-use, hashed, short-lived OAuth state values and encrypted PKCE verifiers for tenant Google Drive authorization.';
 
+
+CREATE TABLE public.tenant_drive_sync_jobs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE RESTRICT,
+  source_type text NOT NULL CHECK (source_type IN ('supplier_document','document_template_source')),
+  source_id uuid NOT NULL,
+  source_version integer NOT NULL DEFAULT 1 CHECK (source_version >= 1),
+  storage_path text NOT NULL,
+  file_name text NOT NULL CHECK (length(file_name) BETWEEN 1 AND 255),
+  idempotency_key text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'queued'
+    CHECK (status IN ('queued','processing','synced','failed','uncertain')),
+  attempts integer NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 3),
+  drive_file_id text,
+  last_error_code text,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  updated_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  synced_at timestamptz,
+  CONSTRAINT tenant_drive_sync_job_synced_consistency
+    CHECK ((status = 'synced') = (synced_at IS NOT NULL))
+);
+CREATE INDEX idx_tenant_drive_sync_jobs_tenant_status
+  ON public.tenant_drive_sync_jobs(tenant_id,status,created_at);
+ALTER TABLE public.tenant_drive_sync_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_drive_sync_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY p_tenant_drive_sync_jobs_service_only
+  ON public.tenant_drive_sync_jobs
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.tenant_drive_sync_jobs FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.tenant_drive_sync_jobs TO service_role;
+COMMENT ON TABLE public.tenant_drive_sync_jobs IS
+  'Idempotent Google Drive copy jobs. Original private Storage files are never deleted or replaced by this queue.';
+
 COMMIT;
