@@ -8,6 +8,7 @@ SET LOCAL statement_timeout = '90s';
 CREATE OR REPLACE FUNCTION public.fn_guard_generated_document()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path TO ''
 AS $function$
 DECLARE
