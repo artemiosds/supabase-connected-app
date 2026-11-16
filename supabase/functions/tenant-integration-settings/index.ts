@@ -59,6 +59,17 @@ async function encryptSecret(value: string, key: CryptoKey): Promise<string> {
   return `v1.${toBase64(iv)}.${toBase64(new Uint8Array(encrypted))}`;
 }
 
+async function decryptSecret(value: string, key: CryptoKey): Promise<string> {
+  const parts = value.split(".");
+  if (parts.length !== 3 || parts[0] !== "v1") throw new Error("CIPHERTEXT_INVALID");
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: fromBase64(parts[1]) },
+    key,
+    fromBase64(parts[2]),
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
 function publicSettings(row: Record<string, unknown> | null) {
   if (!row) return null;
   return {
@@ -169,6 +180,63 @@ Deno.serve(async (request: Request) => {
       return response({ error: "Não foi possível carregar as configurações." }, 500, origin);
     }
     return response({ configuration: publicSettings(data as Record<string, unknown> | null) }, 200, origin);
+  }
+
+  if (action === "test_email") {
+    const { data: row, error: rowError } = await admin
+      .from("tenant_integration_settings")
+      .select("email_provider,email_from_name,email_from_address,email_api_secret_ciphertext")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (rowError || !row || row.email_provider !== "resend" ||
+        !row.email_api_secret_ciphertext || !row.email_from_address) {
+      return response({ error: "Configure o Resend, a chave API e o remetente antes do teste." }, 409, origin);
+    }
+    let apiKey: string;
+    try {
+      apiKey = await decryptSecret(row.email_api_secret_ciphertext, await encryptionKey());
+    } catch {
+      console.error("Não foi possível descriptografar a credencial de e-mail da Secretaria.");
+      return response({ error: "A credencial protegida não pôde ser lida. Verifique a chave do cofre." }, 503, origin);
+    }
+    const from = row.email_from_name
+      ? `${row.email_from_name.replace(/[<>\\r\\n]/g, "")} <${row.email_from_address}>`
+      : row.email_from_address;
+    let providerResponse: Response;
+    try {
+      providerResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": `tenant-config-test-${tenantId}-${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({
+          from,
+          to: [auth.user.email],
+          subject: "Teste de configuração — Gestão de Fornecedores da Saúde",
+          html: "<p>Este é um teste de configuração de e-mail solicitado por um administrador da sua Secretaria.</p>",
+        }),
+      });
+    } catch {
+      await admin.from("tenant_integration_settings").update({
+        email_last_test_at: new Date().toISOString(),
+        email_last_test_status: "failed",
+      }).eq("tenant_id", tenantId);
+      return response({ error: "Não foi possível alcançar o provedor de e-mail. O resultado não foi confirmado." }, 502, origin);
+    }
+    const providerBody = await providerResponse.json().catch(() => null);
+    const accepted = providerResponse.ok && typeof providerBody?.id === "string";
+    await admin.from("tenant_integration_settings").update({
+      email_last_test_at: new Date().toISOString(),
+      email_last_test_status: accepted ? "success" : "failed",
+    }).eq("tenant_id", tenantId);
+    if (!accepted) {
+      console.error("Provedor rejeitou teste de e-mail:", providerResponse.status);
+      return response({ error: "O provedor rejeitou o teste. Confira domínio, remetente e credencial no painel do provedor." }, 502, origin);
+    }
+    return response({ success: true, message: `E-mail de teste aceito para ${auth.user.email}.` }, 200, origin);
   }
 
   if (action !== "save") return response({ error: "Ação não reconhecida." }, 400, origin);
