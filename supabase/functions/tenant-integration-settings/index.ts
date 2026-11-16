@@ -467,6 +467,12 @@ Deno.serve(async (request: Request) => {
     updated_at: new Date().toISOString(),
   };
 
+  if ((existing?.email_domain ?? null) !== (next.email_domain ?? null)) {
+    next.email_domain_verified_at = null;
+  } else if (existing?.email_domain_verified_at) {
+    next.email_domain_verified_at = existing.email_domain_verified_at;
+  }
+
   if (!Number.isInteger(next.retention_days) || Number(next.retention_days) < 30 || Number(next.retention_days) > 36500) {
     return response({ error: "O prazo de retenção deve ficar entre 30 e 36.500 dias." }, 400, origin);
   }
