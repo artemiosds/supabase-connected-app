@@ -65,6 +65,7 @@ export function TenantIntegrationsSettings() {
   const [approvePolicy, setApprovePolicy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
@@ -103,6 +104,21 @@ export function TenantIntegrationsSettings() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function testEmail() {
+    if (!selecionado?.id) return;
+    setTestingEmail(true);
+    const { data, error } = await db.functions.invoke("tenant-integration-settings", {
+      body: { action: "test_email", tenant_id: selecionado.id },
+    });
+    setTestingEmail(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "O teste de e-mail falhou.");
+      return;
+    }
+    toast.success(data.message ?? "Teste de e-mail aceito pelo provedor.");
+    await load();
+  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -221,7 +237,15 @@ export function TenantIntegrationsSettings() {
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
               <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor</p>
-              <Button type="submit" disabled={saving}><Save className="mr-2 h-4 w-4" />{saving ? "Salvando..." : "Salvar configurações"}</Button>
+              <div className="flex flex-wrap gap-2">
+                {settings.email_provider === "resend" && (
+                  <Button type="button" variant="outline" disabled={testingEmail || saving} onClick={() => void testEmail()}>
+                    {testingEmail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    Enviar teste para meu e-mail
+                  </Button>
+                )}
+                <Button type="submit" disabled={saving || testingEmail}><Save className="mr-2 h-4 w-4" />{saving ? "Salvando..." : "Salvar configurações"}</Button>
+              </div>
             </div>
           </form>
         )}
