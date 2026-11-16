@@ -1,14 +1,12 @@
-# Roadmap — Gestão de Fornecedores da Saúde
-
 > **Estado consolidado em 16/11/2026.** O diagnóstico operacional detalhado está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md).
 >
-> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. HEAD de aplicação atual: `26e98e85701480138d8a9fed5e493dcfecdbca65`.
-> - SMS2: 91 migrations aplicadas; repositório: 91 arquivos SQL. Todos os prefixos de versão estão reconciliados. As duas migrations aplicadas em 16/11 foram renomeadas no repositório para `20261116172306` e `20261116172323`, mantendo o SQL original. Não executar `db push` sem reconciliação futura.
-> - Auditoria SQL: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` aparecem no Advisor e exigem revisão individual de autorização interna. Proteção contra senhas vazadas continua desabilitada.
-> - Commit anterior `7008ff10743766f7926bd43bb20a8f29d97685d0`: formatação e validação completa (incluindo banco descartável) passaram. O E2E autenticado percorreu os dois tenants e o workflow documental; foi corrigida a expectativa do cartão de contrato e a nova execução está em andamento no HEAD atual.
-> - No HEAD atual, CI: formatação [run 43922908936](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908936), validação [run 43922908969](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908969) e E2E [run 43922908975](https://github.com/artemiosds/supabase-connected-app/actions/runs/43922908975).
-> - O E2E cobre duas Secretarias sintéticas, isolamento de fornecedores, DOCX privado/versionado, timbrado, aprovação/cancelamento documental e fluxo de compras com itens, cotações, frete, orçamento, referência e contrato vinculado. Aditivos/saldos ainda precisam de homologação comportamental no navegador.
-> - Backup criptografado/restauração sintéticos não equivalem a backup real recuperável do SMS2. Envio real de e-mail, Drive OAuth, gateway de cobrança, documentos oficiais, GED completo, homologação municipal e aceite formal permanecem pendentes.
+> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. HEAD de aplicação: `44578d5aba8b58737c6705001b9cb6f880e5498e`; commit documental mais recente: `617cda12a97dcb17ef541a7e15f5eee4c9ba0c0e`.
+> - SMS2: 91 migrations aplicadas; repositório: 91 arquivos SQL, todos reconciliados por prefixo. Não reaplicar nem executar `db push` sem reconciliação.
+> - CI no mesmo HEAD de aplicação: formatação [run 43923011042](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923011042), validação [run 43923010880](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010880) e E2E [run 43923010973](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010973) — todos aprovados.
+> - O E2E autenticado cobre duas Secretarias sintéticas, isolamento de fornecedores, DOCX privado/versionado, timbrado, aprovação/cancelamento documental e ciclo de compras/contratos até vinculação. Nenhum dado sintético foi gravado no SMS2.
+> - **Lacuna funcional identificada:** a tela `contratos.tsx` não integra as tabelas/RPCs de itens e movimentações de contrato/ARP; portanto cadastro de itens, saldo, consumo e estorno ainda não estão disponíveis pela interface, apesar da camada SQL e do teste unitário de cálculo. É o próximo trabalho de implementação e homologação.
+> - Aditivos já possuem formulário e trigger de validação para prorrogação, acréscimo, supressão e outro; faltam testes comportamentais completos e aprovação da regra normativa antes de automatizar limites percentuais.
+> - Backup real/restauração, envio real de e-mail, Google Drive OAuth, gateway, GED completo, documentos oficiais e aceite municipal continuam pendentes.
 > - **NO-GO para produção/comercialização** até fechar os gates do checklist.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
