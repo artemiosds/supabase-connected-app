@@ -217,13 +217,13 @@ Deno.serve(async (request: Request) => {
       processed += 1;
       let jobId = existing?.id as string | undefined;
       if (jobId) {
-        const { error: claimError } = await admin.from("tenant_drive_sync_jobs").update({
+        const { data: claimed, error: claimError } = await admin.from("tenant_drive_sync_jobs").update({
           status: "processing",
           attempts: existing.attempts + 1,
           last_error_code: null,
           updated_at: new Date().toISOString(),
-        }).eq("id", jobId).eq("status", "failed");
-        if (claimError) { skipped += 1; continue; }
+        }).eq("id", jobId).eq("status", "failed").select("id").maybeSingle();
+        if (claimError || !claimed) { skipped += 1; continue; }
       } else {
         const { data: created, error: createError } = await admin.from("tenant_drive_sync_jobs").insert({
           tenant_id: tenantId,
