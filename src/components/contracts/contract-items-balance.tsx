@@ -274,6 +274,7 @@ export function ContractItemsBalance(props: {
         size="sm"
         variant="outline"
         aria-expanded={aberto}
+        aria-label={`Itens e saldo do contrato ${props.contract.number}`}
         onClick={() => setAberto((value) => !value)}
       >
         <ShoppingCart className="h-4 w-4" />
