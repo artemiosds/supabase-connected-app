@@ -548,7 +548,7 @@ function Contratos() {
                                 </Badge>
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {new Date(item.signed_at).toLocaleDateString("pt-BR")}
+                                {formatarData(item.signed_at)}
                                 {item.new_end_date
                                   ? ` · Nova vigência até ${formatarData(item.new_end_date)}`
                                   : ""}
