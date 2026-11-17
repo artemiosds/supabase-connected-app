@@ -473,6 +473,17 @@ export function SiteHome() {
       <footer className="border-t bg-background">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-xs text-muted-foreground sm:px-8 md:flex-row md:items-center md:justify-between">
           <p>Gestão de Fornecedores da Saúde</p>
+          <nav aria-label="Links legais" className="flex flex-wrap gap-4">
+            <Link
+              to="/privacidade"
+              className="underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Política de Privacidade
+            </Link>
+            <Link to="/termos" className="underline-offset-4 hover:text-foreground hover:underline">
+              Termos de Uso
+            </Link>
+          </nav>
           <p>Plataforma de apoio à gestão municipal da saúde</p>
         </div>
       </footer>
