@@ -239,7 +239,7 @@ function Usuarios() {
     (groups[moduleName] ??= []).push(permission);
     return groups;
   }, {}), [permissionCatalog]);
-  const iniciais = (nome: string) => nome.trim().split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("pt-BR") ?? "").join("");
+  const iniciais = (nome: string) => nome.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("pt-BR") ?? "").join("");
 
   async function localizarConta(e: FormEvent) {
     e.preventDefault();
