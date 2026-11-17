@@ -1291,6 +1291,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input[type=date]").nth(0).fill("2028-11-15");
     await amendmentDialog.locator("input[type=date]").nth(1).fill("2026-11-16");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await amendmentDialog.waitFor({ state: "hidden" });
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
     let amendmentContract = await readRows(
       "contracts",
@@ -1313,12 +1314,21 @@ async function verifyProcurementLifecycle() {
     await page.getByRole("option", { name: "Acréscimo de valor", exact: true }).click();
     await amendmentDialog.locator("input").nth(1).fill("5");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await amendmentDialog.waitFor({ state: "hidden" });
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
     amendmentContract = await readRows(
       "contracts",
       { tenant_id: tenantId, number: contractNumber },
       "id,total_value,end_date",
     );
+    const secondAmendmentRows = await readRows(
+      "contract_amendments",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id, number: "2º Aditivo E2E" },
+      "kind,value_change",
+    );
+    assert.equal(secondAmendmentRows.body.length, 1);
+    assert.equal(secondAmendmentRows.body[0].kind, "acrescimo");
+    assert.equal(Number(secondAmendmentRows.body[0].value_change), 5);
     assert.equal(amendmentContract.body[0].total_value, 145);
 
     await page
@@ -1356,6 +1366,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
     await amendmentDialog.locator("input").nth(1).fill("3");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await amendmentDialog.waitFor({ state: "hidden" });
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
     amendmentContract = await readRows(
       "contracts",
@@ -1377,6 +1388,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.getByRole("combobox").click();
     await page.getByRole("option", { name: "Outro", exact: true }).click();
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
+    await amendmentDialog.waitFor({ state: "hidden" });
     await page.getByText("Aditivo registrado e contrato atualizado.", { exact: true }).waitFor();
     const amendmentRows = await readRows(
       "contract_amendments",
