@@ -28,7 +28,7 @@ export const Route = createFileRoute("/entrar")({
       },
       { property: "og:title", content: "Entrar — Gestão de Fornecedores da Saúde" },
       {
-        property: "og:description",
+        name: "description",
         content: "Acesse sua conta na plataforma de gestão de fornecedores para a saúde.",
       },
       { property: "og:type", content: "website" },
@@ -64,10 +64,6 @@ function Entrar() {
   useEffect(() => {
     if (!loading && session) irParaPortal(true);
   }, [loading, session, irParaPortal]);
-
-  const convitePendente =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("convite") === "1";
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
@@ -121,12 +117,9 @@ function Entrar() {
           Entrar
         </Button>
       </form>
-      <div className="mt-4 flex items-center justify-between text-sm">
+      <div className="mt-4 flex items-center justify-center text-sm">
         <Link to="/recuperar-senha" className="text-primary underline-offset-4 hover:underline">
           Esqueci minha senha
-        </Link>
-        <Link to="/cadastro" className="text-muted-foreground underline-offset-4 hover:underline">
-          Criar conta
         </Link>
       </div>
     </PortalAuthShell>
