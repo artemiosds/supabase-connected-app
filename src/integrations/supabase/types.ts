@@ -1811,6 +1811,10 @@ export type Database = {
           category: string
           city: string | null
           cnpj: string
+          cnpj_consulted_at: string | null
+          cnpj_data_sources: string[]
+          cnpj_qsa: Json
+          cnpj_registration_data: Json
           complement: string | null
           contact_email: string | null
           contact_name: string | null
@@ -1836,6 +1840,10 @@ export type Database = {
           category?: string
           city?: string | null
           cnpj: string
+          cnpj_consulted_at?: string | null
+          cnpj_data_sources?: string[]
+          cnpj_qsa?: Json
+          cnpj_registration_data?: Json
           complement?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -1861,6 +1869,10 @@ export type Database = {
           category?: string
           city?: string | null
           cnpj?: string
+          cnpj_consulted_at?: string | null
+          cnpj_data_sources?: string[]
+          cnpj_qsa?: Json
+          cnpj_registration_data?: Json
           complement?: string | null
           contact_email?: string | null
           contact_name?: string | null
