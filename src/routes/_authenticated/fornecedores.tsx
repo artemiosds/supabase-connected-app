@@ -370,7 +370,10 @@ function Fornecedores() {
       } catch {
         // Fallback público: o navegador respeita CORS de cada provedor; falha em um não impede o próximo.
         const providers = [
-          { name: "BrasilAPI", url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}` },
+          {
+            name: "BrasilAPI",
+            url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}`,
+          },
           { name: "Minha Receita", url: `https://minhareceita.org/${encodeURIComponent(cnpj)}` },
         ];
         for (const provider of providers) {
