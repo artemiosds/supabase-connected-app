@@ -360,7 +360,23 @@ function Fornecedores() {
       toast.success("Dados cadastrais encontrados. Revise antes de salvar.");
     } catch (error) {
       if (requisicao === consultaCnpjRef.current) {
-        toast.error(error instanceof Error ? error.message : "Falha na consulta do CNPJ.");
+        let mensagem = error instanceof Error ? error.message : "Falha na consulta do CNPJ.";
+        const contexto = error && typeof error === "object" && "context" in error
+          ? (error as { context?: unknown }).context
+          : null;
+        if (contexto instanceof Response) {
+          try {
+            const detalhe = await contexto.clone().json() as {
+              error?: string;
+              providers_attempted?: string[];
+            };
+            const fontes = detalhe.providers_attempted?.join("; ");
+            mensagem = [detalhe.error, fontes ? `Fontes: ${fontes}` : ""].filter(Boolean).join(" ");
+          } catch {
+            mensagem = "O serviço de consulta respondeu com erro. Tente novamente em instantes.";
+          }
+        }
+        toast.error(mensagem);
       }
     } finally {
       if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
