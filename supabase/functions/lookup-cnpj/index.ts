@@ -78,6 +78,7 @@ function mapData(raw: JsonObject, source: string) {
   const endereco = object(data.endereco ?? estabelecimento.endereco ?? company.endereco);
   const address = object(data.address);
   const activity = object(data.atividade_principal ?? data.cnae_fiscal ?? data.primary_activity);
+  const allCnaes = list(data.cnaes, data.atividades_economicas);
   const cnaePrimary = first(
     data.cnae_fiscal, data.cnae_principal, data.cnaePrincipal,
     activity.codigo, activity.code, activity.cnae,
@@ -88,7 +89,6 @@ function mapData(raw: JsonObject, source: string) {
     data.cnaePrincipalDescricao, activity.descricao, activity.description,
     object(allCnaes[0]).descricao, object(allCnaes[0]).description,
   );
-  const allCnaes = list(data.cnaes, data.atividades_economicas);
   const secondaryInput = list(
     data.cnaes_secundarios, data.cnaesSecundarios,
     data.atividades_secundarias, data.secondary_activities,
