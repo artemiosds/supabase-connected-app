@@ -599,6 +599,11 @@ async function verifyAuthenticatedTenant(scenario) {
 
     // Exercise the real Secretaria settings screen, including private logo upload.
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Minha conta", exact: true }).waitFor();
+    await page.getByText("E-mail de acesso", { exact: true }).waitFor();
+    await page.getByText(scenario.email, { exact: true }).waitFor();
+    await page.getByText("Organização selecionada", { exact: true }).waitFor();
+    await page.getByText(scenario.tenantName, { exact: true }).waitFor();
     // The settings route opens on "Minha conta"; select the documents category before
     // asserting or exercising the tenant-specific letterhead form.
     await page.getByRole("button", { name: /Documentos oficiais/ }).click();
