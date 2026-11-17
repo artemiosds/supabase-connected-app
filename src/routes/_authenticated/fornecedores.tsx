@@ -917,50 +917,107 @@ function Fornecedores() {
                 {consultaCnpj?.registration_status && (
                   <Badge
                     variant="outline"
-                    className={/ATIVA/i.test(consultaCnpj.registration_status)
-                      ? "border-emerald-600 text-emerald-700"
-                      : /SUSPENSA/i.test(consultaCnpj.registration_status)
-                        ? "border-amber-600 text-amber-700"
-                        : /INAPTA|BAIXADA|NULA/i.test(consultaCnpj.registration_status)
-                          ? "border-destructive text-destructive"
-                          : "border-muted-foreground text-muted-foreground"}
+                    className={
+                      /ATIVA/i.test(consultaCnpj.registration_status)
+                        ? "border-emerald-600 text-emerald-700"
+                        : /SUSPENSA/i.test(consultaCnpj.registration_status)
+                          ? "border-amber-600 text-amber-700"
+                          : /INAPTA|BAIXADA|NULA/i.test(consultaCnpj.registration_status)
+                            ? "border-destructive text-destructive"
+                            : "border-muted-foreground text-muted-foreground"
+                    }
                   >
                     Situação cadastral: {consultaCnpj.registration_status}
                   </Badge>
                 )}
                 {consultaCnpj && (
                   <details className="rounded-md border bg-muted/20 p-3 text-sm">
-                    <summary className="cursor-pointer font-medium">Comprovante cadastral e QSA</summary>
+                    <summary className="cursor-pointer font-medium">
+                      Comprovante cadastral e QSA
+                    </summary>
                     <div className="mt-3 space-y-3">
                       <p className="text-xs text-muted-foreground">
-                        Fonte(s): {consultaCnpj.sources.join(", ") || consultaCnpj.source} · Consulta em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}
+                        Fonte(s): {consultaCnpj.sources.join(", ") || consultaCnpj.source} ·
+                        Consulta em{" "}
+                        {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}
                       </p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {[
-                          ["Capital social", consultaCnpj.share_capital === null ? null : consultaCnpj.share_capital.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })],
-                          ["Data da situação", consultaCnpj.registration_status_date],
-                          ["Motivo da situação", consultaCnpj.registration_status_reason],
-                          ["CNAE principal", consultaCnpj.main_activity ? [consultaCnpj.main_activity.code, consultaCnpj.main_activity.description].filter(Boolean).join(" — ") : null],
-                        ].map(([label, value]) => value ? (
-                          <div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="break-words">{value}</p></div>
-                        ) : null)}
+                        {(
+                          [
+                            [
+                              "Capital social",
+                              consultaCnpj.share_capital === null
+                                ? null
+                                : consultaCnpj.share_capital.toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }),
+                            ],
+                            ["Data da situação", consultaCnpj.registration_status_date],
+                            ["Motivo da situação", consultaCnpj.registration_status_reason],
+                            [
+                              "CNAE principal",
+                              consultaCnpj.main_activity
+                                ? [
+                                    consultaCnpj.main_activity.code,
+                                    consultaCnpj.main_activity.description,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" — ")
+                                : null,
+                            ],
+                          ] as const
+                        ).map(([label, value]) =>
+                          value ? (
+                            <div key={label}>
+                              <p className="text-xs text-muted-foreground">{label}</p>
+                              <p className="break-words">{value}</p>
+                            </div>
+                          ) : null,
+                        )}
                       </div>
                       {consultaCnpj.secondary_activities.length > 0 && (
-                        <div><p className="mb-1 text-xs font-medium text-muted-foreground">CNAEs secundários</p>
-                          <ul className="list-inside list-disc space-y-1">{consultaCnpj.secondary_activities.map((item, index) => <li key={item.code ?? index}>{[item.code, item.description].filter(Boolean).join(" — ")}</li>)}</ul>
+                        <div>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            CNAEs secundários
+                          </p>
+                          <ul className="list-inside list-disc space-y-1">
+                            {consultaCnpj.secondary_activities.map((item, index) => (
+                              <li key={item.code ?? index}>
+                                {[item.code, item.description].filter(Boolean).join(" — ")}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
-                      <div><p className="mb-1 text-xs font-medium text-muted-foreground">Quadro de Sócios e Administradores</p>
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">
+                          Quadro de Sócios e Administradores
+                        </p>
                         {consultaCnpj.partners.length ? (
-                          <ul className="space-y-2">{consultaCnpj.partners.map((partner, index) => (
-                            <li key={index} className="rounded border bg-background p-2">
-                              <p className="font-medium">{partner.name}</p>
-                              {partner.qualification && <p className="text-xs text-muted-foreground">{partner.qualification}{partner.age_range ? ` · ${partner.age_range}` : ""}</p>}
-                            </li>
-                          ))}</ul>
-                        ) : <p className="text-xs text-muted-foreground">A fonte consultada não retornou dados de QSA.</p>}
+                          <ul className="space-y-2">
+                            {consultaCnpj.partners.map((partner, index) => (
+                              <li key={index} className="rounded border bg-background p-2">
+                                <p className="font-medium">{partner.name}</p>
+                                {partner.qualification && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {partner.qualification}
+                                    {partner.age_range ? ` · ${partner.age_range}` : ""}
+                                  </p>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            A fonte consultada não retornou dados de QSA.
+                          </p>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground">Informações cadastrais para consulta; não substituem certidões oficiais nem comprovam regularidade fiscal.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Informações cadastrais para consulta; não substituem certidões oficiais nem
+                        comprovam regularidade fiscal.
+                      </p>
                     </div>
                   </details>
                 )}
