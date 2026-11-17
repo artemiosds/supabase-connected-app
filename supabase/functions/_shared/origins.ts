@@ -35,7 +35,7 @@ export function getAllowedOrigins(readEnv: EnvironmentReader): Set<string> {
     const appOrigin = normalizeWebOrigin(appUrl);
     if (!appOrigin) return new Set();
     return new Set(
-      [appOrigin, PREVIEW_ORIGIN, ...configuredOrigins]
+      [appOrigin, ...configuredOrigins]
         .map(normalizeWebOrigin)
         .filter((origin): origin is string => Boolean(origin)),
     );
