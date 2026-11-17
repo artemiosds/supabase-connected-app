@@ -21,7 +21,7 @@ function TermosDeUso() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Termos de Uso</h1>
           <p className="mt-3 text-sm text-muted-foreground">Versão preliminar — 17 de novembro de 2026</p>
           <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm leading-6">
-            <strong>Documento em validação:</strong> estes termos não substituem o contrato de prestação de serviços com cada organização. Antes da adoção oficial, devem ser completados com a identificação do fornecedor, condições comerciais, níveis de serviço, responsabilidades e revisão jurídica.
+            <strong>Documento em validação:</strong> a identificação do fornecedor foi preenchida com os dados informados pelo titular. Estes termos não substituem o contrato de prestação de serviços com cada organização. Antes da adoção oficial, devem ser definidos em instrumento próprio as condições comerciais, níveis de serviço, responsabilidades operacionais e procedimentos de encerramento, com revisão jurídica.
           </p>
         </header>
 
