@@ -144,8 +144,9 @@ function Fornecedores() {
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
-  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string } | null>(null);
+  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string; registration_status: string | null } | null>(null);
   const consultaCnpjRef = useRef(0);
+  const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
   const [fornecedorSancoes, setFornecedorSancoes] = useState<Fornecedor | null>(null);
   const [sancoesAberto, setSancoesAberto] = useState(false);
@@ -345,12 +346,17 @@ function Fornecedores() {
         for (const [campo, conteudo] of Object.entries(preenchimento)) {
           const chave = campo as keyof FormularioFornecedor;
           if (conteudo && !String(atual[chave] ?? "").trim()) {
-            (proximo[chave] as string) = conteudo;
+            Object.assign(proximo, { [chave]: conteudo });
           }
         }
         return proximo;
       });
-      setConsultaCnpj({ source: dados.source, consulted_at: dados.consulted_at });
+      setConsultaCnpj({
+        source: dados.source,
+        consulted_at: dados.consulted_at,
+        registration_status: dados.registration_status ?? null,
+      });
+      ultimoCnpjConsultadoRef.current = cnpj;
       toast.success("Dados cadastrais encontrados. Revise antes de salvar.");
     } catch (error) {
       if (requisicao === consultaCnpjRef.current) {
@@ -360,6 +366,14 @@ function Fornecedores() {
       if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!aberto || editando) return;
+    const cnpj = normalizarCnpj(formulario.cnpj);
+    if (!validarCnpj(cnpj) || cnpj === ultimoCnpjConsultadoRef.current) return;
+    const timer = window.setTimeout(() => void consultarCnpj(cnpj), 700);
+    return () => window.clearTimeout(timer);
+  }, [aberto, editando, formulario.cnpj, consultarCnpj]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -863,7 +877,9 @@ function Fornecedores() {
                 </div>
                 {consultaCnpj && (
                   <p className="text-xs text-muted-foreground" role="status">
-                    Dados consultados em {consultaCnpj.source} em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}. Revise os campos antes de salvar.
+                    Dados consultados em {consultaCnpj.source} em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}.
+                    {consultaCnpj.registration_status ? ` Situação cadastral informada pela fonte: ${consultaCnpj.registration_status}. Isso não comprova regularidade fiscal ou habilitação.` : ""}
+                    {" "}Revise os campos antes de salvar.
                   </p>
                 )}
               </div>
