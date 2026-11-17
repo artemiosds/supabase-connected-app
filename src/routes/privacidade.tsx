@@ -3,8 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidade — PRIMUSGESTAO" },
-      { name: "description", content: "Como o PRIMUSGESTAO trata dados pessoais na plataforma de gestão da saúde." },
+      { title: "Política de Privacidade — PRIMUS TECNOLOGIA E GESTÃO" },
+      { name: "description", content: "Como a PRIMUS TECNOLOGIA E GESTÃO trata dados pessoais na plataforma PRIMUSGESTAO." },
     ],
   }),
   component: PoliticaPrivacidade,
@@ -16,7 +16,7 @@ function PoliticaPrivacidade() {
       <div className="mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
         <Link to="/" className="text-sm font-medium text-primary hover:underline">← Voltar ao início</Link>
         <header className="mt-8 border-b pb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">PRIMUSGESTAO</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">PRIMUS TECNOLOGIA E GESTÃO</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Política de Privacidade</h1>
           <p className="mt-3 text-sm text-muted-foreground">Versão preliminar — 17 de novembro de 2026</p>
           <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm leading-6">
@@ -26,7 +26,7 @@ function PoliticaPrivacidade() {
 
         <article className="prose prose-neutral mt-8 max-w-none dark:prose-invert prose-headings:tracking-tight prose-p:leading-7">
           <h2>1. Escopo e papéis no tratamento</h2>
-          <p>O PRIMUSGESTAO é uma plataforma de software destinada a apoiar a gestão administrativa de fornecedores, documentos, processos, contratos e atividades relacionadas à gestão pública da saúde. A plataforma pode ser utilizada por diferentes Secretarias e organizações, cada qual em seu ambiente.</p>
+          <p>A PRIMUS TECNOLOGIA E GESTÃO disponibiliza o PRIMUSGESTAO, uma plataforma de software destinada a apoiar a gestão administrativa de fornecedores, documentos, processos, contratos e atividades relacionadas à gestão pública da saúde. A plataforma pode ser utilizada por diferentes Secretarias e organizações, cada qual em seu ambiente.</p>
           <p>Em regra, a organização cliente que insere e administra dados de fornecedores, representantes e documentos define as finalidades e instruções do tratamento desses dados e atua como controladora. O fornecedor que opera a plataforma poderá atuar como operador desses dados, conforme o contrato e as instruções legítimas da organização cliente. Para dados necessários à administração da própria plataforma, segurança, suporte e cumprimento de obrigações legais, o fornecedor poderá atuar como controlador independente. A definição final depende dos contratos e da operação efetivamente adotada.</p>
           <p><strong>Responsável pelo PRIMUSGESTAO:</strong> [PREENCHER NOME/RAZÃO SOCIAL, CPF/CNPJ E ENDEREÇO DO FORNECEDOR].</p>
 
