@@ -227,6 +227,7 @@ function mergeSources(rows: Array<{ source: string; data: ReturnType<typeof mapD
         contributed = true;
       }
     }
+    if (row.data.qsa.length) contributed = true;
     for (const person of row.data.qsa) {
       const key = String(person.name ?? "").normalize("NFKC").toLocaleLowerCase("pt-BR") +
         "|" + String(person.qualification ?? "").toLocaleLowerCase("pt-BR");
