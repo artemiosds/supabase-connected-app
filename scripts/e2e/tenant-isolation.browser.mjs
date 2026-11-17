@@ -603,7 +603,12 @@ async function verifyAuthenticatedTenant(scenario) {
     await page.getByText("E-mail de acesso", { exact: true }).waitFor();
     await page.getByRole("main").getByText(scenario.email, { exact: true }).waitFor();
     await page.getByText("Organização selecionada", { exact: true }).waitFor();
-    await page.getByText(scenario.tenantName, { exact: true }).waitFor();
+    await page
+      .getByRole("main")
+      .getByText("Organização selecionada", { exact: true })
+      .locator("..")
+      .getByText(scenario.tenantName, { exact: true })
+      .waitFor();
     // The settings route opens on "Minha conta"; select the documents category before
     // asserting or exercising the tenant-specific letterhead form.
     await page.getByRole("button", { name: /Documentos oficiais/ }).click();
