@@ -81,15 +81,19 @@ function mapData(raw: JsonObject, source: string) {
   const cnaePrimary = first(
     data.cnae_fiscal, data.cnae_principal, data.cnaePrincipal,
     activity.codigo, activity.code, activity.cnae,
+    object(allCnaes[0]).cnae, object(allCnaes[0]).codigo, object(allCnaes[0]).code,
   );
   const cnaePrimaryDescription = first(
     data.cnae_fiscal_descricao, data.cnae_principal_descricao,
     data.cnaePrincipalDescricao, activity.descricao, activity.description,
+    object(allCnaes[0]).descricao, object(allCnaes[0]).description,
   );
-  const secondary = list(
-    data.cnaes_secundarios, data.cnaesSecundarios, data.cnaes,
+  const allCnaes = list(data.cnaes, data.atividades_economicas);
+  const secondaryInput = list(
+    data.cnaes_secundarios, data.cnaesSecundarios,
     data.atividades_secundarias, data.secondary_activities,
-  ).map((item) => {
+  );
+  const secondary = (secondaryInput.length ? secondaryInput : allCnaes.slice(1)).map((item) => {
     if (typeof item === "string") return { code: item, description: null };
     const row = object(item);
     return {
