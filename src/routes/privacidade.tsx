@@ -21,7 +21,7 @@ function PoliticaPrivacidade() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Política de Privacidade</h1>
           <p className="mt-3 text-sm text-muted-foreground">Versão preliminar — 17 de novembro de 2026</p>
           <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm leading-6">
-            <strong>Documento em validação:</strong> antes de utilizar esta página como política oficial ou cadastrá-la no Google OAuth, é obrigatório identificar e inserir os dados completos do fornecedor responsável pela operação do PRIMUSGESTAO e seu canal oficial de privacidade. Não publique esta versão como documento jurídico definitivo.
+            <strong>Documento em validação:</strong> os dados de identificação e contato do fornecedor foram preenchidos com as informações fornecidas pelo titular. Antes de adotar esta política como documento oficial ou cadastrá-la no Google OAuth, revise juridicamente os papéis de controlador e operador, os prazos de retenção, os provedores efetivamente utilizados e os procedimentos operacionais descritos.
           </p>
         </header>
 
