@@ -15,8 +15,11 @@ ALTER TABLE public.suppliers
     CHECK (jsonb_typeof(cnpj_registration_data) = 'object'),
   ADD CONSTRAINT suppliers_cnpj_qsa_array
     CHECK (
-      jsonb_typeof(cnpj_qsa) = 'array'
-      AND jsonb_array_length(cnpj_qsa) <= 300
+      CASE
+        WHEN jsonb_typeof(cnpj_qsa) = 'array'
+          THEN jsonb_array_length(cnpj_qsa) <= 300
+        ELSE false
+      END
     ),
   ADD CONSTRAINT suppliers_cnpj_data_sources_valid
     CHECK (
