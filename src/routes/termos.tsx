@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- legal copy is intentionally kept as readable prose. */
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/termos")({
