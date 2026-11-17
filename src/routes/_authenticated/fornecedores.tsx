@@ -143,6 +143,9 @@ function Fornecedores() {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
+  const [consultandoCnpj, setConsultandoCnpj] = useState(false);
+  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string } | null>(null);
+  const consultaCnpjRef = useRef(0);
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
   const [fornecedorSancoes, setFornecedorSancoes] = useState<Fornecedor | null>(null);
   const [sancoesAberto, setSancoesAberto] = useState(false);
@@ -273,10 +276,12 @@ function Fornecedores() {
   function abrirNovo() {
     setEditando(null);
     setFormulario(FORMULARIO_VAZIO);
+    setConsultaCnpj(null);
     setAberto(true);
   }
 
   function abrirEdicao(fornecedor: Fornecedor) {
+    setConsultaCnpj(null);
     setEditando(fornecedor);
     setFormulario({
       cnpj: formatarCnpj(fornecedor.cnpj),
@@ -305,6 +310,56 @@ function Fornecedores() {
   ) {
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
+
+  const consultarCnpj = useCallback(async (valor: string) => {
+    const cnpj = normalizarCnpj(valor);
+    if (!validarCnpj(cnpj)) return;
+    const requisicao = ++consultaCnpjRef.current;
+    setConsultandoCnpj(true);
+    setConsultaCnpj(null);
+    try {
+      const { data, error: consultaErro } = await db.functions.invoke("lookup-cnpj", {
+        body: { cnpj },
+      });
+      if (consultaErro) throw consultaErro;
+      if (requisicao !== consultaCnpjRef.current) return;
+      const dados = data?.data;
+      if (!dados?.legal_name) throw new Error(data?.error ?? "A consulta não retornou razão social.");
+      setFormulario((atual) => {
+        if (normalizarCnpj(atual.cnpj) !== cnpj) return atual;
+        const preenchimento: Partial<FormularioFornecedor> = {
+          legal_name: dados.legal_name,
+          trade_name: dados.trade_name ?? "",
+          street: dados.street ?? "",
+          street_number: dados.street_number ?? "",
+          complement: dados.complement ?? "",
+          neighborhood: dados.neighborhood ?? "",
+          postal_code: dados.postal_code ?? "",
+          city: dados.city ?? "",
+          state: dados.state ?? "",
+          contact_phone: dados.contact_phone ?? "",
+          contact_email: dados.contact_email ?? "",
+          website: dados.website ?? "",
+        };
+        const proximo = { ...atual };
+        for (const [campo, conteudo] of Object.entries(preenchimento)) {
+          const chave = campo as keyof FormularioFornecedor;
+          if (conteudo && !String(atual[chave] ?? "").trim()) {
+            (proximo[chave] as string) = conteudo;
+          }
+        }
+        return proximo;
+      });
+      setConsultaCnpj({ source: dados.source, consulted_at: dados.consulted_at });
+      toast.success("Dados cadastrais encontrados. Revise antes de salvar.");
+    } catch (error) {
+      if (requisicao === consultaCnpjRef.current) {
+        toast.error(error instanceof Error ? error.message : "Falha na consulta do CNPJ.");
+      }
+    } finally {
+      if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
+    }
+  }, []);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -791,9 +846,26 @@ function Fornecedores() {
                   placeholder="00.000.000/0000-00"
                   autoComplete="off"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Aceita CNPJ numérico e alfanumérico.
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Aceita CNPJ numérico e alfanumérico.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={consultandoCnpj || !validarCnpj(formulario.cnpj)}
+                    onClick={() => void consultarCnpj(formulario.cnpj)}
+                  >
+                    {consultandoCnpj && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                    {consultandoCnpj ? "Consultando..." : "Consultar e preencher"}
+                  </Button>
+                </div>
+                {consultaCnpj && (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    Dados consultados em {consultaCnpj.source} em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}. Revise os campos antes de salvar.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-categoria">Categoria *</Label>
