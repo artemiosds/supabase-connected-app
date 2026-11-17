@@ -3,6 +3,8 @@ name: Temporary format repair
 on:
   push:
     branches: [feat/integracoes-configuraveis-tenant]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
