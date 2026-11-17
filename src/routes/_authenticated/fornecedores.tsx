@@ -76,6 +76,14 @@ type Capacidades = {
   can_deactivate: boolean;
 };
 
+type SocioCnpj = {
+  name: string;
+  qualification: string | null;
+  entry_date: string | null;
+  country: string | null;
+  age_range: string | null;
+};
+
 type FormularioFornecedor = {
   cnpj: string;
   legal_name: string;
@@ -144,7 +152,14 @@ function Fornecedores() {
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
-  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string; registration_status: string | null } | null>(null);
+  const [consultaCnpj, setConsultaCnpj] = useState<{
+    source: string;
+    sources: string[];
+    consulted_at: string;
+    registration_status: string | null;
+    registration_data: Record<string, unknown>;
+    qsa: SocioCnpj[];
+  } | null>(null);
   const consultaCnpjRef = useRef(0);
   const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
@@ -355,8 +370,13 @@ function Fornecedores() {
       });
       setConsultaCnpj({
         source: dados.source,
+        sources: Array.isArray(dados.sources) ? dados.sources : [dados.source].filter(Boolean),
         consulted_at: dados.consulted_at,
         registration_status: dados.registration_status ?? null,
+        registration_data: dados.registration_data && typeof dados.registration_data === "object"
+          ? dados.registration_data as Record<string, unknown>
+          : {},
+        qsa: Array.isArray(dados.qsa) ? dados.qsa as SocioCnpj[] : [],
       });
       ultimoCnpjConsultadoRef.current = cnpj;
       toast.success("Dados cadastrais encontrados. Revise antes de salvar.");
@@ -430,6 +450,10 @@ function Fornecedores() {
       city: formulario.city.trim() || null,
       state: formulario.state.trim().toUpperCase() || null,
       notes: formulario.notes.trim() || null,
+      cnpj_registration_data: consultaCnpj?.registration_data ?? editando?.cnpj_registration_data ?? {},
+      cnpj_qsa: consultaCnpj?.qsa ?? editando?.cnpj_qsa ?? [],
+      cnpj_consulted_at: consultaCnpj?.consulted_at ?? editando?.cnpj_consulted_at ?? null,
+      cnpj_data_sources: consultaCnpj?.sources ?? editando?.cnpj_data_sources ?? [],
     };
 
     setSalvando(true);
@@ -474,6 +498,22 @@ function Fornecedores() {
     toast.success(novoStatus === "inactive" ? "Fornecedor inativado." : "Fornecedor reativado.");
     await carregar();
   }
+
+  const snapshotCnpj = consultaCnpj?.registration_data ??
+    (editando?.cnpj_registration_data && typeof editando.cnpj_registration_data === "object"
+      ? editando.cnpj_registration_data as Record<string, unknown>
+      : {});
+  const qsaCnpj = consultaCnpj?.qsa ??
+    (Array.isArray(editando?.cnpj_qsa) ? editando.cnpj_qsa as unknown as SocioCnpj[] : []);
+  const fontesCnpj = consultaCnpj?.sources ?? editando?.cnpj_data_sources ?? [];
+  const dataConsultaCnpj = consultaCnpj?.consulted_at ?? editando?.cnpj_consulted_at ?? null;
+  const valorSnapshot = (key: string) => {
+    const value = snapshotCnpj[key];
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value === "boolean") return value ? "Sim" : "Não";
+    if (typeof value === "object") return null;
+    return String(value);
+  };
 
   const hojeIso = new Date().toLocaleDateString("en-CA");
   const fornecedoresComSancaoVigente = useMemo(
@@ -899,6 +939,74 @@ function Fornecedores() {
                     {consultaCnpj.registration_status ? ` Situação cadastral informada pela fonte: ${consultaCnpj.registration_status}. Isso não comprova regularidade fiscal ou habilitação.` : ""}
                     {" "}Revise os campos antes de salvar.
                   </p>
+                )}
+                {(Object.values(snapshotCnpj).some((value) => value !== null && value !== "" && value !== undefined) || qsaCnpj.length > 0) && (
+                  <section className="mt-3 space-y-3 rounded-md border bg-muted/20 p-3 sm:col-span-2" aria-label="Ficha cadastral consultada">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold">Ficha cadastral e quadro societário (QSA)</h3>
+                      <Badge variant="outline">Dados informativos</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {fontesCnpj.length ? `Fontes: ${fontesCnpj.join(", ")}. ` : ""}
+                      {dataConsultaCnpj ? `Consulta em ${new Date(dataConsultaCnpj).toLocaleString("pt-BR")}.` : ""}
+                      {" "}Esta ficha não substitui o comprovante oficial da Receita Federal nem certidões fiscais.
+                    </p>
+                    <div className="grid gap-2 text-sm sm:grid-cols-2">
+                      {([
+                        ["Data de abertura", "opening_date"],
+                        ["Natureza jurídica", "legal_nature"],
+                        ["Porte", "company_size"],
+                        ["Capital social", "capital_social"],
+                        ["Matriz/filial", "is_headquarters"],
+                        ["Opção pelo Simples", "simples_option"],
+                        ["Opção pelo MEI", "mei_option"],
+                        ["Situação cadastral", "registration_status"],
+                        ["Data da situação", "registration_status_date"],
+                        ["Motivo da situação", "registration_status_reason"],
+                        ["CNAE principal", "primary_cnae"],
+                        ["Descrição CNAE", "primary_cnae_description"],
+                        ["Situação especial", "special_status"],
+                        ["Data situação especial", "special_status_date"],
+                      ] as const).map(([label, key]) => {
+                        const value = valorSnapshot(key);
+                        return value ? (
+                          <div key={key}>
+                            <span className="text-xs text-muted-foreground">{label}</span>
+                            <p className="break-words">{value}</p>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                    {Array.isArray(snapshotCnpj.secondary_cnaes) && snapshotCnpj.secondary_cnaes.length > 0 && (
+                      <div>
+                        <h4 className="mb-1 text-xs font-semibold text-muted-foreground">CNAEs secundários</h4>
+                        <ul className="space-y-1 text-sm">
+                          {(snapshotCnpj.secondary_cnaes as Array<{ code?: string | null; description?: string | null }>).map((item, index) => (
+                            <li key={`${item.code ?? "cnae"}-${index}`}>
+                              {item.code ?? ""}{item.description ? ` — ${item.description}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="mb-1 text-xs font-semibold text-muted-foreground">Quadro de Sócios e Administradores</h4>
+                      {qsaCnpj.length ? (
+                        <div className="space-y-2">
+                          {qsaCnpj.map((socio, index) => (
+                            <div key={`${socio.name}-${index}`} className="rounded border bg-background p-2 text-sm">
+                              <p className="font-medium">{socio.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[socio.qualification, socio.entry_date ? `Entrada: ${socio.entry_date}` : null, socio.country, socio.age_range].filter(Boolean).join(" · ")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">A fonte consultada não retornou QSA.</p>
+                      )}
+                    </div>
+                  </section>
                 )}
               </div>
               <div className="space-y-2">
