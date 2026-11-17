@@ -39,26 +39,75 @@ import {
   type CommercialModule,
 } from "@/lib/commercial-access";
 
+type GrupoMenu = "visao-geral" | "operacao" | "administracao";
+
+const gruposMenu: { id: GrupoMenu; rotulo: string }[] = [
+  { id: "visao-geral", rotulo: "Visão geral" },
+  { id: "operacao", rotulo: "Gestão operacional" },
+  { id: "administracao", rotulo: "Administração" },
+];
+
 const itensMenu: {
   para: string;
   rotulo: string;
   icone: typeof LayoutDashboard;
+  grupo: GrupoMenu;
   module?: CommercialModule;
 }[] = [
-  { para: "/painel", rotulo: "Painel", icone: LayoutDashboard },
-  { para: "/organizacoes", rotulo: "Organizações", icone: Building2 },
-  { para: "/usuarios", rotulo: "Usuários", icone: Users },
-  { para: "/processos", rotulo: "Processos de contratação", icone: Workflow, module: "processos" },
-  { para: "/contratos", rotulo: "Contratos e vencimentos", icone: ScrollText, module: "contratos" },
-  { para: "/fornecedores", rotulo: "Fornecedores", icone: Truck, module: "fornecedores" },
+  { para: "/painel", rotulo: "Painel", icone: LayoutDashboard, grupo: "visao-geral" },
+  {
+    para: "/fornecedores",
+    rotulo: "Fornecedores",
+    icone: Truck,
+    grupo: "operacao",
+    module: "fornecedores",
+  },
+  {
+    para: "/processos",
+    rotulo: "Processos de contratação",
+    icone: Workflow,
+    grupo: "operacao",
+    module: "processos",
+  },
+  {
+    para: "/contratos",
+    rotulo: "Contratos e Atas",
+    icone: ScrollText,
+    grupo: "operacao",
+    module: "contratos",
+  },
   {
     para: "/documentos",
     rotulo: "Documentos e vencimentos",
     icone: FileText,
+    grupo: "operacao",
     module: "documentos",
   },
-  { para: "/historico", rotulo: "Histórico e auditoria", icone: History, module: "auditoria" },
-  { para: "/configuracoes", rotulo: "Configurações", icone: Settings },
+  {
+    para: "/organizacoes",
+    rotulo: "Organizações",
+    icone: Building2,
+    grupo: "administracao",
+  },
+  {
+    para: "/usuarios",
+    rotulo: "Usuários e permissões",
+    icone: Users,
+    grupo: "administracao",
+  },
+  {
+    para: "/historico",
+    rotulo: "Histórico e auditoria",
+    icone: History,
+    grupo: "administracao",
+    module: "auditoria",
+  },
+  {
+    para: "/configuracoes",
+    rotulo: "Configurações",
+    icone: Settings,
+    grupo: "administracao",
+  },
 ];
 
 const moduleByRoute: Array<{ prefix: string; module: CommercialModule }> = [
@@ -290,23 +339,35 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
           Central de Suporte
         </Link>
       )}
-      {allowedItems.map(({ para, rotulo, icone: Icone }) => {
-        const ativo = pathname.startsWith(para);
+      {gruposMenu.map((grupo) => {
+        const itensDoGrupo = allowedItems.filter((item) => item.grupo === grupo.id);
+        if (itensDoGrupo.length === 0) return null;
+
         return (
-          <Link
-            key={para}
-            to={para as never}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              ativo
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-            )}
-          >
-            <Icone className="h-4 w-4" aria-hidden />
-            {rotulo}
-          </Link>
+          <section key={grupo.id} className="space-y-1">
+            <p className="px-3 pt-4 text-xs font-semibold">{grupo.rotulo}</p>
+            {itensDoGrupo.map(({ para, rotulo, icone: Icone }) => {
+              const ativo =
+                pathname === para || (para !== "/painel" && pathname.startsWith(`${para}/`));
+              return (
+                <Link
+                  key={para}
+                  to={para as never}
+                  onClick={onNavigate}
+                  aria-current={ativo ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    ativo
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icone className="h-4 w-4" aria-hidden />
+                  {rotulo}
+                </Link>
+              );
+            })}
+          </section>
         );
       })}
     </nav>
