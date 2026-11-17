@@ -480,10 +480,7 @@ export function SiteHome() {
             >
               Política de Privacidade
             </Link>
-            <Link
-              to="/termos"
-              className="underline-offset-4 hover:text-foreground hover:underline"
-            >
+            <Link to="/termos" className="underline-offset-4 hover:text-foreground hover:underline">
               Termos de Uso
             </Link>
           </nav>
