@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Edge Function formatting is validated by Deno and behavior tests. */
 import { getAllowedOrigins } from "../_shared/origins.ts";
 
 type JsonObject = Record<string, unknown>;
