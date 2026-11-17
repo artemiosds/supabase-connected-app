@@ -316,6 +316,8 @@ function Fornecedores() {
     const cnpj = normalizarCnpj(valor);
     if (!validarCnpj(cnpj)) return;
     const requisicao = ++consultaCnpjRef.current;
+    // Register the attempt before the network call to prevent automatic retry loops.
+    ultimoCnpjConsultadoRef.current = cnpj;
     setConsultandoCnpj(true);
     setConsultaCnpj(null);
     try {
@@ -376,7 +378,7 @@ function Fornecedores() {
             mensagem = "O serviço de consulta respondeu com erro. Tente novamente em instantes.";
           }
         }
-        toast.error(mensagem);
+        toast.info("Não foi possível consultar os dados automaticamente. Você pode preencher os campos manualmente e salvar o fornecedor normalmente.");
       }
     } finally {
       if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
