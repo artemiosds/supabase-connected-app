@@ -30,7 +30,7 @@ function TermosDeUso() {
 
           <h2>2. Contratação e organizações</h2>
           <p>O acesso institucional depende de contratação, habilitação ou autorização válida da organização cliente. Cada organização administra seus usuários, perfis e permissões, dentro dos limites do serviço. Condições de preço, prazo, suporte, disponibilidade, implantação, limites de uso e encerramento devem constar de proposta ou contrato próprio.</p>
-          <p><strong>Fornecedor do serviço:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
+          <p><strong>Fornecedor do serviço:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. CPF: 047.782.792-63. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
 
           <h2>3. Contas e credenciais</h2>
           <p>O usuário deve fornecer informações corretas, manter suas credenciais em sigilo, utilizar autenticação de forma responsável e comunicar imediatamente suspeitas de uso indevido. É vedado compartilhar contas quando isso comprometer a identificação individual, os controles de acesso ou a auditoria. A organização cliente deve solicitar a revogação tempestiva dos acessos de pessoas que não precisem mais utilizar o sistema.</p>
@@ -72,7 +72,7 @@ function TermosDeUso() {
 
           <h2>13. Lei aplicável e contato</h2>
           <p>Aplicam-se as leis da República Federativa do Brasil, observadas as regras de competência legalmente aplicáveis. Questões comerciais e operacionais devem ser tratadas pelos canais indicados no contrato de cada organização.</p>
-          <p><strong>Contato do fornecedor:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
+          <p><strong>Contato do fornecedor:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. CPF: 047.782.792-63. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
         </article>
       </div>
     </main>
