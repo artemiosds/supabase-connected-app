@@ -17,7 +17,7 @@ import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
-import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import type { Json, Tables, TablesInsert } from "@/integrations/supabase/types";
 import { getSanctionDisplayStatus, isSanctionCurrentlyEffective } from "@/lib/supplier-sanctions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -450,8 +450,8 @@ function Fornecedores() {
       city: formulario.city.trim() || null,
       state: formulario.state.trim().toUpperCase() || null,
       notes: formulario.notes.trim() || null,
-      cnpj_registration_data: consultaCnpj?.registration_data ?? editando?.cnpj_registration_data ?? {},
-      cnpj_qsa: consultaCnpj?.qsa ?? editando?.cnpj_qsa ?? [],
+      cnpj_registration_data: (consultaCnpj?.registration_data ?? editando?.cnpj_registration_data ?? {}) as Json,
+      cnpj_qsa: (consultaCnpj?.qsa ?? editando?.cnpj_qsa ?? []) as Json,
       cnpj_consulted_at: consultaCnpj?.consulted_at ?? editando?.cnpj_consulted_at ?? null,
       cnpj_data_sources: consultaCnpj?.sources ?? editando?.cnpj_data_sources ?? [],
     };
