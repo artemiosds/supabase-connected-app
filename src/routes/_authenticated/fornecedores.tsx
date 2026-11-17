@@ -17,7 +17,11 @@ import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
-import { cnpjDivergente, mapCnpjProvider, type CnpjLookupData } from "../../../supabase/functions/_shared/cnpj-mapping.ts";
+import {
+  cnpjDivergente,
+  mapCnpjProvider,
+  type CnpjLookupData,
+} from "../../../supabase/functions/_shared/cnpj-mapping.ts";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { getSanctionDisplayStatus, isSanctionCurrentlyEffective } from "@/lib/supplier-sanctions";
 import { Button } from "@/components/ui/button";
@@ -393,7 +397,9 @@ function Fornecedores() {
       toast.success("Dados cadastrais e societários localizados com sucesso.");
     } catch {
       if (requisicao === consultaCnpjRef.current) {
-        toast.info("Não foi possível carregar os dados automaticamente pelas bases abertas da Receita. Você pode preencher os campos manualmente e salvar o fornecedor.");
+        toast.info(
+          "Não foi possível carregar os dados automaticamente pelas bases abertas da Receita. Você pode preencher os campos manualmente e salvar o fornecedor.",
+        );
       }
     } finally {
       if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
