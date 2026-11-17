@@ -3,7 +3,83 @@
  * the browser fallback. No Deno/Node APIs. Personal documents of partners
  * (CPF) are never copied into the normalised result.
  */
-export type JsonObject = Record<string, unknown>;
+export interface JsonObject {
+  [key: string]: unknown;
+  cnpj?: unknown;
+  razao_social?: unknown;
+  razaoSocial?: unknown;
+  nome_empresarial?: unknown;
+  nome?: unknown;
+  company_name?: unknown;
+  legal_name?: unknown;
+  nome_fantasia?: unknown;
+  nomeFantasia?: unknown;
+  fantasia?: unknown;
+  trade_name?: unknown;
+  descricao_tipo_de_logradouro?: unknown;
+  logradouro?: unknown;
+  street?: unknown;
+  numero?: unknown;
+  number?: unknown;
+  complemento?: unknown;
+  complement?: unknown;
+  bairro?: unknown;
+  neighborhood?: unknown;
+  cep?: unknown;
+  postal_code?: unknown;
+  municipio?: unknown;
+  municipio_nome?: unknown;
+  city?: unknown;
+  uf?: unknown;
+  estado?: unknown;
+  state?: unknown;
+  ddd_telefone_1?: unknown;
+  ddd_1?: unknown;
+  telefone_1?: unknown;
+  telefones?: unknown;
+  ddd?: unknown;
+  ddd_2?: unknown;
+  telefone_2?: unknown;
+  telefone?: unknown;
+  phone?: unknown;
+  email?: unknown;
+  email_contato?: unknown;
+  website?: unknown;
+  site?: unknown;
+  descricao_situacao_cadastral?: unknown;
+  situacao?: unknown;
+  situacaoCadastral?: unknown;
+  situacao_cadastral?: unknown;
+  data_situacao_cadastral?: unknown;
+  data_situacao?: unknown;
+  descricao_motivo_situacao_cadastral?: unknown;
+  motivo_situacao_cadastral?: unknown;
+  motivo_situacao?: unknown;
+  data_inicio_atividade?: unknown;
+  abertura?: unknown;
+  data_abertura?: unknown;
+  natureza_juridica?: unknown;
+  descricao?: unknown;
+  porte?: unknown;
+  descricao_porte?: unknown;
+  capital_social?: unknown;
+  cnaes_secundarios?: unknown;
+  atividades_secundarias?: unknown;
+  qsa?: unknown;
+  QSA?: unknown;
+  socios?: unknown;
+  success?: unknown;
+  status?: unknown;
+  message?: unknown;
+  data?: unknown;
+  estabelecimento?: unknown;
+  endereco?: unknown;
+  address?: unknown;
+  atividade_principal?: unknown;
+  cnae_fiscal?: unknown;
+  cnae_fiscal_descricao?: unknown;
+  cnae_principal?: unknown;
+}
 
 export interface CnpjPartner {
   name: string;
