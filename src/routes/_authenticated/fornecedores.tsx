@@ -977,11 +977,11 @@ function Fornecedores() {
                         ) : null;
                       })}
                     </div>
-                    {Array.isArray(snapshotCnpj.secondary_cnaes) && snapshotCnpj.secondary_cnaes.length > 0 && (
+                    {Array.isArray(snapshotCnpj["secondary_cnaes"]) && snapshotCnpj["secondary_cnaes"].length > 0 && (
                       <div>
                         <h4 className="mb-1 text-xs font-semibold text-muted-foreground">CNAEs secundários</h4>
                         <ul className="space-y-1 text-sm">
-                          {(snapshotCnpj.secondary_cnaes as Array<{ code?: string | null; description?: string | null }>).map((item, index) => (
+                          {(snapshotCnpj["secondary_cnaes"] as Array<{ code?: string | null; description?: string | null }>).map((item, index) => (
                             <li key={`${item.code ?? "cnae"}-${index}`}>
                               {item.code ?? ""}{item.description ? ` — ${item.description}` : ""}
                             </li>
