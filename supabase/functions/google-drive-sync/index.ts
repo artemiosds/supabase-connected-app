@@ -1,6 +1,8 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
 
+const MAX_BATCH_SIZE = 25;
+
 function json(payload: Record<string, unknown>, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -281,7 +283,7 @@ Deno.serve(async (request: Request) => {
     let uncertain = 0;
     let processed = 0;
     for (const source of sources) {
-      if (processed >= 3) break;
+      if (processed >= MAX_BATCH_SIZE) break;
       const keyValue = await idempotencyKey(
         `${tenantId}:${source.sourceType}:${source.sourceId}:v${source.version}:${source.storagePath}`,
       );
@@ -459,7 +461,7 @@ Deno.serve(async (request: Request) => {
         skipped,
         failed,
         uncertain,
-        limit: 3,
+        limit: MAX_BATCH_SIZE,
         originals_preserved: true,
         message:
           "Cópias enviadas ao Google Drive. Os arquivos originais privados continuam no sistema.",
