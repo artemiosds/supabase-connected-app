@@ -601,7 +601,7 @@ async function verifyAuthenticatedTenant(scenario) {
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Minha conta", exact: true }).waitFor();
     await page.getByText("E-mail de acesso", { exact: true }).waitFor();
-    await page.getByText(scenario.email, { exact: true }).waitFor();
+    await page.getByRole("main").getByText(scenario.email, { exact: true }).waitFor();
     await page.getByText("Organização selecionada", { exact: true }).waitFor();
     await page.getByText(scenario.tenantName, { exact: true }).waitFor();
     // The settings route opens on "Minha conta"; select the documents category before
