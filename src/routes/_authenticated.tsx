@@ -346,7 +346,7 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
         return (
           <section key={grupo.id} className="space-y-1">
             <p
-              className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/75 first:pt-1"
+              className="px-3 pt-4 text-xs font-semibold uppercase text-muted-foreground"
             >
               {grupo.rotulo}
             </p>
