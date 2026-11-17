@@ -21,10 +21,7 @@ ALTER TABLE public.suppliers
   ADD CONSTRAINT suppliers_cnpj_data_sources_valid
     CHECK (
       cardinality(cnpj_data_sources) <= 5
-      AND NOT EXISTS (
-        SELECT 1 FROM unnest(cnpj_data_sources) AS source
-        WHERE length(btrim(source)) NOT BETWEEN 1 AND 80
-      )
+      AND array_position(cnpj_data_sources, '') IS NULL
     );
 
 COMMENT ON COLUMN public.suppliers.cnpj_registration_data IS
