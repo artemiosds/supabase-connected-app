@@ -55,9 +55,27 @@ const itensMenu: {
   module?: CommercialModule;
 }[] = [
   { para: "/painel", rotulo: "Painel", icone: LayoutDashboard, grupo: "visao-geral" },
-  { para: "/fornecedores", rotulo: "Fornecedores", icone: Truck, grupo: "operacao", module: "fornecedores" },
-  { para: "/processos", rotulo: "Processos de contratação", icone: Workflow, grupo: "operacao", module: "processos" },
-  { para: "/contratos", rotulo: "Contratos e Atas", icone: ScrollText, grupo: "operacao", module: "contratos" },
+  {
+    para: "/fornecedores",
+    rotulo: "Fornecedores",
+    icone: Truck,
+    grupo: "operacao",
+    module: "fornecedores",
+  },
+  {
+    para: "/processos",
+    rotulo: "Processos de contratação",
+    icone: Workflow,
+    grupo: "operacao",
+    module: "processos",
+  },
+  {
+    para: "/contratos",
+    rotulo: "Contratos e Atas",
+    icone: ScrollText,
+    grupo: "operacao",
+    module: "contratos",
+  },
   {
     para: "/documentos",
     rotulo: "Documentos e vencimentos",
@@ -65,10 +83,31 @@ const itensMenu: {
     grupo: "operacao",
     module: "documentos",
   },
-  { para: "/organizacoes", rotulo: "Organizações", icone: Building2, grupo: "administracao" },
-  { para: "/usuarios", rotulo: "Usuários e permissões", icone: Users, grupo: "administracao" },
-  { para: "/historico", rotulo: "Histórico e auditoria", icone: History, grupo: "administracao", module: "auditoria" },
-  { para: "/configuracoes", rotulo: "Configurações", icone: Settings, grupo: "administracao" },
+  {
+    para: "/organizacoes",
+    rotulo: "Organizações",
+    icone: Building2,
+    grupo: "administracao",
+  },
+  {
+    para: "/usuarios",
+    rotulo: "Usuários e permissões",
+    icone: Users,
+    grupo: "administracao",
+  },
+  {
+    para: "/historico",
+    rotulo: "Histórico e auditoria",
+    icone: History,
+    grupo: "administracao",
+    module: "auditoria",
+  },
+  {
+    para: "/configuracoes",
+    rotulo: "Configurações",
+    icone: Settings,
+    grupo: "administracao",
+  },
 ];
 
 const moduleByRoute: Array<{ prefix: string; module: CommercialModule }> = [
@@ -306,7 +345,9 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
 
         return (
           <section key={grupo.id} className="space-y-1">
-            <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/75 first:pt-1">
+            <p
+              className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/75 first:pt-1"
+            >
               {grupo.rotulo}
             </p>
             {itensDoGrupo.map(({ para, rotulo, icone: Icone }) => {
