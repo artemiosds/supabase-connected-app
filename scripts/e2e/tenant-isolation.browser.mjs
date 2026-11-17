@@ -1254,10 +1254,12 @@ async function verifyProcurementLifecycle() {
     assert.equal(crossTenantItems.body.length, 0, "tenant A cannot read tenant B contract items");
 
     // Invalid extension dates must be rejected without creating an amendment.
-    await page.getByRole("button", {
-      name: `Registrar aditivo — Contrato ${contractNumber}`,
-      exact: true,
-    }).click();
+    await page
+      .getByRole("button", {
+        name: `Registrar aditivo — Contrato ${contractNumber}`,
+        exact: true,
+      })
+      .click();
     let amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
@@ -1276,10 +1278,12 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
 
     // Amendment behavior: each type updates only its intended contract field.
-    await page.getByRole("button", {
-      name: `Registrar aditivo — Contrato ${contractNumber}`,
-      exact: true,
-    }).click();
+    await page
+      .getByRole("button", {
+        name: `Registrar aditivo — Contrato ${contractNumber}`,
+        exact: true,
+      })
+      .click();
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
@@ -1295,10 +1299,12 @@ async function verifyProcurementLifecycle() {
     );
     assert.equal(amendmentContract.body[0].end_date, "2028-11-15");
 
-    await page.getByRole("button", {
-      name: `Registrar aditivo — Contrato ${contractNumber}`,
-      exact: true,
-    }).click();
+    await page
+      .getByRole("button", {
+        name: `Registrar aditivo — Contrato ${contractNumber}`,
+        exact: true,
+      })
+      .click();
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
@@ -1315,10 +1321,12 @@ async function verifyProcurementLifecycle() {
     );
     assert.equal(amendmentContract.body[0].total_value, 145);
 
-    await page.getByRole("button", {
-      name: `Registrar aditivo — Contrato ${contractNumber}`,
-      exact: true,
-    }).click();
+    await page
+      .getByRole("button", {
+        name: `Registrar aditivo — Contrato ${contractNumber}`,
+        exact: true,
+      })
+      .click();
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
@@ -1356,10 +1364,12 @@ async function verifyProcurementLifecycle() {
     );
     assert.equal(amendmentContract.body[0].total_value, 142);
 
-    await page.getByRole("button", {
-      name: `Registrar aditivo — Contrato ${contractNumber}`,
-      exact: true,
-    }).click();
+    await page
+      .getByRole("button", {
+        name: `Registrar aditivo — Contrato ${contractNumber}`,
+        exact: true,
+      })
+      .click();
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
