@@ -1960,6 +1960,210 @@ export type Database = {
           },
         ]
       }
+      tenant_drive_oauth_states: {
+        Row: {
+          actor_id: string
+          code_verifier_ciphertext: string
+          created_at: string
+          expires_at: string
+          state_hash: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id: string
+          code_verifier_ciphertext: string
+          created_at?: string
+          expires_at: string
+          state_hash: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string
+          code_verifier_ciphertext?: string
+          created_at?: string
+          expires_at?: string
+          state_hash?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_drive_oauth_states_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_drive_sync_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          drive_file_id: string | null
+          file_name: string
+          id: string
+          idempotency_key: string
+          last_error_code: string | null
+          source_id: string
+          source_type: string
+          source_version: number
+          status: string
+          storage_path: string
+          synced_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          file_name: string
+          id?: string
+          idempotency_key: string
+          last_error_code?: string | null
+          source_id: string
+          source_type: string
+          source_version?: number
+          status?: string
+          storage_path: string
+          synced_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          file_name?: string
+          id?: string
+          idempotency_key?: string
+          last_error_code?: string | null
+          source_id?: string
+          source_type?: string
+          source_version?: number
+          status?: string
+          storage_path?: string
+          synced_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_drive_sync_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_integration_settings: {
+        Row: {
+          drive_client_id: string | null
+          drive_client_secret_ciphertext: string | null
+          drive_connected_at: string | null
+          drive_enabled: boolean
+          drive_last_sync_at: string | null
+          drive_refresh_token_ciphertext: string | null
+          drive_root_folder_id: string | null
+          email_api_secret_ciphertext: string | null
+          email_domain: string | null
+          email_domain_verified_at: string | null
+          email_from_address: string | null
+          email_from_name: string | null
+          email_last_test_at: string | null
+          email_last_test_status: string | null
+          email_provider: string
+          email_reply_to: string | null
+          email_smtp_host: string | null
+          email_smtp_port: number | null
+          email_smtp_secret_ciphertext: string | null
+          email_smtp_security: string
+          email_smtp_username: string | null
+          retention_approved_at: string | null
+          retention_approved_by: string | null
+          retention_days: number | null
+          retention_policy_text: string | null
+          retention_policy_version: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          drive_client_id?: string | null
+          drive_client_secret_ciphertext?: string | null
+          drive_connected_at?: string | null
+          drive_enabled?: boolean
+          drive_last_sync_at?: string | null
+          drive_refresh_token_ciphertext?: string | null
+          drive_root_folder_id?: string | null
+          email_api_secret_ciphertext?: string | null
+          email_domain?: string | null
+          email_domain_verified_at?: string | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_last_test_at?: string | null
+          email_last_test_status?: string | null
+          email_provider?: string
+          email_reply_to?: string | null
+          email_smtp_host?: string | null
+          email_smtp_port?: number | null
+          email_smtp_secret_ciphertext?: string | null
+          email_smtp_security?: string
+          email_smtp_username?: string | null
+          retention_approved_at?: string | null
+          retention_approved_by?: string | null
+          retention_days?: number | null
+          retention_policy_text?: string | null
+          retention_policy_version?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          drive_client_id?: string | null
+          drive_client_secret_ciphertext?: string | null
+          drive_connected_at?: string | null
+          drive_enabled?: boolean
+          drive_last_sync_at?: string | null
+          drive_refresh_token_ciphertext?: string | null
+          drive_root_folder_id?: string | null
+          email_api_secret_ciphertext?: string | null
+          email_domain?: string | null
+          email_domain_verified_at?: string | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_last_test_at?: string | null
+          email_last_test_status?: string | null
+          email_provider?: string
+          email_reply_to?: string | null
+          email_smtp_host?: string | null
+          email_smtp_port?: number | null
+          email_smtp_secret_ciphertext?: string | null
+          email_smtp_security?: string
+          email_smtp_username?: string | null
+          retention_approved_at?: string | null
+          retention_approved_by?: string | null
+          retention_days?: number | null
+          retention_policy_text?: string | null
+          retention_policy_version?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_integration_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_invitations: {
         Row: {
           accepted_at: string | null
@@ -2061,6 +2265,65 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_privacy_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          decision_notes: string | null
+          id: string
+          legal_basis_review: string | null
+          request_type: string
+          requester_email: string | null
+          requester_user_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subject_description: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          decision_notes?: string | null
+          id?: string
+          legal_basis_review?: string | null
+          request_type: string
+          requester_email?: string | null
+          requester_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject_description: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          decision_notes?: string | null
+          id?: string
+          legal_basis_review?: string | null
+          request_type?: string
+          requester_email?: string | null
+          requester_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject_description?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_privacy_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
