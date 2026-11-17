@@ -79,6 +79,23 @@ export interface JsonObject {
   cnae_fiscal?: unknown;
   cnae_fiscal_descricao?: unknown;
   cnae_principal?: unknown;
+  codigo?: unknown;
+  code?: unknown;
+  id?: unknown;
+  subclasse?: unknown;
+  text?: unknown;
+  description?: unknown;
+  nome_socio?: unknown;
+  name?: unknown;
+  nome_socio_razao_social?: unknown;
+  qualificacao_socio?: unknown;
+  qual?: unknown;
+  qualificacao?: unknown;
+  cargo?: unknown;
+  faixa_etaria?: unknown;
+  faixaEtaria?: unknown;
+  ddd1?: unknown;
+  telefone1?: unknown;
 }
 
 export interface CnpjPartner {
