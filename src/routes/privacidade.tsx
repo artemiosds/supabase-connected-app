@@ -28,7 +28,7 @@ function PoliticaPrivacidade() {
           <h2>1. Escopo e papéis no tratamento</h2>
           <p>A plataforma PRIMUSGESTAO é disponibilizada sob a marca PRIMUS TECNOLOGIA E GESTÃO, cujo titular e responsável informado é ARTEMIO SILVA DE SOUZA, pessoa física. A plataforma apoia a gestão administrativa de fornecedores, documentos, processos, contratos e atividades relacionadas à gestão pública da saúde. A plataforma pode ser utilizada por diferentes Secretarias e organizações, cada qual em seu ambiente.</p>
           <p>Em regra, a organização cliente que insere e administra dados de fornecedores, representantes e documentos define as finalidades e instruções do tratamento desses dados e atua como controladora. O fornecedor que opera a plataforma poderá atuar como operador desses dados, conforme o contrato e as instruções legítimas da organização cliente. Para dados necessários à administração da própria plataforma, segurança, suporte e cumprimento de obrigações legais, o fornecedor poderá atuar como controlador independente. A definição final depende dos contratos e da operação efetivamente adotada.</p>
-          <p><strong>Responsável informado pela plataforma:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço para contato: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil.</p>
+          <p><strong>Responsável informado pela plataforma:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. CPF: 047.782.792-63. Endereço para contato: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil.</p>
 
           <h2>2. Dados que podem ser tratados</h2>
           <ul>
@@ -67,7 +67,7 @@ function PoliticaPrivacidade() {
 
           <h2>10. Alterações e contato</h2>
           <p>Esta política poderá ser atualizada para refletir mudanças no serviço, nos provedores ou nas exigências legais. A versão vigente deverá indicar a data de atualização e ser comunicada às organizações clientes quando a alteração for relevante.</p>
-          <p><strong>Identificação e contato do fornecedor:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
+          <p><strong>Identificação e contato do fornecedor:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. CPF: 047.782.792-63. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
         </article>
       </div>
     </main>
