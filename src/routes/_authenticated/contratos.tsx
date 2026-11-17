@@ -489,7 +489,12 @@ function Contratos() {
                   >
                     <Pencil className="h-4 w-4" /> Editar contrato
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setAditivoDe(c)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Registrar aditivo — Contrato ${c.number}`}
+                    onClick={() => setAditivoDe(c)}
+                  >
                     <FilePlus2 className="h-4 w-4" /> Registrar aditivo
                   </Button>
                   {c.process_id && (
