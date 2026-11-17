@@ -14,3 +14,12 @@ verify_jwt = true
 [functions.send-expiry-notifications]
 # GitHub Actions authenticates this endpoint with x-expiry-alert-secret.
 verify_jwt = false
+
+[functions.tenant-integration-settings]
+verify_jwt = true
+
+[functions.google-drive-oauth-callback]
+verify_jwt = false
+
+[functions.google-drive-sync]
+verify_jwt = true

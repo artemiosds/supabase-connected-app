@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { detectLogoMime, imageSize, MAX_LOGO_BYTES } from "@/lib/docx-engine";
 import { isMissingDocumentBrandingTable } from "@/lib/document-branding";
+import { TenantIntegrationsSettings } from "@/components/settings/tenant-integrations-settings";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -768,6 +769,8 @@ function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      <TenantIntegrationsSettings />
 
       <Card>
         <CardHeader>
