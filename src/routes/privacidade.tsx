@@ -26,9 +26,9 @@ function PoliticaPrivacidade() {
 
         <article className="prose prose-neutral mt-8 max-w-none dark:prose-invert prose-headings:tracking-tight prose-p:leading-7">
           <h2>1. Escopo e papéis no tratamento</h2>
-          <p>A PRIMUS TECNOLOGIA E GESTÃO disponibiliza o PRIMUSGESTAO, uma plataforma de software destinada a apoiar a gestão administrativa de fornecedores, documentos, processos, contratos e atividades relacionadas à gestão pública da saúde. A plataforma pode ser utilizada por diferentes Secretarias e organizações, cada qual em seu ambiente.</p>
+          <p>A plataforma PRIMUSGESTAO é disponibilizada sob a marca PRIMUS TECNOLOGIA E GESTÃO, cujo titular e responsável informado é ARTEMIO SILVA DE SOUZA, pessoa física. A plataforma apoia a gestão administrativa de fornecedores, documentos, processos, contratos e atividades relacionadas à gestão pública da saúde. A plataforma pode ser utilizada por diferentes Secretarias e organizações, cada qual em seu ambiente.</p>
           <p>Em regra, a organização cliente que insere e administra dados de fornecedores, representantes e documentos define as finalidades e instruções do tratamento desses dados e atua como controladora. O fornecedor que opera a plataforma poderá atuar como operador desses dados, conforme o contrato e as instruções legítimas da organização cliente. Para dados necessários à administração da própria plataforma, segurança, suporte e cumprimento de obrigações legais, o fornecedor poderá atuar como controlador independente. A definição final depende dos contratos e da operação efetivamente adotada.</p>
-          <p><strong>Responsável pelo PRIMUSGESTAO:</strong> [PREENCHER NOME/RAZÃO SOCIAL, CPF/CNPJ E ENDEREÇO DO FORNECEDOR].</p>
+          <p><strong>Responsável informado pela plataforma:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço para contato: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil.</p>
 
           <h2>2. Dados que podem ser tratados</h2>
           <ul>
@@ -60,14 +60,14 @@ function PoliticaPrivacidade() {
           <h2>8. Direitos dos titulares</h2>
           <p>Os titulares podem exercer os direitos previstos na LGPD perante o controlador responsável pelo tratamento, incluindo confirmação, acesso, correção, anonimização, bloqueio, eliminação quando cabível, portabilidade nos termos da regulamentação, informação sobre compartilhamentos e revisão de decisões automatizadas quando aplicável.</p>
           <p>Solicitações relacionadas a dados inseridos por uma Secretaria devem ser encaminhadas inicialmente à própria organização controladora. A plataforma disponibiliza mecanismos internos para registrar e analisar solicitações, mas o registro de um pedido não significa que a exclusão, exportação ou outra providência tenha sido automaticamente executada. O controlador deve avaliar, decidir e efetivar a resposta cabível.</p>
-          <p><strong>Canal de privacidade do fornecedor:</strong> [PREENCHER E-MAIL OFICIAL DE PRIVACIDADE]. Para dados tratados sob responsabilidade da organização cliente, contate também o encarregado ou canal oficial dessa organização.</p>
+          <p><strong>Canal de privacidade do fornecedor:</strong> artemiosouza99@gmail.com. Para dados tratados sob responsabilidade da organização cliente, contate também o encarregado ou canal oficial dessa organização.</p>
 
           <h2>9. Transferências internacionais</h2>
           <p>Provedores de infraestrutura ou integrações podem processar dados em outros países, conforme a região de hospedagem, arquitetura e termos dos serviços contratados. Antes da operação com dados reais, o controlador deve verificar os provedores, a localização do tratamento e os mecanismos de transferência internacional aplicáveis à LGPD e à regulamentação da ANPD.</p>
 
           <h2>10. Alterações e contato</h2>
           <p>Esta política poderá ser atualizada para refletir mudanças no serviço, nos provedores ou nas exigências legais. A versão vigente deverá indicar a data de atualização e ser comunicada às organizações clientes quando a alteração for relevante.</p>
-          <p><strong>Identificação e contato do fornecedor:</strong> [PREENCHER NOME/RAZÃO SOCIAL, CPF/CNPJ, ENDEREÇO E E-MAIL].</p>
+          <p><strong>Identificação e contato do fornecedor:</strong> ARTEMIO SILVA DE SOUZA, pessoa física, titular da marca PRIMUS TECNOLOGIA E GESTÃO. Endereço: Rua Padre José Nicolino de Souza, 1440, bairro São Pedro, Oriximiná, Pará, Brasil. E-mail: artemiosouza99@gmail.com.</p>
         </article>
       </div>
     </main>
