@@ -345,11 +345,7 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
 
         return (
           <section key={grupo.id} className="space-y-1">
-            <p
-              className="px-3 pt-4 text-xs font-semibold uppercase text-muted-foreground"
-            >
-              {grupo.rotulo}
-            </p>
+            <p className="px-3 pt-4 text-xs font-semibold">{grupo.rotulo}</p>
             {itensDoGrupo.map(({ para, rotulo, icone: Icone }) => {
               const ativo =
                 pathname === para || (para !== "/painel" && pathname.startsWith(`${para}/`));
