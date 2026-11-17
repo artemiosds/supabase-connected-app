@@ -3,7 +3,7 @@
  * the browser fallback. No Deno/Node APIs. Personal documents of partners
  * (CPF) are never copied into the normalised result.
  */
-export type JsonObject = Record<string, unknown>;
+export type JsonObject = any;
 
 export interface CnpjPartner {
   name: string;
