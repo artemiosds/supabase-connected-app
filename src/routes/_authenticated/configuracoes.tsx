@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+
 import {
   Select,
   SelectContent,
@@ -533,6 +533,14 @@ function Configuracoes() {
         </nav>
 
         <div className="min-w-0">
+          <div className="mb-4 border-b pb-4" aria-live="polite">
+            <h2 className="text-lg font-semibold text-foreground">
+              {CATEGORIAS.find((item) => item.id === categoria)?.titulo}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {CATEGORIAS.find((item) => item.id === categoria)?.descricao}
+            </p>
+          </div>
           <section hidden={categoria !== "conta"} className="space-y-6">
             <Card>
               <CardHeader>
@@ -561,6 +569,28 @@ function Configuracoes() {
                     Salvar perfil
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados da conta</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Informações da sessão atualmente autenticada.
+                </p>
+              </CardHeader>
+              <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-foreground">E-mail de acesso</p>
+                  <p className="break-words text-muted-foreground">
+                    {session?.user.email ?? "Não disponível"}
+                  </p>
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-foreground">Organização selecionada</p>
+                  <p className="break-words text-muted-foreground">
+                    {selecionado?.nome ?? "Nenhuma"}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </section>
@@ -875,25 +905,6 @@ function Configuracoes() {
 
           <section hidden={categoria !== "integracoes"} className="space-y-6">
             <TenantIntegrationsSettings />
-          </section>
-
-          <section hidden={categoria !== "conta"} className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Conta</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  <p className="font-medium text-foreground">E-mail de acesso</p>
-                  <p className="text-muted-foreground">{session?.user.email}</p>
-                </div>
-                <Separator />
-                <div>
-                  <p className="font-medium text-foreground">Organização selecionada</p>
-                  <p className="text-muted-foreground">{selecionado?.nome ?? "Nenhuma"}</p>
-                </div>
-              </CardContent>
-            </Card>
           </section>
         </div>
       </div>
