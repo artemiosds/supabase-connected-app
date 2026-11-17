@@ -1052,6 +1052,9 @@ export type Database = {
           name: string
         }
         Update: {
+          cnpj_details?: Json
+          cnpj_source?: string | null
+          cnpj_consulted_at?: string | null
           category?: string
           code?: string
           created_at?: string
@@ -1808,6 +1811,9 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          cnpj_details: Json
+          cnpj_source: string | null
+          cnpj_consulted_at: string | null
           category: string
           city: string | null
           cnpj: string
@@ -1833,6 +1839,9 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          cnpj_details?: Json
+          cnpj_source?: string | null
+          cnpj_consulted_at?: string | null
           category?: string
           city?: string | null
           cnpj: string
