@@ -1,0 +1,29 @@
+name: Temporary CNPJ formatter
+on:
+  push:
+    branches:
+      - fix/cnpj-full-registration-qsa-migration
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/cnpj-full-registration-qsa-migration
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx prettier --write src/routes/_authenticated/fornecedores.tsx
+      - name: Commit formatting
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/routes/_authenticated/fornecedores.tsx
+            git commit -m "Formata consulta cadastral de fornecedores"
+            git push origin HEAD:fix/cnpj-full-registration-qsa-migration
+          fi
