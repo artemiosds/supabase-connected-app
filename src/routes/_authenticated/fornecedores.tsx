@@ -314,6 +314,14 @@ function Fornecedores() {
     campo: K,
     valor: FormularioFornecedor[K],
   ) {
+    if (campo === "cnpj") {
+      // Invalida qualquer consulta anterior assim que o usuário altera o documento.
+      // Isso evita que uma resposta atrasada exiba sucesso para um CNPJ diferente.
+      consultaCnpjRef.current += 1;
+      ultimoCnpjConsultadoRef.current = "";
+      setConsultandoCnpj(false);
+      setConsultaCnpj(null);
+    }
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
 
