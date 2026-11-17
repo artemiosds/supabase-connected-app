@@ -906,7 +906,6 @@ function Configuracoes() {
           <section hidden={categoria !== "integracoes"} className="space-y-6">
             <TenantIntegrationsSettings />
           </section>
-
         </div>
       </div>
     </div>
