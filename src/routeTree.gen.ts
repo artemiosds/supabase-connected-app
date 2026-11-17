@@ -14,8 +14,10 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AdminMasterRouteImport } from './routes/admin-master'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated/contratos'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
@@ -51,6 +53,11 @@ const EntrarRoute = EntrarRouteImport.update({
   path: '/entrar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
   id: '/recuperar-senha',
   path: '/recuperar-senha',
@@ -59,6 +66,11 @@ const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
 const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
   id: '/redefinir-senha',
   path: '/redefinir-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedConfiguracoesRoute =
@@ -120,8 +132,10 @@ export interface FileRoutesByFullPath {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/termos': typeof TermosRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/contratos': typeof AuthenticatedContratosRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -138,8 +152,10 @@ export interface FileRoutesByTo {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/termos': typeof TermosRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/contratos': typeof AuthenticatedContratosRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
@@ -158,8 +174,10 @@ export interface FileRoutesById {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/termos': typeof TermosRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/contratos': typeof AuthenticatedContratosRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
@@ -178,8 +196,10 @@ export interface FileRouteTypes {
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/termos'
     | '/configuracoes'
     | '/contratos'
     | '/documentos'
@@ -196,8 +216,10 @@ export interface FileRouteTypes {
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/termos'
     | '/configuracoes'
     | '/contratos'
     | '/documentos'
@@ -215,8 +237,10 @@ export interface FileRouteTypes {
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/termos'
     | '/_authenticated/configuracoes'
     | '/_authenticated/contratos'
     | '/_authenticated/documentos'
@@ -235,8 +259,10 @@ export interface RootRouteChildren {
   AdminMasterRoute: typeof AdminMasterRoute
   CadastroRoute: typeof CadastroRoute
   EntrarRoute: typeof EntrarRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
+  TermosRoute: typeof TermosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -276,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntrarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recuperar-senha': {
       id: '/recuperar-senha'
       path: '/recuperar-senha'
@@ -288,6 +321,13 @@ declare module '@tanstack/react-router' {
       path: '/redefinir-senha'
       fullPath: '/redefinir-senha'
       preLoaderRoute: typeof RedefinirSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/configuracoes': {
@@ -399,8 +439,10 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMasterRoute: AdminMasterRoute,
   CadastroRoute: CadastroRoute,
   EntrarRoute: EntrarRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
+  TermosRoute: TermosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

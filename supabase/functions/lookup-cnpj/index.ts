@@ -1,4 +1,10 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
+import {
+  combineCnpjResults,
+  mapCnpjProvider,
+  providerFailed,
+  type CnpjLookupData,
+} from "../_shared/cnpj-mapping.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -14,86 +20,6 @@ function json(payload: JsonObject, status: number, origin: string) {
       Vary: "Origin",
     },
   });
-}
-
-function object(value: unknown): JsonObject {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonObject
-    : {};
-}
-
-function first(...values: unknown[]): string | null {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim();
-    if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  }
-  return null;
-}
-
-function mapData(raw: JsonObject, source: string) {
-  const data = object(raw.data ?? raw);
-  const estabelecimento = object(data.estabelecimento);
-  const endereco = object(data.endereco ?? estabelecimento.endereco);
-  const address = object(data.address);
-  const ddd = first(data.ddd_1, estabelecimento.ddd1, estabelecimento.ddd_1);
-  const telefone = first(data.telefone_1, data.telefone, estabelecimento.telefone1, estabelecimento.telefone_1);
-
-  return {
-    cnpj: first(data.cnpj, data.cnpj_basico, estabelecimento.cnpj),
-    legal_name: first(
-      data.razao_social, data.razaoSocial, data.nome_empresarial,
-      data.nome, data.company_name, data.legal_name,
-    ),
-    trade_name: first(
-      data.nome_fantasia, data.nomeFantasia, data.fantasia,
-      estabelecimento.nome_fantasia, data.trade_name,
-    ),
-    street: first(
-      data.logradouro, endereco.logradouro, address.street,
-      estabelecimento.logradouro, data.street,
-    ),
-    street_number: first(
-      data.numero, endereco.numero, address.number,
-      estabelecimento.numero, data.number,
-    ),
-    complement: first(
-      data.complemento, endereco.complemento, address.complement,
-      estabelecimento.complemento, data.complement,
-    ),
-    neighborhood: first(
-      data.bairro, endereco.bairro, address.neighborhood,
-      estabelecimento.bairro, data.neighborhood,
-    ),
-    postal_code: first(
-      data.cep, endereco.cep, address.postal_code,
-      estabelecimento.cep, data.postal_code,
-    ),
-    city: first(
-      data.municipio, data.municipio_nome, data.city,
-      endereco.municipio, address.city, estabelecimento.municipio,
-    ),
-    state: first(
-      data.uf, data.estado, endereco.uf, address.state,
-      estabelecimento.uf, data.state,
-    ),
-    contact_phone: first(
-      ddd && telefone ? ddd + telefone : null,
-      data.ddd_2 && data.telefone_2 ? String(data.ddd_2) + String(data.telefone_2) : null,
-      estabelecimento.ddd_2 && estabelecimento.telefone_2
-        ? String(estabelecimento.ddd_2) + String(estabelecimento.telefone_2)
-        : null,
-      data.phone, estabelecimento.telefone,
-    ),
-    contact_email: first(data.email, data.email_contato, estabelecimento.email),
-    website: first(data.website, data.site, data.url, estabelecimento.website),
-    registration_status: first(
-      data.descricao_situacao_cadastral, data.situacao_cadastral,
-      data.situacaoCadastral, estabelecimento.descricao_situacao_cadastral,
-      estabelecimento.situacao_cadastral, data.status,
-    ),
-    source,
-    consulted_at: new Date().toISOString(),
-  };
 }
 
 async function fetchJson(url: string): Promise<JsonObject> {
@@ -146,32 +72,33 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Informe um CNPJ válido com 14 caracteres." }, 400, origin);
     }
 
+    const numeric = /^[0-9]{14}$/.test(cnpj);
     const providers: Array<{ name: string; url: string; enabled: boolean }> = [
       { name: "Minha Receita", url: `https://minhareceita.org/${cnpj}`, enabled: true },
-      {
-        name: "OpenCNPJ",
-        url: `https://kitana.opencnpj.com/cnpj/${cnpj}`,
-        enabled: /^[0-9]{14}$/.test(cnpj),
-      },
+      { name: "OpenCNPJ", url: `https://kitana.opencnpj.com/cnpj/${cnpj}`, enabled: numeric },
       { name: "BrasilAPI", url: `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, enabled: true },
-    ];
+      { name: "ReceitaWS", url: `https://receitaws.com.br/v1/cnpj/${cnpj}`, enabled: numeric },
+    ].filter((provider) => provider.enabled);
 
-    const failures: string[] = [];
-    for (const provider of providers) {
-      if (!provider.enabled) continue;
-      try {
+    // All providers run in parallel with individual timeouts; one failure never blocks the others.
+    const settled = await Promise.allSettled(
+      providers.map(async (provider) => {
         const raw = await fetchJson(provider.url);
-        if (raw.success === false || raw.status === "ERROR") {
-          throw new Error("NOT_FOUND");
-        }
-        const mapped = mapData(raw, provider.name);
+        if (providerFailed(raw)) throw new Error("NOT_FOUND");
+        const mapped = mapCnpjProvider(raw, provider.name);
         if (!mapped.legal_name) throw new Error("MISSING_COMPANY_NAME");
-        return json({ data: mapped }, 200, origin);
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : "ERROR";
-        failures.push(`${provider.name}:${reason}`);
-      }
-    }
+        return mapped;
+      }),
+    );
+    const failures: string[] = [];
+    const results: CnpjLookupData[] = [];
+    settled.forEach((outcome, index) => {
+      if (outcome.status === "fulfilled") results.push(outcome.value);
+      else failures.push(`${providers[index].name}:${outcome.reason instanceof Error ? outcome.reason.message : "ERROR"}`);
+    });
+    const combined = combineCnpjResults(results, cnpj);
+    if (combined) return json({ data: combined, providers_failed: failures }, 200, origin);
+    if (results.length) failures.push("CNPJ_DIVERGENTE");
 
     // Keep diagnostics useful without logging the full CNPJ or any returned personal data.
     console.warn("lookup-cnpj: all providers failed", {
