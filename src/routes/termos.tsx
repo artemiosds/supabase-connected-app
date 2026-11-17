@@ -3,8 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: "Termos de Uso — PRIMUSGESTAO" },
-      { name: "description", content: "Condições preliminares de utilização do PRIMUSGESTAO." },
+      { title: "Termos de Uso — PRIMUS TECNOLOGIA E GESTÃO" },
+      { name: "description", content: "Condições preliminares de utilização da plataforma PRIMUSGESTAO, da marca PRIMUS TECNOLOGIA E GESTÃO." },
     ],
   }),
   component: TermosDeUso,
@@ -16,7 +16,7 @@ function TermosDeUso() {
       <div className="mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
         <Link to="/" className="text-sm font-medium text-primary hover:underline">← Voltar ao início</Link>
         <header className="mt-8 border-b pb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">PRIMUSGESTAO</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">PRIMUS TECNOLOGIA E GESTÃO</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Termos de Uso</h1>
           <p className="mt-3 text-sm text-muted-foreground">Versão preliminar — 17 de novembro de 2026</p>
           <p className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm leading-6">
@@ -26,7 +26,7 @@ function TermosDeUso() {
 
         <article className="prose prose-neutral mt-8 max-w-none dark:prose-invert prose-headings:tracking-tight prose-p:leading-7">
           <h2>1. Objeto e aceitação</h2>
-          <p>O PRIMUSGESTAO é uma plataforma de apoio à gestão administrativa de fornecedores, documentos, processos, contratos e rotinas relacionadas à gestão pública da saúde. O acesso é destinado a organizações clientes e às pessoas por elas autorizadas. O uso da plataforma implica ciência destes termos e dos instrumentos específicos celebrados com a organização cliente, sem afastar as normas legais aplicáveis.</p>
+          <p>A PRIMUS TECNOLOGIA E GESTÃO disponibiliza a plataforma PRIMUSGESTAO, destinada a apoiar à gestão administrativa de fornecedores, documentos, processos, contratos e rotinas relacionadas à gestão pública da saúde. O acesso é destinado a organizações clientes e às pessoas por elas autorizadas. O uso da plataforma implica ciência destes termos e dos instrumentos específicos celebrados com a organização cliente, sem afastar as normas legais aplicáveis.</p>
 
           <h2>2. Contratação e organizações</h2>
           <p>O acesso institucional depende de contratação, habilitação ou autorização válida da organização cliente. Cada organização administra seus usuários, perfis e permissões, dentro dos limites do serviço. Condições de preço, prazo, suporte, disponibilidade, implantação, limites de uso e encerramento devem constar de proposta ou contrato próprio.</p>
