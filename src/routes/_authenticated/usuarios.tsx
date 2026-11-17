@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Ellipsis,
   Loader2,
+  LockKeyhole,
   Pencil,
   Plus,
   RefreshCw,
   Search,
   ShieldCheck,
   UserCheck,
+  UserRound,
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +19,15 @@ import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -43,6 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
@@ -100,6 +112,8 @@ function Usuarios() {
   const [buscando, setBuscando] = useState(false);
   const [vinculando, setVinculando] = useState(false);
   const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [filtroPapel, setFiltroPapel] = useState("todos");
   const [canManageRoles, setCanManageRoles] = useState(false);
   const [permissionCatalog, setPermissionCatalog] = useState<
     { id: string; code: string; name: string; description: string; module: string }[]
@@ -228,10 +242,36 @@ function Usuarios() {
     void carregar();
   }, [carregar]);
 
-  const lista = membros.filter((m) => {
+  const convitesPendentes = convites.filter(
+    (invite) => invite.status === "pending" && !conviteExpirado(invite),
+  );
+  const lista = membros.filter((member) => {
     const term = busca.trim().toLocaleLowerCase("pt-BR");
-    return !term || (m.profiles?.full_name ?? "").toLocaleLowerCase("pt-BR").includes(term);
+    const matchesName =
+      !term || (member.profiles?.full_name ?? "").toLocaleLowerCase("pt-BR").includes(term);
+    const matchesStatus = filtroStatus === "todos" || member.status === filtroStatus;
+    const matchesRole =
+      filtroPapel === "todos" ||
+      (member.membership_roles ?? []).some((item) => item.role_id === filtroPapel);
+    return matchesName && matchesStatus && matchesRole;
   });
+  const permissoesPorModulo = useMemo(
+    () =>
+      permissionCatalog.reduce<Record<string, typeof permissionCatalog>>((groups, permission) => {
+        const moduleName = permission.module?.trim() || "Outros";
+        (groups[moduleName] ??= []).push(permission);
+        return groups;
+      }, {}),
+    [permissionCatalog],
+  );
+  const iniciais = (nome: string) =>
+    nome
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toLocaleUpperCase("pt-BR") ?? "")
+      .join("");
 
   async function localizarConta(e: FormEvent) {
     e.preventDefault();
@@ -352,6 +392,7 @@ function Usuarios() {
   }
 
   function abrirEdicaoPapel(membro: Membro) {
+    if (!capacidades.can_assign_role || membro.user_id === session?.user.id) return;
     const roleId = membro.membership_roles?.[0]?.role_id ?? "";
     setMembroEmEdicao(membro);
     setNovoPapelId(roleId);
@@ -359,7 +400,15 @@ function Usuarios() {
   }
 
   async function salvarPapel() {
-    if (!membroEmEdicao || !novoPapelId || !selecionado || salvandoPapel) return;
+    if (
+      !membroEmEdicao ||
+      membroEmEdicao.user_id === session?.user.id ||
+      !capacidades.can_assign_role ||
+      !novoPapelId ||
+      !selecionado ||
+      salvandoPapel
+    )
+      return;
     setSalvandoPapel(true);
     setErro(null);
     try {
@@ -380,7 +429,7 @@ function Usuarios() {
   }
 
   function abrirEditorPerfil(role?: TenantRole) {
-    if (!canManageRoles) return;
+    if (!canManageRoles || role?.is_system) return;
     setRoleEditing(role ?? null);
     setRoleName(role?.name ?? "");
     setRoleSlug(role?.slug ?? "");
@@ -395,7 +444,14 @@ function Usuarios() {
 
   async function salvarPerfil(event: FormEvent) {
     event.preventDefault();
-    if (!selecionado || !canManageRoles || !selectedPermissionIds.length || savingRole) return;
+    if (
+      !selecionado ||
+      !canManageRoles ||
+      roleEditing?.is_system ||
+      !selectedPermissionIds.length ||
+      savingRole
+    )
+      return;
     setSavingRole(true);
     try {
       const { error } = await db.rpc("save_tenant_role_with_permissions", {
@@ -420,7 +476,7 @@ function Usuarios() {
   }
 
   async function alternarStatus(membro: Membro) {
-    if (!selecionado || !capacidades.can_suspend) return;
+    if (!selecionado || !capacidades.can_suspend || membro.user_id === session?.user.id) return;
     const novoStatus = membro.status === "active" ? "suspended" : "active";
     const { error: updateError } = await db
       .from("tenant_memberships")
@@ -448,17 +504,20 @@ function Usuarios() {
         </AlertDescription>
       </Alert>
     );
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Usuários</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Acessos, papéis e situação dos usuários de {selecionado.nome}.
+      <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-primary">
+            <UserRound className="h-4 w-4" /> Administração da Secretaria
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Usuários</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Gerencie a equipe, acompanhe convites e organize os níveis de acesso de{" "}
+            {selecionado.nome}.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -466,7 +525,7 @@ function Usuarios() {
             disabled={loading}
             aria-label="Atualizar lista"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           </Button>
           {capacidades.can_create && capacidades.can_assign_role && (
             <>
@@ -479,7 +538,7 @@ function Usuarios() {
                   setDialogoConviteAberto(true);
                 }}
               >
-                <Plus className="h-4 w-4" /> Convidar por e-mail
+                <Plus /> Convidar por e-mail
               </Button>
               <Button
                 onClick={() => {
@@ -489,53 +548,441 @@ function Usuarios() {
                   setDialogoAberto(true);
                 }}
               >
-                <UserCheck className="h-4 w-4" /> Vincular conta existente
+                <UserCheck /> Vincular conta
               </Button>
             </>
           )}
         </div>
-      </div>
-
-      {canManageRoles && (
-        <section className="space-y-3 rounded-lg border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold">Perfis e permissões</h2>
-              <p className="text-sm text-muted-foreground">
-                Crie perfis personalizados e escolha os acessos de cada função. Perfis nativos
-                permanecem protegidos.
-              </p>
-            </div>
-            <Button onClick={() => abrirEditorPerfil()}>
-              <Plus className="h-4 w-4" /> Novo perfil
-            </Button>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {papeis.map((role) => (
-              <div key={role.id} className="rounded-md border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium">{role.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {role.slug} · {rolePermissionRows.filter((x) => x.role_id === role.id).length}{" "}
-                      permissões
-                    </p>
-                    {role.description && (
-                      <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>
-                    )}
-                  </div>
-                  {role.is_system ? (
-                    <Badge variant="outline">Nativo protegido</Badge>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => abrirEditorPerfil(role)}>
-                      <Pencil className="h-3.5 w-3.5" /> Editar
-                    </Button>
-                  )}
+      </header>
+      {erro && (
+        <Alert variant="destructive">
+          <AlertTitle>Não foi possível concluir a operação</AlertTitle>
+          <AlertDescription>{erro}</AlertDescription>
+        </Alert>
+      )}
+      {!capacidades.can_view && !loading && !canManageRoles ? (
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Acesso de consulta não autorizado</AlertTitle>
+          <AlertDescription>
+            Seu papel não possui permissão para listar os usuários desta Secretaria.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Tabs defaultValue="equipe" className="space-y-5">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1 sm:inline-grid sm:w-auto sm:grid-cols-3">
+            <TabsTrigger value="equipe" className="gap-2 px-3 py-2.5">
+              <UserRound className="h-4 w-4" /> Equipe vinculada
+            </TabsTrigger>
+            <TabsTrigger value="convites" className="gap-2 px-3 py-2.5">
+              Convites{" "}
+              <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">
+                {convitesPendentes.length}
+              </Badge>
+            </TabsTrigger>
+            {canManageRoles && (
+              <TabsTrigger value="perfis" className="col-span-2 gap-2 px-3 py-2.5 sm:col-span-1">
+                <ShieldCheck className="h-4 w-4" /> Perfis e permissões
+              </TabsTrigger>
+            )}
+          </TabsList>
+          <TabsContent value="equipe" className="space-y-5">
+            {!capacidades.can_view ? (
+              <Alert>
+                <AlertTitle>Consulta da equipe não autorizada</AlertTitle>
+                <AlertDescription>
+                  Seu papel não possui permissão para listar os usuários desta Secretaria.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Metric
+                    title="Total de vínculos"
+                    value={membros.length}
+                    note="Contas vinculadas à Secretaria"
+                  />
+                  <Metric
+                    title="Ativos"
+                    value={membros.filter((m) => m.status === "active").length}
+                    note="Com acesso habilitado"
+                    tone="green"
+                  />
+                  <Metric
+                    title="Suspensos"
+                    value={membros.filter((m) => m.status === "suspended").length}
+                    note="Sem acesso no momento"
+                    tone="amber"
+                  />
+                  <Metric
+                    title="Convites pendentes"
+                    value={convitesPendentes.length}
+                    note="Aguardando confirmação"
+                  />
                 </div>
+                <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                  <div className="border-b p-4 sm:p-5">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h2 className="font-semibold">Equipe da Secretaria</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Consulte os vínculos e gerencie os acessos individuais.
+                        </p>
+                      </div>
+                      <Badge variant="outline">{lista.length} resultado(s)</Badge>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_210px]">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          className="pl-9"
+                          placeholder="Buscar pelo nome..."
+                          aria-label="Buscar usuário pelo nome"
+                          value={busca}
+                          onChange={(e) => setBusca(e.target.value)}
+                        />
+                      </div>
+                      <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                        <SelectTrigger aria-label="Filtrar por situação">
+                          <SelectValue placeholder="Situação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todas as situações</SelectItem>
+                          <SelectItem value="active">Ativos</SelectItem>
+                          <SelectItem value="suspended">Suspensos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filtroPapel} onValueChange={setFiltroPapel}>
+                        <SelectTrigger aria-label="Filtrar por papel">
+                          <SelectValue placeholder="Papel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os papéis</SelectItem>
+                          {papeis.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableHead className="pl-5">Profissional</TableHead>
+                          <TableHead>Perfil de acesso</TableHead>
+                          <TableHead>Situação</TableHead>
+                          <TableHead className="w-16 pr-5 text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-12 text-center">
+                              <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
+                              <span className="mt-2 block text-xs text-muted-foreground">
+                                Carregando equipe...
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ) : lista.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-12 text-center">
+                              <UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                              <p className="mt-2 font-medium">Nenhum usuário encontrado</p>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Ajuste os filtros ou vincule uma nova conta à Secretaria.
+                              </p>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          lista.map((member) => {
+                            const self = member.user_id === session?.user.id,
+                              name = member.profiles?.full_name ?? "Usuário";
+                            return (
+                              <TableRow key={member.id}>
+                                <TableCell className="py-3 pl-5">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <Avatar className="h-10 w-10 border">
+                                      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                                        {iniciais(name) || "US"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-foreground">{name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {self
+                                          ? "Conta atualmente conectada"
+                                          : `ID: ${member.user_id.slice(0, 8)}`}
+                                      </p>
+                                    </div>
+                                    {self && (
+                                      <Badge variant="secondary" className="shrink-0">
+                                        Sua conta
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {(member.membership_roles ?? []).map((item, i) => (
+                                      <Badge
+                                        key={item.role_id || i}
+                                        variant="secondary"
+                                        className="font-medium"
+                                      >
+                                        {item.tenant_roles?.name ?? "—"}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      member.status === "active"
+                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                        : member.status === "suspended"
+                                          ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                          : "text-muted-foreground"
+                                    }
+                                  >
+                                    <span
+                                      className={`mr-1.5 h-1.5 w-1.5 rounded-full ${member.status === "active" ? "bg-emerald-500" : member.status === "suspended" ? "bg-amber-500" : "bg-muted-foreground"}`}
+                                    />
+                                    {member.status === "active"
+                                      ? "Ativo"
+                                      : member.status === "suspended"
+                                        ? "Suspenso"
+                                        : member.status === "invited"
+                                          ? "Convidado"
+                                          : "Inativo"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="pr-5 text-right">
+                                  {!self ? (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label={`Ações de ${name}`}
+                                        >
+                                          <Ellipsis className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        {capacidades.can_assign_role && (
+                                          <DropdownMenuItem
+                                            onSelect={() => abrirEdicaoPapel(member)}
+                                          >
+                                            <Pencil /> Alterar papel
+                                          </DropdownMenuItem>
+                                        )}
+                                        {capacidades.can_assign_role && capacidades.can_suspend && (
+                                          <DropdownMenuSeparator />
+                                        )}
+                                        {capacidades.can_suspend && (
+                                          <DropdownMenuItem
+                                            className={
+                                              member.status === "active"
+                                                ? "text-destructive focus:text-destructive"
+                                                : ""
+                                            }
+                                            onSelect={() => void alternarStatus(member)}
+                                          >
+                                            {member.status === "active" ? (
+                                              <>
+                                                <UserX /> Suspender acesso
+                                              </>
+                                            ) : (
+                                              <>
+                                                <UserCheck /> Reativar acesso
+                                              </>
+                                            )}
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  ) : (
+                                    <span className="pr-2 text-xs text-muted-foreground">Você</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:px-5">
+                    A suspensão remove o acesso somente a esta Secretaria, sem apagar a conta nem o
+                    histórico.
+                  </div>
+                </section>
+              </>
+            )}
+          </TabsContent>
+          <TabsContent value="convites" className="space-y-4">
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4 sm:p-5">
+                <div>
+                  <h2 className="font-semibold">Convites enviados</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Acompanhe os convites e a confirmação de acesso à Secretaria.
+                  </p>
+                </div>
+                <Badge variant="secondary">{convitesPendentes.length} aguardando</Badge>
               </div>
-            ))}
-          </div>
-        </section>
+              {!capacidades.can_view ? (
+                <p className="p-6 text-sm text-muted-foreground">
+                  Sem permissão para consultar convites.
+                </p>
+              ) : convites.length === 0 ? (
+                <div className="px-6 py-14 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <UserCheck className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="mt-3 font-medium">Nenhum convite emitido</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Quando um convite for enviado, ele aparecerá nesta lista.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead className="pl-5">E-mail convidado</TableHead>
+                        <TableHead>Perfil previsto</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Expiração</TableHead>
+                        <TableHead className="pr-5 text-right">Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {convites.map((invite) => (
+                        <TableRow key={invite.id}>
+                          <TableCell className="pl-5 font-medium">{invite.invited_email}</TableCell>
+                          <TableCell>
+                            {papeis.find((role) => role.id === invite.role_id)?.name ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                conviteExpirado(invite)
+                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                                  : invite.status === "pending"
+                                    ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
+                                    : "text-muted-foreground"
+                              }
+                            >
+                              {statusConvite(invite)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                            {new Date(invite.expires_at).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell className="pr-5 text-right">
+                            {invite.status === "pending" &&
+                              !conviteExpirado(invite) &&
+                              capacidades.can_create &&
+                              capacidades.can_assign_role && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void cancelarConvite(invite)}
+                                  disabled={cancelandoConviteId !== null}
+                                >
+                                  {cancelandoConviteId === invite.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserX />
+                                  )}{" "}
+                                  Cancelar
+                                </Button>
+                              )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </section>
+          </TabsContent>
+          {canManageRoles && (
+            <TabsContent value="perfis" className="space-y-4">
+              <section className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">Perfis e permissões</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Defina os acessos por função. Os perfis nativos permanecem protegidos.
+                    </p>
+                  </div>
+                  <Button onClick={() => abrirEditorPerfil()}>
+                    <Plus /> Novo perfil
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {papeis.map((role) => {
+                    const count = rolePermissionRows.filter(
+                      (row) => row.role_id === role.id,
+                    ).length;
+                    return (
+                      <article
+                        key={role.id}
+                        className="flex min-h-40 flex-col justify-between rounded-xl border bg-background p-4 transition-shadow hover:shadow-sm"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              {role.is_system ? (
+                                <LockKeyhole className="h-5 w-5" />
+                              ) : (
+                                <ShieldCheck className="h-5 w-5" />
+                              )}
+                            </div>
+                            {role.is_system ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 border-primary/30 bg-primary/5 text-primary"
+                              >
+                                <LockKeyhole className="h-3 w-3" /> Nativo protegido
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Personalizado</Badge>
+                            )}
+                          </div>
+                          <h3 className="mt-3 font-semibold">{role.name}</h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {role.description || role.slug}
+                          </p>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t pt-3">
+                          <span className="text-xs text-muted-foreground">{count} permissões</span>
+                          {!role.is_system && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => abrirEditorPerfil(role)}
+                            >
+                              <Pencil /> Editar perfil
+                            </Button>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            </TabsContent>
+          )}
+        </Tabs>
       )}
       <Dialog open={roleDialogOpen} onOpenChange={(open) => !savingRole && setRoleDialogOpen(open)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
@@ -584,35 +1031,68 @@ function Usuarios() {
                   {selectedPermissionIds.length} selecionada(s)
                 </span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {permissionCatalog.map((permission) => (
-                  <label
-                    key={permission.id}
-                    className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={selectedPermissionIds.includes(permission.id)}
-                      onChange={(e) =>
-                        setSelectedPermissionIds((current) =>
-                          e.target.checked
-                            ? [...new Set([...current, permission.id])]
-                            : current.filter((id) => id !== permission.id),
-                        )
-                      }
-                    />
-                    <span>
-                      <span className="block font-medium">{permission.name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {permission.description}
-                      </span>
-                      <span className="block text-[11px] text-muted-foreground">
-                        {permission.code}
-                      </span>
-                    </span>
-                  </label>
-                ))}
+              <div className="space-y-3">
+                {Object.entries(permissoesPorModulo).map(([moduleName, permissions]) => {
+                  const ids = permissions.map((permission) => permission.id);
+                  const count = ids.filter((id) => selectedPermissionIds.includes(id)).length;
+                  const allSelected = count === ids.length;
+                  return (
+                    <section key={moduleName} className="rounded-lg border bg-muted/20 p-3">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-semibold">{moduleName}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {count} de {ids.length} permissões selecionadas
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setSelectedPermissionIds((current) =>
+                              allSelected
+                                ? current.filter((id) => !ids.includes(id))
+                                : [...new Set([...current, ...ids])],
+                            )
+                          }
+                        >
+                          {allSelected ? "Desmarcar módulo" : "Marcar módulo"}
+                        </Button>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {permissions.map((permission) => (
+                          <label
+                            key={permission.id}
+                            className="flex cursor-pointer items-start gap-2 rounded-md border bg-card p-3 text-sm hover:border-primary/40"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selectedPermissionIds.includes(permission.id)}
+                              onChange={(event) =>
+                                setSelectedPermissionIds((current) =>
+                                  event.target.checked
+                                    ? [...new Set([...current, permission.id])]
+                                    : current.filter((id) => id !== permission.id),
+                                )
+                              }
+                            />
+                            <span className="min-w-0">
+                              <span className="block font-medium">{permission.name}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {permission.description}
+                              </span>
+                              <span className="block text-[11px] text-muted-foreground">
+                                {permission.code}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             </div>
             <DialogFooter>
@@ -636,212 +1116,6 @@ function Usuarios() {
           </form>
         </DialogContent>
       </Dialog>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Vínculos</p>
-          <p className="mt-1 text-2xl font-semibold">{membros.length}</p>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Ativos</p>
-          <p className="mt-1 text-2xl font-semibold">
-            {membros.filter((m) => m.status === "active").length}
-          </p>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Suspensos</p>
-          <p className="mt-1 text-2xl font-semibold">
-            {membros.filter((m) => m.status === "suspended").length}
-          </p>
-        </div>
-      </div>
-
-      {capacidades.can_view && (
-        <div className="rounded-lg border bg-card">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b p-4">
-            <div>
-              <h2 className="font-semibold">Convites por e-mail</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                O vínculo só será ativado quando o convidado confirmar o endereço e entrar na
-                plataforma.
-              </p>
-            </div>
-            <Badge variant="outline">
-              {
-                convites.filter(
-                  (convite) => convite.status === "pending" && !conviteExpirado(convite),
-                ).length
-              }{" "}
-              pendentes
-            </Badge>
-          </div>
-          {convites.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">
-              Nenhum convite registrado nesta Secretaria.
-            </p>
-          ) : (
-            <div className="divide-y">
-              {convites.slice(0, 10).map((convite) => (
-                <div
-                  key={convite.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{convite.invited_email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {papeis.find((role) => role.id === convite.role_id)?.name ?? "Papel"} ·{" "}
-                      {statusConvite(convite)} · expira em{" "}
-                      {new Date(convite.expires_at).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  {convite.status === "pending" &&
-                    capacidades.can_create &&
-                    capacidades.can_assign_role && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void cancelarConvite(convite)}
-                        disabled={cancelandoConviteId !== null}
-                      >
-                        {cancelandoConviteId === convite.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <UserX className="h-4 w-4" />
-                        )}
-                        Cancelar convite
-                      </Button>
-                    )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {erro && (
-        <Alert variant="destructive">
-          <AlertTitle>Não foi possível concluir a operação</AlertTitle>
-          <AlertDescription>{erro}</AlertDescription>
-        </Alert>
-      )}
-      {!capacidades.can_view && !loading ? (
-        <Alert>
-          <ShieldCheck className="h-4 w-4" />
-          <AlertTitle>Acesso de consulta não autorizado</AlertTitle>
-          <AlertDescription>
-            Seu papel não possui permissão para listar os usuários desta Secretaria.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <div className="space-y-3">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Pesquisar usuário"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-          </div>
-          <div className="overflow-hidden rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Papel</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : lista.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-10 text-center text-sm text-muted-foreground"
-                    >
-                      Nenhum usuário vinculado encontrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  lista.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <p className="font-medium">{m.profiles?.full_name ?? "Usuário"}</p>
-                        <p className="text-xs text-muted-foreground">ID: {m.user_id.slice(0, 8)}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {(m.membership_roles ?? []).map((mr, i) => (
-                            <Badge key={i} variant="secondary">
-                              {mr.tenant_roles?.name ?? "—"}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={m.status === "active" ? "secondary" : "outline"}>
-                          {m.status === "active"
-                            ? "Ativo"
-                            : m.status === "suspended"
-                              ? "Suspenso"
-                              : m.status === "invited"
-                                ? "Convidado"
-                                : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {capacidades.can_assign_role && m.user_id !== session?.user.id && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => abrirEdicaoPapel(m)}
-                              aria-label={`Alterar papel de ${m.profiles?.full_name ?? "usuário"}`}
-                            >
-                              <Pencil className="h-3.5 w-3.5" /> Papel
-                            </Button>
-                          )}
-                          {m.user_id === session?.user.id ? (
-                            <span className="px-2 text-xs text-muted-foreground">Sua conta</span>
-                          ) : capacidades.can_suspend ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => void alternarStatus(m)}
-                            >
-                              {m.status === "active" ? (
-                                <>
-                                  <UserX className="h-4 w-4" /> Suspender
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="h-4 w-4" /> Reativar
-                                </>
-                              )}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      )}
-
-      <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-        Para vincular alguém, a pessoa deve criar sua conta em <strong>/cadastro</strong> e
-        confirmar o e-mail. Depois, informe aqui o mesmo e-mail e selecione o papel. A suspensão
-        remove o acesso somente a esta Secretaria, sem apagar a conta nem o histórico.
-      </div>
 
       <Dialog
         open={dialogoConviteAberto}
@@ -1070,6 +1344,29 @@ function Usuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+function Metric({
+  title,
+  value,
+  note,
+  tone = "default",
+}: {
+  title: string;
+  value: number;
+  note: string;
+  tone?: "default" | "green" | "amber";
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
+      <p className="text-sm text-muted-foreground">{title}</p>
+      <p
+        className={`mt-2 text-2xl font-semibold tabular-nums ${tone === "green" ? "text-emerald-600" : tone === "amber" ? "text-amber-600" : ""}`}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{note}</p>
     </div>
   );
 }

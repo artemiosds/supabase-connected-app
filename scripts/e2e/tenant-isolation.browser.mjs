@@ -150,7 +150,7 @@ async function verifyAuthenticatedTenant(scenario) {
     // before submitting so the native form cannot reload without React handlers.
     await page.waitForTimeout(400);
     await page.getByLabel("E-mail").fill(scenario.email);
-    await page.getByLabel("Senha").fill(password);
+    await page.locator("#senha").fill(password);
 
     await Promise.all([
       page.waitForURL(/\/painel(?:[/?#]|$)/),
@@ -599,6 +599,9 @@ async function verifyAuthenticatedTenant(scenario) {
 
     // Exercise the real Secretaria settings screen, including private logo upload.
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
+    // The settings route opens on "Minha conta"; select the documents category before
+    // asserting or exercising the tenant-specific letterhead form.
+    await page.getByRole("button", { name: /Documentos oficiais/ }).click();
     await page.getByText("Timbrado dos documentos oficiais", { exact: true }).waitFor();
     const brandingHeader = "Cabeçalho E2E " + scenario.tenantName;
     await page.getByLabel("Nome no cabeçalho").fill(brandingHeader);
@@ -804,7 +807,7 @@ async function verifyProcurementLifecycle() {
   try {
     await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
     await page.getByLabel("E-mail").fill("e2e.secretaria.a@example.invalid");
-    await page.getByLabel("Senha").fill(password);
+    await page.locator("#senha").fill(password);
     await Promise.all([
       page.waitForURL(/\/painel(?:[/?#]|$)/),
       page.getByRole("button", { name: "Entrar", exact: true }).click(),
@@ -1456,7 +1459,7 @@ async function verifyDocumentApprovalWorkflow() {
     page.setDefaultTimeout(30_000);
     await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
     await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill(password);
+    await page.locator("#senha").fill(password);
     await Promise.all([
       page.waitForURL(/\/painel(?:[/?#]|$)/),
       page.getByRole("button", { name: "Entrar", exact: true }).click(),
