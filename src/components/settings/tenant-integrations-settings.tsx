@@ -584,11 +584,11 @@ export function TenantIntegrationsSettings() {
                   onClick={() => void syncDrive()}
                 >
                   {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 3)"}
+                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 25)"}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                A sincronização copia até 3 documentos privados por execução. Os originais
+                A sincronização copia até 25 documentos privados por execução. Os originais
                 permanecem no armazenamento da plataforma; resultados incertos não são reenviados
                 automaticamente para evitar duplicatas.
               </p>
