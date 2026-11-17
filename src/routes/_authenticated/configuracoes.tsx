@@ -595,7 +595,7 @@ function Configuracoes() {
             </Card>
           </section>
 
-          <section hidden={categoria !== "organizacao" className="space-y-6">
+          <section hidden={categoria !== "organizacao"} className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Dados cadastrais da Secretaria</CardTitle>
