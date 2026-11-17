@@ -17,6 +17,7 @@ import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
+import { cnpjDivergente, mapCnpjProvider, type CnpjLookupData } from "../../../supabase/functions/_shared/cnpj-mapping.ts";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { getSanctionDisplayStatus, isSanctionCurrentlyEffective } from "@/lib/supplier-sanctions";
 import { Button } from "@/components/ui/button";
@@ -144,7 +145,7 @@ function Fornecedores() {
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
-  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string; registration_status: string | null } | null>(null);
+  const [consultaCnpj, setConsultaCnpj] = useState<CnpjLookupData | null>(null);
   const consultaCnpjRef = useRef(0);
   const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
@@ -316,22 +317,16 @@ function Fornecedores() {
     const cnpj = normalizarCnpj(valor);
     if (!validarCnpj(cnpj)) return;
     const requisicao = ++consultaCnpjRef.current;
-    // Register the attempt before the network call to prevent automatic retry loops.
+    // Marca a tentativa antes da rede para impedir loops; botão manual permite nova tentativa.
     ultimoCnpjConsultadoRef.current = cnpj;
     setConsultandoCnpj(true);
     setConsultaCnpj(null);
-    try {
-      const { data, error: consultaErro } = await db.functions.invoke("lookup-cnpj", {
-        body: { cnpj },
-      });
-      if (consultaErro) throw consultaErro;
-      if (requisicao !== consultaCnpjRef.current) return;
-      const dados = data?.data;
-      if (!dados?.legal_name) throw new Error(data?.error ?? "A consulta não retornou razão social.");
+
+    const aplicarDados = (dados: CnpjLookupData) => {
       setFormulario((atual) => {
         if (normalizarCnpj(atual.cnpj) !== cnpj) return atual;
         const preenchimento: Partial<FormularioFornecedor> = {
-          legal_name: dados.legal_name,
+          legal_name: dados.legal_name ?? "",
           trade_name: dados.trade_name ?? "",
           street: dados.street ?? "",
           street_number: dados.street_number ?? "",
@@ -353,32 +348,52 @@ function Fornecedores() {
         }
         return proximo;
       });
-      setConsultaCnpj({
-        source: dados.source,
-        consulted_at: dados.consulted_at,
-        registration_status: dados.registration_status ?? null,
-      });
-      ultimoCnpjConsultadoRef.current = cnpj;
-      toast.success("Dados cadastrais encontrados. Revise antes de salvar.");
-    } catch (error) {
-      if (requisicao === consultaCnpjRef.current) {
-        let mensagem = error instanceof Error ? error.message : "Falha na consulta do CNPJ.";
-        const contexto = error && typeof error === "object" && "context" in error
-          ? (error as { context?: unknown }).context
-          : null;
-        if (contexto instanceof Response) {
+      setConsultaCnpj(dados);
+    };
+
+    try {
+      let dados: CnpjLookupData | null = null;
+      try {
+        const { data, error: consultaErro } = await db.functions.invoke("lookup-cnpj", {
+          body: { cnpj },
+        });
+        if (consultaErro) throw consultaErro;
+        const resposta = data?.data as CnpjLookupData | undefined;
+        if (!resposta?.legal_name || cnpjDivergente(resposta, cnpj)) {
+          throw new Error("Resposta inválida da consulta.");
+        }
+        dados = resposta;
+      } catch {
+        // Fallback público: o navegador respeita CORS de cada provedor; falha em um não impede o próximo.
+        const providers = [
+          { name: "BrasilAPI", url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}` },
+          { name: "Minha Receita", url: `https://minhareceita.org/${encodeURIComponent(cnpj)}` },
+        ];
+        for (const provider of providers) {
           try {
-            const detalhe = await contexto.clone().json() as {
-              error?: string;
-              providers_attempted?: string[];
-            };
-            const fontes = detalhe.providers_attempted?.join("; ");
-            mensagem = [detalhe.error, fontes ? `Fontes: ${fontes}` : ""].filter(Boolean).join(" ");
+            const response = await fetch(provider.url, {
+              headers: { Accept: "application/json" },
+              signal: AbortSignal.timeout(6500),
+            });
+            if (!response.ok) continue;
+            const raw = await response.json() as Record<string, unknown>;
+            const mapped = mapCnpjProvider(raw, provider.name);
+            if (!mapped.legal_name || cnpjDivergente(mapped, cnpj)) continue;
+            dados = mapped;
+            break;
           } catch {
-            mensagem = "O serviço de consulta respondeu com erro. Tente novamente em instantes.";
+            // CORS, timeout ou indisponibilidade: tenta a próxima fonte.
           }
         }
-        toast.info("Não foi possível consultar os dados automaticamente. Você pode preencher os campos manualmente e salvar o fornecedor normalmente.");
+      }
+
+      if (requisicao !== consultaCnpjRef.current) return;
+      if (!dados) throw new Error("PUBLIC_SOURCES_UNAVAILABLE");
+      aplicarDados(dados);
+      toast.success("Dados cadastrais e societários localizados com sucesso.");
+    } catch {
+      if (requisicao === consultaCnpjRef.current) {
+        toast.info("Não foi possível carregar os dados automaticamente pelas bases abertas da Receita. Você pode preencher os campos manualmente e salvar o fornecedor.");
       }
     } finally {
       if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
@@ -893,13 +908,57 @@ function Fornecedores() {
                     {consultandoCnpj ? "Consultando..." : "Consultar e preencher"}
                   </Button>
                 </div>
-                {consultaCnpj && (
-                  <p className="text-xs text-muted-foreground" role="status">
-                    Dados consultados em {consultaCnpj.source} em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}.
-                    {consultaCnpj.registration_status ? ` Situação cadastral informada pela fonte: ${consultaCnpj.registration_status}. Isso não comprova regularidade fiscal ou habilitação.` : ""}
-                    {" "}Revise os campos antes de salvar.
-                  </p>
+                {consultaCnpj?.registration_status && (
+                  <Badge
+                    variant="outline"
+                    className={/ATIVA/i.test(consultaCnpj.registration_status)
+                      ? "border-emerald-600 text-emerald-700"
+                      : /SUSPENSA/i.test(consultaCnpj.registration_status)
+                        ? "border-amber-600 text-amber-700"
+                        : /INAPTA|BAIXADA|NULA/i.test(consultaCnpj.registration_status)
+                          ? "border-destructive text-destructive"
+                          : "border-muted-foreground text-muted-foreground"}
+                  >
+                    Situação cadastral: {consultaCnpj.registration_status}
+                  </Badge>
                 )}
+                {consultaCnpj && (
+                  <details className="rounded-md border bg-muted/20 p-3 text-sm">
+                    <summary className="cursor-pointer font-medium">Comprovante cadastral e QSA</summary>
+                    <div className="mt-3 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Fonte(s): {consultaCnpj.sources.join(", ") || consultaCnpj.source} · Consulta em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {[
+                          ["Capital social", consultaCnpj.share_capital === null ? null : consultaCnpj.share_capital.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })],
+                          ["Data da situação", consultaCnpj.registration_status_date],
+                          ["Motivo da situação", consultaCnpj.registration_status_reason],
+                          ["CNAE principal", consultaCnpj.main_activity ? [consultaCnpj.main_activity.code, consultaCnpj.main_activity.description].filter(Boolean).join(" — ") : null],
+                        ].map(([label, value]) => value ? (
+                          <div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="break-words">{value}</p></div>
+                        ) : null)}
+                      </div>
+                      {consultaCnpj.secondary_activities.length > 0 && (
+                        <div><p className="mb-1 text-xs font-medium text-muted-foreground">CNAEs secundários</p>
+                          <ul className="list-inside list-disc space-y-1">{consultaCnpj.secondary_activities.map((item, index) => <li key={item.code ?? index}>{[item.code, item.description].filter(Boolean).join(" — ")}</li>)}</ul>
+                        </div>
+                      )}
+                      <div><p className="mb-1 text-xs font-medium text-muted-foreground">Quadro de Sócios e Administradores</p>
+                        {consultaCnpj.partners.length ? (
+                          <ul className="space-y-2">{consultaCnpj.partners.map((partner, index) => (
+                            <li key={index} className="rounded border bg-background p-2">
+                              <p className="font-medium">{partner.name}</p>
+                              {partner.qualification && <p className="text-xs text-muted-foreground">{partner.qualification}{partner.age_range ? ` · ${partner.age_range}` : ""}</p>}
+                            </li>
+                          ))}</ul>
+                        ) : <p className="text-xs text-muted-foreground">A fonte consultada não retornou dados de QSA.</p>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Informações cadastrais para consulta; não substituem certidões oficiais nem comprovam regularidade fiscal.</p>
+                    </div>
+                  </details>
+                )}
+
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-categoria">Categoria *</Label>
