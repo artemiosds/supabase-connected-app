@@ -144,7 +144,7 @@ function Fornecedores() {
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
-  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string; registration_status: string | null } | null>(null);
+  const [consultaCnpj, setConsultaCnpj] = useState<{ source: string; consulted_at: string; registration_status: string | null } | null>(null);\n  const [detalhesCnpj, setDetalhesCnpj] = useState<Record<string, unknown> | null>(null);
   const consultaCnpjRef = useRef(0);
   const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
@@ -899,6 +899,62 @@ function Fornecedores() {
                     {consultaCnpj.registration_status ? ` Situação cadastral informada pela fonte: ${consultaCnpj.registration_status}. Isso não comprova regularidade fiscal ou habilitação.` : ""}
                     {" "}Revise os campos antes de salvar.
                   </p>
+                )}
+                {detalhesCnpj && (
+                  <section className="space-y-3 rounded-lg border bg-muted/20 p-3 text-sm" aria-label="Detalhes da consulta cadastral">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="font-medium">Resumo da consulta pública do CNPJ</h3>
+                      <Badge variant="outline">Dados informativos</Badge>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {([
+                        ["Data de abertura", detalhesCnpj.opening_date],
+                        ["Natureza jurídica", detalhesCnpj.legal_nature],
+                        ["Porte", detalhesCnpj.company_size],
+                        ["Capital social", detalhesCnpj.share_capital],
+                        ["Situação cadastral", detalhesCnpj.registration_status],
+                        ["Data da situação", detalhesCnpj.registration_status_date],
+                        ["Motivo da situação", detalhesCnpj.registration_status_reason],
+                      ] as [string, unknown][]).filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => (
+                        <div key={label}>
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="font-medium">{String(value)}</p>
+                        </div>
+                      ))}
+                      {typeof detalhesCnpj.is_mei === "boolean" && <p><span className="text-muted-foreground">MEI: </span>{detalhesCnpj.is_mei ? "Sim" : "Não"}</p>}
+                      {typeof detalhesCnpj.is_simples === "boolean" && <p><span className="text-muted-foreground">Simples Nacional: </span>{detalhesCnpj.is_simples ? "Sim" : "Não"}</p>}
+                    </div>
+                    {Array.isArray(detalhesCnpj.primary_cnae) === false && detalhesCnpj.primary_cnae && typeof detalhesCnpj.primary_cnae === "object" && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">CNAE principal</p>
+                        <p>{String((detalhesCnpj.primary_cnae as Record<string, unknown>).code ?? "")} — {String((detalhesCnpj.primary_cnae as Record<string, unknown>).description ?? "")}</p>
+                      </div>
+                    )}
+                    {Array.isArray(detalhesCnpj.secondary_cnaes) && detalhesCnpj.secondary_cnaes.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">CNAEs secundários</p>
+                        <ul className="list-inside list-disc space-y-1">
+                          {(detalhesCnpj.secondary_cnaes as Array<Record<string, unknown>>).map((item, index) => (
+                            <li key={index}>{String(item.code ?? "")} — {String(item.description ?? "")}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {Array.isArray(detalhesCnpj.qsa) && detalhesCnpj.qsa.length > 0 && (
+                      <div className="space-y-2 border-t pt-3">
+                        <h4 className="font-medium">Quadro de Sócios e Administradores (QSA)</h4>
+                        {(detalhesCnpj.qsa as Array<Record<string, unknown>>).map((socio, index) => (
+                          <div key={index} className="rounded-md border bg-background p-2">
+                            <p className="font-medium">{String(socio.name ?? "Nome não informado")}</p>
+                            {socio.qualification && <p className="text-muted-foreground">{String(socio.qualification)}</p>}
+                            {socio.entry_date && <p className="text-xs text-muted-foreground">Entrada: {String(socio.entry_date)}</p>}
+                            {socio.country && <p className="text-xs text-muted-foreground">País: {String(socio.country)}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">A consulta não é certidão oficial e não comprova regularidade fiscal, trabalhista ou habilitação. Confirme os dados em fonte oficial antes de decisões administrativas.</p>
+                  </section>
                 )}
               </div>
               <div className="space-y-2">
