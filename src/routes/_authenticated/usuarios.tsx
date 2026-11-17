@@ -262,7 +262,7 @@ function Usuarios() {
         </div>
       </header>
       {erro && <Alert variant="destructive"><AlertTitle>Não foi possível concluir a operação</AlertTitle><AlertDescription>{erro}</AlertDescription></Alert>}
-      {!capacidades.can_view && !loading ? (
+      {!capacidades.can_view && !loading && !canManageRoles ? (
         <Alert><ShieldCheck className="h-4 w-4" /><AlertTitle>Acesso de consulta não autorizado</AlertTitle><AlertDescription>Seu papel não possui permissão para listar os usuários desta Secretaria.</AlertDescription></Alert>
       ) : (
         <Tabs defaultValue="equipe" className="space-y-5">
@@ -272,6 +272,7 @@ function Usuarios() {
             {canManageRoles && <TabsTrigger value="perfis" className="col-span-2 gap-2 px-3 py-2.5 sm:col-span-1"><ShieldCheck className="h-4 w-4" /> Perfis e permissões</TabsTrigger>}
           </TabsList>
           <TabsContent value="equipe" className="space-y-5">
+            {!capacidades.can_view ? <Alert><AlertTitle>Consulta da equipe não autorizada</AlertTitle><AlertDescription>Seu papel não possui permissão para listar os usuários desta Secretaria.</AlertDescription></Alert> : <>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Metric title="Total de vínculos" value={membros.length} note="Contas vinculadas à Secretaria" />
               <Metric title="Ativos" value={membros.filter((m) => m.status === "active").length} note="Com acesso habilitado" tone="green" />
@@ -304,6 +305,7 @@ function Usuarios() {
               </Table></div>
               <div className="border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:px-5">A suspensão remove o acesso somente a esta Secretaria, sem apagar a conta nem o histórico.</div>
             </section>
+            </>}
           </TabsContent>
           <TabsContent value="convites" className="space-y-4">
             <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
