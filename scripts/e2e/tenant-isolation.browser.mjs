@@ -599,6 +599,9 @@ async function verifyAuthenticatedTenant(scenario) {
 
     // Exercise the real Secretaria settings screen, including private logo upload.
     await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
+    // The settings route opens on "Minha conta"; select the documents category before
+    // asserting or exercising the tenant-specific letterhead form.
+    await page.getByRole("button", { name: /Documentos oficiais/ }).click();
     await page.getByText("Timbrado dos documentos oficiais", { exact: true }).waitFor();
     const brandingHeader = "Cabeçalho E2E " + scenario.tenantName;
     await page.getByLabel("Nome no cabeçalho").fill(brandingHeader);
