@@ -1316,6 +1316,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.getByRole("combobox").click();
     await page.getByRole("option", { name: "Acréscimo de valor", exact: true }).click();
     await amendmentDialog.locator("input").nth(1).fill("5");
+    await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
@@ -1371,6 +1372,7 @@ async function verifyProcurementLifecycle() {
 
     await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
     await amendmentDialog.locator("input").nth(1).fill("3");
+    await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
@@ -1396,6 +1398,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input").nth(0).fill("4º Aditivo E2E");
     await amendmentDialog.getByRole("combobox").click();
     await page.getByRole("option", { name: "Outro", exact: true }).click();
+    await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
     await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
