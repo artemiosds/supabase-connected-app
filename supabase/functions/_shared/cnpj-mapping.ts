@@ -212,8 +212,9 @@ export function cnpjDivergente(result: CnpjLookupData, requested: string): boole
  */
 export function combineCnpjResults(results: CnpjLookupData[], requested: string): CnpjLookupData | null {
   const valid = results.filter((item) => item.legal_name && !cnpjDivergente(item, requested));
-  if (!valid.length) return null;
-  const merged: CnpjLookupData = { ...valid[0], cnpj: onlyCnpjChars(requested), sources: [] };
+  const primary = valid[0];
+  if (!primary) return null;
+  const merged: CnpjLookupData = { ...primary, cnpj: onlyCnpjChars(requested), sources: [] };
   for (const item of valid) {
     merged.sources.push(item.source);
     for (const key of Object.keys(item) as Array<keyof CnpjLookupData>) {
