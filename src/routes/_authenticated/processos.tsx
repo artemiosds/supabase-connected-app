@@ -59,6 +59,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calcularResumoDePrecos,
+  calcularPrecoHomologado,
   analisarDispersaoPrecos,
   expurgarAmostrasInconsistentes,
   gerarCsvMapaDePrecos,
@@ -1527,6 +1528,92 @@ function DadosEstruturados(props: {
       return;
     }
     toast.success("Cotação selecionada como referência e preço estimado atualizado.");
+    await carregarDados();
+  }
+
+  async function aprovarPreco(item: ItemCompra) {
+    if (!canApprovePrice) {
+      toast.error("Seu perfil não possui autorização para aprovar o preço estimado.");
+      return;
+    }
+    const form = approvalForms[item.id] ?? {
+      method: "mediana" as const,
+      methodJustification: "",
+      exceptionalJustification: "",
+      otherUnitPrice: "",
+    };
+    const activeQuotes = quotes.filter((quote) => quote.procurement_item_id === item.id && quote.is_active);
+    let otherPrice: number | undefined;
+    if (form.method === "outro") {
+      otherPrice = numeroDecimal(form.otherUnitPrice);
+      if (!Number.isFinite(otherPrice) || otherPrice < 0) {
+        toast.error("Informe o preço unitário do método alternativo.");
+        return;
+      }
+    }
+    try {
+      const preview = calcularPrecoHomologado(
+        form.method,
+        activeQuotes,
+        item.quantity,
+        otherPrice,
+      );
+      if (activeQuotes.length < 3 && form.exceptionalJustification.trim().length < 10) {
+        toast.error("Com menos de três preços, registre a justificativa excepcional.");
+        return;
+      }
+      if (form.methodJustification.trim().length < 10) {
+        toast.error("Justifique a escolha do método (mínimo de 10 caracteres).");
+        return;
+      }
+      setSaving(true);
+      const { error } = await db.rpc("approve_procurement_item_price", {
+        p_tenant_id: props.tenantId,
+        p_item_id: item.id,
+        p_method: form.method,
+        p_method_justification: form.methodJustification.trim(),
+        ...(form.exceptionalJustification.trim()
+          ? { p_exceptional_justification: form.exceptionalJustification.trim() }
+          : {}),
+        ...(otherPrice !== undefined ? { p_other_unit_price: otherPrice } : {}),
+      });
+      setSaving(false);
+      if (error) throw error;
+      toast.success(
+        `Preço aprovado: ${formatarMoeda(preview.precoUnitarioAprovado)} por unidade; total ${formatarMoeda(preview.precoTotalAprovado)}.`,
+      );
+      await carregarDados();
+    } catch (error) {
+      setSaving(false);
+      toast.error(error instanceof Error ? error.message : "Não foi possível aprovar o preço.");
+    }
+  }
+
+  async function salvarConformidadeNormativa() {
+    if (!canApprovePrice) {
+      toast.error("Seu perfil não pode validar o enquadramento normativo.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await db.from("tenant_procurement_compliance").upsert(
+      {
+        tenant_id: props.tenantId,
+        normative_basis: complianceForm.normative_basis,
+        in65_applicability: complianceForm.in65_applicability,
+        local_regulation_name: complianceForm.local_regulation_name.trim() || null,
+        local_regulation_reference: complianceForm.local_regulation_reference.trim() || null,
+        legal_review_status: "validated",
+        legal_review_notes: complianceForm.legal_review_notes.trim() || null,
+        updated_by: props.userId,
+      },
+      { onConflict: "tenant_id" },
+    );
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Enquadramento normativo registrado para esta Secretaria.");
     await carregarDados();
   }
 
