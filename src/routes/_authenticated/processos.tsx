@@ -1894,7 +1894,13 @@ function DadosEstruturados(props: {
                 <div className="space-y-3">
                   {items.map((item) => {
                     const itemQuotes = quotes.filter(
-                      (quote) => quote.procurement_item_id === item.id,
+                      (quote) => quote.procurement_item_id === item.id && quote.is_active,
+                    );
+                    const archivedQuotes = quotes.filter(
+                      (quote) => quote.procurement_item_id === item.id && !quote.is_active,
+                    );
+                    const itemApproval = approvals.find(
+                      (approval) => approval.procurement_item_id === item.id && approval.status === "approved",
                     );
                     return (
                       <Card key={item.id}>
@@ -1903,6 +1909,18 @@ function DadosEstruturados(props: {
                             <div className="min-w-0">
                               <p className="text-sm font-semibold">
                                 {item.line_number}. {item.description}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {item.estimated_price_source === "approved"
+                                  ? "Preço estimado aprovado"
+                                  : item.estimated_price_source === "quote_reference"
+                                    ? "Preço de referência provisório"
+                                    : item.estimated_price_source === "none"
+                                      ? "Preço pendente de nova apuração"
+                                      : "Preço informado manualmente"}
+                                {item.estimated_unit_price !== null
+                                  ? ` · ${formatarMoeda(item.estimated_unit_price)} / ${item.unit}`
+                                  : ""}
                               </p>
                               {item.technical_specification && (
                                 <p className="mt-1 text-xs text-muted-foreground">
@@ -2296,6 +2314,35 @@ function DadosEstruturados(props: {
                                   </div>
                                 ))}
                               </div>
+                            </div>
+                          )}
+                          {archivedQuotes.length > 0 && (
+                            <div className="rounded-md border border-dashed p-3">
+                              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                                HISTÓRICO DE COTAÇÕES EXPURGADAS ({archivedQuotes.length})
+                              </p>
+                              <div className="space-y-2">
+                                {archivedQuotes.map((quote) => (
+                                  <div key={quote.id} className="rounded bg-muted/30 p-2 text-xs">
+                                    <p className="font-medium">{quote.source_name} · {formatarData(quote.quoted_at)}</p>
+                                    <p className="text-muted-foreground">
+                                      Motivo do expurgo: {quote.justificativa_expurgo || "Não registrado"}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {itemApproval && (
+                            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
+                              <p className="font-semibold">Preço estimado aprovado</p>
+                              <p>
+                                Método: {itemApproval.method} · Unitário: {formatarMoeda(itemApproval.approved_unit_price)} ·
+                                Total: {formatarMoeda(itemApproval.approved_total_price)}
+                              </p>
+                              <p className="text-muted-foreground">
+                                Aprovado em {formatarData(itemApproval.approved_at)} · {itemApproval.sample_count} amostra(s)
+                              </p>
                             </div>
                           )}
                         </CardContent>
