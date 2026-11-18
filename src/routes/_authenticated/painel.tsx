@@ -181,7 +181,6 @@ function Painel() {
       </div>
     );
 
-
   const metricas = [
     {
       label: "Fornecedores cadastrados",
@@ -220,9 +219,18 @@ function Painel() {
   return (
     <main className="mx-auto w-full max-w-[1480px] space-y-8 pb-10">
       <section className="relative isolate overflow-hidden rounded-[28px] border border-primary/30 bg-primary px-5 py-7 text-primary-foreground shadow-[0_22px_60px_-38px_rgba(0,0,0,0.5)] sm:px-8 sm:py-9 lg:px-10 lg:py-10">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-32 size-[340px] rounded-full border border-primary-foreground/15" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-20 size-[260px] rounded-full border border-primary-foreground/10" />
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-[-150px] right-1/4 size-[310px] rounded-full bg-primary-foreground/5 blur-3xl" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-32 size-[340px] rounded-full border border-primary-foreground/15"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-8 -top-20 size-[260px] rounded-full border border-primary-foreground/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-[-150px] right-1/4 size-[310px] rounded-full bg-primary-foreground/5 blur-3xl"
+        />
         <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(250px,0.6fr)] lg:items-end">
           <div className="max-w-2xl space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]">
@@ -248,7 +256,10 @@ function Painel() {
             </div>
           </div>
           {selecionado && (
-            <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 p-4 backdrop-blur-sm sm:p-5" aria-label="Radar de prazos da Secretaria">
+            <div
+              className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 p-4 backdrop-blur-sm sm:p-5"
+              aria-label="Radar de prazos da Secretaria"
+            >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground/80">
                   Radar de prazos
@@ -322,7 +333,10 @@ function Painel() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-primary">
                   Visão da Secretaria
                 </p>
-                <h2 id="indicadores-titulo" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                <h2
+                  id="indicadores-titulo"
+                  className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl"
+                >
                   Indicadores de gestão
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -338,13 +352,19 @@ function Painel() {
               {metricas.map((metrica) => {
                 const Icon = metrica.icon;
                 return (
-                  <Card key={metrica.label} className="group overflow-hidden rounded-2xl border-border/75 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md">
+                  <Card
+                    key={metrica.label}
+                    className="group overflow-hidden rounded-2xl border-border/75 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+                  >
                     <CardContent className="p-5 sm:p-6">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex size-11 items-center justify-center rounded-xl border border-primary/10 bg-primary/10 text-primary">
                           <Icon className="size-5" aria-hidden="true" />
                         </div>
-                        <ArrowUpRight className="size-4 text-muted-foreground/55 transition-colors group-hover:text-primary" aria-hidden="true" />
+                        <ArrowUpRight
+                          className="size-4 text-muted-foreground/55 transition-colors group-hover:text-primary"
+                          aria-hidden="true"
+                        />
                       </div>
                       <p className="mt-5 text-xs font-medium text-muted-foreground">
                         {metrica.label}
@@ -353,7 +373,10 @@ function Painel() {
                         {loading ? "…" : (metrica.value ?? "—")}
                       </p>
                       <div className="mt-4 border-t border-border/70 pt-3">
-                        <a href={metrica.href} className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                        <a
+                          href={metrica.href}
+                          className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                        >
                           {metrica.action}
                           <ArrowRight className="size-3.5" aria-hidden="true" />
                         </a>
@@ -366,7 +389,10 @@ function Painel() {
             </div>
           </section>
 
-          <section aria-labelledby="processos-parados-titulo" className="overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm">
+          <section
+            aria-labelledby="processos-parados-titulo"
+            className="overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/20 px-5 py-5 sm:px-7">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-xl border border-warning/20 bg-warning/10 text-warning">
@@ -376,7 +402,10 @@ function Painel() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     Monitoramento de fluxo
                   </p>
-                  <h2 id="processos-parados-titulo" className="mt-0.5 text-lg font-semibold tracking-tight">
+                  <h2
+                    id="processos-parados-titulo"
+                    className="mt-0.5 text-lg font-semibold tracking-tight"
+                  >
                     Processos sem movimentação
                   </h2>
                 </div>
@@ -387,7 +416,10 @@ function Painel() {
             </div>
             <div className="px-5 py-5 sm:px-7">
               {loading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                <div
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                  role="status"
+                >
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Verificando a atividade dos processos…
                 </div>
@@ -406,36 +438,54 @@ function Painel() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">Fluxo de processos em dia</p>
                     <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-                      Não foram identificados processos ativos sem movimentação registrada há mais de {DIAS_PROCESSO_PARADO} dias.
+                      Não foram identificados processos ativos sem movimentação registrada há mais
+                      de {DIAS_PROCESSO_PARADO} dias.
                     </p>
                   </div>
-                  <Link to="/processos" className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                  <Link
+                    to="/processos"
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                  >
                     Ver processos <ArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {indicadores.stalledProcesses.slice(0, 5).map((processo) => (
-                    <div key={processo.id} className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div
+                      key={processo.id}
+                      className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold">Processo nº {processo.number}</span>
-                          <Badge variant="outline" className="border-destructive/25 bg-destructive/10 text-destructive">
+                          <Badge
+                            variant="outline"
+                            className="border-destructive/25 bg-destructive/10 text-destructive"
+                          >
                             {processo.diasSemAtividade} dias sem movimentação
                           </Badge>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">{processo.title}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Etapa: {processo.stage}
-                          {processo.responsible_name ? ` · Responsável: ${processo.responsible_name}` : ""}
+                          {processo.responsible_name
+                            ? ` · Responsável: ${processo.responsible_name}`
+                            : ""}
                         </p>
                       </div>
-                      <a href={`/processos?processo=${encodeURIComponent(processo.id)}`} className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                      <a
+                        href={`/processos?processo=${encodeURIComponent(processo.id)}`}
+                        className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+                      >
                         Ver processo <ArrowUpRight className="size-4" aria-hidden="true" />
                       </a>
                     </div>
                   ))}
-                  <Link to="/processos" className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                  <Link
+                    to="/processos"
+                    className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                  >
                     Todos os processos <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </div>
@@ -444,7 +494,8 @@ function Painel() {
           </section>
           <p className="flex items-start gap-2 px-1 text-xs leading-relaxed text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            Informações restritas à Secretaria ativa e às permissões da sua conta. Os indicadores refletem os registros acessíveis no momento da consulta.
+            Informações restritas à Secretaria ativa e às permissões da sua conta. Os indicadores
+            refletem os registros acessíveis no momento da consulta.
           </p>
         </>
       )}
