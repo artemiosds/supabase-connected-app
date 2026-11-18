@@ -1532,6 +1532,7 @@ export type Database = {
           created_by: string
           delivery_location: string | null
           description: string
+          estimated_price_source: string
           estimated_total: number | null
           estimated_unit_price: number | null
           id: string
@@ -1550,6 +1551,7 @@ export type Database = {
           created_by: string
           delivery_location?: string | null
           description: string
+          estimated_price_source?: string
           estimated_total?: number | null
           estimated_unit_price?: number | null
           id?: string
@@ -1568,6 +1570,7 @@ export type Database = {
           created_by?: string
           delivery_location?: string | null
           description?: string
+          estimated_price_source?: string
           estimated_total?: number | null
           estimated_unit_price?: number | null
           id?: string
@@ -1591,72 +1594,195 @@ export type Database = {
           },
         ]
       }
+      procurement_price_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          approved_total_price: number
+          approved_unit_price: number
+          calculation_snapshot: Json
+          exceptional_justification: string | null
+          id: string
+          method: string
+          method_justification: string
+          process_id: string
+          procurement_item_id: string
+          sample_count: number
+          source_snapshot: Json
+          status: string
+          superseded_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          approved_total_price: number
+          approved_unit_price: number
+          calculation_snapshot?: Json
+          exceptional_justification?: string | null
+          id?: string
+          method: string
+          method_justification: string
+          process_id: string
+          procurement_item_id: string
+          sample_count: number
+          source_snapshot?: Json
+          status?: string
+          superseded_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          approved_total_price?: number
+          approved_unit_price?: number
+          calculation_snapshot?: Json
+          exceptional_justification?: string | null
+          id?: string
+          method?: string
+          method_justification?: string
+          process_id?: string
+          procurement_item_id?: string
+          sample_count?: number
+          source_snapshot?: Json
+          status?: string
+          superseded_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_price_approvals_item_process_fk"
+            columns: ["tenant_id", "process_id", "procurement_item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_items"
+            referencedColumns: ["tenant_id", "process_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_price_approvals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procurement_price_quotes: {
         Row: {
-          justificativa_expurgo: string | null
+          accessed_at: string | null
+          brand_model: string | null
           contract_id: string | null
           created_at: string
           created_by: string
           delivery_cost: number
+          delivery_term: string | null
+          evidence_file_name: string | null
+          evidence_file_size: number | null
+          evidence_mime_type: string | null
+          evidence_storage_path: string | null
           id: string
           is_active: boolean
+          justificativa_expurgo: string | null
           notes: string | null
+          payment_terms: string | null
           procurement_item_id: string
           quantity: number
           quoted_at: string
+          reference_identifier: string | null
           reference_url: string | null
           selected_for_estimate: boolean
+          source_address: string | null
+          source_contact_email: string | null
+          source_contact_name: string | null
+          source_contact_phone: string | null
           source_name: string
+          source_tax_id: string | null
+          source_type: string
           supplier_id: string | null
+          supplier_response_deadline: string | null
           tenant_id: string
           total_price: number | null
           unit_price: number
           updated_at: string
           updated_by: string
+          warranty_terms: string | null
         }
         Insert: {
-          justificativa_expurgo?: string | null
+          accessed_at?: string | null
+          brand_model?: string | null
           contract_id?: string | null
           created_at?: string
           created_by: string
           delivery_cost?: number
+          delivery_term?: string | null
+          evidence_file_name?: string | null
+          evidence_file_size?: number | null
+          evidence_mime_type?: string | null
+          evidence_storage_path?: string | null
           id?: string
           is_active?: boolean
+          justificativa_expurgo?: string | null
           notes?: string | null
+          payment_terms?: string | null
           procurement_item_id: string
           quantity: number
           quoted_at?: string
+          reference_identifier?: string | null
           reference_url?: string | null
           selected_for_estimate?: boolean
+          source_address?: string | null
+          source_contact_email?: string | null
+          source_contact_name?: string | null
+          source_contact_phone?: string | null
           source_name: string
+          source_tax_id?: string | null
+          source_type?: string
           supplier_id?: string | null
+          supplier_response_deadline?: string | null
           tenant_id: string
           total_price?: number | null
           unit_price: number
           updated_at?: string
           updated_by: string
+          warranty_terms?: string | null
         }
         Update: {
-          justificativa_expurgo?: string | null
+          accessed_at?: string | null
+          brand_model?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string
           delivery_cost?: number
+          delivery_term?: string | null
+          evidence_file_name?: string | null
+          evidence_file_size?: number | null
+          evidence_mime_type?: string | null
+          evidence_storage_path?: string | null
           id?: string
           is_active?: boolean
+          justificativa_expurgo?: string | null
           notes?: string | null
+          payment_terms?: string | null
           procurement_item_id?: string
           quantity?: number
           quoted_at?: string
+          reference_identifier?: string | null
           reference_url?: string | null
           selected_for_estimate?: boolean
+          source_address?: string | null
+          source_contact_email?: string | null
+          source_contact_name?: string | null
+          source_contact_phone?: string | null
           source_name?: string
+          source_tax_id?: string | null
+          source_type?: string
           supplier_id?: string | null
+          supplier_response_deadline?: string | null
           tenant_id?: string
           total_price?: number | null
           unit_price?: number
           updated_at?: string
           updated_by?: string
+          warranty_terms?: string | null
         }
         Relationships: [
           {
@@ -1689,6 +1815,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           estimated_value: number | null
+          estimated_value_source: string
           id: string
           modality: string
           number: string
@@ -1709,6 +1836,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_value?: number | null
+          estimated_value_source?: string
           id?: string
           modality?: string
           number: string
@@ -1729,6 +1857,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_value?: number | null
+          estimated_value_source?: string
           id?: string
           modality?: string
           number?: string
@@ -2453,6 +2582,56 @@ export type Database = {
           },
         ]
       }
+      tenant_procurement_compliance: {
+        Row: {
+          in65_applicability: string
+          legal_review_notes: string | null
+          legal_review_status: string
+          local_regulation_name: string | null
+          local_regulation_reference: string | null
+          normative_basis: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_procurement_compliance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_role_permissions: {
         Row: {
           created_at: string
@@ -2633,6 +2812,17 @@ export type Database = {
         Args: { p_role_id: string; p_tenant_id: string; p_user_id: string }
         Returns: string
       }
+      approve_procurement_item_price: {
+        Args: {
+          p_exceptional_justification?: string
+          p_item_id: string
+          p_method: string
+          p_method_justification: string
+          p_other_unit_price?: number
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       can_invite_platform_staff: { Args: { p_email: string }; Returns: boolean }
       can_manage_platform_staff: { Args: never; Returns: boolean }
       can_manage_platform_support_team: { Args: never; Returns: boolean }
@@ -2756,6 +2946,13 @@ export type Database = {
       }
       get_platform_master_metrics: { Args: never; Returns: Json }
       get_platform_staff_metrics: { Args: never; Returns: Json }
+      get_procurement_price_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          can_approve_price: boolean
+          can_validate_normative_basis: boolean
+        }[]
+      }
       get_supplier_capabilities: {
         Args: { p_tenant_id: string }
         Returns: {
