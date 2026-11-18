@@ -246,6 +246,8 @@ export type Database = {
       }
       contracts: {
         Row: {
+          inspector_user_id: string | null
+          manager_user_id: string | null
           created_at: string
           created_by: string
           end_date: string
@@ -268,6 +270,8 @@ export type Database = {
           updated_by: string
         }
         Insert: {
+          inspector_user_id?: string | null
+          manager_user_id?: string | null
           created_at?: string
           created_by: string
           end_date: string
@@ -290,6 +294,8 @@ export type Database = {
           updated_by: string
         }
         Update: {
+          inspector_user_id?: string | null
+          manager_user_id?: string | null
           created_at?: string
           created_by?: string
           end_date?: string
@@ -1292,6 +1298,7 @@ export type Database = {
       }
       process_items: {
         Row: {
+          responsible_user_id: string | null
           created_at: string
           created_by: string
           document_url: string | null
@@ -1308,6 +1315,7 @@ export type Database = {
           updated_by: string
         }
         Insert: {
+          responsible_user_id?: string | null
           created_at?: string
           created_by: string
           document_url?: string | null
@@ -1324,6 +1332,7 @@ export type Database = {
           updated_by: string
         }
         Update: {
+          responsible_user_id?: string | null
           created_at?: string
           created_by?: string
           document_url?: string | null
@@ -1569,6 +1578,7 @@ export type Database = {
       }
       procurement_processes: {
         Row: {
+          responsible_user_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1588,6 +1598,7 @@ export type Database = {
           updated_by: string
         }
         Insert: {
+          responsible_user_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1607,6 +1618,7 @@ export type Database = {
           updated_by: string
         }
         Update: {
+          responsible_user_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null

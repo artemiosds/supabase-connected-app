@@ -1,3 +1,4 @@
+import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -78,7 +79,9 @@ type Contrato = {
   start_date: string;
   end_date: string;
   manager_name: string | null;
+  manager_user_id: string | null;
   inspector_name: string | null;
+  inspector_user_id: string | null;
   ordinance: string | null;
   status: string;
   notes: string | null;
@@ -95,7 +98,9 @@ type ContratoForm = {
   start_date: string;
   end_date: string;
   manager_name: string;
+  manager_user_id: string;
   inspector_name: string;
+  inspector_user_id: string;
   ordinance: string;
   status: string;
   notes: string;
@@ -112,7 +117,9 @@ const CONTRATO_FORM_VAZIO: ContratoForm = {
   start_date: "",
   end_date: "",
   manager_name: "",
+  manager_user_id: "",
   inspector_name: "",
+  inspector_user_id: "",
   ordinance: "",
   status: "vigente",
   notes: "",
@@ -614,6 +621,7 @@ function NovoContrato(props: {
   processos: ProcessoOpcao[];
   onSalvo: () => void;
 }) {
+  const members = useAssignees(props.aberto ? props.tenantId : undefined);
   const [f, setF] = useState<ContratoForm>(CONTRATO_FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof ContratoForm) => (v: string) => setF((current) => ({ ...current, [k]: v }));
@@ -634,7 +642,9 @@ function NovoContrato(props: {
             start_date: contrato.start_date,
             end_date: contrato.end_date,
             manager_name: contrato.manager_name ?? "",
+            manager_user_id: contrato.manager_user_id ?? "",
             inspector_name: contrato.inspector_name ?? "",
+            inspector_user_id: contrato.inspector_user_id ?? "",
             ordinance: contrato.ordinance ?? "",
             status: contrato.status,
             notes: contrato.notes ?? "",
@@ -681,7 +691,13 @@ function NovoContrato(props: {
       start_date: f.start_date,
       end_date: f.end_date,
       manager_name: f.manager_name.trim() || null,
+      ...((f.manager_user_id || props.contrato?.manager_user_id) && {
+        manager_user_id: f.manager_user_id || null,
+      }),
       inspector_name: f.inspector_name.trim() || null,
+      ...((f.inspector_user_id || props.contrato?.inspector_user_id) && {
+        inspector_user_id: f.inspector_user_id || null,
+      }),
       ordinance: f.ordinance.trim() || null,
       status: f.status,
       notes: f.notes.trim() || null,
@@ -878,11 +894,27 @@ function NovoContrato(props: {
               onChange={(e) => set("end_date")(e.target.value)}
             />
           </Campo>
+          <Campo label="Usuário vinculado — Gestor">
+            <AssigneeSelect
+              label="Gestor"
+              members={members}
+              value={f.manager_user_id}
+              onChange={set("manager_user_id")}
+            />
+          </Campo>
           <Campo label="Gestor do contrato">
             <Input
               maxLength={180}
               value={f.manager_name}
               onChange={(e) => set("manager_name")(e.target.value)}
+            />
+          </Campo>
+          <Campo label="Usuário vinculado — Fiscal">
+            <AssigneeSelect
+              label="Fiscal"
+              members={members}
+              value={f.inspector_user_id}
+              onChange={set("inspector_user_id")}
             />
           </Campo>
           <Campo label="Fiscal do contrato">

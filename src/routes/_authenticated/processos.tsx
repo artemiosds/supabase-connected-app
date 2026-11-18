@@ -1,3 +1,4 @@
+import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -88,6 +89,7 @@ type Processo = {
   priority: string;
   requesting_unit: string | null;
   responsible_name: string | null;
+  responsible_user_id: string | null;
   estimated_value: number | null;
   due_date: string | null;
 };
@@ -99,6 +101,7 @@ type Item = {
   is_done: boolean;
   sort_order: number;
   responsible_name: string | null;
+  responsible_user_id: string | null;
   due_date: string | null;
 };
 
@@ -136,6 +139,7 @@ function Processos() {
   const [visao, setVisao] = useState<"kanban" | "lista">("kanban");
   const [novo, setNovo] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const members = useAssignees(abertoId ? selecionado?.id : undefined);
   const [dadosAbertos, setDadosAbertos] = useState(false);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
@@ -561,6 +565,26 @@ function Processos() {
                 <span>Modalidade: {MODALIDADES[aberto.modality]}</span>
                 <span>Setor: {aberto.requesting_unit || "—"}</span>
                 <span>Responsável: {aberto.responsible_name || "—"}</span>
+                <label>
+                  Usuário responsável pelo processo
+                  <AssigneeSelect
+                    label="Responsável pelo processo"
+                    value={aberto.responsible_user_id}
+                    members={members}
+                    onChange={async (value) => {
+                      const { data, error } = await db
+                        .from("procurement_processes")
+                        .update({ responsible_user_id: value || null, updated_by: userId })
+                        .eq("tenant_id", selecionado.id)
+                        .eq("id", aberto.id)
+                        .select("id")
+                        .maybeSingle();
+                      if (error || !data)
+                        return void toast.error("Não foi possível vincular o responsável.");
+                      void carregar();
+                    }}
+                  />
+                </label>
                 <span>Valor estimado: {formatarMoeda(aberto.estimated_value)}</span>
                 <span>Prazo: {formatarData(aberto.due_date)}</span>
                 <span>
@@ -595,6 +619,34 @@ function Processos() {
                           </label>
                           <div className="grid gap-2 pl-7 sm:grid-cols-2">
                             <div className="space-y-1">
+                              <AssigneeSelect
+                                label={`Usuário responsável: ${i.title}`}
+                                value={i.responsible_user_id}
+                                members={members}
+                                onChange={async (value) => {
+                                  const { data, error } = await db
+                                    .from("process_items")
+                                    .update({
+                                      responsible_user_id: value || null,
+                                      updated_by: userId,
+                                    })
+                                    .eq("tenant_id", selecionado.id)
+                                    .eq("id", i.id)
+                                    .select("id")
+                                    .maybeSingle();
+                                  if (error || !data)
+                                    return void toast.error(
+                                      "Não foi possível vincular o responsável da tarefa.",
+                                    );
+                                  setItens((current) =>
+                                    current.map((row) =>
+                                      row.id === i.id
+                                        ? { ...row, responsible_user_id: value || null }
+                                        : row,
+                                    ),
+                                  );
+                                }}
+                              />
                               <Label htmlFor={`responsavel-${i.id}`}>Responsável</Label>
                               <Input
                                 id={`responsavel-${i.id}`}
