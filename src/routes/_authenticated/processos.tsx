@@ -558,13 +558,18 @@ function Processos() {
 
       <NovoProcesso
         aberto={novo}
-        onFechar={() => { setNovo(false); setNovoViaDfd(false); }}
+        onFechar={() => {
+          setNovo(false);
+          setNovoViaDfd(false);
+        }}
         tenantId={selecionado.id}
         userId={userId}
         onSalvo={(processoId) => {
           void carregar();
           if (novoViaDfd) {
-            window.location.assign(`/documentos?processo=${encodeURIComponent(processoId)}&tipo=dfd`);
+            window.location.assign(
+              `/documentos?processo=${encodeURIComponent(processoId)}&tipo=dfd`,
+            );
           }
         }}
       />
