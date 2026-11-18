@@ -1,5 +1,17 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
+## Decisão operacional — 18/11/2026
+
+**Pendente de homologação.** Base de código `e2d2725`. E2E de isolamento aprovado (run 44307307586); formatação aprovada (44307307564). Registrar o resultado do workflow 44307307620 separadamente.
+
+- [ ] Documentos: validar modelo oficial com brasão, margens e rodapé. Conferir tags fragmentadas, campos ausentes e valores de 31+ itens no DOCX e PDF. O teste automatizado com 90 itens verifica multipaginação e dimensões da primeira página; a repetição visual do cabeçalho em cada continuação exige evidência adicional.
+- [ ] E-mail: validar DNS e STARTTLS, enviar exatamente um convite em homologação e registrar pasta de entrega e perfil. Convite Supabase Auth e alertas da Edge Function usam transportes distintos.
+- [ ] Drive opcional: obter consentimento drive.file, limitar o tenant de homologação a 1–3 elegíveis e comparar SHA-256 antes/Drive/depois. Alternativa: dispensa assinada pela Secretaria.
+- [ ] Recuperação: ZIP do artefato 44107141257 e checksum interno verificados. Restaurar em destino local isolado, com fonte Auth que preserve UUIDs, validar vínculos, objetos privados e login. A chave age permanece sob custódia do órgão.
+
+Registrar responsável, data, versão, evidência restrita e conclusão por frente. Não registrar segredos ou links temporários.
+
+
 ## Estado consolidado — 16/11/2026
 
 **Decisão: NO-GO para produção e comercialização.** O projeto segue em homologação técnica. Não anunciar integrações, backup real ou envio de e-mail como operacionais sem evidência verificável.
