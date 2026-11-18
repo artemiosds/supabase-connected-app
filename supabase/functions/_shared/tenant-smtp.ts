@@ -1,4 +1,5 @@
 import type { ResendDeliveryResult, ResendEmailInput } from "./expiry-notification-provider.ts";
+import { smtpPortSecurityError } from "./test-email.ts";
 type NotificationMessage = Omit<ResendEmailInput, "apiKey" | "from" | "replyTo">;
 type SmtpSettings = {
   email_smtp_host: string | null;
@@ -21,12 +22,11 @@ export async function smtpSender(
     .toLowerCase()
     .split(",")
     .map((s) => s.trim());
+  if (!allowed.includes(host + ":" + port)) {
+    throw new Error("SMTP_ENDPOINT_NOT_ALLOWED");
+  }
   if (
-    !allowed.includes(host + ":" + port) ||
-    !(
-      (secure && port === 465) ||
-      (tenantEmail.email_smtp_security === "starttls" && port === 2525)
-    ) ||
+    smtpPortSecurityError(port, tenantEmail.email_smtp_security) ||
     !tenantEmail.email_smtp_username ||
     !tenantEmail.email_smtp_secret_ciphertext ||
     !tenantEmail.email_from_address
