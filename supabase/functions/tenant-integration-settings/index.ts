@@ -1,4 +1,9 @@
 import { smtpSender } from "../_shared/tenant-smtp.ts";
+import {
+  maskRecipient,
+  normalizeTestRecipient,
+  testEmailCooldownRemaining,
+} from "../_shared/test-email.ts";
 import { getAllowedOrigins } from "../_shared/origins.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
@@ -346,21 +351,62 @@ Deno.serve(async (request: Request) => {
   }
 
   if (action === "test_email") {
+    // Teste individual: um único destinatário, sem CC/BCC, sem tocar filas ou alertas automáticos.
+    const recipient = normalizeTestRecipient(body.test_recipient_email);
+    if (!recipient) {
+      return response(
+        { error: "Informe exatamente um endereço de e-mail válido (até 254 caracteres)." },
+        400,
+        origin,
+      );
+    }
     const { data: row, error: rowError } = await admin
       .from("tenant_integration_settings")
       .select(
-        "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext,email_smtp_host,email_smtp_port,email_smtp_security,email_smtp_username,email_smtp_secret_ciphertext",
+        "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext,email_smtp_host,email_smtp_port,email_smtp_security,email_smtp_username,email_smtp_secret_ciphertext,email_last_test_at",
       )
       .eq("tenant_id", tenantId)
       .maybeSingle();
-    if (!rowError && row?.email_provider === "smtp_gateway" && auth.user.email) {
+    const waitMs = testEmailCooldownRemaining(row?.email_last_test_at as string | null);
+    if (!rowError && row && waitMs > 0) {
+      return response(
+        {
+          error: `Aguarde ${Math.ceil(waitMs / 1000)} s antes de enviar outro teste.`,
+          outcome: "cooldown",
+        },
+        429,
+        origin,
+      );
+    }
+    const finish = async (outcome: "accepted" | "rejected" | "uncertain" | "configuration") => {
+      await admin
+        .from("tenant_integration_settings")
+        .update({
+          email_last_test_at: new Date().toISOString(),
+          email_last_test_status: outcome === "accepted" ? "success" : "failed",
+        })
+        .eq("tenant_id", tenantId);
+      await admin.from("audit_events").insert({
+        tenant_id: tenantId,
+        actor_id: auth.user.id,
+        action: "EMAIL_TEST",
+        entity: "tenant_integration_settings",
+        entity_id: tenantId,
+        details: {
+          provider: row?.email_provider ?? null,
+          outcome,
+          recipient: maskRecipient(recipient),
+        },
+      });
+    };
+    if (!rowError && row?.email_provider === "smtp_gateway") {
       let outcome: "accepted" | "rejected" | "uncertain" | "configuration" = "configuration";
       try {
         const send = await smtpSender(row, async (value) =>
           decryptSecret(value, await encryptionKey()),
         );
         const result = await send({
-          to: auth.user.email,
+          to: recipient,
           subject: "Teste de e-mail institucional — Primus Gestão",
           html: "<p>Este é o teste de SMTP solicitado nas configurações da Secretaria.</p>",
           idempotencyKey: crypto.randomUUID(),
@@ -371,20 +417,14 @@ Deno.serve(async (request: Request) => {
       }
       const accepted = outcome === "accepted";
       const message = accepted
-        ? "Mensagem aceita pelo servidor SMTP. Confira a caixa de entrada e o spam."
+        ? `Mensagem aceita pelo servidor SMTP para ${recipient}. Isso não confirma a entrega; confira a caixa de entrada e o spam.`
         : outcome === "uncertain"
-          ? "Não foi possível confirmar a entrega. Confira a caixa antes de repetir o teste."
+          ? "Resultado incerto: o servidor não confirmou o aceite. Confira a caixa antes de repetir o teste."
           : outcome === "configuration"
             ? "Confira o remetente, a credencial e a autorização do servidor e porta SMTP."
             : "O servidor SMTP recusou o teste. Confira o remetente e as credenciais.";
-      await admin
-        .from("tenant_integration_settings")
-        .update({
-          email_last_test_at: new Date().toISOString(),
-          email_last_test_status: accepted ? "success" : "failed",
-        })
-        .eq("tenant_id", tenantId);
-      return response({ success: accepted, message }, 200, origin);
+      await finish(outcome);
+      return response({ success: accepted, outcome, message }, 200, origin);
     }
     if (
       rowError ||
@@ -394,7 +434,7 @@ Deno.serve(async (request: Request) => {
       !row.email_from_address
     ) {
       return response(
-        { error: "Configure o Resend, a chave API e o remetente antes do teste." },
+        { error: "Salve o provedor (SMTP ou Resend), a credencial e o remetente antes do teste." },
         409,
         origin,
       );
@@ -426,49 +466,46 @@ Deno.serve(async (request: Request) => {
         body: JSON.stringify({
           from,
           ...(row.email_reply_to ? { reply_to: row.email_reply_to } : {}),
-          to: [auth.user.email],
+          to: [recipient],
           subject: "Teste de configuração — Gestão de Fornecedores da Saúde",
           html: "<p>Este é um teste de configuração de e-mail solicitado por um administrador da sua Secretaria.</p>",
         }),
       });
     } catch {
-      await admin
-        .from("tenant_integration_settings")
-        .update({
-          email_last_test_at: new Date().toISOString(),
-          email_last_test_status: "failed",
-        })
-        .eq("tenant_id", tenantId);
+      await finish("uncertain");
       return response(
         {
-          error: "Não foi possível alcançar o provedor de e-mail. O resultado não foi confirmado.",
+          success: false,
+          outcome: "uncertain",
+          message:
+            "Resultado incerto: não foi possível confirmar o aceite pelo provedor. Confira a caixa antes de repetir.",
         },
-        502,
+        200,
         origin,
       );
     }
     const providerBody = await providerResponse.json().catch(() => null);
     const accepted = providerResponse.ok && typeof providerBody?.id === "string";
-    await admin
-      .from("tenant_integration_settings")
-      .update({
-        email_last_test_at: new Date().toISOString(),
-        email_last_test_status: accepted ? "success" : "failed",
-      })
-      .eq("tenant_id", tenantId);
+    await finish(accepted ? "accepted" : "rejected");
     if (!accepted) {
       console.error("Provedor rejeitou teste de e-mail:", providerResponse.status);
       return response(
         {
-          error:
+          success: false,
+          outcome: "rejected",
+          message:
             "O provedor rejeitou o teste. Confira domínio, remetente e credencial no painel do provedor.",
         },
-        502,
+        200,
         origin,
       );
     }
     return response(
-      { success: true, message: `E-mail de teste aceito para ${auth.user.email}.` },
+      {
+        success: true,
+        outcome: "accepted",
+        message: `E-mail de teste aceito pelo provedor para ${recipient}. Isso não confirma a entrega na caixa.`,
+      },
       200,
       origin,
     );

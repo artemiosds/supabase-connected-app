@@ -383,3 +383,13 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] E2E autenticado, recuperação de upload DOCX, homologação visual e backup/restore em projeto isolado continuam pendentes.
 
 Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 nesta etapa. Os avisos do Advisor não foram tratados como vulnerabilidades automáticas nem removidos em massa. Estado comercial permanece **NO-GO**.
+
+
+## Homologação — teste individual de e-mail institucional (18/11/2026)
+
+- [ ] Fazer **deploy controlado** da Edge Function `tenant-integration-settings` (e do módulo `_shared/test-email.ts`) após revisão. Antes do deploy, produção continua com a versão antiga (envio só ao e-mail do usuário logado).
+- [ ] Em Configurações > Integrações e LGPD > E-mail institucional, salvar SMTP (endpoint em `SMTP_ALLOWED_ENDPOINTS`) ou Resend, informar um único destinatário autorizado e clicar em **Enviar 1 e-mail de teste**.
+- [ ] Registrar o resultado exibido: **aceito pelo servidor**, **rejeitado** ou **incerto**. O servidor aplica intervalo mínimo de 60 s entre testes (`email_last_test_at`).
+- [ ] Conferir manualmente a caixa de entrada/spam do destinatário e anotar pasta e cabeçalhos (SPF/DKIM/DMARC).
+
+**Aceito ≠ entregue:** "aceito pelo servidor SMTP/provedor" só significa que o servidor recebeu a mensagem para encaminhar. A entrega na caixa depende de DNS, reputação e filtros do destinatário e só é comprovada pela conferência manual. "Incerto" (timeout/conexão interrompida) é persistido como `failed`, mas não deve ser repetido antes de conferir a caixa. O teste não aciona `send-expiry-notifications`, filas nem alertas; a auditoria grava apenas ação, resultado, provedor e destinatário mascarado.

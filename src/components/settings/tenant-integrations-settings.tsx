@@ -10,6 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  normalizeTestRecipient,
+  TEST_EMAIL_MAX_LENGTH,
+} from "../../../supabase/functions/_shared/test-email.ts";
 
 type PrivacyRequest = {
   id: string;
@@ -84,6 +88,11 @@ export function TenantIntegrationsSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [testRecipient, setTestRecipient] = useState("artemiosouza99@gmail.com");
+  const [testResult, setTestResult] = useState<{
+    outcome: "accepted" | "rejected" | "uncertain" | "error";
+    message: string;
+  } | null>(null);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [connectingDrive, setConnectingDrive] = useState(false);
   const [syncingDrive, setSyncingDrive] = useState(false);
@@ -192,18 +201,37 @@ export function TenantIntegrationsSettings() {
   }
 
   async function testEmail() {
-    if (!selecionado?.id) return;
+    if (!selecionado?.id || testingEmail) return;
+    const recipient = normalizeTestRecipient(testRecipient);
+    if (!recipient) {
+      setTestResult({
+        outcome: "error",
+        message: "Informe exatamente um endereço de e-mail válido, sem espaços ou listas.",
+      });
+      return;
+    }
     setTestingEmail(true);
+    setTestResult(null);
     const { data, error } = await db.functions.invoke("tenant-integration-settings", {
-      body: { action: "test_email", tenant_id: selecionado.id },
+      body: { action: "test_email", tenant_id: selecionado.id, test_recipient_email: recipient },
     });
     setTestingEmail(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "O teste de e-mail falhou.");
+      const message = data?.error ?? error?.message ?? "O teste de e-mail falhou.";
+      setTestResult({ outcome: "error", message });
+      toast.error(message);
       return;
     }
-    if (data.success === false) toast.error(data.message);
-    else toast.success(data.message ?? "Teste de e-mail aceito pelo provedor.");
+    const outcome =
+      data.outcome === "accepted" || data.outcome === "uncertain" || data.outcome === "rejected"
+        ? data.outcome
+        : data.success
+          ? "accepted"
+          : "rejected";
+    setTestResult({ outcome, message: data.message ?? "" });
+    if (outcome === "accepted") toast.success(data.message);
+    else if (outcome === "uncertain") toast.warning(data.message);
+    else toast.error(data.message);
     await load();
   }
 
@@ -816,27 +844,71 @@ export function TenantIntegrationsSettings() {
               </div>
             </section>
 
+            {canEdit &&
+              (settings.email_provider === "resend" ||
+                settings.email_provider === "smtp_gateway") && (
+                <section className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold">Teste individual de e-mail</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Envia uma única mensagem ao endereço informado. Não aciona alertas de
+                      contratos, profissionais ou filas. Usa a configuração já salva; salve antes de
+                      testar. Este campo não é gravado na configuração.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="test-recipient">Destinatário do teste</Label>
+                      <Input
+                        id="test-recipient"
+                        type="email"
+                        maxLength={TEST_EMAIL_MAX_LENGTH}
+                        autoComplete="off"
+                        value={testRecipient}
+                        onChange={(e) => setTestRecipient(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={testingEmail || saving || !normalizeTestRecipient(testRecipient)}
+                      onClick={() => void testEmail()}
+                    >
+                      {testingEmail ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      {testingEmail ? "Enviando..." : "Enviar 1 e-mail de teste"}
+                    </Button>
+                  </div>
+                  {testResult && (
+                    <Alert variant={testResult.outcome === "accepted" ? "default" : "destructive"}>
+                      {testResult.outcome === "accepted" ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      <AlertTitle>
+                        {testResult.outcome === "accepted"
+                          ? "Aceito pelo servidor (entrega não confirmada)"
+                          : testResult.outcome === "uncertain"
+                            ? "Resultado incerto"
+                            : testResult.outcome === "rejected"
+                              ? "Rejeitado pelo servidor"
+                              : "Teste não enviado"}
+                      </AlertTitle>
+                      <AlertDescription>{testResult.message}</AlertDescription>
+                    </Alert>
+                  )}
+                </section>
+              )}
+
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor
               </p>
               <div className="flex flex-wrap gap-2">
-                {(settings.email_provider === "resend" ||
-                  settings.email_provider === "smtp_gateway") && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={testingEmail || saving}
-                    onClick={() => void testEmail()}
-                  >
-                    {testingEmail ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                    )}
-                    Enviar teste para meu e-mail
-                  </Button>
-                )}
                 <Button type="submit" disabled={saving || testingEmail}>
                   <Save className="mr-2 h-4 w-4" />
                   {saving ? "Salvando..." : "Salvar configurações"}
