@@ -17,7 +17,7 @@ describe("componentes de movimento institucional", () => {
     expect(html).toContain('aria-label="Pendências sob sua responsabilidade"');
     expect(html).toContain("Processo nº 11/2026");
     expect(html).toContain('href="/processos?processo=1"');
-    expect(html).toContain('<li');
+    expect(html).toContain("<li");
   });
 
   it("mantém acessíveis as ações permitidas sem criar itens fictícios", () => {
@@ -25,8 +25,20 @@ describe("componentes de movimento institucional", () => {
       createElement(FlowingMenu, {
         ariaLabel: "Ações rápidas da Secretaria",
         items: [
-          { id: "dfd", text: "Nova demanda (DFD)", description: "Criar", href: "/processos?novo=dfd", icon: Plus },
-          { id: "documentos", text: "Documentos", description: "Consultar", href: "/documentos", icon: FileText },
+          {
+            id: "dfd",
+            text: "Nova demanda (DFD)",
+            description: "Criar",
+            href: "/processos?novo=dfd",
+            icon: Plus,
+          },
+          {
+            id: "documentos",
+            text: "Documentos",
+            description: "Consultar",
+            href: "/documentos",
+            icon: FileText,
+          },
         ],
       }),
     );
