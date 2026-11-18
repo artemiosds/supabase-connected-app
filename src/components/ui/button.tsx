@@ -56,8 +56,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : "button";
     const actualVariant = variant ?? "default";
-    const specularEnabled =
-      specular && actualVariant !== "ghost" && actualVariant !== "link" && size !== "icon";
+    // Todos os botões visuais recebem o efeito; links textuais podem optar por sair.
+    const specularEnabled = specular && actualVariant !== "link";
 
     function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
       if (specularEnabled && (event.pointerType === "mouse" || event.pointerType === "pen")) {
