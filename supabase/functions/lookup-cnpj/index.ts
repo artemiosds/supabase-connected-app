@@ -63,10 +63,9 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const body = await request.json() as JsonObject;
-    const cnpj = typeof body.cnpj === "string"
-      ? body.cnpj.toUpperCase().replace(/[^A-Z0-9]/g, "")
-      : "";
+    const body = (await request.json()) as JsonObject;
+    const cnpj =
+      typeof body.cnpj === "string" ? body.cnpj.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
 
     if (!/^[A-Z0-9]{12}[0-9]{2}$/.test(cnpj)) {
       return json({ error: "Informe um CNPJ válido com 14 caracteres." }, 400, origin);
@@ -94,7 +93,10 @@ Deno.serve(async (request: Request) => {
     const results: CnpjLookupData[] = [];
     settled.forEach((outcome, index) => {
       if (outcome.status === "fulfilled") results.push(outcome.value);
-      else failures.push(`${providers[index].name}:${outcome.reason instanceof Error ? outcome.reason.message : "ERROR"}`);
+      else
+        failures.push(
+          `${providers[index].name}:${outcome.reason instanceof Error ? outcome.reason.message : "ERROR"}`,
+        );
     });
     const combined = combineCnpjResults(results, cnpj);
     if (combined) return json({ data: combined, providers_failed: failures }, 200, origin);
@@ -106,11 +108,15 @@ Deno.serve(async (request: Request) => {
       providers_attempted: failures,
     });
 
-    return json({
-      error: "Não foi possível consultar este CNPJ nas fontes disponíveis. Você pode preencher os campos manualmente ou tentar novamente.",
-      providers_attempted: failures,
-      retryable: true,
-    }, 503, origin);
+    return json(
+      {
+        error: "Não foi possível consultar este CNPJ nas fontes disponíveis. Você pode preencher os campos manualmente ou tentar novamente.",
+        providers_attempted: failures,
+        retryable: true,
+      },
+      503,
+      origin,
+    );
   } catch (error) {
     console.error("lookup-cnpj: invalid request", {
       reason: error instanceof Error ? error.message : "ERROR",
