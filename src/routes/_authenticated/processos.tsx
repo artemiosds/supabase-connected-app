@@ -1637,6 +1637,18 @@ function DadosEstruturados(props: {
       setSaving(false);
     }
   }
+  async function abrirComprovanteCotacao(quote: CotacaoCompra) {
+    if (!quote.evidence_storage_path) return;
+    const { data, error } = await db.storage
+      .from("gfs-private-documents")
+      .createSignedUrl(quote.evidence_storage_path, 60);
+    if (error || !data?.signedUrl) {
+      toast.error(error?.message ?? "Comprovante indisponível para consulta.");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   async function selecionarCotacao(quote: CotacaoCompra) {
     const { error } = await db.rpc("select_procurement_price_quote", {
       p_tenant_id: props.tenantId,
