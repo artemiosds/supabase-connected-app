@@ -1039,8 +1039,6 @@ type DotacaoCompra = {
   is_active: boolean;
 };
 
-type FornecedorCompra = { id: string; legal_name: string; cnpj?: string };
-
 function DadosEstruturados(props: {
   aberto: boolean;
   onFechar: () => void;
