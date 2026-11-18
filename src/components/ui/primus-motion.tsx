@@ -138,19 +138,19 @@ export function FlowingMenu({
       className="primus-flowing-menu"
       onKeyDown={onKeyDown}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setActive(-1);
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(-1);
       }}
       onPointerLeave={() => {
         if (!listRef.current?.contains(document.activeElement)) setActive(-1);
       }}
     >
+      <span
+        className="primus-flowing-menu__band"
+        aria-hidden="true"
+        data-visible={active >= 0}
+        style={{ transform: `translate3d(0, ${band.top}px, 0)`, height: band.height }}
+      />
       <ul ref={listRef} className="primus-flowing-menu__list">
-        <span
-          className="primus-flowing-menu__band"
-          aria-hidden="true"
-          data-visible={active >= 0}
-          style={{ transform: `translate3d(0, ${band.top}px, 0)`, height: band.height }}
-        />
         {items.map((item, index) => {
           const Icon = item.icon;
           return (
