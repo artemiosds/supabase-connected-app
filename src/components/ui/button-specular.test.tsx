@@ -56,9 +56,7 @@ describe("SpecularButton institucional nos botões do Primus", () => {
       </>,
     );
     for (const name of ["Fechar", "Abrir menu"]) {
-      expect(screen.getByRole("button", { name }).className).toContain(
-        "primus-specular-button",
-      );
+      expect(screen.getByRole("button", { name }).className).toContain("primus-specular-button");
     }
     for (const name of ["Ajuda", "Sem efeito"]) {
       expect(screen.getByRole("button", { name }).className).not.toContain(
