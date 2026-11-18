@@ -69,6 +69,12 @@ describe("mapa de pesquisa de preços", () => {
           source_type: "painel_precos",
           reference_identifier: "PNCP-123",
           accessed_at: "2026-11-18T10:00:00-03:00",
+          supplier_response_deadline: "2026-11-30",
+          source_contact_phone: "(93) 99999-0000",
+          notes: "Frete incluso no prazo informado.",
+          evidence_file_name: "proposta.pdf",
+          evidence_mime_type: "application/pdf",
+          evidence_file_size: 4096,
         },
         {
           id: "quote-2",
@@ -91,6 +97,11 @@ describe("mapa de pesquisa de preços", () => {
     expect(csv).toContain('"Expurgada"');
     expect(csv).toContain('"Preço incompatível com a especificação técnica."');
     expect(csv).toContain('"PNCP-123"');
+    expect(csv).toContain('"2026-11-30"');
+    expect(csv).toContain('"(93) 99999-0000"');
+    expect(csv).toContain('"Frete incluso no prazo informado."');
+    expect(csv).toContain('"application/pdf"');
+    expect(csv).toContain('"4096"');
   });
 });
 
