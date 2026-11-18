@@ -254,6 +254,37 @@ function Contratos() {
     void carregar();
   }, [carregar]);
 
+  // Abre atalhos do painel e do sino somente após carregar o contexto da Secretaria.
+  useEffect(() => {
+    if (loading || !selecionado?.id || tenantCarregadoId !== selecionado.id) return;
+    const url = new URL(window.location.href);
+    const novo = url.searchParams.get("novo");
+    const contractId = url.searchParams.get("contrato");
+    const novoAditivo = url.searchParams.get("aditivo") === "novo";
+    if (!novo && !contractId) return;
+    if (novo === "1") {
+      setContratoEditando(null);
+      setNovoAberto(true);
+    }
+    if (contractId) {
+      const contrato = lista.find((item) => item.id === contractId);
+      if (!contrato) {
+        toast.error("O contrato solicitado não está disponível nesta Secretaria.");
+      } else if (novoAditivo) {
+        setAditivoDe(contrato);
+      } else {
+        document.getElementById(`contrato-${contractId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }
+    url.searchParams.delete("novo");
+    url.searchParams.delete("contrato");
+    url.searchParams.delete("aditivo");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [loading, selecionado?.id, tenantCarregadoId, lista]);
+
   const dadosTenantAtual = !!selecionado?.id && tenantCarregadoId === selecionado.id;
   const listaAtual = dadosTenantAtual ? lista : [];
   const fornecedoresAtuais = dadosTenantAtual ? fornecedores : [];
@@ -440,7 +471,7 @@ function Contratos() {
       ) : (
         <div className="grid gap-3">
           {exibidos.map((c) => (
-            <Card key={c.id}>
+            <Card key={c.id} id={`contrato-${c.id}`}>
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-2">
                 <div>
                   <CardTitle className="text-base">Contrato nº {c.number}</CardTitle>
