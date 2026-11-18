@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(11);
+SELECT extensions.plan(15);
 
 SELECT extensions.ok(
   pg_catalog.to_regclass('public.procurement_process_compliance') IS NOT NULL,
@@ -101,6 +101,34 @@ SELECT extensions.ok(
   AND pg_catalog.pg_get_functiondef('public.fn_capture_procurement_price_map_snapshot()'::regprocedure) LIKE '%procurement_compliance%'
   AND pg_catalog.pg_get_functiondef('public.fn_capture_procurement_price_map_snapshot()'::regprocedure) LIKE '%tenant_procurement_compliance%',
   'the immutable price-map snapshot captures process-specific legal validation and the tenant baseline separately'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef('app_auth.procurement_price_research_fingerprint(uuid,uuid)'::regprocedure) LIKE '%public.procurement_process_compliance%'
+  AND pg_catalog.pg_get_functiondef('app_auth.procurement_price_research_fingerprint(uuid,uuid)'::regprocedure) LIKE '%process_compliance%',
+  'the price-research fingerprint includes the process-specific legal and funding decision'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef('public.transition_generated_document_workflow(uuid,uuid,text,text)'::regprocedure) LIKE '%public.procurement_process_compliance%'
+  AND pg_catalog.pg_get_functiondef('public.transition_generated_document_workflow(uuid,uuid,text,text)'::regprocedure) LIKE '%app_auth.procurement_price_research_fingerprint%'
+  AND pg_catalog.pg_get_functiondef('public.transition_generated_document_workflow(uuid,uuid,text,text)'::regprocedure) LIKE '%FOR UPDATE%',
+  'map submission checks process-specific compliance and locks the process before comparing its fingerprint'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef('public.fn_guard_price_map_research_mutation()'::regprocedure) LIKE '%FOR UPDATE%'
+  AND pg_catalog.pg_get_functiondef('public.fn_guard_price_map_research_mutation()'::regprocedure) LIKE '%generated_document_workflows%'
+  AND pg_catalog.pg_get_functiondef('public.fn_guard_price_map_research_mutation()'::regprocedure) LIKE '%pending_approval%'
+  AND pg_catalog.pg_get_functiondef('public.fn_guard_price_map_research_mutation()'::regprocedure) LIKE '%signed%',
+  'price research mutations serialize with submission and are blocked while the map is in review or signed'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef('public.fn_guard_procurement_process_compliance()'::regprocedure) LIKE '%FOR UPDATE%'
+  AND pg_catalog.pg_get_functiondef('public.fn_guard_procurement_process_compliance()'::regprocedure) LIKE '%generated_document_workflows%'
+  AND pg_catalog.pg_get_functiondef('public.fn_guard_procurement_process_compliance()'::regprocedure) LIKE '%pending_approval%',
+  'legal and funding decisions are locked while a map is in approval or signed'
 );
 
 SELECT * FROM extensions.finish();
