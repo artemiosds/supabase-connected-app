@@ -202,7 +202,8 @@ export function TenantIntegrationsSettings() {
       toast.error(data?.error ?? error?.message ?? "O teste de e-mail falhou.");
       return;
     }
-    toast.success(data.message ?? "Teste de e-mail aceito pelo provedor.");
+    if (data.success === false) toast.error(data.message);
+    else toast.success(data.message ?? "Teste de e-mail aceito pelo provedor.");
     await load();
   }
 
@@ -820,7 +821,8 @@ export function TenantIntegrationsSettings() {
                 <ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor
               </p>
               <div className="flex flex-wrap gap-2">
-                {settings.email_provider === "resend" && (
+                {(settings.email_provider === "resend" ||
+                  settings.email_provider === "smtp_gateway") && (
                   <Button
                     type="button"
                     variant="outline"

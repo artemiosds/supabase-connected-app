@@ -1,5 +1,6 @@
+import { smtpSender } from "../_shared/tenant-smtp.ts";
 import { getAllowedOrigins } from "../_shared/origins.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type JsonObject = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -348,10 +349,43 @@ Deno.serve(async (request: Request) => {
     const { data: row, error: rowError } = await admin
       .from("tenant_integration_settings")
       .select(
-        "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext",
+        "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext,email_smtp_host,email_smtp_port,email_smtp_security,email_smtp_username,email_smtp_secret_ciphertext",
       )
       .eq("tenant_id", tenantId)
       .maybeSingle();
+    if (!rowError && row?.email_provider === "smtp_gateway" && auth.user.email) {
+      let outcome: "accepted" | "rejected" | "uncertain" | "configuration" = "configuration";
+      try {
+        const send = await smtpSender(row, async (value) =>
+          decryptSecret(value, await encryptionKey()),
+        );
+        const result = await send({
+          to: auth.user.email,
+          subject: "Teste de e-mail institucional — Primus Gestão",
+          html: "<p>Este é o teste de SMTP solicitado nas configurações da Secretaria.</p>",
+          idempotencyKey: crypto.randomUUID(),
+        });
+        outcome = result.status;
+      } catch {
+        /* Nunca retornar detalhes do transporte ou credenciais. */
+      }
+      const accepted = outcome === "accepted";
+      const message = accepted
+        ? "Mensagem aceita pelo servidor SMTP. Confira a caixa de entrada e o spam."
+        : outcome === "uncertain"
+          ? "Não foi possível confirmar a entrega. Confira a caixa antes de repetir o teste."
+          : outcome === "configuration"
+            ? "Confira o remetente, a credencial e a autorização do servidor e porta SMTP."
+            : "O servidor SMTP recusou o teste. Confira o remetente e as credenciais.";
+      await admin
+        .from("tenant_integration_settings")
+        .update({
+          email_last_test_at: new Date().toISOString(),
+          email_last_test_status: accepted ? "success" : "failed",
+        })
+        .eq("tenant_id", tenantId);
+      return response({ success: accepted, message }, 200, origin);
+    }
     if (
       rowError ||
       !row ||
