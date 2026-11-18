@@ -1001,6 +1001,10 @@ type AprovacaoPrecoCompra = {
 };
 
 type ConformidadeCompra = {
+  process_id: string;
+  funding_source_type: string;
+  funding_source_description: string | null;
+  transfer_agreement_number: string | null;
   normative_basis: string;
   in65_applicability: string;
   local_regulation_name: string | null;
@@ -1063,6 +1067,9 @@ function DadosEstruturados(props: {
     otherUnitPrice: string;
   }>>({});
   const [complianceForm, setComplianceForm] = useState({
+    funding_source_type: "unknown",
+    funding_source_description: "",
+    transfer_agreement_number: "",
     normative_basis: "pending",
     in65_applicability: "pending",
     local_regulation_name: "",
@@ -1124,8 +1131,15 @@ function DadosEstruturados(props: {
     setLoading(true);
 
     try {
-      const [itemRows, budgetRows, supplierRows, approvalRows, complianceResult, capabilityResult] =
-        await Promise.all([
+      const [
+        itemRows,
+        budgetRows,
+        supplierRows,
+        approvalRows,
+        processComplianceResult,
+        tenantComplianceResult,
+        capabilityResult,
+      ] = await Promise.all([
           carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
             db
               .from("procurement_items")
@@ -1168,26 +1182,40 @@ function DadosEstruturados(props: {
               .range(inicio, fim),
           ),
           db
+            .from("procurement_process_compliance")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("process_id", props.processId)
+            .maybeSingle(),
+          db
             .from("tenant_procurement_compliance")
             .select("*")
             .eq("tenant_id", props.tenantId)
             .maybeSingle(),
           db.rpc("get_procurement_price_capabilities", { p_tenant_id: props.tenantId }),
         ]);
-      if (complianceResult.error) throw complianceResult.error;
+      if (processComplianceResult.error) throw processComplianceResult.error;
+      if (tenantComplianceResult.error) throw tenantComplianceResult.error;
       if (capabilityResult.error) throw capabilityResult.error;
       setApprovals(approvalRows);
-      setCompliance(complianceResult.data);
+      setCompliance(processComplianceResult.data);
       setCanApprovePrice(Boolean(capabilityResult.data?.[0]?.can_approve_price));
-      if (complianceResult.data) {
-        setComplianceForm({
-          normative_basis: complianceResult.data.normative_basis,
-          in65_applicability: complianceResult.data.in65_applicability,
-          local_regulation_name: complianceResult.data.local_regulation_name ?? "",
-          local_regulation_reference: complianceResult.data.local_regulation_reference ?? "",
-          legal_review_notes: complianceResult.data.legal_review_notes ?? "",
-        });
-      }
+      const processCompliance = processComplianceResult.data;
+      const tenantCompliance = tenantComplianceResult.data;
+      setComplianceForm({
+        funding_source_type: processCompliance?.funding_source_type ?? "unknown",
+        funding_source_description: processCompliance?.funding_source_description ?? "",
+        transfer_agreement_number: processCompliance?.transfer_agreement_number ?? "",
+        normative_basis:
+          processCompliance?.normative_basis ?? tenantCompliance?.normative_basis ?? "pending",
+        in65_applicability:
+          processCompliance?.in65_applicability ?? tenantCompliance?.in65_applicability ?? "pending",
+        local_regulation_name:
+          processCompliance?.local_regulation_name ?? tenantCompliance?.local_regulation_name ?? "",
+        local_regulation_reference:
+          processCompliance?.local_regulation_reference ?? tenantCompliance?.local_regulation_reference ?? "",
+        legal_review_notes: processCompliance?.legal_review_notes ?? "",
+      });
 
       const itemIds = itemRows.map((item) => item.id);
       const quoteRows: CotacaoCompra[] = [];
@@ -1731,6 +1759,21 @@ function DadosEstruturados(props: {
       return;
     }
     const legalNotes = complianceForm.legal_review_notes.trim();
+    const transferFunding = ["federal_transfer", "state_transfer", "other_transfer", "mixed"].includes(
+      complianceForm.funding_source_type,
+    );
+    if (complianceForm.funding_source_type === "unknown") {
+      toast.error("Identifique a origem dos recursos deste processo antes de validar.");
+      return;
+    }
+    if (
+      transferFunding &&
+      !complianceForm.funding_source_description.trim() &&
+      !complianceForm.transfer_agreement_number.trim()
+    ) {
+      toast.error("Informe o programa, a fonte ou o instrumento de transferência dos recursos.");
+      return;
+    }
     if (
       complianceForm.normative_basis === "local_regulation" &&
       (!complianceForm.local_regulation_name.trim() || !complianceForm.local_regulation_reference.trim())
@@ -1757,9 +1800,13 @@ function DadosEstruturados(props: {
       return;
     }
     setSaving(true);
-    const { error } = await db.from("tenant_procurement_compliance").upsert(
+    const { error } = await db.from("procurement_process_compliance").upsert(
       {
         tenant_id: props.tenantId,
+        process_id: props.processId,
+        funding_source_type: complianceForm.funding_source_type,
+        funding_source_description: complianceForm.funding_source_description.trim() || null,
+        transfer_agreement_number: complianceForm.transfer_agreement_number.trim() || null,
         normative_basis: complianceForm.normative_basis,
         in65_applicability: complianceForm.in65_applicability,
         local_regulation_name: complianceForm.local_regulation_name.trim() || null,
@@ -1768,14 +1815,14 @@ function DadosEstruturados(props: {
         legal_review_notes: complianceForm.legal_review_notes.trim() || null,
         updated_by: props.userId,
       },
-      { onConflict: "tenant_id" },
+      { onConflict: "tenant_id,process_id" },
     );
     setSaving(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Enquadramento normativo registrado para esta Secretaria.");
+    toast.success("Enquadramento normativo registrado para este processo.");
     await carregarDados();
   }
 
@@ -2685,9 +2732,9 @@ function DadosEstruturados(props: {
               <CardContent className="space-y-3 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold">Enquadramento normativo da Secretaria</p>
+                    <p className="font-semibold">Enquadramento normativo e origem dos recursos deste processo</p>
                     <p className="text-xs text-muted-foreground">
-                      A validação é identificada pelo usuário autorizado e registrada com data e auditoria.
+                      A aplicabilidade é validada individualmente para esta contratação; o perfil da Secretaria serve apenas como referência inicial.
                     </p>
                   </div>
                   <Badge variant={compliance?.legal_review_status === "validated" ? "default" : "destructive"}>
@@ -2697,6 +2744,44 @@ function DadosEstruturados(props: {
                 {canApprovePrice ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label>Origem dos recursos do processo *</Label>
+                        <Select
+                          value={complianceForm.funding_source_type}
+                          onValueChange={(value) =>
+                            setComplianceForm((current) => ({ ...current, funding_source_type: value }))
+                          }
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unknown">Ainda não identificada</SelectItem>
+                            <SelectItem value="own_resources">Recursos próprios do ente</SelectItem>
+                            <SelectItem value="federal_transfer">Transferência da União</SelectItem>
+                            <SelectItem value="state_transfer">Transferência estadual</SelectItem>
+                            <SelectItem value="other_transfer">Outra transferência voluntária</SelectItem>
+                            <SelectItem value="mixed">Recursos de origens mistas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Programa / descrição da fonte de recursos</Label>
+                        <Input
+                          value={complianceForm.funding_source_description}
+                          onChange={(event) =>
+                            setComplianceForm((current) => ({ ...current, funding_source_description: event.target.value }))
+                          }
+                          placeholder="Programa, ação orçamentária ou origem do repasse"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label>Convênio / termo / instrumento de transferência</Label>
+                        <Input
+                          value={complianceForm.transfer_agreement_number}
+                          onChange={(event) =>
+                            setComplianceForm((current) => ({ ...current, transfer_agreement_number: event.target.value }))
+                          }
+                        />
+                      </div>
                       <div className="space-y-1">
                         <Label>Base normativa declarada</Label>
                         <Select
@@ -2776,7 +2861,12 @@ function DadosEstruturados(props: {
                       <Button
                         type="button"
                         onClick={() => void salvarConformidadeNormativa()}
-                        disabled={saving || complianceForm.normative_basis === "pending" || complianceForm.in65_applicability === "pending"}
+                        disabled={
+                          saving ||
+                          complianceForm.funding_source_type === "unknown" ||
+                          complianceForm.normative_basis === "pending" ||
+                          complianceForm.in65_applicability === "pending"
+                        }
                       >
                         Registrar validação normativa
                       </Button>
