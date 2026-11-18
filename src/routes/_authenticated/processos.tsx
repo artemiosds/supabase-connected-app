@@ -2832,82 +2832,116 @@ function DadosEstruturados(props: {
                     </h3>
                     <Badge variant="outline">{resumo.quantidade} cotação(ões) válidas</Badge>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[760px] text-sm">
-                      <thead className="text-left text-muted-foreground">
-                        <tr>
-                          <th className="p-2">Fornecedor / fonte</th>
-                          <th className="p-2">CNPJ</th>
-                          <th className="p-2">Referência</th>
-                          <th className="p-2">Data</th>
-                          <th className="p-2 text-right">Unitário</th>
-                          <th className="p-2 text-right">Frete</th>
-                          <th className="p-2 text-right">Total</th>
-                          <th className="p-2 text-right">Unitário c/ frete</th>
-                          <th className="p-2">Fonte</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((q) => (
-                          <tr key={q.id} className="border-t">
-                            <td className="p-2">
-                              {q.source_name}
-                              {q.selected_for_estimate && (
-                                <Badge className="ml-2" variant="secondary">
-                                  Selecionada
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="p-2">
-                              {suppliers.find((s) => s.id === q.supplier_id)?.cnpj ||
-                                "Não informado"}
-                            </td>
-                            <td className="p-2">
-                              <button
-                                type="button"
-                                disabled={q.selected_for_estimate}
-                                aria-pressed={q.selected_for_estimate}
-                                onClick={() => void selecionarCotacao(q)}
-                              >
-                                Selecionar para preço de referência:{" "}
-                                {q.selected_for_estimate ? "Sim" : "Não"}
-                              </button>
-                              {sinais
-                                .find((s) => s.cotacao.id === q.id)
-                                ?.motivos.map((m) => (
-                                  <p key={m} className="text-amber-700">
-                                    {m}
-                                  </p>
-                                ))}
-                            </td>
-                            <td className="p-2">{formatarData(q.quoted_at)}</td>
-                            <td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td>
-                            <td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td>
-                            <td className="p-2 text-right font-medium">
-                              {formatarMoeda(q.total_price ?? 0)}
-                            </td>
-                            <td className="p-2 text-right">
-                              {formatarMoeda(precoUnitarioComFrete(q))}
-                            </td>
-                            <td className="p-2">
-                              {q.reference_url ? (
-                                <a
-                                  className="text-primary underline"
-                                  href={q.reference_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  Consultar
-                                </a>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
+                  {rows.length === 0 ? (
+                    <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                      Nenhuma cotação ativa registrada para este item.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[1180px] text-sm">
+                        <thead className="text-left text-muted-foreground">
+                          <tr>
+                            <th className="p-2">Fornecedor / fonte</th>
+                            <th className="p-2">Tipo / CNPJ</th>
+                            <th className="p-2">Referência</th>
+                            <th className="p-2">Cotação / acesso</th>
+                            <th className="p-2 text-right">Unitário</th>
+                            <th className="p-2 text-right">Frete</th>
+                            <th className="p-2 text-right">Total</th>
+                            <th className="p-2 text-right">Efetivo</th>
+                            <th className="p-2">Condições / comprovante</th>
                           </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((q) => {
+                            const supplier = suppliers.find((entry) => entry.id === q.supplier_id);
+                            const signals = sinais.find((entry) => entry.cotacao.id === q.id);
+                            return (
+                              <tr key={q.id} className="border-t align-top">
+                                <td className="p-2">
+                                  {q.source_name}
+                                  {q.selected_for_estimate && (
+                                    <Badge className="ml-2" variant="secondary">Referência escolhida</Badge>
+                                  )}
+                                  {signals?.motivos.map((reason) => (
+                                    <p key={reason} className="mt-1 text-xs text-amber-700">{reason}</p>
+                                  ))}
+                                </td>
+                                <td className="p-2">
+                                  <p>{q.source_type.replaceAll("_", " ")}</p>
+                                  <p className="text-xs text-muted-foreground">{q.source_tax_id || supplier?.cnpj || "CNPJ/CPF não informado"}</p>
+                                </td>
+                                <td className="p-2">
+                                  <p>{q.reference_identifier || "—"}</p>
+                                  <button
+                                    type="button"
+                                    className="text-xs text-primary underline"
+                                    disabled={q.selected_for_estimate || saving}
+                                    aria-pressed={q.selected_for_estimate}
+                                    onClick={() => void selecionarCotacao(q)}
+                                  >
+                                    {q.selected_for_estimate ? "Referência selecionada" : "Selecionar referência"}
+                                  </button>
+                                </td>
+                                <td className="p-2">
+                                  <p>{formatarData(q.quoted_at)}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Acesso: {q.accessed_at ? new Date(q.accessed_at).toLocaleString("pt-BR") : "Não registrado"}
+                                  </p>
+                                </td>
+                                <td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td>
+                                <td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td>
+                                <td className="p-2 text-right font-medium">{formatarMoeda(q.total_price ?? 0)}</td>
+                                <td className="p-2 text-right">{formatarMoeda(precoUnitarioComFrete(q))}</td>
+                                <td className="p-2">
+                                  <p className="max-w-[260px] whitespace-normal text-xs">
+                                    {[q.brand_model, q.delivery_term, q.payment_terms, q.warranty_terms].filter(Boolean).join(" · ") || "Condições não detalhadas"}
+                                  </p>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {q.reference_url && (
+                                      <a className="text-xs text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">
+                                        Consultar fonte
+                                      </a>
+                                    )}
+                                    {q.evidence_storage_path && (
+                                      <button type="button" className="text-xs text-primary underline" onClick={() => void abrirComprovanteCotacao(q)}>
+                                        Comprovante: {q.evidence_file_name}
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {archivedRows.length > 0 && (
+                    <div className="rounded-md border border-dashed p-3">
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                        COTAÇÕES EXPURGADAS — HISTÓRICO PRESERVADO ({archivedRows.length})
+                      </p>
+                      <div className="space-y-2">
+                        {archivedRows.map((quote) => (
+                          <div key={quote.id} className="flex flex-wrap justify-between gap-2 rounded bg-muted/30 p-2 text-xs">
+                            <div>
+                              <p className="font-medium">{quote.source_name} · {formatarData(quote.quoted_at)}</p>
+                              <p className="text-muted-foreground">
+                                Tipo: {quote.source_type.replaceAll("_", " ")} · Unitário efetivo: {formatarMoeda(precoUnitarioComFrete(quote))}
+                              </p>
+                              <p className="text-amber-800">Justificativa do expurgo: {quote.justificativa_expurgo || "Não registrada"}</p>
+                            </div>
+                            {quote.evidence_storage_path && (
+                              <button type="button" className="text-primary underline" onClick={() => void abrirComprovanteCotacao(quote)}>
+                                Consultar comprovante
+                              </button>
+                            )}
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+                    </div>
+                  )}
                   {dispersao.dispersaoExcessiva && (
                     <p
                       role="status"
@@ -2923,8 +2957,115 @@ function DadosEstruturados(props: {
                     </p>
                   )}
                   <p>
-                    Valor sugerido (mediana, sujeito à homologação): {formatarMoeda(resumo.mediana)}
+                    Referência estatística (mediana, não homologada): {formatarMoeda(resumo.mediana)}
                   </p>
+                  {itemApproval && (
+                    <Alert>
+                      <AlertTitle>Preço estimado aprovado</AlertTitle>
+                      <AlertDescription>
+                        Método: {itemApproval.method} · Unitário: {formatarMoeda(itemApproval.approved_unit_price)} ·
+                        Total: {formatarMoeda(itemApproval.approved_total_price)} ·
+                        Aprovado em {formatarData(itemApproval.approved_at)}.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {canApprovePrice ? (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div>
+                        <p className="font-semibold">Aprovação do preço estimado</p>
+                        <p className="text-xs text-muted-foreground">
+                          A aprovação é por item e fica registrada com método, justificativa, amostras e responsável.
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label>Método estatístico</Label>
+                          <Select
+                            value={approvalForm.method}
+                            onValueChange={(value) =>
+                              setApprovalForms((current) => ({
+                                ...current,
+                                [item.id]: { ...approvalForm, method: value as "media" | "mediana" | "menor" | "outro" },
+                              }))
+                            }
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="media">Média aritmética</SelectItem>
+                              <SelectItem value="mediana">Mediana</SelectItem>
+                              <SelectItem value="menor">Menor preço</SelectItem>
+                              <SelectItem value="outro">Outro critério justificado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {approvalForm.method === "outro" && (
+                          <div className="space-y-1">
+                            <Label>Preço unitário aprovado (R$)</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={approvalForm.otherUnitPrice}
+                              onChange={(event) =>
+                                setApprovalForms((current) => ({
+                                  ...current,
+                                  [item.id]: { ...approvalForm, otherUnitPrice: event.target.value },
+                                }))
+                              }
+                            />
+                          </div>
+                        )}
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label>Justificativa da escolha do método *</Label>
+                          <Textarea
+                            rows={2}
+                            value={approvalForm.methodJustification}
+                            onChange={(event) =>
+                              setApprovalForms((current) => ({
+                                ...current,
+                                [item.id]: { ...approvalForm, methodJustification: event.target.value },
+                              }))
+                            }
+                            placeholder="Explique por que o método é adequado à série de preços e ao objeto."
+                          />
+                        </div>
+                        {rows.length < 3 && (
+                          <div className="space-y-1 sm:col-span-2">
+                            <Label>Justificativa excepcional para menos de três preços *</Label>
+                            <Textarea
+                              rows={2}
+                              value={approvalForm.exceptionalJustification}
+                              onChange={(event) =>
+                                setApprovalForms((current) => ({
+                                  ...current,
+                                  [item.id]: { ...approvalForm, exceptionalJustification: event.target.value },
+                                }))
+                              }
+                              placeholder="Registre a impossibilidade de obter três preços e a fundamentação para prosseguir."
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {approvalPreview && (
+                        <p className="text-sm">
+                          Prévia do método: <strong>{formatarMoeda(approvalPreview.precoUnitarioAprovado)}</strong> por unidade ·
+                          total <strong>{formatarMoeda(approvalPreview.precoTotalAprovado)}</strong> ·
+                          {approvalPreview.quantidadeAmostras} amostra(s)
+                        </p>
+                      )}
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          disabled={saving || rows.length === 0 || !approvalPreview}
+                          onClick={() => void aprovarPreco(item)}
+                        >
+                          Registrar aprovação do preço
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      A aprovação do preço depende de perfil com permissão específica da Secretaria.
+                    </p>
+                  )}
                   <dl className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <dt className="text-muted-foreground">Menor unitário c/ frete</dt>
