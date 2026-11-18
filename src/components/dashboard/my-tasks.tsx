@@ -59,8 +59,7 @@ function prazo(dias: number | null): string {
 function classePrazo(dias: number | null): string {
   const level = criticidadeTarefa(dias);
   if (level === "critical") return "border-destructive/30 bg-destructive/10 text-destructive";
-  if (level === "attention")
-    return "border-warning/35 bg-warning/15 text-foreground";
+  if (level === "attention") return "border-warning/35 bg-warning/15 text-foreground";
   if (level === "info") return "border-primary/30 bg-primary/10 text-primary";
   return "border-border bg-muted text-muted-foreground";
 }
@@ -191,7 +190,9 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
   }, [tenantId, userId]);
 
   const current = state.tenantId === tenantId && state.userId === userId ? state : EMPTY;
-  const urgentes = current.items.filter((task) => criticidadeTarefa(task.dias) === "critical").length;
+  const urgentes = current.items.filter(
+    (task) => criticidadeTarefa(task.dias) === "critical",
+  ).length;
   const processos = current.items.filter((task) => task.tipo === "processo").length;
   const contratos = current.items.filter((task) => task.tipo === "contrato").length;
   const certidoes = current.items.filter((task) => task.tipo === "certidao").length;
@@ -217,7 +218,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-primary">
             Sua mesa de trabalho
           </p>
-          <h2 id="minhas-tarefas-titulo" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+          <h2
+            id="minhas-tarefas-titulo"
+            className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl"
+          >
             Minhas Tarefas e Obrigações
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -225,8 +229,13 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           </p>
         </div>
         <Badge variant="outline" className="rounded-full bg-card px-3 py-1.5 text-xs font-medium">
-          <span className="mr-1.5 inline-block size-1.5 rounded-full bg-primary" aria-hidden="true" />
-          {current.pending ? "Consultando suas tarefas" : `${current.items.length} pendência(s) identificada(s)`}
+          <span
+            className="mr-1.5 inline-block size-1.5 rounded-full bg-primary"
+            aria-hidden="true"
+          />
+          {current.pending
+            ? "Consultando suas tarefas"
+            : `${current.items.length} pendência(s) identificada(s)`}
         </Badge>
       </div>
 
@@ -252,9 +261,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 </p>
               </div>
               <div className="px-3 sm:px-5">
-                <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
-                  Urgentes
-                </p>
+                <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">Urgentes</p>
                 <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-destructive">
                   {current.pending ? "—" : urgentes}
                 </p>
@@ -271,19 +278,27 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           </div>
 
           <div className="border-b border-border/70 px-4 py-3 sm:px-6">
-            <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filtrar tarefas por categoria">
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-1"
+              role="group"
+              aria-label="Filtrar tarefas por categoria"
+            >
               {filtros.map((item) => (
                 <button
                   key={item.value}
                   type="button"
                   aria-pressed={filtro === item.value}
                   onClick={() => setFiltro(item.value)}
-                  className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${filtro === item.value
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-transparent bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground"}`}
+                  className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                    filtro === item.value
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-transparent bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground"
+                  }`}
                 >
                   {item.label}
-                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${filtro === item.value ? "bg-primary-foreground/15" : "bg-background/80"}`}>
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${filtro === item.value ? "bg-primary-foreground/15" : "bg-background/80"}`}
+                  >
                     {current.pending ? "—" : item.count}
                   </span>
                 </button>
@@ -292,14 +307,20 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           </div>
 
           {current.partial && (
-            <div role="status" className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground sm:mx-6">
+            <div
+              role="status"
+              className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground sm:mx-6"
+            >
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               Algumas fontes não puderam ser consultadas. A lista pode estar incompleta.
             </div>
           )}
 
           {current.pending ? (
-            <div className="flex min-h-52 items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground" role="status">
+            <div
+              className="flex min-h-52 items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground"
+              role="status"
+            >
               <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
               Consultando suas responsabilidades…
             </div>
@@ -309,7 +330,9 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 <CheckCircle2 className="size-8" aria-hidden="true" />
               </div>
               <p className="mt-5 text-lg font-semibold tracking-tight">
-                {current.partial ? "Nenhuma pendência disponível" : "Tudo em dia com seus processos e contratos!"}
+                {current.partial
+                  ? "Nenhuma pendência disponível"
+                  : "Tudo em dia com seus processos e contratos!"}
               </p>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 {current.partial
@@ -332,23 +355,40 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
               </p>
             </div>
           ) : (
-            <ul className="max-h-[540px] divide-y divide-border/65 overflow-y-auto" aria-live="polite">
+            <ul
+              className="max-h-[540px] divide-y divide-border/65 overflow-y-auto"
+              aria-live="polite"
+            >
               {tarefasVisiveis.map((task) => {
-                const Icon = task.tipo === "processo" ? FolderKanban :
-                  task.tipo === "contrato" ? ClipboardList : FileText;
+                const Icon =
+                  task.tipo === "processo"
+                    ? FolderKanban
+                    : task.tipo === "contrato"
+                      ? ClipboardList
+                      : FileText;
                 const critical = criticidadeTarefa(task.dias) === "critical";
                 const attention = criticidadeTarefa(task.dias) === "attention";
                 const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}`;
                 return (
-                  <li key={task.id} className="group relative bg-card transition-colors hover:bg-muted/25">
-                    <div aria-hidden="true" className={`absolute inset-y-0 left-0 w-[3px] ${critical ? "bg-destructive" : attention ? "bg-warning" : "bg-primary/60"}`} />
+                  <li
+                    key={task.id}
+                    className="group relative bg-card transition-colors hover:bg-muted/25"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className={`absolute inset-y-0 left-0 w-[3px] ${critical ? "bg-destructive" : attention ? "bg-warning" : "bg-primary/60"}`}
+                    />
                     <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
-                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl border ${critical ? "border-destructive/15 bg-destructive/10 text-destructive" : "border-primary/10 bg-primary/10 text-primary"}`}>
+                      <div
+                        className={`flex size-11 shrink-0 items-center justify-center rounded-xl border ${critical ? "border-destructive/15 bg-destructive/10 text-destructive" : "border-primary/10 bg-primary/10 text-primary"}`}
+                      >
                         <Icon className="size-5" aria-hidden="true" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold leading-relaxed sm:text-base">{task.titulo}</p>
+                          <p className="text-sm font-semibold leading-relaxed sm:text-base">
+                            {task.titulo}
+                          </p>
                           <Badge variant="outline" className={classePrazo(task.dias)}>
                             {prazo(task.dias)}
                           </Badge>
@@ -357,11 +397,19 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                           {task.descricao}
                         </p>
                         <p className="mt-1 text-[11px] font-medium text-muted-foreground">
-                          {task.tipo === "processo" ? "Processo administrativo" :
-                            task.tipo === "contrato" ? "Gestão e fiscalização" : "Regularidade documental"}
+                          {task.tipo === "processo"
+                            ? "Processo administrativo"
+                            : task.tipo === "contrato"
+                              ? "Gestão e fiscalização"
+                              : "Regularidade documental"}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" asChild className="w-full shrink-0 rounded-lg sm:w-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="w-full shrink-0 rounded-lg sm:w-auto"
+                      >
                         <a href={detalhe} aria-label={`Ver detalhes: ${task.titulo}`}>
                           Ver detalhes
                           <ArrowUpRight className="size-4" aria-hidden="true" />
@@ -376,7 +424,8 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
 
           <div className="flex items-start gap-2 border-t border-border/70 bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Pendências visíveis somente conforme seu vínculo e suas permissões na Secretaria selecionada.
+            Pendências visíveis somente conforme seu vínculo e suas permissões na Secretaria
+            selecionada.
           </div>
         </div>
 
@@ -393,39 +442,65 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
             </div>
             <div className="space-y-2 p-3 sm:p-4">
               {current.canCreateDocuments && (
-                <a href="/processos?novo=dfd" className="group flex min-h-18 items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                <a
+                  href="/processos?novo=dfd"
+                  className="group flex min-h-18 items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                     <Plus className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold">Nova demanda (DFD)</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Iniciar solicitação</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Iniciar solicitação
+                    </span>
                   </span>
-                  <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  <ArrowRight
+                    className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
                 </a>
               )}
               {current.canViewSuppliers && (
-                <a href={current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores"} className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                <a
+                  href={
+                    current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores"
+                  }
+                  className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
                     <Search className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold">Consultar fornecedor</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Buscar por CNPJ</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Buscar por CNPJ
+                    </span>
                   </span>
-                  <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                  <ArrowUpRight
+                    className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    aria-hidden="true"
+                  />
                 </a>
               )}
               {current.canCreateDocuments && (
-                <a href="/contratos?novo=1" className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                <a
+                  href="/contratos?novo=1"
+                  className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
                     <FilePlus2 className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold">Novo contrato</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Registrar contratação</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Registrar contratação
+                    </span>
                   </span>
-                  <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                  <ArrowUpRight
+                    className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    aria-hidden="true"
+                  />
                 </a>
               )}
               {!current.pending && !current.canCreateDocuments && !current.canViewSuppliers && (
@@ -434,7 +509,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 </p>
               )}
               {current.pending && (
-                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground" role="status">
+                <div
+                  className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
+                  role="status"
+                >
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Verificando permissões…
                 </div>
@@ -444,7 +522,9 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           <div className="rounded-2xl border border-border/75 bg-muted/25 p-5">
             <div className="flex items-center gap-2">
               <CalendarClock className="size-4 text-primary" aria-hidden="true" />
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Prioridades por prazo</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Prioridades por prazo
+              </p>
             </div>
             <div className="mt-4 grid gap-3">
               <div className="flex items-center justify-between gap-3">
@@ -452,7 +532,9 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                   <span className="size-2.5 rounded-full bg-destructive" aria-hidden="true" />
                   Crítico · menos de 30 dias
                 </span>
-                <span className="text-xs font-bold tabular-nums">{current.pending ? "—" : urgentes}</span>
+                <span className="text-xs font-bold tabular-nums">
+                  {current.pending ? "—" : urgentes}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-2 text-xs font-medium">
@@ -460,7 +542,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                   Atenção · 30 a 60 dias
                 </span>
                 <span className="text-xs font-bold tabular-nums">
-                  {current.pending ? "—" : current.items.filter((task) => criticidadeTarefa(task.dias) === "attention").length}
+                  {current.pending
+                    ? "—"
+                    : current.items.filter((task) => criticidadeTarefa(task.dias) === "attention")
+                        .length}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -469,7 +554,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                   Planejamento · 61 a 120 dias
                 </span>
                 <span className="text-xs font-bold tabular-nums">
-                  {current.pending ? "—" : current.items.filter((task) => criticidadeTarefa(task.dias) === "info").length}
+                  {current.pending
+                    ? "—"
+                    : current.items.filter((task) => criticidadeTarefa(task.dias) === "info")
+                        .length}
                 </span>
               </div>
             </div>
