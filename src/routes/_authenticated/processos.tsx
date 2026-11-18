@@ -1880,17 +1880,23 @@ function DadosEstruturados(props: {
                                 <Label>Fornecedor cadastrado (opcional)</Label>
                                 <Select
                                   value={quoteForm.supplier_id}
-                                  onValueChange={(value) =>
+                                  onValueChange={(value) => {
+                                    const supplier = suppliers.find((entry) => entry.id === value);
                                     setQuoteForm((current) => ({
                                       ...current,
                                       supplier_id: value,
-                                      source_name:
-                                        value === "sem_fornecedor"
-                                          ? current.source_name
-                                          : (suppliers.find((supplier) => supplier.id === value)
-                                              ?.legal_name ?? current.source_name),
-                                    }))
-                                  }
+                                      source_type: value === "sem_fornecedor" ? current.source_type : "fornecedor",
+                                      source_name: supplier?.legal_name ?? current.source_name,
+                                      source_tax_id: supplier?.cnpj ?? current.source_tax_id,
+                                      source_contact_name: supplier?.contact_name ?? current.source_contact_name,
+                                      source_contact_email: supplier?.contact_email ?? current.source_contact_email,
+                                      source_contact_phone: supplier?.contact_phone ?? current.source_contact_phone,
+                                      source_address: supplier
+                                        ? [supplier.street, supplier.street_number, supplier.complement, supplier.neighborhood,
+                                            supplier.city, supplier.state, supplier.postal_code].filter(Boolean).join(", ")
+                                        : current.source_address,
+                                    }));
+                                  }}
                                 >
                                   <SelectTrigger>
                                     <SelectValue />
@@ -1906,6 +1912,148 @@ function DadosEstruturados(props: {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Tipo de fonte *</Label>
+                                <Select
+                                  value={quoteForm.source_type}
+                                  onValueChange={(value) =>
+                                    setQuoteForm((current) => ({ ...current, source_type: value }))
+                                  }
+                                >
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="painel_precos">Painel oficial de preços</SelectItem>
+                                    <SelectItem value="contratacoes_publicas">Contratações públicas / PNCP</SelectItem>
+                                    <SelectItem value="midia_especializada">Mídia especializada</SelectItem>
+                                    <SelectItem value="site_especializado">Site especializado</SelectItem>
+                                    <SelectItem value="fornecedor">Cotação direta de fornecedor</SelectItem>
+                                    <SelectItem value="nota_fiscal_eletronica">Nota fiscal eletrônica</SelectItem>
+                                    <SelectItem value="banco_precos_saude">Banco de Preços em Saúde</SelectItem>
+                                    <SelectItem value="outro">Outra fonte identificável</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Identificador da fonte / PNCP / NF</Label>
+                                <Input
+                                  value={quoteForm.reference_identifier}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, reference_identifier: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Data e hora de acesso à fonte</Label>
+                                <Input
+                                  type="datetime-local"
+                                  required={["painel_precos", "contratacoes_publicas", "midia_especializada", "site_especializado", "banco_precos_saude", "nota_fiscal_eletronica"].includes(quoteForm.source_type)}
+                                  value={quoteForm.accessed_at}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, accessed_at: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Prazo de validade da proposta</Label>
+                                <Input
+                                  type="date"
+                                  value={quoteForm.supplier_response_deadline}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, supplier_response_deadline: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>CPF/CNPJ da fonte (se não vinculada)</Label>
+                                <Input
+                                  value={quoteForm.source_tax_id}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, source_tax_id: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Responsável / contato</Label>
+                                <Input
+                                  value={quoteForm.source_contact_name}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, source_contact_name: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>E-mail de contato</Label>
+                                <Input
+                                  type="email"
+                                  value={quoteForm.source_contact_email}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, source_contact_email: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Telefone de contato</Label>
+                                <Input
+                                  value={quoteForm.source_contact_phone}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, source_contact_phone: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1 sm:col-span-2">
+                                <Label>Endereço da fonte / fornecedor</Label>
+                                <Input
+                                  value={quoteForm.source_address}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, source_address: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Marca / modelo</Label>
+                                <Input
+                                  value={quoteForm.brand_model}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, brand_model: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Prazo de entrega</Label>
+                                <Input
+                                  value={quoteForm.delivery_term}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, delivery_term: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Condições de pagamento</Label>
+                                <Input
+                                  value={quoteForm.payment_terms}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, payment_terms: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>Garantia</Label>
+                                <Input
+                                  value={quoteForm.warranty_terms}
+                                  onChange={(event) =>
+                                    setQuoteForm((current) => ({ ...current, warranty_terms: event.target.value }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1 sm:col-span-2">
+                                <Label>Comprovante da cotação (PDF, DOCX, XLSX ou imagem · até 20 MB)</Label>
+                                <Input
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                  onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
+                                />
+                                {evidenceFile && <p className="text-xs text-muted-foreground">{evidenceFile.name}</p>}
                               </div>
                               <div className="space-y-1">
                                 <Label>Data da cotação *</Label>
