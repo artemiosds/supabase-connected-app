@@ -94,7 +94,7 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const [{ data: document, error: documentError }, { data: workflow, error: workflowError }, { data: object, error: objectError }] =
+  const [{ data: document, error: documentError }, { data: workflow, error: workflowError }] =
     await Promise.all([
       admin
         .from("generated_documents")
@@ -108,23 +108,13 @@ Deno.serve(async (request: Request) => {
         .eq("document_id", documentId)
         .eq("tenant_id", tenantId)
         .maybeSingle(),
-      admin
-        .schema("storage")
-        .from("objects")
-        .select("name,owner,metadata")
-        .eq("bucket_id", "gfs-private-documents")
-        .eq("name", storagePath)
-        .maybeSingle(),
     ]);
 
-  if (documentError || workflowError || objectError) {
-    return json({ error: "Não foi possível conferir o documento e o arquivo enviados." }, 500, origin);
+  if (documentError || workflowError) {
+    return json({ error: "Não foi possível conferir o documento e o fluxo de aprovação." }, 500, origin);
   }
   if (!document || document.status !== "draft" || workflow?.status !== "approved") {
     return json({ error: "O documento precisa estar aprovado e disponível para assinatura." }, 409, origin);
-  }
-  if (!object || object.owner !== authData.user.id) {
-    return json({ error: "O PDF não foi enviado pela conta que está assinando." }, 403, origin);
   }
 
   const { data: pdf, error: downloadError } = await admin.storage
