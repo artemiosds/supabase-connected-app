@@ -22,6 +22,7 @@ export type CotacaoMapa = {
   source_type?: string;
   reference_identifier?: string | null;
   accessed_at?: string | null;
+  supplier_response_deadline?: string | null;
   source_tax_id?: string | null;
   source_contact_name?: string | null;
   source_contact_email?: string | null;
@@ -31,7 +32,10 @@ export type CotacaoMapa = {
   delivery_term?: string | null;
   payment_terms?: string | null;
   warranty_terms?: string | null;
+  notes?: string | null;
   evidence_file_name?: string | null;
+  evidence_mime_type?: string | null;
+  evidence_file_size?: number | null;
 };
 
 type Precificacao = Pick<CotacaoMapa, "quantity" | "unit_price" | "delivery_cost" | "total_price">;
@@ -233,14 +237,17 @@ export function gerarCsvMapaDePrecos(
       "Identificador da fonte",
       "Data da cotação",
       "Data/hora de acesso",
+      "Validade da proposta",
       "CPF/CNPJ da fonte",
       "Responsável pela cotação",
       "E-mail de contato",
+      "Telefone de contato",
       "Endereço da fonte",
       "Marca/modelo",
       "Prazo de entrega",
       "Condição de pagamento",
       "Garantia",
+      "Observações da fonte",
       "Quantidade cotada",
       "Preço unitário",
       "Frete",
@@ -250,6 +257,8 @@ export function gerarCsvMapaDePrecos(
       "Selecionada como referência",
       "Justificativa do expurgo",
       "Comprovante anexado",
+      "Tipo do comprovante",
+      "Tamanho do comprovante (bytes)",
       "Média unitária (amostras ativas)",
       "Mediana unitária (amostras ativas)",
       "Menor unitário (amostras ativas)",
@@ -273,14 +282,17 @@ export function gerarCsvMapaDePrecos(
         quote.reference_identifier ?? "",
         quote.quoted_at,
         quote.accessed_at ?? "",
+        quote.supplier_response_deadline ?? "",
         quote.source_tax_id ?? "",
         quote.source_contact_name ?? "",
         quote.source_contact_email ?? "",
+        quote.source_contact_phone ?? "",
         quote.source_address ?? "",
         quote.brand_model ?? "",
         quote.delivery_term ?? "",
         quote.payment_terms ?? "",
         quote.warranty_terms ?? "",
+        quote.notes ?? "",
         quote.quantity,
         quote.unit_price,
         quote.delivery_cost,
@@ -290,6 +302,8 @@ export function gerarCsvMapaDePrecos(
         quote.selected_for_estimate ? "Sim" : "Não",
         quote.justificativa_expurgo ?? "",
         quote.evidence_file_name ?? "",
+        quote.evidence_mime_type ?? "",
+        quote.evidence_file_size ?? "",
         summary.media,
         summary.mediana,
         summary.menor,
