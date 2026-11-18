@@ -238,9 +238,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
             id: "supplier",
             text: "Consultar fornecedor",
             description: "Buscar por CNPJ",
-            href: current.canCreateSuppliers
-              ? "/fornecedores?consulta=cnpj"
-              : "/fornecedores",
+            href: current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores",
             icon: Search,
           },
         ]
@@ -483,7 +481,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 </p>
               )}
               {current.pending && (
-                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground" role="status">
+                <div
+                  className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
+                  role="status"
+                >
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Verificando permissões…
                 </div>
