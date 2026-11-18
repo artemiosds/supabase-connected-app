@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
   ArrowUpRight,
   CalendarClock,
   CheckCircle2,
@@ -17,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
+import { AnimatedList, FlowingMenu, type FlowingMenuItem } from "@/components/ui/primus-motion";
 import {
   criticidadeTarefa,
   montarMinhasTarefas,
@@ -211,6 +211,42 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
         : task.tipo === filtro,
   );
 
+  // O menu mostra somente ações autorizadas pelas RPCs do tenant ativo.
+  const quickActions: FlowingMenuItem[] = [
+    ...(current.canCreateDocuments
+      ? [
+          {
+            id: "dfd",
+            text: "Nova demanda (DFD)",
+            description: "Iniciar solicitação",
+            href: "/processos?novo=dfd",
+            icon: Plus,
+            featured: true,
+          },
+          {
+            id: "contract",
+            text: "Novo contrato",
+            description: "Registrar contratação",
+            href: "/contratos?novo=1",
+            icon: FilePlus2,
+          },
+        ]
+      : []),
+    ...(current.canViewSuppliers
+      ? [
+          {
+            id: "supplier",
+            text: "Consultar fornecedor",
+            description: "Buscar por CNPJ",
+            href: current.canCreateSuppliers
+              ? "/fornecedores?consulta=cnpj"
+              : "/fornecedores",
+            icon: Search,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <section className="space-y-4" aria-labelledby="minhas-tarefas-titulo">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -355,11 +391,11 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
               </p>
             </div>
           ) : (
-            <ul
-              className="max-h-[540px] divide-y divide-border/65 overflow-y-auto"
-              aria-live="polite"
-            >
-              {tarefasVisiveis.map((task) => {
+            <AnimatedList
+              items={tarefasVisiveis}
+              ariaLabel="Pendências sob sua responsabilidade"
+              maxHeight={540}
+              renderItem={(task) => {
                 const Icon =
                   task.tipo === "processo"
                     ? FolderKanban
@@ -370,10 +406,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 const attention = criticidadeTarefa(task.dias) === "attention";
                 const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}`;
                 return (
-                  <li
-                    key={task.id}
-                    className="group relative bg-card transition-colors hover:bg-muted/25"
-                  >
+                  <div className="group relative bg-card transition-colors hover:bg-muted/25">
                     <div
                       aria-hidden="true"
                       className={`absolute inset-y-0 left-0 w-[3px] ${critical ? "bg-destructive" : attention ? "bg-warning" : "bg-primary/60"}`}
@@ -416,10 +449,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                         </a>
                       </Button>
                     </div>
-                  </li>
+                  </div>
                 );
-              })}
-            </ul>
+              }}
+            />
           )}
 
           <div className="flex items-start gap-2 border-t border-border/70 bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6">
@@ -440,79 +473,17 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                 Comece as rotinas mais frequentes sem percorrer o menu.
               </p>
             </div>
-            <div className="space-y-2 p-3 sm:p-4">
-              {current.canCreateDocuments && (
-                <a
-                  href="/processos?novo=dfd"
-                  className="group flex min-h-18 items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Plus className="size-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">Nova demanda (DFD)</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Iniciar solicitação
-                    </span>
-                  </span>
-                  <ArrowRight
-                    className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"
-                    aria-hidden="true"
-                  />
-                </a>
+            <div className="p-3 sm:p-4">
+              {quickActions.length > 0 && (
+                <FlowingMenu items={quickActions} ariaLabel="Ações rápidas da Secretaria" />
               )}
-              {current.canViewSuppliers && (
-                <a
-                  href={
-                    current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores"
-                  }
-                  className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-                    <Search className="size-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">Consultar fornecedor</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Buscar por CNPJ
-                    </span>
-                  </span>
-                  <ArrowUpRight
-                    className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                    aria-hidden="true"
-                  />
-                </a>
-              )}
-              {current.canCreateDocuments && (
-                <a
-                  href="/contratos?novo=1"
-                  className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-                    <FilePlus2 className="size-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">Novo contrato</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Registrar contratação
-                    </span>
-                  </span>
-                  <ArrowUpRight
-                    className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                    aria-hidden="true"
-                  />
-                </a>
-              )}
-              {!current.pending && !current.canCreateDocuments && !current.canViewSuppliers && (
+              {!current.pending && quickActions.length === 0 && (
                 <p className="rounded-lg bg-muted/40 px-3 py-4 text-sm leading-relaxed text-muted-foreground">
                   Seus atalhos serão apresentados conforme as permissões atribuídas à sua conta.
                 </p>
               )}
               {current.pending && (
-                <div
-                  className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
-                  role="status"
-                >
+                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground" role="status">
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Verificando permissões…
                 </div>
