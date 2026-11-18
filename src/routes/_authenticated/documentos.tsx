@@ -2148,21 +2148,28 @@ function Documentos() {
                                 {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
                               </td>
                               <td className="p-3">
-                                <Badge
-                                  variant={
-                                    d.status === "signed"
-                                      ? "secondary"
+                                <div className="space-y-1">
+                                  <Badge
+                                    variant={
+                                      d.status === "signed"
+                                        ? "secondary"
+                                        : d.status === "cancelled"
+                                          ? "outline"
+                                          : "default"
+                                    }
+                                  >
+                                    {d.status === "signed"
+                                      ? "Assinado"
                                       : d.status === "cancelled"
-                                        ? "outline"
-                                        : "default"
-                                  }
-                                >
-                                  {d.status === "signed"
-                                    ? "Assinado"
-                                    : d.status === "cancelled"
-                                      ? "Cancelado"
-                                      : "Rascunho"}
-                                </Badge>
+                                        ? "Cancelado"
+                                        : "Rascunho"}
+                                  </Badge>
+                                  {d.status === "signed" && d.signed_pdf_sha256 && (
+                                    <p className="max-w-52 break-all text-[10px] text-muted-foreground">
+                                      SHA-256: {d.signed_pdf_sha256}
+                                    </p>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-3">
                                 <div className="flex flex-wrap justify-end gap-1">
