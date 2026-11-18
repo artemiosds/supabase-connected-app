@@ -1206,7 +1206,7 @@ function DadosEstruturados(props: {
     await carregarDados();
   }
 
-  async function exportarMapa(formato: "docx" | "pdf") {
+  async function exportarMapa(formato: "docx" | "pdf" | "workflow") {
     setSaving(true);
     try {
       const { buildDocxFromText, generateDocx, docxToModel, renderPdf } =
@@ -1230,7 +1230,9 @@ function DadosEstruturados(props: {
         `Processo: ${props.processNumber}`,
         `Emitido em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (Brasília)`,
         `Responsável pela emissão: ${profile.full_name}`,
-        "Rascunho para conferência. Assinatura eletrônica pendente.",
+        ...(formato === "workflow"
+          ? []
+          : ["Rascunho para conferência. Assinatura eletrônica pendente."]),
       ];
       for (const item of items.filter((i) => i.is_active)) {
         const rows = quotes.filter((q) => q.procurement_item_id === item.id && q.is_active);
@@ -1253,6 +1255,22 @@ function DadosEstruturados(props: {
           `Menor: ${formatarMoeda(summary.menor)}; média: ${formatarMoeda(summary.media)}; mediana sugerida: ${formatarMoeda(summary.mediana)}; CV amostral: ${summary.coeficienteVariacao?.toFixed(2) ?? "não calculável"}%.`,
         );
       }
+      if (formato === "workflow") {
+        const { data, error } = await db
+          .from("generated_documents")
+          .insert({
+            tenant_id: props.tenantId,
+            process_id: props.processId,
+            title: `Mapa comparativo — ${props.processNumber}`,
+            content_snapshot: lines.join("\n"),
+            status: "draft",
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        window.location.assign("/documentos?documento=" + encodeURIComponent(data.id));
+        return;
+      }
       const generated = await generateDocx({
         template: await buildDocxFromText(lines.join("\n"), "MAPA COMPARATIVO DE PREÇOS"),
         values: {},
@@ -1262,10 +1280,13 @@ function DadosEstruturados(props: {
       const bytes =
         formato === "docx"
           ? generated.bytes
-          : await renderPdf(await docxToModel(generated.bytes), {
-              branding,
-              title: "Mapa comparativo",
-            });
+          : await renderPdf(
+              { ...(await docxToModel(generated.bytes)), footerText: [] },
+              {
+                branding,
+                title: "Mapa comparativo",
+              },
+            );
       const url = URL.createObjectURL(
         new Blob([new Uint8Array(bytes)], {
           type:
@@ -2027,6 +2048,9 @@ function DadosEstruturados(props: {
               </Button>
               <Button disabled={saving} onClick={() => void exportarMapa("docx")}>
                 Gerar mapa DOCX
+              </Button>
+              <Button disabled={saving} onClick={() => void exportarMapa("workflow")}>
+                Encaminhar mapa para aprovação e assinatura
               </Button>
             </div>
             {items.map((item) => {

@@ -1450,7 +1450,8 @@ function Documentos() {
   }
 
   async function baixarRascunho(documento: DocumentoGerado, formato: "docx" | "pdf") {
-    if (!selecionado || documento.status !== "draft" || baixandoRascunhoId) return;
+    if (!selecionado || !["draft", "signed"].includes(documento.status) || baixandoRascunhoId)
+      return;
     setBaixandoRascunhoId(documento.id);
     try {
       const { assertPdfCompatible, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
@@ -1458,10 +1459,25 @@ function Documentos() {
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
       const branding = await carregarTimbradoSecretaria(selecionado.id, selecionado.nome);
       if (!branding.footerText.trim()) {
-        branding.footerText = "Rascunho para revisão";
+        branding.footerText =
+          documento.status === "signed"
+            ? "Documento assinado eletronicamente"
+            : "Rascunho para revisão";
       }
       let template: ArrayBuffer | Uint8Array = await buildDocxFromText(
-        documento.content_snapshot,
+        documento.status === "signed"
+          ? documento.content_snapshot +
+              "\n\nASSINATURA ELETRÔNICA SIMPLES\n" +
+              [
+                documento.signed_name,
+                documento.signed_email,
+                documento.signed_at,
+                documento.signature_statement,
+                "Documento: " + documento.id,
+              ]
+                .filter(Boolean)
+                .join("\n")
+          : documento.content_snapshot,
         documento.title,
       );
       let values: Record<string, string> = {};
@@ -1549,7 +1565,7 @@ function Documentos() {
       const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${fileName}-rascunho.${formato}`;
+      link.download = `${fileName}-${documento.status === "signed" ? "assinado" : "rascunho"}.${formato}`;
       link.hidden = true;
       document.body.append(link);
       link.click();
@@ -2101,7 +2117,8 @@ function Documentos() {
                                   >
                                     <Printer className="h-4 w-4" />
                                   </Button>
-                                  {d.status === "draft" && (
+                                  {(d.status === "draft" ||
+                                    (d.status === "signed" && !d.template_id)) && (
                                     <>
                                       <Button
                                         size="sm"
@@ -2114,7 +2131,7 @@ function Documentos() {
                                         ) : (
                                           <Download className="h-4 w-4" aria-hidden />
                                         )}
-                                        Word (rascunho)
+                                        Word ({d.status === "signed" ? "assinado" : "rascunho"})
                                       </Button>
                                       <Button
                                         size="sm"
@@ -2122,7 +2139,7 @@ function Documentos() {
                                         disabled={baixandoRascunhoId !== null}
                                         onClick={() => void baixarRascunho(d, "pdf")}
                                       >
-                                        PDF (rascunho)
+                                        PDF ({d.status === "signed" ? "assinado" : "rascunho"})
                                       </Button>
                                     </>
                                   )}
