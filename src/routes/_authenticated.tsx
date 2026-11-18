@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   Building2,
   FileText,
@@ -117,6 +117,21 @@ const moduleByRoute: Array<{ prefix: string; module: CommercialModule }> = [
   { prefix: "/documentos", module: "documentos" },
   { prefix: "/historico", module: "auditoria" },
 ];
+
+function acompanharBrilhoMenu(event: ReactPointerEvent<HTMLElement>) {
+  if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+  const rect = event.currentTarget.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+  const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+  event.currentTarget.style.setProperty("--primus-specular-x", String(x) + "%");
+  event.currentTarget.style.setProperty("--primus-specular-y", String(y) + "%");
+}
+
+function limparBrilhoMenu(event: ReactPointerEvent<HTMLElement>) {
+  event.currentTarget.style.removeProperty("--primus-specular-x");
+  event.currentTarget.style.removeProperty("--primus-specular-y");
+}
 
 export const Route = createFileRoute("/_authenticated")({
   component: LayoutAutenticado,
@@ -315,8 +330,11 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
         <Link
           to="/admin-master"
           onClick={onNavigate}
+          onPointerMove={acompanharBrilhoMenu}
+          onPointerLeave={limparBrilhoMenu}
+          data-specular-variant="ghost"
           className={cn(
-            "mb-3 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10",
+            "primus-specular-button mb-3 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10",
             pathname.startsWith("/admin-master") && "bg-primary/10",
           )}
         >
@@ -328,8 +346,11 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
         <Link
           to="/suporte"
           onClick={onNavigate}
+          onPointerMove={acompanharBrilhoMenu}
+          onPointerLeave={limparBrilhoMenu}
+          data-specular-variant="ghost"
           className={cn(
-            "mb-2 flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors",
+            "primus-specular-button mb-2 flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors",
             pathname === "/suporte"
               ? "border-primary/30 bg-primary/10 text-primary"
               : "border-transparent text-muted-foreground hover:bg-sidebar-accent/60",
@@ -354,9 +375,12 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
                   key={para}
                   to={para as never}
                   onClick={onNavigate}
+                  onPointerMove={acompanharBrilhoMenu}
+                  onPointerLeave={limparBrilhoMenu}
+                  data-specular-variant="ghost"
                   aria-current={ativo ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "primus-specular-button flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     ativo
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
