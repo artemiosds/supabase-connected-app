@@ -111,3 +111,16 @@ A consulta somente-leitura mais recente confirma que o `main` e o SMS2 estão si
 As oito migrations antes descritas como futuras foram aplicadas e registradas no SMS2 na rodada anterior, incluindo fonte DOCX/timbrado, guardas de workflow, RLS e privilégios da rotina de notificações. Portanto, as seções anteriores que indicam 74 versões, oito migrations pendentes ou ausência de `document_template_sources`/`tenant_document_branding` são fotografias históricas, não o estado atual.
 
 Esta confirmação não executou migrations, não alterou histórico e não modificou dados do SMS2. Não reaplicar migrations já registradas. A sincronização do histórico também não substitui o backup/restore real, que permanece pendente.
+
+## Verificação de 18/11/2026
+
+A main e o SMS2 apresentam 95 versões cada. Há 91 identificadores coincidentes e quatro migrations com nomes correspondentes e versões diferentes. Esta consulta compara o histórico, sem atestar equivalência do SQL executado.
+
+| Migration | main | SMS2 |
+|---|---|---|
+| preserve_contract_item_unit_history | 20261116193000 | 20261116200420 |
+| guard_contract_suppression_against_items | 20261116203000 | 20261116201722 |
+| tenant_integrations_and_privacy_foundation | 20261116220000 | 20261117121954 |
+| allow_platform_admin_tenant_integration_settings | 20261117095000 | 20261117125315 |
+
+Antes do próximo deploy de schema, comparar o SQL registrado e os objetos efetivos. Evitar reaplicar estas migrations com base apenas na diferença dos identificadores.
