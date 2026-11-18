@@ -1,4 +1,5 @@
 import { smtpSender } from "../_shared/tenant-smtp.ts";
+import { renderInstitutionalEmail } from "../_shared/institutional-email.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import { sendResendEmail, type ResendEmailInput } from "../_shared/expiry-notification-provider.ts";
 import {
@@ -94,29 +95,38 @@ function alertLabel(level: ExpiryAlertLevel, days: number): string {
 }
 
 function makeEmail(task: ExpiryTask, appUrl: string) {
-  const supplier = task.supplierName
-    ? `<p><strong>Fornecedor:</strong> ${escapeHtml(task.supplierName)}</p>`
-    : "";
   const kind = task.entityType === "contract" ? "Contrato" : "Documento do fornecedor";
   const safeSubjectTitle = sanitizeEmailSubject(task.title);
-  const subject = `[Gestão de Fornecedores] ${kind} — ${safeSubjectTitle}`;
+  const subject = `[Primus Gestão] ${kind} — ${safeSubjectTitle}`;
   const destination = new URL(
     task.entityType === "contract" ? "/contratos" : "/documentos",
     appUrl,
   ).toString();
-  const html = [
-    "<!doctype html>",
-    '<html lang="pt-BR"><body style="font-family:Arial,sans-serif;color:#172033;line-height:1.5">',
-    `<h2>Alerta de vencimento — ${escapeHtml(task.tenantName)}</h2>`,
-    `<p><strong>${escapeHtml(kind)}:</strong> ${escapeHtml(task.title)}</p>`,
-    supplier,
-    `<p><strong>Vencimento:</strong> ${dateLabel(task.dueOn)}</p>`,
-    `<p><strong>Situação:</strong> ${escapeHtml(alertLabel(task.alertLevel, task.daysUntil))}</p>`,
-    "<p>Verifique a documentação e adote as providências administrativas necessárias.</p>",
-    `<p><a href="${escapeHtml(destination)}">Abrir Gestão de Fornecedores</a></p>`,
-    '<hr><p style="font-size:12px;color:#64748b">Mensagem automática da plataforma. Não responda a este e-mail.</p>',
-    "</body></html>",
-  ].join("");
+  const status = alertLabel(task.alertLevel, task.daysUntil);
+  const overdue = task.alertLevel === "overdue";
+  const today = task.alertLevel === "due";
+  const html = renderInstitutionalEmail({
+    issuer: task.tenantName,
+    category: "Comunicado de acompanhamento de vencimentos",
+    heading: overdue ? "Prazo vencido: atenção necessária" : today ? "Vencimento previsto para hoje" : "Aviso preventivo de vencimento",
+    preheader: `${kind}: ${task.title}. ${status}. Consulte os registros no Primus Gestão.`,
+    greeting: task.recipientName ? `Prezado(a) ${task.recipientName},` : undefined,
+    message: overdue
+      ? "Identificamos um registro com prazo já vencido. Solicitamos a verificação da situação e o encaminhamento das providências administrativas cabíveis."
+      : today
+        ? "Informamos que um registro alcança sua data prevista de vencimento hoje. Solicitamos atenção à documentação e às providências pertinentes."
+        : "Comunicamos preventivamente a proximidade do vencimento de um registro sob acompanhamento da Secretaria. Recomendamos a conferência antecipada para evitar pendências.",
+    fields: [
+      { label: "Tipo de registro", value: kind },
+      { label: "Identificação", value: task.title },
+      ...(task.supplierName ? [{ label: "Fornecedor", value: task.supplierName }] : []),
+      { label: "Data de vencimento", value: dateLabel(task.dueOn) },
+      { label: "Situação", value: status },
+    ],
+    action: { label: "Consultar registro no Primus Gestão", url: destination },
+    guidance: "Este aviso é informativo. Confirme o estado atualizado do documento ou contrato no sistema antes de qualquer providência.",
+    tone: overdue ? "critical" : today ? "attention" : "standard",
+  });
   return { subject, html };
 }
 
@@ -458,7 +468,7 @@ async function deliverTask(
     to: task.recipientEmail,
     subject: email.subject,
     attachments,
-    html: attachments ? email.html.replace("<h2>", logoHtml + "<h2>") : email.html,
+    html: attachments ? email.html.replace("<!--primus-institutional-logo-->", logoHtml) : email.html,
     idempotencyKey,
   });
 
@@ -817,11 +827,30 @@ async function processOperational(
           }
           const subject = sanitizeEmailSubject(title + " — " + tenant!.name);
           const attachments = await tenantLogo(admin, row.tenant_id);
+          const operationalMessage = contract
+            ? "Informamos sua designação para uma função de acompanhamento contratual. Consulte o contrato e suas atribuições no sistema."
+            : row.kind === "stage"
+              ? "Uma nova atividade requer seu acompanhamento no processo administrativo indicado. Consulte os registros e verifique as próximas providências."
+              : "O processo indicado permanece sem movimentação registrada há pelo menos oito dias. Recomendamos revisar a situação e avaliar as providências necessárias.";
+          const operationalHtml = renderInstitutionalEmail({
+            issuer: tenant!.name,
+            category: contract ? "Designação para acompanhamento contratual" : row.kind === "stage" ? "Nova atividade administrativa" : "Acompanhamento de processo",
+            heading: contract ? "Nova designação de responsabilidade" : row.kind === "stage" ? "Uma atividade requer sua atenção" : "Processo sem movimentação recente",
+            preheader: title,
+            message: operationalMessage,
+            fields: [
+              { label: contract ? "Contrato" : "Processo", value: `Nº ${entity!.number}` },
+              { label: "Ocorrência", value: title },
+            ],
+            action: { label: "Consultar no Primus Gestão", url: url.href },
+            guidance: "Acompanhe o registro oficial no sistema. Este comunicado não substitui os atos e procedimentos administrativos aplicáveis.",
+            tone: row.kind === "idle" ? "attention" : "standard",
+          });
           const result = await provider({
             attachments,
             to: data.user.email,
             subject,
-            html: `<html lang="pt-BR"><body style="font:16px/1.5 Arial,sans-serif">${attachments ? logoHtml : ""}<h2>${escapeHtml(tenant!.name)}</h2><p>${escapeHtml(title)}</p><a href="${escapeHtml(url.href)}">Abrir no Primus Gestão</a></body></html>`,
+            html: attachments ? operationalHtml.replace("<!--primus-institutional-logo-->", logoHtml) : operationalHtml,
             idempotencyKey: "operational-" + row.id,
           });
           status =
