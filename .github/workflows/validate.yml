@@ -53,7 +53,7 @@ jobs:
         run: bunx tsc --noEmit
 
       - name: Native TypeScript type check
-        run: bunx tsgo --noEmit
+        run: bunx --package @typescript/native-preview tsgo --noEmit
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
