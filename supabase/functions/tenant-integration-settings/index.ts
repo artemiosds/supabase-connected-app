@@ -409,7 +409,11 @@ Deno.serve(async (request: Request) => {
       const portError = smtpPortSecurityError(row.email_smtp_port, row.email_smtp_security);
       if (portError) {
         await finish("configuration");
-        return response({ success: false, outcome: "configuration", message: portError }, 200, origin);
+        return response(
+          { success: false, outcome: "configuration", message: portError },
+          200,
+          origin,
+        );
       }
       let outcome: "accepted" | "rejected" | "uncertain" | "configuration" = "configuration";
       let configurationMessage = "Confira o remetente e a credencial SMTP salva na Secretaria.";
@@ -425,9 +429,11 @@ Deno.serve(async (request: Request) => {
             category: "Validação de comunicação institucional",
             heading: "Teste de e-mail institucional realizado",
             preheader: "Mensagem de verificação do canal oficial de e-mail do Primus Gestão.",
-            message: "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
+            message:
+              "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
             fields: [{ label: "Tipo de comunicação", value: "Teste de configuração SMTP" }],
-            guidance: "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
+            guidance:
+              "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
             tone: "success",
           }),
           idempotencyKey: crypto.randomUUID(),
@@ -439,7 +445,8 @@ Deno.serve(async (request: Request) => {
           configurationMessage =
             "O endpoint SMTP não está autorizado no ambiente SMS2. Inclua o host e a porta em SMTP_ALLOWED_ENDPOINTS.";
         } else if (error instanceof Error && error.message === "SMTP_CONFIGURATION") {
-          configurationMessage = "Faltam dados da conta SMTP. Verifique usuário, remetente e credencial salva.";
+          configurationMessage =
+            "Faltam dados da conta SMTP. Verifique usuário, remetente e credencial salva.";
         } else {
           configurationMessage =
             "Não foi possível preparar o envio SMTP. Verifique a credencial protegida e a configuração do servidor.";
@@ -503,9 +510,11 @@ Deno.serve(async (request: Request) => {
             category: "Validação de comunicação institucional",
             heading: "Teste de e-mail institucional realizado",
             preheader: "Mensagem de verificação do canal oficial de e-mail do Primus Gestão.",
-            message: "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
+            message:
+              "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
             fields: [{ label: "Tipo de comunicação", value: "Teste de configuração de e-mail" }],
-            guidance: "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
+            guidance:
+              "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
             tone: "success",
           }),
         }),
