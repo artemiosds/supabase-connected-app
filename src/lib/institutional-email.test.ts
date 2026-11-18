@@ -27,10 +27,10 @@ describe("e-mails institucionais do Primus", () => {
   it("protege contra HTML externo em assunto, campos e destinatários", () => {
     const html = renderInstitutionalEmail({
       ...base,
-      issuer: '<img src=x onerror=alert(1)>',
+      issuer: "<img src=x onerror=alert(1)>",
       heading: '<script>alert("X")</script>',
       preheader: "</div><script>evil()</script>",
-      fields: [{ label: '<b>Fornecedor</b>', value: '<script>exfiltrar()</script>' }],
+      fields: [{ label: "<b>Fornecedor</b>", value: "<script>exfiltrar()</script>" }],
     });
     expect(html).not.toContain("<script>");
     expect(html).not.toContain("<img src=x");
@@ -49,7 +49,8 @@ describe("e-mails institucionais do Primus", () => {
   it("reserva espaço para brasão embutido somente quando houver anexo", () => {
     const html = renderInstitutionalEmail(base);
     expect(html).toContain("<!--primus-institutional-logo-->");
-    expect(html.replace("<!--primus-institutional-logo-->", '<img src="cid:brasao">'))
-      .toContain('src="cid:brasao"');
+    expect(html.replace("<!--primus-institutional-logo-->", '<img src="cid:brasao">')).toContain(
+      'src="cid:brasao"',
+    );
   });
 });
