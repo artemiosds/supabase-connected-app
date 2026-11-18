@@ -37,7 +37,7 @@ export async function smtpSender(
   const { default: nodemailer } = await import("npm:nodemailer@10.6.0");
   const transport = nodemailer.createTransport({
     host,
-    port,
+    port: port!,
     secure,
     requireTLS: !secure,
     tls: { minVersion: "TLSv1.2", rejectUnauthorized: true },
