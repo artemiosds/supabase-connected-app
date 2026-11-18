@@ -2174,8 +2174,7 @@ function Documentos() {
                                   >
                                     <Printer className="h-4 w-4" />
                                   </Button>
-                                  {(d.status === "draft" ||
-                                    (d.status === "signed" && !d.template_id)) && (
+                                  {d.status === "draft" && (
                                     <>
                                       <Button
                                         size="sm"
@@ -2183,12 +2182,8 @@ function Documentos() {
                                         disabled={baixandoRascunhoId !== null}
                                         onClick={() => void baixarRascunho(d, "docx")}
                                       >
-                                        {baixandoRascunhoId === d.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                                        ) : (
-                                          <Download className="h-4 w-4" aria-hidden />
-                                        )}
-                                        Word ({d.status === "signed" ? "assinado" : "rascunho"})
+                                        <Download className="h-4 w-4" aria-hidden />
+                                        Word (rascunho)
                                       </Button>
                                       <Button
                                         size="sm"
@@ -2196,9 +2191,25 @@ function Documentos() {
                                         disabled={baixandoRascunhoId !== null}
                                         onClick={() => void baixarRascunho(d, "pdf")}
                                       >
-                                        PDF ({d.status === "signed" ? "assinado" : "rascunho"})
+                                        PDF (rascunho)
                                       </Button>
                                     </>
+                                  )}
+                                  {d.status === "signed" && d.signed_pdf_storage_path && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={baixandoRascunhoId !== null}
+                                      onClick={() => void baixarRascunho(d, "pdf")}
+                                    >
+                                      <ShieldCheck className="h-4 w-4" aria-hidden />
+                                      PDF assinado · verificar SHA-256
+                                    </Button>
+                                  )}
+                                  {d.status === "signed" && !d.signed_pdf_storage_path && (
+                                    <Badge variant="destructive">
+                                      Assinatura legada sem PDF imutável
+                                    </Badge>
                                   )}
                                   {(() => {
                                     const workflow = fluxoPorDocumento.get(d.id);
@@ -3046,6 +3057,15 @@ function Documentos() {
                   {documentoImpressao.signed_at
                     ? new Date(documentoImpressao.signed_at).toLocaleString("pt-BR")
                     : ""}
+                </p>
+                {documentoImpressao.signed_pdf_sha256 && (
+                  <>
+                    <p>Arquivo final arquivado e conferível por SHA-256.</p>
+                    <p className="break-all text-xs">SHA-256: {documentoImpressao.signed_pdf_sha256}</p>
+                  </>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Assinatura eletrônica simples. Não equivale à assinatura qualificada ICP-Brasil.
                 </p>
               </div>
             )}
