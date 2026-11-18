@@ -136,7 +136,9 @@
   border-radius: 12px;
   background: var(--secondary);
   color: var(--foreground);
-  transition: transform 220ms ease, border-color 220ms ease;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease;
 }
 
 .primus-flowing-menu__icon--featured {
@@ -162,7 +164,9 @@
   z-index: 2;
   flex: none;
   color: var(--muted-foreground);
-  transition: transform 220ms ease, color 220ms ease;
+  transition:
+    transform 220ms ease,
+    color 220ms ease;
 }
 
 .primus-flowing-menu__row[data-active="true"] .primus-flowing-menu__arrow {
@@ -202,8 +206,12 @@
 }
 
 @keyframes primus-flowing-text {
-  from { transform: translateX(0); }
-  to { transform: translateX(-32%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-32%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
