@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import "./primus-motion.css";
@@ -52,7 +60,12 @@ export function AnimatedList<T extends { id: string }>({
 
   return (
     <div className={`primus-animated-list ${className}`.trim()} style={style}>
-      {fades.top && <div className="primus-animated-list__fade primus-animated-list__fade--top" aria-hidden="true" />}
+      {fades.top && (
+        <div
+          className="primus-animated-list__fade primus-animated-list__fade--top"
+          aria-hidden="true"
+        />
+      )}
       <ul
         ref={viewportRef}
         aria-label={ariaLabel}
@@ -69,7 +82,12 @@ export function AnimatedList<T extends { id: string }>({
           </li>
         ))}
       </ul>
-      {fades.bottom && <div className="primus-animated-list__fade primus-animated-list__fade--bottom" aria-hidden="true" />}
+      {fades.bottom && (
+        <div
+          className="primus-animated-list__fade primus-animated-list__fade--bottom"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
@@ -120,13 +138,14 @@ export function FlowingMenu({
     if (!links?.length) return;
     event.preventDefault();
     const current = Array.from(links).findIndex((link) => link === document.activeElement);
-    const next = event.key === "Home"
-      ? 0
-      : event.key === "End"
-        ? links.length - 1
-        : event.key === "ArrowDown"
-          ? (current + 1 + links.length) % links.length
-          : (current - 1 + links.length) % links.length;
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? links.length - 1
+          : event.key === "ArrowDown"
+            ? (current + 1 + links.length) % links.length
+            : (current - 1 + links.length) % links.length;
     links[next]?.focus();
   };
 
@@ -162,16 +181,22 @@ export function FlowingMenu({
                 onFocus={() => setActive(index)}
                 className="primus-flowing-menu__link"
               >
-                <span className={`primus-flowing-menu__icon ${item.featured ? "primus-flowing-menu__icon--featured" : ""}`}>
+                <span
+                  className={`primus-flowing-menu__icon ${item.featured ? "primus-flowing-menu__icon--featured" : ""}`}
+                >
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <span className="primus-flowing-menu__text">
                   <span className="block text-sm font-semibold">{item.text}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{item.description}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {item.description}
+                  </span>
                 </span>
                 <ArrowUpRight className="primus-flowing-menu__arrow size-4" aria-hidden="true" />
                 <span className="primus-flowing-menu__marquee" aria-hidden="true">
-                  <span>{item.text} · {item.text} · {item.text} ·</span>
+                  <span>
+                    {item.text} · {item.text} · {item.text} ·
+                  </span>
                 </span>
               </a>
             </li>
