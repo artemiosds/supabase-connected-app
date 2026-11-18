@@ -1,6 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Building2, FileText, Loader2, Truck, Users, AlertTriangle, Clock } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ArrowUpRight,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Loader2,
+  ShieldCheck,
+  Truck,
+  Users,
+} from "lucide-react";
 import { MyTasks } from "@/components/dashboard/my-tasks";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
@@ -10,7 +24,7 @@ import {
   listarProcessosParados,
   type ProcessoParado,
 } from "@/lib/process-stagnation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "@tanstack/react-router";
@@ -167,19 +181,110 @@ function Painel() {
       </div>
     );
 
+
+  const metricas = [
+    {
+      label: "Fornecedores cadastrados",
+      value: indicadores.suppliers,
+      icon: Truck,
+      href: "/fornecedores",
+      action: "Ver fornecedores",
+      helper: "Base cadastral da Secretaria",
+    },
+    {
+      label: "Documentos ativos",
+      value: indicadores.documents,
+      icon: FileText,
+      href: "/documentos",
+      action: "Ver documentos",
+      helper: "Registros disponíveis",
+    },
+    {
+      label: "Servidores vinculados",
+      value: indicadores.members,
+      icon: Users,
+      href: "/usuarios",
+      action: "Ver equipe",
+      helper: "Acessos ativos",
+    },
+    {
+      label: "Documentos gerados",
+      value: indicadores.generated,
+      icon: ClipboardList,
+      href: "/documentos",
+      action: "Abrir histórico",
+      helper: "Produção documental",
+    },
+  ] as const;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Painel</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {selecionado
-              ? `Visão geral de ${selecionado.nome}`
-              : `Bem-vindo(a), ${session?.user.email}.`}
-          </p>
+    <main className="mx-auto w-full max-w-[1480px] space-y-8 pb-10">
+      <section className="relative isolate overflow-hidden rounded-[28px] border border-primary/30 bg-primary px-5 py-7 text-primary-foreground shadow-[0_22px_60px_-38px_rgba(0,0,0,0.5)] sm:px-8 sm:py-9 lg:px-10 lg:py-10">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-32 size-[340px] rounded-full border border-primary-foreground/15" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-20 size-[260px] rounded-full border border-primary-foreground/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-[-150px] right-1/4 size-[310px] rounded-full bg-primary-foreground/5 blur-3xl" />
+        <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(250px,0.6fr)] lg:items-end">
+          <div className="max-w-2xl space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]">
+              <Activity className="size-3.5" aria-hidden="true" />
+              Central de operações
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-primary-foreground/75">
+                Primus Gestão · Saúde Pública
+              </p>
+              <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-[2.65rem]">
+                Seu trabalho, com mais clareza.
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-primary-foreground/85 sm:text-base">
+                Acompanhe as prioridades do dia, os prazos e o andamento da gestão em um só lugar.
+              </p>
+            </div>
+            <div className="inline-flex max-w-full items-center gap-2 rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-2 text-sm">
+              <Building2 className="size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 truncate font-medium">
+                {selecionado?.nome ?? "Selecione uma Secretaria"}
+              </span>
+            </div>
+          </div>
+          {selecionado && (
+            <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 p-4 backdrop-blur-sm sm:p-5" aria-label="Radar de prazos da Secretaria">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground/80">
+                  Radar de prazos
+                </p>
+                <CalendarClock className="size-4 text-primary-foreground/75" aria-hidden="true" />
+              </div>
+              <div className="mt-4 grid grid-cols-2 divide-x divide-primary-foreground/20">
+                <div className="pr-4">
+                  <p className="text-3xl font-bold tabular-nums sm:text-4xl">
+                    {loading ? "…" : (indicadores.expired ?? "—")}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-primary-foreground/80">
+                    Documentos vencidos
+                  </p>
+                </div>
+                <div className="pl-4">
+                  <p className="text-3xl font-bold tabular-nums sm:text-4xl">
+                    {loading ? "…" : (indicadores.expiring ?? "—")}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-primary-foreground/80">
+                    Vencem em 30 dias
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/documentos"
+                className="mt-5 inline-flex min-h-10 w-full items-center justify-between rounded-lg bg-primary-foreground px-3.5 text-sm font-semibold text-primary transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                Consultar vencimentos
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+          )}
         </div>
-        {selecionado && <Badge variant="secondary">Secretaria selecionada</Badge>}
-      </div>
+      </section>
+
       {bancoPendente && (
         <Alert variant="destructive">
           <AlertTitle>Estrutura pendente</AlertTitle>
@@ -208,165 +313,141 @@ function Painel() {
               <AlertDescription>{erro}</AlertDescription>
             </Alert>
           )}
+
           {session?.user.id && <MyTasks tenantId={selecionado.id} userId={session.user.id} />}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Fornecedores
-                </CardTitle>
-                <Truck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {loading ? "…" : (indicadores.suppliers ?? "—")}
+
+          <section aria-labelledby="indicadores-titulo" className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-primary">
+                  Visão da Secretaria
                 </p>
-                <Link to="/fornecedores" className="text-xs text-primary hover:underline">
-                  Abrir cadastro
-                </Link>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Documentos ativos
-                </CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {loading ? "…" : (indicadores.documents ?? "—")}
+                <h2 id="indicadores-titulo" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                  Indicadores de gestão
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Os principais números da operação, organizados para consulta rápida.
                 </p>
-                <Link to="/documentos" className="text-xs text-primary hover:underline">
-                  Ver documentos
-                </Link>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Documentos vencidos
-                </CardTitle>
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold text-destructive">
-                  {loading ? "…" : (indicadores.expired ?? "—")}
-                </p>
-                <Link to="/documentos" className="text-xs text-primary hover:underline">
-                  Regularizar
-                </Link>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Vencem em 30 dias
-                </CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {loading ? "…" : (indicadores.expiring ?? "—")}
-                </p>
-                <Link to="/documentos" className="text-xs text-primary hover:underline">
-                  Ver prazos
-                </Link>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Usuários ativos
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {loading ? "…" : (indicadores.members ?? "—")}
-                </p>
-                <Link to="/usuarios" className="text-xs text-primary hover:underline">
-                  Gerenciar acessos
-                </Link>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Documentos gerados
-                </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {loading ? "…" : (indicadores.generated ?? "—")}
-                </p>
-                <Link to="/documentos" className="text-xs text-primary hover:underline">
-                  Abrir histórico
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-          <section aria-labelledby="processos-parados-titulo">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 id="processos-parados-titulo" className="text-lg font-semibold">
-                Processos sem movimentação
-              </h2>
-              <Badge variant="outline">Mais de {DIAS_PROCESSO_PARADO} dias</Badge>
-            </div>
-            {loading ? (
-              <p className="text-sm text-muted-foreground" role="status">
-                Verificando a atividade dos processos…
-              </p>
-            ) : indicadores.stalledProcesses === null ? (
-              <Alert>
-                <AlertTitle>Alerta indisponível</AlertTitle>
-                <AlertDescription>
-                  Não foi possível consultar a atividade dos processos com as permissões atuais.
-                </AlertDescription>
-              </Alert>
-            ) : indicadores.stalledProcesses.length === 0 ? (
-              <Alert>
-                <AlertTitle>Nenhum processo parado</AlertTitle>
-                <AlertDescription>
-                  Não há processos ativos sem atividade registrada há mais de {DIAS_PROCESSO_PARADO}{" "}
-                  dias.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-3">
-                {indicadores.stalledProcesses.slice(0, 5).map((processo) => (
-                  <Alert key={processo.id} variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>
-                      {"Processo nº " +
-                        processo.number +
-                        " parado há " +
-                        processo.diasSemAtividade +
-                        " dias"}
-                    </AlertTitle>
-                    <AlertDescription className="space-y-1">
-                      <span className="block">{processo.title}</span>
-                      <span className="block">
-                        {"Etapa: " + processo.stage}
-                        {processo.responsible_name
-                          ? " · Responsável: " + processo.responsible_name
-                          : ""}
-                      </span>
-                    </AlertDescription>
-                  </Alert>
-                ))}
-                <Link
-                  to="/processos"
-                  className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
-                >
-                  Abrir processos
-                </Link>
               </div>
-            )}
+              <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+                <Activity className="size-3.5" aria-hidden="true" />
+                Dados da Secretaria ativa
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {metricas.map((metrica) => {
+                const Icon = metrica.icon;
+                return (
+                  <Card key={metrica.label} className="group overflow-hidden rounded-2xl border-border/75 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md">
+                    <CardContent className="p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-xl border border-primary/10 bg-primary/10 text-primary">
+                          <Icon className="size-5" aria-hidden="true" />
+                        </div>
+                        <ArrowUpRight className="size-4 text-muted-foreground/55 transition-colors group-hover:text-primary" aria-hidden="true" />
+                      </div>
+                      <p className="mt-5 text-xs font-medium text-muted-foreground">
+                        {metrica.label}
+                      </p>
+                      <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+                        {loading ? "…" : (metrica.value ?? "—")}
+                      </p>
+                      <div className="mt-4 border-t border-border/70 pt-3">
+                        <a href={metrica.href} className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                          {metrica.action}
+                          <ArrowRight className="size-3.5" aria-hidden="true" />
+                        </a>
+                        <p className="text-[11px] text-muted-foreground">{metrica.helper}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </section>
+
+          <section aria-labelledby="processos-parados-titulo" className="overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/20 px-5 py-5 sm:px-7">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-xl border border-warning/20 bg-warning/10 text-warning">
+                  <AlertTriangle className="size-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                    Monitoramento de fluxo
+                  </p>
+                  <h2 id="processos-parados-titulo" className="mt-0.5 text-lg font-semibold tracking-tight">
+                    Processos sem movimentação
+                  </h2>
+                </div>
+              </div>
+              <Badge variant="outline" className="bg-card">
+                Mais de {DIAS_PROCESSO_PARADO} dias
+              </Badge>
+            </div>
+            <div className="px-5 py-5 sm:px-7">
+              {loading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Verificando a atividade dos processos…
+                </div>
+              ) : indicadores.stalledProcesses === null ? (
+                <Alert>
+                  <AlertTitle>Alerta indisponível</AlertTitle>
+                  <AlertDescription>
+                    Não foi possível consultar a atividade dos processos com as permissões atuais.
+                  </AlertDescription>
+                </Alert>
+              ) : indicadores.stalledProcesses.length === 0 ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
+                    <CheckCircle2 className="size-6" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">Fluxo de processos em dia</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                      Não foram identificados processos ativos sem movimentação registrada há mais de {DIAS_PROCESSO_PARADO} dias.
+                    </p>
+                  </div>
+                  <Link to="/processos" className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                    Ver processos <ArrowUpRight className="size-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {indicadores.stalledProcesses.slice(0, 5).map((processo) => (
+                    <div key={processo.id} className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">Processo nº {processo.number}</span>
+                          <Badge variant="outline" className="border-destructive/25 bg-destructive/10 text-destructive">
+                            {processo.diasSemAtividade} dias sem movimentação
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">{processo.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Etapa: {processo.stage}
+                          {processo.responsible_name ? ` · Responsável: ${processo.responsible_name}` : ""}
+                        </p>
+                      </div>
+                      <a href={`/processos?processo=${encodeURIComponent(processo.id)}`} className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                        Ver processo <ArrowUpRight className="size-4" aria-hidden="true" />
+                      </a>
+                    </div>
+                  ))}
+                  <Link to="/processos" className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                    Todos os processos <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
+            </div>
+          </section>
+          <p className="flex items-start gap-2 px-1 text-xs leading-relaxed text-muted-foreground">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            Informações restritas à Secretaria ativa e às permissões da sua conta. Os indicadores refletem os registros acessíveis no momento da consulta.
+          </p>
         </>
       )}
-    </div>
+    </main>
   );
 }
