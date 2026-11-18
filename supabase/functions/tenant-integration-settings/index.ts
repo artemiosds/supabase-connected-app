@@ -1,4 +1,5 @@
 import { smtpSender } from "../_shared/tenant-smtp.ts";
+import { renderInstitutionalEmail } from "../_shared/institutional-email.ts";
 import {
   maskRecipient,
   normalizeTestRecipient,
@@ -419,7 +420,16 @@ Deno.serve(async (request: Request) => {
         const result = await send({
           to: recipient,
           subject: "Teste de e-mail institucional — Primus Gestão",
-          html: "<p>Este é o teste de SMTP solicitado nas configurações da Secretaria.</p>",
+          html: renderInstitutionalEmail({
+            issuer: row.email_from_name || "Secretaria de Saúde",
+            category: "Validação de comunicação institucional",
+            heading: "Teste de e-mail institucional realizado",
+            preheader: "Mensagem de verificação do canal oficial de e-mail do Primus Gestão.",
+            message: "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
+            fields: [{ label: "Tipo de comunicação", value: "Teste de configuração SMTP" }],
+            guidance: "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
+            tone: "success",
+          }),
           idempotencyKey: crypto.randomUUID(),
         });
         outcome = result.status;
@@ -488,7 +498,16 @@ Deno.serve(async (request: Request) => {
           ...(row.email_reply_to ? { reply_to: row.email_reply_to } : {}),
           to: [recipient],
           subject: "Teste de configuração — Gestão de Fornecedores da Saúde",
-          html: "<p>Este é um teste de configuração de e-mail solicitado por um administrador da sua Secretaria.</p>",
+          html: renderInstitutionalEmail({
+            issuer: row.email_from_name || "Secretaria de Saúde",
+            category: "Validação de comunicação institucional",
+            heading: "Teste de e-mail institucional realizado",
+            preheader: "Mensagem de verificação do canal oficial de e-mail do Primus Gestão.",
+            message: "Esta mensagem confirma a execução de um teste individual do canal de comunicação institucional configurado para a Secretaria. Não representa um aviso de vencimento nem uma solicitação de providência administrativa.",
+            fields: [{ label: "Tipo de comunicação", value: "Teste de configuração de e-mail" }],
+            guidance: "Se você não solicitou este teste, entre em contato com a administração responsável pelo Primus Gestão.",
+            tone: "success",
+          }),
         }),
       });
     } catch {
