@@ -947,6 +947,7 @@ type ItemCompra = {
   estimated_unit_price: number | null;
   estimated_total: number | null;
   delivery_location: string | null;
+  estimated_price_source: string;
   is_active: boolean;
 };
 
@@ -955,8 +956,11 @@ type CotacaoCompra = {
   procurement_item_id: string;
   supplier_id: string | null;
   source_name: string;
+  source_type: string;
+  reference_identifier: string | null;
   reference_url: string | null;
   quoted_at: string;
+  accessed_at: string | null;
   quantity: number;
   unit_price: number;
   delivery_cost: number;
@@ -964,6 +968,61 @@ type CotacaoCompra = {
   notes: string | null;
   selected_for_estimate: boolean;
   is_active: boolean;
+  justificativa_expurgo: string | null;
+  source_tax_id: string | null;
+  source_contact_name: string | null;
+  source_contact_email: string | null;
+  source_contact_phone: string | null;
+  source_address: string | null;
+  brand_model: string | null;
+  delivery_term: string | null;
+  payment_terms: string | null;
+  warranty_terms: string | null;
+  evidence_storage_path: string | null;
+  evidence_file_name: string | null;
+  evidence_mime_type: string | null;
+  evidence_file_size: number | null;
+};
+
+type AprovacaoPrecoCompra = {
+  id: string;
+  procurement_item_id: string;
+  method: string;
+  method_justification: string;
+  exceptional_justification: string | null;
+  approved_unit_price: number;
+  approved_total_price: number;
+  sample_count: number;
+  status: string;
+  approved_by: string;
+  approved_at: string;
+};
+
+type ConformidadeCompra = {
+  normative_basis: string;
+  in65_applicability: string;
+  local_regulation_name: string | null;
+  local_regulation_reference: string | null;
+  legal_review_status: string;
+  legal_review_notes: string | null;
+  validated_by: string | null;
+  validated_at: string | null;
+};
+
+type FornecedorCompra = {
+  id: string;
+  legal_name: string;
+  cnpj: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  street: string | null;
+  street_number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
 };
 
 type DotacaoCompra = {
@@ -991,8 +1050,25 @@ function DadosEstruturados(props: {
 }) {
   const [items, setItems] = useState<ItemCompra[]>([]);
   const [quotes, setQuotes] = useState<CotacaoCompra[]>([]);
+  const [approvals, setApprovals] = useState<AprovacaoPrecoCompra[]>([]);
+  const [compliance, setCompliance] = useState<ConformidadeCompra | null>(null);
+  const [canApprovePrice, setCanApprovePrice] = useState(false);
   const [budgets, setBudgets] = useState<DotacaoCompra[]>([]);
   const [suppliers, setSuppliers] = useState<FornecedorCompra[]>([]);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [approvalForms, setApprovalForms] = useState<Record<string, {
+    method: "media" | "mediana" | "menor" | "outro";
+    methodJustification: string;
+    exceptionalJustification: string;
+    otherUnitPrice: string;
+  }>>({});
+  const [complianceForm, setComplianceForm] = useState({
+    normative_basis: "pending",
+    in65_applicability: "pending",
+    local_regulation_name: "",
+    local_regulation_reference: "",
+    legal_review_notes: "",
+  });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [itemFormOpen, setItemFormOpen] = useState(false);
@@ -1018,6 +1094,18 @@ function DadosEstruturados(props: {
     unit_price: "",
     delivery_cost: "0",
     notes: "",
+    source_type: "painel_precos",
+    reference_identifier: "",
+    accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+    source_tax_id: "",
+    source_contact_name: "",
+    source_contact_email: "",
+    source_contact_phone: "",
+    source_address: "",
+    brand_model: "",
+    delivery_term: "",
+    payment_terms: "",
+    warranty_terms: "",
   });
   const [budgetForm, setBudgetForm] = useState({
     fiscal_year: String(new Date().getFullYear()),
@@ -1035,39 +1123,70 @@ function DadosEstruturados(props: {
     setLoading(true);
 
     try {
-      const [itemRows, budgetRows, supplierRows] = await Promise.all([
-        carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
+      const [itemRows, budgetRows, supplierRows, approvalRows, complianceResult, capabilityResult] =
+        await Promise.all([
+          carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
+            db
+              .from("procurement_items")
+              .select("*")
+              .eq("tenant_id", props.tenantId)
+              .eq("process_id", props.processId)
+              .eq("is_active", true)
+              .order("line_number")
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<DotacaoCompra>((inicio, fim) =>
+            db
+              .from("procurement_budget_allocations")
+              .select("*")
+              .eq("tenant_id", props.tenantId)
+              .eq("process_id", props.processId)
+              .eq("is_active", true)
+              .order("fiscal_year", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<FornecedorCompra>((inicio, fim) =>
+            db
+              .from("suppliers")
+              .select("id,legal_name,cnpj,contact_name,contact_email,contact_phone,street,street_number,complement,neighborhood,city,state,postal_code")
+              .eq("tenant_id", props.tenantId)
+              .order("legal_name")
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<AprovacaoPrecoCompra>((inicio, fim) =>
+            db
+              .from("procurement_price_approvals")
+              .select("*")
+              .eq("tenant_id", props.tenantId)
+              .eq("process_id", props.processId)
+              .order("approved_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
           db
-            .from("procurement_items")
+            .from("tenant_procurement_compliance")
             .select("*")
             .eq("tenant_id", props.tenantId)
-            .eq("process_id", props.processId)
-            .eq("is_active", true)
-            .order("line_number")
-            .order("id")
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<DotacaoCompra>((inicio, fim) =>
-          db
-            .from("procurement_budget_allocations")
-            .select("*")
-            .eq("tenant_id", props.tenantId)
-            .eq("process_id", props.processId)
-            .eq("is_active", true)
-            .order("fiscal_year", { ascending: false })
-            .order("id", { ascending: false })
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<FornecedorCompra>((inicio, fim) =>
-          db
-            .from("suppliers")
-            .select("id,legal_name")
-            .eq("tenant_id", props.tenantId)
-            .order("legal_name")
-            .order("id")
-            .range(inicio, fim),
-        ),
-      ]);
+            .maybeSingle(),
+          db.rpc("get_procurement_price_capabilities", { p_tenant_id: props.tenantId }),
+        ]);
+      if (complianceResult.error) throw complianceResult.error;
+      if (capabilityResult.error) throw capabilityResult.error;
+      setApprovals(approvalRows);
+      setCompliance(complianceResult.data);
+      setCanApprovePrice(Boolean(capabilityResult.data?.[0]?.can_approve_price));
+      if (complianceResult.data) {
+        setComplianceForm({
+          normative_basis: complianceResult.data.normative_basis,
+          in65_applicability: complianceResult.data.in65_applicability,
+          local_regulation_name: complianceResult.data.local_regulation_name ?? "",
+          local_regulation_reference: complianceResult.data.local_regulation_reference ?? "",
+          legal_review_notes: complianceResult.data.legal_review_notes ?? "",
+        });
+      }
 
       const itemIds = itemRows.map((item) => item.id);
       const quoteRows: CotacaoCompra[] = [];
@@ -1079,7 +1198,6 @@ function DadosEstruturados(props: {
             .from("procurement_price_quotes")
             .select("*")
             .eq("tenant_id", props.tenantId)
-            .eq("is_active", true)
             .in("procurement_item_id", itemIdsPagina)
             .order("quoted_at", { ascending: false })
             .order("id", { ascending: false })
@@ -1097,6 +1215,9 @@ function DadosEstruturados(props: {
       setQuotes([]);
       setBudgets([]);
       setSuppliers([]);
+      setApprovals([]);
+      setCompliance(null);
+      setCanApprovePrice(false);
       toast.error(
         error instanceof Error ? error.message : "Falha ao carregar os dados da contratação.",
       );
