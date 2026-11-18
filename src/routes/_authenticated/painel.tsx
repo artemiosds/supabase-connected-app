@@ -26,6 +26,7 @@ import {
 } from "@/lib/process-stagnation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "@tanstack/react-router";
 
@@ -284,13 +285,17 @@ function Painel() {
                   </p>
                 </div>
               </div>
-              <Link
-                to="/documentos"
-                className="mt-5 inline-flex min-h-10 w-full items-center justify-between rounded-lg bg-primary-foreground px-3.5 text-sm font-semibold text-primary transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="mt-5 w-full justify-between rounded-xl bg-primary-foreground px-4 text-primary hover:bg-primary-foreground/95"
               >
-                Consultar vencimentos
-                <ArrowUpRight className="size-4" aria-hidden="true" />
-              </Link>
+                <Link to="/documentos">
+                  Consultar vencimentos
+                  <ArrowUpRight className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
             </div>
           )}
         </div>
