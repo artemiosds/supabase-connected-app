@@ -892,7 +892,12 @@ export function TenantIntegrationsSettings() {
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={testingEmail || saving || Boolean(smtpPortError) || !normalizeTestRecipient(testRecipient)}
+                      disabled={
+                        testingEmail ||
+                        saving ||
+                        Boolean(smtpPortError) ||
+                        !normalizeTestRecipient(testRecipient)
+                      }
                       onClick={() => void testEmail()}
                     >
                       {testingEmail ? (
