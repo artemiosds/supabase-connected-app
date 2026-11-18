@@ -140,6 +140,10 @@ function Processos() {
   const [novo, setNovo] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const members = useAssignees(abertoId ? selecionado?.id : undefined);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("processo");
+    if (id) setAbertoId(id);
+  }, []);
   const [dadosAbertos, setDadosAbertos] = useState(false);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
@@ -606,7 +610,15 @@ function Processos() {
                         {e.nome}
                       </p>
                       {lista.map((i) => (
-                        <div key={i.id} className="space-y-2 rounded-md border p-3">
+                        <div
+                          key={i.id}
+                          id={`tarefa-${i.id}`}
+                          ref={(el) => {
+                            if (el && window.location.hash === "#" + el.id)
+                              el.scrollIntoView({ block: "center" });
+                          }}
+                          className="space-y-2 rounded-md border p-3"
+                        >
                           <label className="flex items-start gap-2 text-sm">
                             <Checkbox
                               checked={i.is_done}
