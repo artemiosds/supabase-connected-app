@@ -806,8 +806,13 @@ export type Database = {
           signature_statement: string | null
           signed_at: string | null
           signed_by: string | null
+          signed_content_sha256: string | null
           signed_email: string | null
           signed_name: string | null
+          signed_pdf_mime_type: string | null
+          signed_pdf_sha256: string | null
+          signed_pdf_size: number | null
+          signed_pdf_storage_path: string | null
           status: string
           supplier_id: string | null
           template_id: string | null
@@ -830,8 +835,13 @@ export type Database = {
           signature_statement?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_content_sha256?: string | null
           signed_email?: string | null
           signed_name?: string | null
+          signed_pdf_mime_type?: string | null
+          signed_pdf_sha256?: string | null
+          signed_pdf_size?: number | null
+          signed_pdf_storage_path?: string | null
           status?: string
           supplier_id?: string | null
           template_id?: string | null
@@ -854,8 +864,13 @@ export type Database = {
           signature_statement?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_content_sha256?: string | null
           signed_email?: string | null
           signed_name?: string | null
+          signed_pdf_mime_type?: string | null
+          signed_pdf_sha256?: string | null
+          signed_pdf_size?: number | null
+          signed_pdf_storage_path?: string | null
           status?: string
           supplier_id?: string | null
           template_id?: string | null
@@ -2878,6 +2893,18 @@ export type Database = {
       end_platform_support_session: {
         Args: { p_session_id: string }
         Returns: undefined
+      }
+      finalize_generated_document_signature: {
+        Args: {
+          p_actor_id: string
+          p_content_sha256: string
+          p_document_id: string
+          p_file_sha256: string
+          p_file_size: number
+          p_storage_path: string
+          p_tenant_id: string
+        }
+        Returns: Json
       }
       find_tenant_user_by_email: {
         Args: { p_email: string; p_tenant_id: string }
