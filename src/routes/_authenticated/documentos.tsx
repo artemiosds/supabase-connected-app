@@ -1680,44 +1680,158 @@ function Documentos() {
   async function assinarDocumento(d: DocumentoGerado) {
     if (
       !selecionado ||
+      !session?.user?.id ||
       !capacidades.can_sign ||
       fluxoPorDocumento.get(d.id)?.status !== "approved" ||
       d.status !== "draft" ||
       baixandoRascunhoId
     ) return;
     const confirmou = window.confirm(
-      "Confirma a assinatura eletrônica simples? O Primus vai gerar o PDF final, arquivá-lo sem sobrescrita, conferir o arquivo no servidor e registrar o SHA-256 vinculado à sua conta. Esta assinatura não é qualificada ICP-Brasil.",
+      "Confirma a assinatura eletrônica simples? O Primus vai gerar o PDF final com uma folha de identificação do assinante, arquivá-lo sem sobrescrita, conferir o arquivo no servidor e registrar o SHA-256 vinculado à sua conta. Esta assinatura não é qualificada ICP-Brasil.",
     );
     if (!confirmou) return;
 
-    const pdfBytes = await baixarRascunho(d, "pdf", true);
-    if (!pdfBytes) return;
-    const storagePath = `${selecionado.id}/generated-documents/${d.id}/${crypto.randomUUID()}.pdf`;
-    const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
-    const { error: uploadError } = await db.storage
-      .from("gfs-private-documents")
-      .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: false });
-    if (uploadError) {
-      toast.error(uploadError.message);
-      return;
-    }
+    let storagePath: string | null = null;
+    let uploaded = false;
+    try {
+      const pdfBytes = await baixarRascunho(d, "pdf", true);
+      if (!pdfBytes) return;
 
-    const { data, error } = await db.functions.invoke("sign-generated-document", {
-      body: {
-        tenantId: selecionado.id,
-        documentId: d.id,
-        storagePath,
-      },
-    });
-    if (error || !data?.success) {
-      await db.storage.from("gfs-private-documents").remove([storagePath]);
-      toast.error(error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.");
-      return;
+      const [{ data: signerProfile }, { PDFDocument, StandardFonts, rgb }] = await Promise.all([
+        db
+          .from("profiles")
+          .select("full_name")
+          .eq("id", session.user.id)
+          .maybeSingle(),
+        import("pdf-lib"),
+      ]);
+      const signerName =
+        signerProfile?.full_name?.trim() ||
+        String(session.user.user_metadata?.full_name ?? "").trim() ||
+        "Usuário autenticado";
+      const signerEmail = session.user.email ?? "Não informado";
+
+      // Append an audit page without changing the source document's original
+      // pages or template layout. The server hashes this complete final PDF.
+      const finalPdf = await PDFDocument.load(pdfBytes);
+      finalPdf.setTitle(d.title);
+      finalPdf.setAuthor(signerName);
+      finalPdf.setSubject("Registro de assinatura eletrônica simples");
+      finalPdf.setCreator("Primus — Gestão de Documentos");
+      const page = finalPdf.addPage([595.28, 841.89]);
+      const regular = await finalPdf.embedFont(StandardFonts.Helvetica);
+      const bold = await finalPdf.embedFont(StandardFonts.HelveticaBold);
+      const ink = rgb(0.12, 0.17, 0.25);
+      const muted = rgb(0.32, 0.38, 0.46);
+      const left = 48;
+      const contentWidth = 499;
+      let y = 770;
+
+      page.drawText("REGISTRO DE ASSINATURA ELETRÔNICA SIMPLES", {
+        x: left,
+        y,
+        size: 13,
+        font: bold,
+        color: ink,
+      });
+      y -= 26;
+      page.drawLine({
+        start: { x: left, y },
+        end: { x: left + contentWidth, y },
+        thickness: 1,
+        color: muted,
+      });
+      y -= 32;
+
+      const paragraphs = [
+        `Documento: ${d.title}`,
+        `Identificador do documento: ${d.id}`,
+        `Secretaria: ${selecionado.nome}`,
+        `Assinante: ${signerName}`,
+        `Conta autenticada: ${signerEmail}`,
+        "Declaração: o usuário identificado acima confirmou a assinatura eletrônica simples deste documento no sistema.",
+        "Integridade: o arquivo PDF completo, incluindo esta folha, é identificado por um hash SHA-256 calculado no servidor e vinculado ao registro imutável de assinatura.",
+        "Data e hora oficiais, identificação da conta, hash do arquivo e histórico de aprovação ficam registrados na trilha de auditoria do sistema.",
+        "Natureza da assinatura: modalidade eletrônica simples. Este registro não equivale a uma assinatura eletrônica qualificada ICP-Brasil nem representa, por si só, certificação digital.",
+      ];
+
+      for (const paragraph of paragraphs) {
+        const words = paragraph.split(/\s+/);
+        let line = "";
+        for (const word of words) {
+          const candidate = line ? `${line} ${word}` : word;
+          if (regular.widthOfTextAtSize(candidate, 10) > contentWidth && line) {
+            page.drawText(line, { x: left, y, size: 10, font: regular, color: ink });
+            y -= 16;
+            line = word;
+          } else {
+            line = candidate;
+          }
+        }
+        if (line) {
+          page.drawText(line, { x: left, y, size: 10, font: regular, color: ink });
+          y -= 16;
+        }
+        y -= 12;
+      }
+
+      page.drawLine({
+        start: { x: left, y: 84 },
+        end: { x: left + contentWidth, y: 84 },
+        thickness: 0.5,
+        color: muted,
+      });
+      page.drawText("Primus · Registro eletrônico e trilha de auditoria", {
+        x: left,
+        y: 64,
+        size: 8,
+        font: regular,
+        color: muted,
+      });
+
+      const finalPdfBytes = await finalPdf.save();
+      storagePath = `${selecionado.id}/generated-documents/${d.id}/${crypto.randomUUID()}.pdf`;
+      const pdfBlob = new Blob([finalPdfBytes], { type: "application/pdf" });
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: false });
+      if (uploadError) throw uploadError;
+      uploaded = true;
+
+      const { data, error } = await db.functions.invoke("sign-generated-document", {
+        body: {
+          tenantId: selecionado.id,
+          documentId: d.id,
+          storagePath,
+        },
+      });
+      if (error || !data?.success) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+        uploaded = false;
+        throw new Error(error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.");
+      }
+
+      uploaded = false;
+      toast.success(`Assinatura registrada. SHA-256 do PDF: ${String(data.sha256).slice(0, 16)}…`);
+      await carregar();
+    } catch (error) {
+      if (uploaded && storagePath) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+      }
+      const { data: latestDocument } = await db
+        .from("generated_documents")
+        .select("status,signed_pdf_sha256")
+        .eq("id", d.id)
+        .eq("tenant_id", selecionado.id)
+        .maybeSingle();
+      if (latestDocument?.status === "signed" && latestDocument.signed_pdf_sha256) {
+        toast.success("A assinatura foi concluída e o PDF final está arquivado.");
+        await carregar();
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "Não foi possível concluir a assinatura.");
     }
-    toast.success(`Assinatura registrada. SHA-256 do PDF: ${String(data.sha256).slice(0, 16)}…`);
-    await carregar();
   }
-
   async function cancelarGerado(d: DocumentoGerado) {
     if (!selecionado || d.status === "signed" || d.status === "cancelled") return;
     const confirmou = window.confirm(
