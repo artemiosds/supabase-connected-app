@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, CalendarClock, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -154,13 +154,30 @@ export function SinoAlertas() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
-        <p className="mb-1 text-sm font-semibold">Alertas de vencimento</p>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Contratos vigentes e documentos ativos com vencimento nos próximos 120 dias.
-        </p>
+      <PopoverContent
+        align="end"
+        className="w-[390px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-border/80 p-0 shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-border/70 bg-muted/30 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+              Central de alertas
+            </p>
+            <p className="mt-1 text-base font-semibold tracking-tight">Prazos e vencimentos</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Contratos e documentos dos próximos 120 dias.
+            </p>
+          </div>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/10 text-primary">
+            <CalendarClock className="size-5" aria-hidden="true" />
+          </span>
+        </div>
+        <div className="px-4 py-4">
         {carregando ? (
-          <p className="text-sm text-muted-foreground">Consultando vencimentos...</p>
+          <p className="flex items-center gap-2 px-1 py-5 text-sm text-muted-foreground" role="status">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            Consultando vencimentos…
+          </p>
         ) : (
           <>
             {falhaParcial && (
@@ -169,13 +186,19 @@ export function SinoAlertas() {
               </p>
             )}
             {avisos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {falhaParcial
-                  ? "Não foi possível confirmar todos os vencimentos."
-                  : "Nenhum vencimento identificado nos próximos 120 dias."}
-              </p>
+              <div className="flex flex-col items-center rounded-xl border border-dashed bg-muted/20 px-4 py-7 text-center">
+                <CheckCircle2 className="size-7 text-success" aria-hidden="true" />
+                <p className="mt-3 text-sm font-semibold">
+                  {falhaParcial ? "Consulta incompleta" : "Nenhum prazo crítico identificado"}
+                </p>
+                <p className="mt-1 max-w-[255px] text-xs leading-relaxed text-muted-foreground">
+                  {falhaParcial
+                    ? "Não foi possível confirmar todos os vencimentos."
+                    : "Nenhum vencimento identificado nos próximos 120 dias."}
+                </p>
+              </div>
             ) : (
-              <ul className="max-h-80 space-y-2 overflow-y-auto">
+              <ul className="max-h-[430px] space-y-2.5 overflow-y-auto pr-1">
                 {avisos.map((aviso) => {
                   const contrato = aviso.tipo === "Contrato";
                   const emAndamento = contrato && marcados.has(aviso.id);
@@ -185,10 +208,13 @@ export function SinoAlertas() {
                     aviso.dias < 30
                       ? "border-destructive/30 bg-destructive/10 text-destructive"
                       : aviso.dias <= 60
-                        ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        ? "border-warning/35 bg-warning/15 text-foreground"
                         : "border-primary/30 bg-primary/10 text-primary";
                   return (
-                    <li key={`${aviso.tipo}-${aviso.id}`} className="rounded-md border p-3 text-sm">
+                    <li
+                      key={`${aviso.tipo}-${aviso.id}`}
+                      className={`rounded-xl border border-l-[3px] bg-card p-3.5 text-sm transition-colors hover:bg-muted/30 ${aviso.dias < 30 ? "border-l-destructive" : aviso.dias <= 60 ? "border-l-warning" : "border-l-primary"}`}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge variant="outline" className={statusClass}>
                           {aviso.dias < 0
@@ -199,19 +225,22 @@ export function SinoAlertas() {
                         </Badge>
                         {emAndamento && <Badge variant="secondary">Em andamento</Badge>}
                       </div>
-                      <p className="mt-2 font-medium">
+                      <p className="mt-2 text-sm font-semibold leading-snug">
                         {aviso.tipo}: {aviso.titulo}
                       </p>
                       {aviso.complemento && (
                         <p className="mt-1 text-xs text-muted-foreground">{aviso.complemento}</p>
                       )}
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={detailHref}>Ver detalhes</a>
+                        <Button size="sm" variant="outline" className="rounded-lg" asChild>
+                          <a href={detailHref}>
+                            Ver detalhes
+                            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                          </a>
                         </Button>
                         {contrato && podeMarcar && (
                           <>
-                            <Button size="sm" variant="outline" asChild>
+                            <Button size="sm" variant="outline" className="rounded-lg" asChild>
                               <a href={aditivoHref}>Iniciar aditivo</a>
                             </Button>
                             {!emAndamento && (
@@ -237,9 +266,13 @@ export function SinoAlertas() {
             )}
           </>
         )}
-        <Link to="/contratos" className="mt-3 block text-sm font-medium text-primary">
-          Ver contratos
-        </Link>
+        </div>
+        <div className="border-t border-border/70 bg-muted/20 px-5 py-3">
+          <Link to="/contratos" className="inline-flex min-h-8 items-center gap-2 text-xs font-semibold text-primary hover:underline">
+            Ver gestão de contratos
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
       </PopoverContent>
     </Popover>
   );
