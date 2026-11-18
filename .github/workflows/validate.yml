@@ -52,6 +52,9 @@ jobs:
       - name: Type check
         run: bunx tsc --noEmit
 
+      - name: Native TypeScript type check
+        run: bunx tsgo --noEmit
+
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
