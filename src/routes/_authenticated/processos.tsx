@@ -962,6 +962,7 @@ type CotacaoCompra = {
   reference_url: string | null;
   quoted_at: string;
   accessed_at: string | null;
+  supplier_response_deadline: string | null;
   quantity: number;
   unit_price: number;
   delivery_cost: number;
@@ -1522,7 +1523,7 @@ function DadosEstruturados(props: {
         }
         lines.push(
           "COTAÇÕES ATIVAS — SÉRIE DE PREÇOS",
-          "Fonte | Tipo | Identificador | CPF/CNPJ | Data da cotação | Acesso | Quantidade | Unitário | Frete | Total | Unitário efetivo | Condições | Referência | Comprovante",
+          "Fonte | Tipo | Identificador | CPF/CNPJ | Data da cotação | Acesso | Validade da proposta | Quantidade | Unitário | Frete | Total | Unitário efetivo | Condições | Observações | Referência | Comprovante",
         );
         for (const quote of rows) {
           const supplier = suppliers.find((entry) => entry.id === quote.supplier_id);
@@ -1534,14 +1535,16 @@ function DadosEstruturados(props: {
               quote.source_tax_id ?? supplier?.cnpj,
               formatarData(quote.quoted_at),
               quote.accessed_at ? new Date(quote.accessed_at).toLocaleString("pt-BR") : "",
+              quote.supplier_response_deadline ? formatarData(quote.supplier_response_deadline) : "",
               quote.quantity,
               formatarMoeda(quote.unit_price),
               formatarMoeda(quote.delivery_cost),
               formatarMoeda(quote.total_price),
               formatarMoeda(precoUnitarioComFrete(quote)),
               [quote.delivery_term, quote.payment_terms, quote.warranty_terms, quote.brand_model].filter(Boolean).join(" / "),
+              quote.notes,
               quote.reference_url,
-              quote.evidence_file_name,
+              [quote.evidence_file_name, quote.evidence_mime_type, quote.evidence_file_size ? `${quote.evidence_file_size} bytes` : ""].filter(Boolean).join(" / "),
             ]
               .map(clean)
               .join(" | "),
