@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   maskRecipient,
   normalizeTestRecipient,
+  smtpPortSecurityError,
   testEmailCooldownRemaining,
   TEST_EMAIL_COOLDOWN_MS,
 } from "../../supabase/functions/_shared/test-email.ts";
@@ -40,4 +41,18 @@ describe("testEmailCooldownRemaining", () => {
 
 it("mascara destinatário na auditoria", () => {
   expect(maskRecipient("artemiosouza99@gmail.com")).toBe("ar***@gmail.com");
+});
+
+describe("smtpPortSecurityError", () => {
+  it("aceita somente pares aprovados pelo transporte", () => {
+    expect(smtpPortSecurityError("465", "tls")).toBeNull();
+    expect(smtpPortSecurityError(2525, "starttls")).toBeNull();
+  });
+  it("rejeita STARTTLS na porta 465 antes do envio", () => {
+    expect(smtpPortSecurityError(465, "starttls")).toContain("465 exige TLS");
+  });
+  it("rejeita TLS na 2525 e outras portas", () => {
+    expect(smtpPortSecurityError(2525, "tls")).toContain("2525 exige STARTTLS");
+    expect(smtpPortSecurityError(587, "starttls")).toContain("porta 465");
+  });
 });
