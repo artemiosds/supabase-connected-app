@@ -108,7 +108,11 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
   const html = renderInstitutionalEmail({
     issuer: task.tenantName,
     category: "Comunicado de acompanhamento de vencimentos",
-    heading: overdue ? "Prazo vencido: atenção necessária" : today ? "Vencimento previsto para hoje" : "Aviso preventivo de vencimento",
+    heading: overdue
+      ? "Prazo vencido: atenção necessária"
+      : today
+        ? "Vencimento previsto para hoje"
+        : "Aviso preventivo de vencimento",
     preheader: `${kind}: ${task.title}. ${status}. Consulte os registros no Primus Gestão.`,
     greeting: task.recipientName ? `Prezado(a) ${task.recipientName},` : undefined,
     message: overdue
@@ -124,7 +128,8 @@ function makeEmail(task: ExpiryTask, appUrl: string) {
       { label: "Situação", value: status },
     ],
     action: { label: "Consultar registro no Primus Gestão", url: destination },
-    guidance: "Este aviso é informativo. Confirme o estado atualizado do documento ou contrato no sistema antes de qualquer providência.",
+    guidance:
+      "Este aviso é informativo. Confirme o estado atualizado do documento ou contrato no sistema antes de qualquer providência.",
     tone: overdue ? "critical" : today ? "attention" : "standard",
   });
   return { subject, html };
@@ -468,7 +473,9 @@ async function deliverTask(
     to: task.recipientEmail,
     subject: email.subject,
     attachments,
-    html: attachments ? email.html.replace("<!--primus-institutional-logo-->", logoHtml) : email.html,
+    html: attachments
+      ? email.html.replace("<!--primus-institutional-logo-->", logoHtml)
+      : email.html,
     idempotencyKey,
   });
 
@@ -834,8 +841,16 @@ async function processOperational(
               : "O processo indicado permanece sem movimentação registrada há pelo menos oito dias. Recomendamos revisar a situação e avaliar as providências necessárias.";
           const operationalHtml = renderInstitutionalEmail({
             issuer: tenant!.name,
-            category: contract ? "Designação para acompanhamento contratual" : row.kind === "stage" ? "Nova atividade administrativa" : "Acompanhamento de processo",
-            heading: contract ? "Nova designação de responsabilidade" : row.kind === "stage" ? "Uma atividade requer sua atenção" : "Processo sem movimentação recente",
+            category: contract
+              ? "Designação para acompanhamento contratual"
+              : row.kind === "stage"
+                ? "Nova atividade administrativa"
+                : "Acompanhamento de processo",
+            heading: contract
+              ? "Nova designação de responsabilidade"
+              : row.kind === "stage"
+                ? "Uma atividade requer sua atenção"
+                : "Processo sem movimentação recente",
             preheader: title,
             message: operationalMessage,
             fields: [
@@ -843,14 +858,17 @@ async function processOperational(
               { label: "Ocorrência", value: title },
             ],
             action: { label: "Consultar no Primus Gestão", url: url.href },
-            guidance: "Acompanhe o registro oficial no sistema. Este comunicado não substitui os atos e procedimentos administrativos aplicáveis.",
+            guidance:
+              "Acompanhe o registro oficial no sistema. Este comunicado não substitui os atos e procedimentos administrativos aplicáveis.",
             tone: row.kind === "idle" ? "attention" : "standard",
           });
           const result = await provider({
             attachments,
             to: data.user.email,
             subject,
-            html: attachments ? operationalHtml.replace("<!--primus-institutional-logo-->", logoHtml) : operationalHtml,
+            html: attachments
+              ? operationalHtml.replace("<!--primus-institutional-logo-->", logoHtml)
+              : operationalHtml,
             idempotencyKey: "operational-" + row.id,
           });
           status =
