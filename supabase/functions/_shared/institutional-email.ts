@@ -32,9 +32,7 @@ export function renderInstitutionalEmail(options: InstitutionalEmailOptions): st
     tone === "success" ? "#087F5B" : "#176B9B";
   const escaped = (value: string) => escapeHtml(value);
   const safeUrl = options.action ? safeHttpUrl(options.action.url) : null;
-  const logo = options.logoCid
-    ? '<img src="cid:brasao" width="64" alt="Brasão institucional" style="display:block;border:0;max-height:70px;max-width:64px;width:auto;height:auto;margin:0 0 12px">'
-    : "";
+  const logo = "<!--primus-institutional-logo-->";
   const fields = options.fields?.length
     ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:20px 0 24px;border:1px solid #E3EAF2;border-radius:8px;background:#F7F9FC;">${options.fields.map(
         ({ label, value }, index) => `<tr><td style="padding:12px 16px;vertical-align:top;border-bottom:${index === options.fields!.length - 1 ? "0" : "1px solid #E3EAF2"};font:13px/1.5 Arial,Helvetica,sans-serif;color:#536476;width:38%;">${escaped(label)}</td><td style="padding:12px 16px;vertical-align:top;border-bottom:${index === options.fields!.length - 1 ? "0" : "1px solid #E3EAF2"};font:600 14px/1.5 Arial,Helvetica,sans-serif;color:#172F49;overflow-wrap:anywhere;">${escaped(value)}</td></tr>`
