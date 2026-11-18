@@ -21,7 +21,11 @@ describe("SpecularButton institucional nos botões do Primus", () => {
   it("preserva o disparo do botão e os handlers de ponteiro existentes", () => {
     const click = vi.fn();
     const pointerMove = vi.fn();
-    render(<Button onClick={click} onPointerMove={pointerMove}>Enviar</Button>);
+    render(
+      <Button onClick={click} onPointerMove={pointerMove}>
+        Enviar
+      </Button>,
+    );
     const button = screen.getByRole("button", { name: "Enviar" });
     fireEvent.pointerMove(button, { pointerType: "mouse", clientX: 20, clientY: 10 });
     fireEvent.click(button);
@@ -45,7 +49,9 @@ describe("SpecularButton institucional nos botões do Primus", () => {
       <>
         <Button variant="ghost">Fechar</Button>
         <Button variant="link">Ajuda</Button>
-        <Button size="icon" aria-label="Abrir menu">≡</Button>
+        <Button size="icon" aria-label="Abrir menu">
+          ≡
+        </Button>
         <Button specular={false}>Sem efeito</Button>
       </>,
     );
