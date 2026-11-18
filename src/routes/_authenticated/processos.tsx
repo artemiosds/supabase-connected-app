@@ -1106,6 +1106,7 @@ function DadosEstruturados(props: {
     delivery_term: "",
     payment_terms: "",
     warranty_terms: "",
+    supplier_response_deadline: "",
   });
   const [budgetForm, setBudgetForm] = useState({
     fiscal_year: String(new Date().getFullYear()),
@@ -1292,27 +1293,99 @@ function DadosEstruturados(props: {
     }
     const item = items.find((entry) => entry.id === quoteTarget);
     const supplier = suppliers.find((entry) => entry.id === quoteForm.supplier_id);
+    const allowedEvidenceTypes = new Set([
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "image/jpeg",
+      "image/png",
+    ]);
+    if (evidenceFile && (!allowedEvidenceTypes.has(evidenceFile.type) || evidenceFile.size > 20 * 1024 * 1024)) {
+      toast.error("O comprovante deve ser PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG de até 20 MB.");
+      return;
+    }
     setSaving(true);
-    const { error } = await db.from("procurement_price_quotes").insert({
-      tenant_id: props.tenantId,
-      procurement_item_id: quoteTarget,
-      supplier_id: quoteForm.supplier_id === "sem_fornecedor" ? null : quoteForm.supplier_id,
-      source_name: quoteForm.source_name.trim() || supplier?.legal_name || "",
-      reference_url: quoteForm.reference_url.trim() || null,
-      quoted_at: quoteForm.quoted_at,
-      quantity: quoteQuantity,
-      unit_price: unitPrice,
-      delivery_cost: deliveryCost,
-      notes: quoteForm.notes.trim() || null,
-      created_by: props.userId,
-      updated_by: props.userId,
-    });
-    setSaving(false);
+    const { data: savedQuote, error } = await db
+      .from("procurement_price_quotes")
+      .insert({
+        tenant_id: props.tenantId,
+        procurement_item_id: quoteTarget,
+        supplier_id: quoteForm.supplier_id === "sem_fornecedor" ? null : quoteForm.supplier_id,
+        source_name: quoteForm.source_name.trim() || supplier?.legal_name || "",
+        source_type: quoteForm.source_type,
+        reference_identifier: quoteForm.reference_identifier.trim() || null,
+        reference_url: quoteForm.reference_url.trim() || null,
+        quoted_at: quoteForm.quoted_at,
+        accessed_at: quoteForm.accessed_at ? new Date(quoteForm.accessed_at).toISOString() : null,
+        supplier_response_deadline: quoteForm.supplier_response_deadline || null,
+        source_tax_id: quoteForm.source_tax_id.trim() || supplier?.cnpj || null,
+        source_contact_name: quoteForm.source_contact_name.trim() || supplier?.contact_name || null,
+        source_contact_email: quoteForm.source_contact_email.trim() || supplier?.contact_email || null,
+        source_contact_phone: quoteForm.source_contact_phone.trim() || supplier?.contact_phone || null,
+        source_address:
+          quoteForm.source_address.trim() ||
+          [supplier?.street, supplier?.street_number, supplier?.complement, supplier?.neighborhood,
+            supplier?.city, supplier?.state, supplier?.postal_code].filter(Boolean).join(", ") ||
+          null,
+        brand_model: quoteForm.brand_model.trim() || null,
+        delivery_term: quoteForm.delivery_term.trim() || null,
+        payment_terms: quoteForm.payment_terms.trim() || null,
+        warranty_terms: quoteForm.warranty_terms.trim() || null,
+        quantity: quoteQuantity,
+        unit_price: unitPrice,
+        delivery_cost: deliveryCost,
+        notes: quoteForm.notes.trim() || null,
+        created_by: props.userId,
+        updated_by: props.userId,
+      })
+      .select("id")
+      .single();
     if (error) {
+      setSaving(false);
       toast.error(error.message);
       return;
     }
+    let evidenceWarning: string | null = null;
+    if (evidenceFile) {
+      const extensions: Record<string, string> = {
+        "application/pdf": "pdf",
+        "application/msword": "doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "image/jpeg": "jpg",
+        "image/png": "png",
+      };
+      const evidenceId = crypto.randomUUID();
+      const storagePath = `${props.tenantId}/procurement-quotes/${quoteTarget}/${savedQuote.id}/${evidenceId}.${extensions[evidenceFile.type]}`;
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(storagePath, evidenceFile, { contentType: evidenceFile.type, upsert: false });
+      if (uploadError) {
+        evidenceWarning = uploadError.message;
+      } else {
+        const { error: linkError } = await db
+          .from("procurement_price_quotes")
+          .update({
+            evidence_storage_path: storagePath,
+            evidence_file_name: evidenceFile.name,
+            evidence_mime_type: evidenceFile.type,
+            evidence_file_size: evidenceFile.size,
+            updated_by: props.userId,
+          })
+          .eq("tenant_id", props.tenantId)
+          .eq("id", savedQuote.id);
+        if (linkError) {
+          await db.storage.from("gfs-private-documents").remove([storagePath]);
+          evidenceWarning = linkError.message;
+        }
+      }
+    }
+    setSaving(false);
     setQuoteTarget(null);
+    setEvidenceFile(null);
     setQuoteForm({
       supplier_id: "sem_fornecedor",
       source_name: "",
@@ -1322,8 +1395,23 @@ function DadosEstruturados(props: {
       unit_price: "",
       delivery_cost: "0",
       notes: "",
+      source_type: "painel_precos",
+      reference_identifier: "",
+      accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      supplier_response_deadline: "",
+      source_tax_id: "",
+      source_contact_name: "",
+      source_contact_email: "",
+      source_contact_phone: "",
+      source_address: "",
+      brand_model: "",
+      delivery_term: "",
+      payment_terms: "",
+      warranty_terms: "",
+      supplier_response_deadline: "",
     });
-    toast.success("Cotação registrada.");
+    toast.success("Cotação registrada com rastreabilidade da fonte.");
+    if (evidenceWarning) toast.warning(`Cotação salva, mas o comprovante não foi vinculado: ${evidenceWarning}`);
     await carregarDados();
   }
 
