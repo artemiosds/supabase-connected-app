@@ -55,6 +55,9 @@ jobs:
       - name: Native TypeScript type check
         run: bunx --package @typescript/native-preview tsgo --noEmit
 
+      - name: Lint
+        run: bun run lint
+
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
@@ -65,9 +68,6 @@ jobs:
           for function in supabase/functions/*/index.ts; do
             deno check --config supabase/functions/deno.json "$function"
           done
-
-      - name: Lint
-        run: bun run lint
 
   database-security:
     runs-on: ubuntu-latest
