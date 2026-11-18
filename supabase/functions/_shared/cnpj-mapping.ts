@@ -152,7 +152,9 @@ function first(...values: unknown[]): string | null {
 
 export function onlyCnpjChars(value: unknown): string {
   return typeof value === "string" || typeof value === "number"
-    ? String(value).toUpperCase().replace(/[^A-Z0-9]/g, "")
+    ? String(value)
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
     : "";
 }
 
@@ -248,19 +250,59 @@ export function mapCnpjProvider(raw: JsonObject, source: string, now = new Date(
 
   return {
     cnpj: onlyCnpjChars(first(data.cnpj, est.cnpj)) || null,
-    legal_name: first(data.razao_social, data.razaoSocial, data.nome_empresarial, data.nome, data.company_name, data.legal_name),
-    trade_name: first(data.nome_fantasia, data.nomeFantasia, data.fantasia, est.nome_fantasia, data.trade_name),
+    legal_name: first(
+      data.razao_social,
+      data.razaoSocial,
+      data.nome_empresarial,
+      data.nome,
+      data.company_name,
+      data.legal_name,
+    ),
+    trade_name: first(
+      data.nome_fantasia,
+      data.nomeFantasia,
+      data.fantasia,
+      est.nome_fantasia,
+      data.trade_name,
+    ),
     street: first(
       data.descricao_tipo_de_logradouro && data.logradouro
         ? `${String(data.descricao_tipo_de_logradouro)} ${String(data.logradouro)}`
         : null,
-      data.logradouro, endereco.logradouro, address.street, est.logradouro, data.street,
+      data.logradouro,
+      endereco.logradouro,
+      address.street,
+      est.logradouro,
+      data.street,
     ),
     street_number: first(data.numero, endereco.numero, address.number, est.numero, data.number),
-    complement: first(data.complemento, endereco.complemento, address.complement, est.complemento, data.complement),
-    neighborhood: first(data.bairro, endereco.bairro, address.neighborhood, est.bairro, data.neighborhood),
-    postal_code: first(data.cep, endereco.cep, address.postal_code, est.cep, data.postal_code)?.replace(/\D/g, "") || null,
-    city: first(data.municipio, data.municipio_nome, data.city, endereco.municipio, address.city, est.municipio),
+    complement: first(
+      data.complemento,
+      endereco.complemento,
+      address.complement,
+      est.complemento,
+      data.complement,
+    ),
+    neighborhood: first(
+      data.bairro,
+      endereco.bairro,
+      address.neighborhood,
+      est.bairro,
+      data.neighborhood,
+    ),
+    postal_code:
+      first(data.cep, endereco.cep, address.postal_code, est.cep, data.postal_code)?.replace(
+        /\D/g,
+        "",
+      ) || null,
+    city: first(
+      data.municipio,
+      data.municipio_nome,
+      data.city,
+      endereco.municipio,
+      address.city,
+      est.municipio,
+    ),
     state: first(data.uf, data.estado, endereco.uf, address.state, est.uf, data.state),
     contact_phone: phone(
       [data.ddd_telefone_1, null],
@@ -274,12 +316,22 @@ export function mapCnpjProvider(raw: JsonObject, source: string, now = new Date(
     contact_email: first(data.email, data.email_contato, est.email)?.toLowerCase() ?? null,
     website: first(data.website, data.site, est.website),
     registration_status: statusText(
-      data.descricao_situacao_cadastral, data.situacao, data.situacaoCadastral,
-      est.descricao_situacao_cadastral, data.situacao_cadastral, est.situacao_cadastral,
+      data.descricao_situacao_cadastral,
+      data.situacao,
+      data.situacaoCadastral,
+      est.descricao_situacao_cadastral,
+      data.situacao_cadastral,
+      est.situacao_cadastral,
     ),
-    registration_status_date: first(data.data_situacao_cadastral, data.data_situacao, est.data_situacao_cadastral),
+    registration_status_date: first(
+      data.data_situacao_cadastral,
+      data.data_situacao,
+      est.data_situacao_cadastral,
+    ),
     registration_status_reason: first(
-      data.descricao_motivo_situacao_cadastral, data.motivo_situacao_cadastral, data.motivo_situacao,
+      data.descricao_motivo_situacao_cadastral,
+      data.motivo_situacao_cadastral,
+      data.motivo_situacao,
     ),
     opening_date: first(data.data_inicio_atividade, data.abertura, data.data_abertura),
     legal_nature: first(data.natureza_juridica, object(data.natureza_juridica).descricao),
@@ -303,7 +355,10 @@ export function cnpjDivergente(result: CnpjLookupData, requested: string): boole
  * Merges results in priority order: the first non-empty value wins per field.
  * Results with a divergent CNPJ or without a legal name are discarded.
  */
-export function combineCnpjResults(results: CnpjLookupData[], requested: string): CnpjLookupData | null {
+export function combineCnpjResults(
+  results: CnpjLookupData[],
+  requested: string,
+): CnpjLookupData | null {
   const valid = results.filter((item) => item.legal_name && !cnpjDivergente(item, requested));
   const primary = valid[0];
   if (!primary) return null;
@@ -313,9 +368,11 @@ export function combineCnpjResults(results: CnpjLookupData[], requested: string)
     for (const key of Object.keys(item) as Array<keyof CnpjLookupData>) {
       if (key === "source" || key === "sources" || key === "consulted_at" || key === "cnpj") continue;
       const current = merged[key];
-      const empty = current === null || current === "" || (Array.isArray(current) && current.length === 0);
+      const empty =
+        current === null || current === "" || (Array.isArray(current) && current.length === 0);
       const value = item[key];
-      const hasValue = value !== null && value !== "" && !(Array.isArray(value) && value.length === 0);
+      const hasValue =
+        value !== null && value !== "" && !(Array.isArray(value) && value.length === 0);
       if (empty && hasValue) Object.assign(merged, { [key]: value });
     }
   }
@@ -324,7 +381,11 @@ export function combineCnpjResults(results: CnpjLookupData[], requested: string)
 }
 
 export function providerFailed(raw: JsonObject): boolean {
-  return raw.success === false || raw.status === "ERROR" || typeof raw.message === "string" && !raw.cnpj && !raw.razao_social;
+  return (
+    raw.success === false ||
+    raw.status === "ERROR" ||
+    (typeof raw.message === "string" && !raw.cnpj && !raw.razao_social)
+  );
 }
 
 export type CnpjTone = "success" | "warning" | "destructive" | "neutral";
@@ -334,6 +395,11 @@ export function situacaoTone(status: string | null | undefined): CnpjTone {
   if (!value) return "neutral";
   if (value.includes("ATIVA") && !value.includes("INATIVA")) return "success";
   if (value.includes("SUSPENSA")) return "warning";
-  if (value.includes("INAPTA") || value.includes("BAIXADA") || value.includes("NULA")) return "destructive";
+  if (
+    value.includes("INAPTA") ||
+    value.includes("BAIXADA") ||
+    value.includes("NULA")
+  )
+    return "destructive";
   return "neutral";
 }
