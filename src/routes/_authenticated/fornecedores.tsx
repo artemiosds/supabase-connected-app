@@ -286,6 +286,16 @@ function Fornecedores() {
     setAberto(true);
   }
 
+  useEffect(() => {
+    if (loading || !selecionado?.id || tenantCarregadoId !== selecionado.id) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("consulta") !== "cnpj") return;
+    if (capacidades.can_create) abrirNovo();
+    else toast.error("Seu perfil não possui permissão para iniciar a consulta pelo cadastro.");
+    url.searchParams.delete("consulta");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [loading, selecionado?.id, tenantCarregadoId, capacidades.can_create]);
+
   function abrirEdicao(fornecedor: Fornecedor) {
     setConsultaCnpj(null);
     setEditando(fornecedor);
