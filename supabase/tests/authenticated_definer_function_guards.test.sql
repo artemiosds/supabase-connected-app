@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(51);
+SELECT extensions.plan(52);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
