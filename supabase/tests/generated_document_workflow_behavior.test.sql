@@ -138,6 +138,7 @@ SELECT pg_catalog.set_config('app_auth.verified_signer_id','61000000-0000-4000-8
  SELECT pg_catalog.set_config('app_auth.verified_file_sha256','',true);
  SELECT pg_catalog.set_config('app_auth.verified_content_sha256','',true);
 
+ RESET ROLE;
  SET LOCAL ROLE service_role;
  SELECT pg_catalog.set_config('request.jwt.claim.role','service_role',true);
  SELECT pg_catalog.set_config('request.jwt.claims','{"role":"service_role"}',true);
@@ -161,6 +162,7 @@ SELECT pg_catalog.set_config('app_auth.verified_signer_id','61000000-0000-4000-8
   )$test$,
   'the trusted service finalizes an approved document after confirming its uploader'
  );
+ RESET ROLE;
  SET LOCAL ROLE authenticated;
  SELECT pg_catalog.set_config('request.jwt.claim.role','authenticated',true);
  SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000002',true);
