@@ -17,6 +17,21 @@ export type CotacaoMapa = {
   total_price: number | null;
   reference_url?: string | null;
   selected_for_estimate: boolean;
+  is_active?: boolean;
+  justificativa_expurgo?: string | null;
+  source_type?: string;
+  reference_identifier?: string | null;
+  accessed_at?: string | null;
+  source_tax_id?: string | null;
+  source_contact_name?: string | null;
+  source_contact_email?: string | null;
+  source_contact_phone?: string | null;
+  source_address?: string | null;
+  brand_model?: string | null;
+  delivery_term?: string | null;
+  payment_terms?: string | null;
+  warranty_terms?: string | null;
+  evidence_file_name?: string | null;
 };
 
 type Precificacao = Pick<CotacaoMapa, "quantity" | "unit_price" | "delivery_cost" | "total_price">;
@@ -28,6 +43,63 @@ export type ResumoDePrecos = {
   mediana: number | null;
   coeficienteVariacao: number | null;
 };
+
+export type MetodoPreco = "media" | "mediana" | "menor" | "outro";
+
+export type ResultadoPrecoHomologado = {
+  quantidadeAmostras: number;
+  media: number;
+  mediana: number;
+  menor: number;
+  desvioPadraoAmostral: number | null;
+  coeficienteVariacao: number | null;
+  precoUnitarioAprovado: number;
+  precoTotalAprovado: number;
+};
+
+export function calcularPrecoHomologado(
+  method: MetodoPreco,
+  quotes: Precificacao[],
+  itemQuantity: number,
+  otherUnitPrice?: number,
+): ResultadoPrecoHomologado {
+  if (!Number.isFinite(itemQuantity) || itemQuantity <= 0) {
+    throw new RangeError("A quantidade do item deve ser maior que zero.");
+  }
+  const values = quotes
+    .map(precoUnitarioComFrete)
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+  if (values.length === 0) throw new RangeError("Não há cotações ativas com preço válido.");
+  const average = values.reduce((sum, value) => sum + value / values.length, 0);
+  const median = calcularMediana(values);
+  const lowest = values[0];
+  if (median === null || lowest === undefined) {
+    throw new RangeError("Não foi possível calcular a série de preços.");
+  }
+  const dispersion = analisarDispersaoPrecos(values);
+  if (method === "outro" && (!Number.isFinite(otherUnitPrice) || (otherUnitPrice ?? -1) < 0)) {
+    throw new RangeError("Informe um preço unitário válido para o método alternativo.");
+  }
+  const approvedUnitPrice =
+    method === "media"
+      ? average
+      : method === "mediana"
+        ? median
+        : method === "menor"
+          ? lowest
+          : otherUnitPrice!;
+  return {
+    quantidadeAmostras: values.length,
+    media: average,
+    mediana: median,
+    menor: lowest,
+    desvioPadraoAmostral: dispersion.desvioPadraoAmostral,
+    coeficienteVariacao: dispersion.coeficienteVariacao,
+    precoUnitarioAprovado: approvedUnitPrice,
+    precoTotalAprovado: Math.round((approvedUnitPrice * itemQuantity + Number.EPSILON) * 100) / 100,
+  };
+}
 
 export function precoUnitarioComFrete(quote: Precificacao): number | null {
   const quantity = Number(quote.quantity);
@@ -157,23 +229,38 @@ export function gerarCsvMapaDePrecos(
       "Unidade",
       "Quantidade prevista",
       "Fonte",
+      "Tipo de fonte",
+      "Identificador da fonte",
       "Data da cotação",
+      "Data/hora de acesso",
+      "CPF/CNPJ da fonte",
+      "Responsável pela cotação",
+      "E-mail de contato",
+      "Endereço da fonte",
+      "Marca/modelo",
+      "Prazo de entrega",
+      "Condição de pagamento",
+      "Garantia",
       "Quantidade cotada",
       "Preço unitário",
       "Frete",
       "Preço total",
       "Preço unitário equivalente com frete",
+      "Situação da cotação",
       "Selecionada como referência",
-      "Média unitária",
-      "Mediana unitária",
-      "Menor unitário",
+      "Justificativa do expurgo",
+      "Comprovante anexado",
+      "Média unitária (amostras ativas)",
+      "Mediana unitária (amostras ativas)",
+      "Menor unitário (amostras ativas)",
       "Coeficiente de variação (%)",
       "Referência consultada",
     ],
   ];
   for (const item of items) {
     const itemQuotes = quotes.filter((quote) => quote.procurement_item_id === item.id);
-    const summary = calcularResumoDePrecos(itemQuotes);
+    const activeQuotes = itemQuotes.filter((quote) => quote.is_active !== false);
+    const summary = calcularResumoDePrecos(activeQuotes);
     for (const quote of itemQuotes) {
       rows.push([
         processNumber,
@@ -182,13 +269,27 @@ export function gerarCsvMapaDePrecos(
         item.unit,
         item.quantity,
         quote.source_name,
+        quote.source_type ?? "",
+        quote.reference_identifier ?? "",
         quote.quoted_at,
+        quote.accessed_at ?? "",
+        quote.source_tax_id ?? "",
+        quote.source_contact_name ?? "",
+        quote.source_contact_email ?? "",
+        quote.source_address ?? "",
+        quote.brand_model ?? "",
+        quote.delivery_term ?? "",
+        quote.payment_terms ?? "",
+        quote.warranty_terms ?? "",
         quote.quantity,
         quote.unit_price,
         quote.delivery_cost,
         quote.total_price,
         precoUnitarioComFrete(quote),
+        quote.is_active === false ? "Expurgada" : "Ativa",
         quote.selected_for_estimate ? "Sim" : "Não",
+        quote.justificativa_expurgo ?? "",
+        quote.evidence_file_name ?? "",
         summary.media,
         summary.mediana,
         summary.menor,
