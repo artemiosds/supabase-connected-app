@@ -1,8 +1,9 @@
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import {
-  createClient,
-  type SupabaseClient,
-} from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
-import { sendResendEmail } from "../_shared/expiry-notification-provider.ts";
+  sendResendEmail,
+  type ResendEmailInput,
+  type ResendDeliveryResult,
+} from "../_shared/expiry-notification-provider.ts";
 import {
   alertLevelForDays,
   daysUntilDate,
@@ -310,7 +311,8 @@ async function tenantLogo(admin: AdminClient, tenantId: string) {
     .select("logo_storage_path,logo_file_size,logo_mime")
     .eq("tenant_id", tenantId)
     .maybeSingle();
-  const path = data?.logo_storage_path;
+  if (!data) return undefined;
+  const path = data.logo_storage_path;
   if (
     typeof path !== "string" ||
     !path.startsWith(tenantId + "/document-branding/") ||
@@ -336,6 +338,8 @@ async function tenantLogo(admin: AdminClient, tenantId: string) {
 const logoHtml =
   '<img src="cid:brasao" alt="Brasão da Secretaria" style="max-width:96px;max-height:80px">';
 
+type NotificationMessage = Omit<ResendEmailInput, "apiKey" | "from" | "replyTo">;
+
 async function emailProvider(admin: AdminClient, tenantId: string, apiKey: string, from: string) {
   let effectiveApiKey = apiKey;
   let effectiveFrom = from;
@@ -343,15 +347,80 @@ async function emailProvider(admin: AdminClient, tenantId: string, apiKey: strin
   const { data: tenantEmail, error: tenantEmailError } = await admin
     .from("tenant_integration_settings")
     .select(
-      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext",
+      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext,email_smtp_host,email_smtp_port,email_smtp_security,email_smtp_username,email_smtp_secret_ciphertext",
     )
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (tenantEmailError) throw new Error("EMAIL_PROVIDER_CONFIGURATION");
   if (tenantEmail?.email_provider === "smtp_gateway") {
-    // The Edge runtime has no supported generic SMTP transport. Never silently
-    // send through the platform-wide provider when the tenant selected SMTP.
-    throw new Error("EMAIL_PROVIDER_CONFIGURATION");
+    const host = String(tenantEmail.email_smtp_host ?? "").toLowerCase();
+    const port = tenantEmail.email_smtp_port;
+    const secure = tenantEmail.email_smtp_security === "tls";
+    const allowed = (Deno.env.get("SMTP_ALLOWED_ENDPOINTS") ?? "")
+      .toLowerCase()
+      .split(",")
+      .map((s) => s.trim());
+    if (
+      !allowed.includes(host + ":" + port) ||
+      !(
+        (secure && port === 465) ||
+        (tenantEmail.email_smtp_security === "starttls" && port === 2525)
+      ) ||
+      !tenantEmail.email_smtp_username ||
+      !tenantEmail.email_smtp_secret_ciphertext ||
+      !tenantEmail.email_from_address
+    ) {
+      throw new Error("SMTP_CONFIGURATION");
+    }
+    const { default: nodemailer } = await import("npm:nodemailer@10.6.0");
+    const transport = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      requireTLS: !secure,
+      tls: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      logger: false,
+      debug: false,
+      disableFileAccess: true,
+      disableUrlAccess: true,
+      auth: {
+        user: tenantEmail.email_smtp_username,
+        pass: await decryptTenantEmailSecret(tenantEmail.email_smtp_secret_ciphertext),
+      },
+    });
+    return async (message: NotificationMessage): Promise<ResendDeliveryResult> => {
+      try {
+        const result = await transport.sendMail({
+          from: {
+            name: tenantEmail.email_from_name || "",
+            address: tenantEmail.email_from_address,
+          },
+          replyTo: tenantEmail.email_reply_to || undefined,
+          to: message.to,
+          subject: message.subject,
+          html: message.html,
+          attachments: message.attachments?.map((a) => ({
+            filename: a.filename,
+            content: a.content,
+            encoding: "base64",
+            cid: a.content_id,
+          })),
+        });
+        return result.accepted?.length
+          ? { status: "accepted", providerMessageId: result.messageId }
+          : { status: "rejected", errorCode: "SMTP_NOT_ACCEPTED" };
+      } catch (error) {
+        const code = (error as { responseCode?: number })?.responseCode;
+        return code && code >= 400 && code < 600
+          ? { status: "rejected", errorCode: "SMTP_" + code }
+          : { status: "uncertain" };
+      } finally {
+        transport.close();
+      }
+    };
   }
   if (tenantEmail?.email_provider === "resend") {
     if (!tenantEmail.email_api_secret_ciphertext || !tenantEmail.email_from_address) {
@@ -373,7 +442,13 @@ async function emailProvider(admin: AdminClient, tenantId: string, apiKey: strin
   if (!effectiveApiKey.trim() || !effectiveFrom.trim())
     throw new Error("EMAIL_PROVIDER_CONFIGURATION");
 
-  return { apiKey: effectiveApiKey, from: effectiveFrom, replyTo: effectiveReplyTo };
+  return (message: NotificationMessage) =>
+    sendResendEmail({
+      ...message,
+      apiKey: effectiveApiKey,
+      from: effectiveFrom,
+      replyTo: effectiveReplyTo,
+    });
 }
 
 async function deliverTask(
@@ -449,8 +524,7 @@ async function deliverTask(
   });
 
   const attachments = await tenantLogo(admin, task.tenantId);
-  const providerResult = await sendResendEmail({
-    ...provider,
+  const providerResult = await provider({
     to: task.recipientEmail,
     subject: email.subject,
     attachments,
@@ -813,9 +887,8 @@ async function processOperational(
           }
           const subject = sanitizeEmailSubject(title + " — " + tenant!.name);
           const attachments = await tenantLogo(admin, row.tenant_id);
-          const result = await sendResendEmail({
+          const result = await provider({
             attachments,
-            ...provider,
             to: data.user.email,
             subject,
             html: `<html lang="pt-BR"><body style="font:16px/1.5 Arial,sans-serif">${attachments ? logoHtml : ""}<h2>${escapeHtml(tenant!.name)}</h2><p>${escapeHtml(title)}</p><a href="${escapeHtml(url.href)}">Abrir no Primus Gestão</a></body></html>`,

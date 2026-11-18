@@ -55,8 +55,8 @@ const EMPTY: IntegrationSettings = {
   email_domain: "",
   email_domain_verified_at: null,
   email_smtp_host: "",
-  email_smtp_port: "587",
-  email_smtp_security: "starttls",
+  email_smtp_port: "465",
+  email_smtp_security: "tls",
   email_smtp_username: "",
   has_smtp_secret: false,
   has_email_api_secret: false,
@@ -372,7 +372,7 @@ export function TenantIntegrationsSettings() {
                   >
                     <option value="none">Ainda não configurado</option>
                     <option value="resend">Resend (API)</option>
-                    <option value="smtp_gateway">SMTP (gateway externo necessário)</option>
+                    <option value="smtp_gateway">SMTP institucional</option>
                   </select>
                 </div>
               </div>
@@ -435,11 +435,10 @@ export function TenantIntegrationsSettings() {
                     />
                   </div>
                   <Alert>
-                    <AlertTitle>Limite de execução</AlertTitle>
+                    <AlertTitle>Conexão SMTP para alertas</AlertTitle>
                     <AlertDescription>
-                      Os dados ficam criptografados e isolados por Secretaria. O envio SMTP direto
-                      ainda exige um gateway de saída compatível com o ambiente Edge; salvar estes
-                      campos, sozinho, não ativa o envio.
+                      Use TLS na porta 465 ou STARTTLS na porta 2525, conforme o provedor. A TI deve
+                      autorizar o servidor de saída e confirmar a entrega em uma caixa monitorada.
                     </AlertDescription>
                   </Alert>
                 </div>
