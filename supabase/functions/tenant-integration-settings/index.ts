@@ -2,6 +2,7 @@ import { smtpSender } from "../_shared/tenant-smtp.ts";
 import {
   maskRecipient,
   normalizeTestRecipient,
+  smtpPortSecurityError,
   testEmailCooldownRemaining,
 } from "../_shared/test-email.ts";
 import { getAllowedOrigins } from "../_shared/origins.ts";
@@ -386,7 +387,7 @@ Deno.serve(async (request: Request) => {
           email_last_test_status: outcome === "accepted" ? "success" : "failed",
         })
         .eq("tenant_id", tenantId);
-      await admin.from("audit_events").insert({
+      const { error: auditError } = await admin.from("audit_events").insert({
         tenant_id: tenantId,
         actor_id: auth.user.id,
         action: "EMAIL_TEST",
@@ -398,9 +399,19 @@ Deno.serve(async (request: Request) => {
           recipient: maskRecipient(recipient),
         },
       });
+      if (auditError) {
+        // Não alterar as permissões de auditoria nem registrar segredos nos logs.
+        console.error("Auditoria do teste SMTP não gravada:", auditError.code);
+      }
     };
     if (!rowError && row?.email_provider === "smtp_gateway") {
+      const portError = smtpPortSecurityError(row.email_smtp_port, row.email_smtp_security);
+      if (portError) {
+        await finish("configuration");
+        return response({ success: false, outcome: "configuration", message: portError }, 200, origin);
+      }
       let outcome: "accepted" | "rejected" | "uncertain" | "configuration" = "configuration";
+      let configurationMessage = "Confira o remetente e a credencial SMTP salva na Secretaria.";
       try {
         const send = await smtpSender(row, async (value) =>
           decryptSecret(value, await encryptionKey()),
@@ -412,8 +423,17 @@ Deno.serve(async (request: Request) => {
           idempotencyKey: crypto.randomUUID(),
         });
         outcome = result.status;
-      } catch {
-        /* Nunca retornar detalhes do transporte ou credenciais. */
+      } catch (error) {
+        // Códigos estáveis, sem expor host não autorizado, credenciais ou erros brutos.
+        if (error instanceof Error && error.message === "SMTP_ENDPOINT_NOT_ALLOWED") {
+          configurationMessage =
+            "O endpoint SMTP não está autorizado no ambiente SMS2. Inclua o host e a porta em SMTP_ALLOWED_ENDPOINTS.";
+        } else if (error instanceof Error && error.message === "SMTP_CONFIGURATION") {
+          configurationMessage = "Faltam dados da conta SMTP. Verifique usuário, remetente e credencial salva.";
+        } else {
+          configurationMessage =
+            "Não foi possível preparar o envio SMTP. Verifique a credencial protegida e a configuração do servidor.";
+        }
       }
       const accepted = outcome === "accepted";
       const message = accepted
@@ -421,7 +441,7 @@ Deno.serve(async (request: Request) => {
         : outcome === "uncertain"
           ? "Resultado incerto: o servidor não confirmou o aceite. Confira a caixa antes de repetir o teste."
           : outcome === "configuration"
-            ? "Confira o remetente, a credencial e a autorização do servidor e porta SMTP."
+            ? configurationMessage
             : "O servidor SMTP recusou o teste. Confira o remetente e as credenciais.";
       await finish(outcome);
       return response({ success: accepted, outcome, message }, 200, origin);
@@ -656,6 +676,10 @@ Deno.serve(async (request: Request) => {
   }
   if (!["tls", "starttls"].includes(smtpSecurity)) {
     return response({ error: "Selecione TLS ou STARTTLS." }, 400, origin);
+  }
+  if (provider === "smtp_gateway") {
+    const portError = smtpPortSecurityError(smtpPort, smtpSecurity);
+    if (portError) return response({ error: portError }, 400, origin);
   }
 
   const { data: existing, error: readError } = await admin
