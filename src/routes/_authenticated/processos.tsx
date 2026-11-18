@@ -1474,6 +1474,15 @@ function DadosEstruturados(props: {
         );
       const normativeValidated = compliance?.legal_review_status === "validated";
       const mapaPronto = allItemsApproved && normativeValidated;
+      const fundingSourceLabels: Record<string, string> = {
+        own_resources: "Recursos próprios do ente",
+        federal_transfer: "Transferência da União",
+        state_transfer: "Transferência estadual",
+        other_transfer: "Outra transferência voluntária",
+        mixed: "Recursos de origens mistas",
+      };
+      const fundingSourceLabel =
+        fundingSourceLabels[compliance?.funding_source_type ?? ""] ?? "Origem dos recursos não informada";
       const basisLabel =
         compliance?.normative_basis === "in65_2021"
           ? "IN SEGES/ME nº 65/2021"
@@ -1493,12 +1502,15 @@ function DadosEstruturados(props: {
       const lines = [
         "MAPA COMPARATIVO DE PREÇOS — PESQUISA E ESTIMATIVA",
         mapaPronto
-          ? "Situação: preços dos itens aprovados e enquadramento normativo validado pela Secretaria."
+          ? "Situação: preços dos itens aprovados e enquadramento normativo validado especificamente para este processo."
           : "RASCUNHO — NÃO HOMOLOGADO — PENDENTE DE APROVAÇÃO DOS PREÇOS E/OU VALIDAÇÃO NORMATIVA.",
         `Processo: ${props.processNumber}`,
         `Órgão: ${tenant.name}`,
         `Emitido em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (Brasília)`,
         `Responsável pela emissão: ${profile.full_name}`,
+        `Origem dos recursos: ${fundingSourceLabel}`,
+        `Descrição da fonte/programa: ${clean(compliance?.funding_source_description)}`,
+        `Convênio/instrumento de transferência: ${clean(compliance?.transfer_agreement_number)}`,
         `Base normativa declarada: ${basisLabel}`,
         `Aplicabilidade da IN 65/2021: ${applicabilityLabel}`,
         `Validação normativa: ${normativeValidated ? "Validada pela autoridade registrada no sistema em " + formatarData(compliance?.validated_at ?? "") : "Pendente de validação da assessoria/autoridade competente"}`,
@@ -2725,7 +2737,7 @@ function DadosEstruturados(props: {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Enquadramento normativo exige validação do órgão</AlertTitle>
               <AlertDescription>
-                A IN SEGES/ME nº 65/2021 não se aplica automaticamente a todo município. A Secretaria deve registrar a aplicabilidade conforme a origem dos recursos e a regulamentação local. O sistema não substitui parecer jurídico.
+                A aplicabilidade da IN SEGES/ME nº 65/2021 deve ser analisada em cada contratação conforme a origem dos recursos e a regulamentação local. O sistema não substitui o parecer jurídico da Administração.
               </AlertDescription>
             </Alert>
             <Card>
