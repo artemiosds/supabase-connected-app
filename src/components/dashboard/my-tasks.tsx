@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarClock,
   CheckCircle2,
+  ClipboardList,
   FilePlus2,
   FileSearch,
+  FolderKanban,
   Loader2,
   Plus,
   Search,
@@ -11,7 +16,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import {
   criticidadeTarefa,
@@ -56,13 +61,14 @@ function classePrazo(dias: number | null): string {
   const level = criticidadeTarefa(dias);
   if (level === "critical") return "border-destructive/30 bg-destructive/10 text-destructive";
   if (level === "attention")
-    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    return "border-warning/35 bg-warning/15 text-foreground";
   if (level === "info") return "border-primary/30 bg-primary/10 text-primary";
   return "border-border bg-muted text-muted-foreground";
 }
 
 export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string }) {
   const [state, setState] = useState<TaskState>(EMPTY);
+  const [filtro, setFiltro] = useState<"todas" | "urgentes" | MinhaTarefa["tipo"]>("todas");
 
   useEffect(() => {
     let active = true;
@@ -186,122 +192,291 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
   }, [tenantId, userId]);
 
   const current = state.tenantId === tenantId && state.userId === userId ? state : EMPTY;
+  const urgentes = current.items.filter((task) => criticidadeTarefa(task.dias) === "critical").length;
+  const processos = current.items.filter((task) => task.tipo === "processo").length;
+  const contratos = current.items.filter((task) => task.tipo === "contrato").length;
+  const certidoes = current.items.filter((task) => task.tipo === "certidao").length;
+  const filtros = [
+    { value: "todas", label: "Todas", count: current.items.length },
+    { value: "urgentes", label: "Urgentes", count: urgentes },
+    { value: "processo", label: "Processos", count: processos },
+    { value: "contrato", label: "Contratos", count: contratos },
+    { value: "certidao", label: "Certidões", count: certidoes },
+  ] as const;
+  const tarefasVisiveis = current.items.filter((task) =>
+    filtro === "todas"
+      ? true
+      : filtro === "urgentes"
+        ? criticidadeTarefa(task.dias) === "critical"
+        : task.tipo === filtro,
+  );
 
   return (
     <section className="space-y-4" aria-labelledby="minhas-tarefas-titulo">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="minhas-tarefas-titulo" className="text-lg font-semibold tracking-tight">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-primary">
+            Sua mesa de trabalho
+          </p>
+          <h2 id="minhas-tarefas-titulo" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
             Minhas Tarefas e Obrigações
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Responsabilidades vinculadas à sua conta e à Secretaria selecionada.
+          <p className="mt-1 text-sm text-muted-foreground">
+            O que está sob sua responsabilidade, organizado por prioridade.
           </p>
         </div>
-        <Badge variant="outline">
-          {current.pending ? "Consultando" : `${current.items.length} pendência(s)`}
+        <Badge variant="outline" className="rounded-full bg-card px-3 py-1.5 text-xs font-medium">
+          <span className="mr-1.5 inline-block size-1.5 rounded-full bg-primary" aria-hidden="true" />
+          {current.pending ? "Consultando suas tarefas" : `${current.items.length} pendência(s) identificada(s)`}
         </Badge>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {current.canCreateDocuments && (
-          <Button size="sm" asChild>
-            <a href="/processos?novo=dfd">
-              <Plus className="h-4 w-4" /> Nova Demanda (DFD)
-            </a>
-          </Button>
-        )}
-        {current.canViewSuppliers && (
-          <Button size="sm" variant="outline" asChild>
-            <a href={current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores"}>
-              <Search className="h-4 w-4" /> Consultar Fornecedor (CNPJ)
-            </a>
-          </Button>
-        )}
-        {current.canCreateDocuments && (
-          <Button size="sm" variant="outline" asChild>
-            <a href="/contratos?novo=1">
-              <FilePlus2 className="h-4 w-4" /> Novo Contrato
-            </a>
-          </Button>
-        )}
-      </div>
-
-      {current.partial && (
-        <div
-          className="flex items-start gap-2 rounded-md border p-3 text-sm text-muted-foreground"
-          role="status"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-          Algumas pendências não puderam ser consultadas com suas permissões. Os resultados abaixo
-          podem estar incompletos.
-        </div>
-      )}
-      {current.pending ? (
-        <Card>
-          <CardContent
-            className="flex items-center gap-2 py-6 text-sm text-muted-foreground"
-            role="status"
-          >
-            <Loader2 className="h-4 w-4 animate-spin" /> Consultando suas responsabilidades…
-          </CardContent>
-        </Card>
-      ) : current.items.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-9 text-center">
-            <CheckCircle2 className="h-8 w-8 text-primary" aria-hidden />
-            <p className="font-medium">
-              {current.partial
-                ? "Nenhuma pendência disponível"
-                : "Tudo em dia com seus processos e contratos!"}
-            </p>
-            <p className="max-w-lg text-sm text-muted-foreground">
-              {current.partial
-                ? "Não foi possível verificar todas as fontes de informação."
-                : "Nenhuma tarefa atribuída ou certidão sob sua fiscalização exige atenção no período consultado."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid max-h-[32rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
-          {current.items.map((task) => (
-            <Card key={task.id} className="h-full">
-              <CardHeader className="space-y-2 pb-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Badge variant="secondary">
-                    {task.tipo === "processo"
-                      ? "Processo"
-                      : task.tipo === "contrato"
-                        ? "Contrato"
-                        : "Certidão"}
-                  </Badge>
-                  <Badge variant="outline" className={classePrazo(task.dias)}>
-                    {prazo(task.dias)}
-                  </Badge>
-                </div>
-                <CardTitle className="text-base leading-snug">{task.titulo}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="line-clamp-3 min-h-10 text-sm text-muted-foreground">
-                  {task.descricao}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(275px,0.85fr)]">
+        <div className="order-2 min-w-0 overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm lg:order-1">
+          <div className="border-b border-border/70 px-5 py-5 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                Visão pessoal
+              </p>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                Secretaria ativa
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-3 divide-x divide-border/70">
+              <div className="pr-3 sm:pr-5">
+                <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+                  Total de tarefas
                 </p>
-                <Button size="sm" variant="outline" asChild>
-                  <a
-                    href={`${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}`}
-                  >
-                    <FileSearch className="h-4 w-4" /> Ver detalhes
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+                  {current.pending ? "—" : current.items.length}
+                </p>
+              </div>
+              <div className="px-3 sm:px-5">
+                <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+                  Urgentes
+                </p>
+                <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-destructive">
+                  {current.pending ? "—" : urgentes}
+                </p>
+              </div>
+              <div className="pl-3 sm:pl-5">
+                <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+                  Contratos
+                </p>
+                <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+                  {current.pending ? "—" : contratos}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-b border-border/70 px-4 py-3 sm:px-6">
+            <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filtrar tarefas por categoria">
+              {filtros.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  aria-pressed={filtro === item.value}
+                  onClick={() => setFiltro(item.value)}
+                  className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${filtro === item.value
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-transparent bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground"}`}
+                >
+                  {item.label}
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${filtro === item.value ? "bg-primary-foreground/15" : "bg-background/80"}`}>
+                    {current.pending ? "—" : item.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {current.partial && (
+            <div role="status" className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground sm:mx-6">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              Algumas fontes não puderam ser consultadas. A lista pode estar incompleta.
+            </div>
+          )}
+
+          {current.pending ? (
+            <div className="flex min-h-52 items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground" role="status">
+              <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+              Consultando suas responsabilidades…
+            </div>
+          ) : current.items.length === 0 ? (
+            <div className="flex min-h-64 flex-col items-center justify-center px-6 py-10 text-center">
+              <div className="flex size-16 items-center justify-center rounded-[20px] border border-success/15 bg-success/10 text-success">
+                <CheckCircle2 className="size-8" aria-hidden="true" />
+              </div>
+              <p className="mt-5 text-lg font-semibold tracking-tight">
+                {current.partial ? "Nenhuma pendência disponível" : "Tudo em dia com seus processos e contratos!"}
+              </p>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                {current.partial
+                  ? "Não foi possível verificar todas as fontes de informação neste momento."
+                  : "Quando houver processos, contratos ou certidões sob sua responsabilidade, eles aparecerão aqui com os próximos passos."}
+              </p>
+              {!current.partial && (
+                <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1.5 text-xs font-semibold text-success">
+                  <ShieldCheck className="size-3.5" aria-hidden="true" />
+                  Sem pendências identificadas
+                </span>
+              )}
+            </div>
+          ) : tarefasVisiveis.length === 0 ? (
+            <div className="flex min-h-44 flex-col items-center justify-center px-5 py-8 text-center">
+              <CheckCircle2 className="size-7 text-primary" aria-hidden="true" />
+              <p className="mt-3 font-semibold">Nenhuma tarefa nesta categoria</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Selecione outro filtro para consultar suas responsabilidades.
+              </p>
+            </div>
+          ) : (
+            <ul className="max-h-[540px] divide-y divide-border/65 overflow-y-auto" aria-live="polite">
+              {tarefasVisiveis.map((task) => {
+                const Icon = task.tipo === "processo" ? FolderKanban :
+                  task.tipo === "contrato" ? ClipboardList : FileText;
+                const critical = criticidadeTarefa(task.dias) === "critical";
+                const attention = criticidadeTarefa(task.dias) === "attention";
+                const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}`;
+                return (
+                  <li key={task.id} className="group relative bg-card transition-colors hover:bg-muted/25">
+                    <div aria-hidden="true" className={`absolute inset-y-0 left-0 w-[3px] ${critical ? "bg-destructive" : attention ? "bg-warning" : "bg-primary/60"}`} />
+                    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl border ${critical ? "border-destructive/15 bg-destructive/10 text-destructive" : "border-primary/10 bg-primary/10 text-primary"}`}>
+                        <Icon className="size-5" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold leading-relaxed sm:text-base">{task.titulo}</p>
+                          <Badge variant="outline" className={classePrazo(task.dias)}>
+                            {prazo(task.dias)}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                          {task.descricao}
+                        </p>
+                        <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                          {task.tipo === "processo" ? "Processo administrativo" :
+                            task.tipo === "contrato" ? "Gestão e fiscalização" : "Regularidade documental"}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild className="w-full shrink-0 rounded-lg sm:w-auto">
+                        <a href={detalhe} aria-label={`Ver detalhes: ${task.titulo}`}>
+                          Ver detalhes
+                          <ArrowUpRight className="size-4" aria-hidden="true" />
+                        </a>
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="flex items-start gap-2 border-t border-border/70 bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6">
+            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            Pendências visíveis somente conforme seu vínculo e suas permissões na Secretaria selecionada.
+          </div>
         </div>
-      )}
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Exibição limitada aos registros autorizados da Secretaria ativa. A consulta não modifica
-        processos ou contratos.
-      </p>
+
+        <aside className="order-1 space-y-4 lg:order-2" aria-label="Atalhos operacionais">
+          <div className="overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm">
+            <div className="border-b border-border/65 bg-muted/20 px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">
+                Acesso imediato
+              </p>
+              <h3 className="mt-1 text-lg font-semibold tracking-tight">Ações rápidas</h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Comece as rotinas mais frequentes sem percorrer o menu.
+              </p>
+            </div>
+            <div className="space-y-2 p-3 sm:p-4">
+              {current.canCreateDocuments && (
+                <a href="/processos?novo=dfd" className="group flex min-h-18 items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                    <Plus className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Nova demanda (DFD)</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Iniciar solicitação</span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </a>
+              )}
+              {current.canViewSuppliers && (
+                <a href={current.canCreateSuppliers ? "/fornecedores?consulta=cnpj" : "/fornecedores"} className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
+                    <Search className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Consultar fornecedor</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Buscar por CNPJ</span>
+                  </span>
+                  <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                </a>
+              )}
+              {current.canCreateDocuments && (
+                <a href="/contratos?novo=1" className="group flex min-h-18 items-center gap-3 rounded-xl border px-3 py-3 transition-all hover:border-primary/30 hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
+                    <FilePlus2 className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Novo contrato</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">Registrar contratação</span>
+                  </span>
+                  <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
+                </a>
+              )}
+              {!current.pending && !current.canCreateDocuments && !current.canViewSuppliers && (
+                <p className="rounded-lg bg-muted/40 px-3 py-4 text-sm leading-relaxed text-muted-foreground">
+                  Seus atalhos serão apresentados conforme as permissões atribuídas à sua conta.
+                </p>
+              )}
+              {current.pending && (
+                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground" role="status">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Verificando permissões…
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/75 bg-muted/25 p-5">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="size-4 text-primary" aria-hidden="true" />
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Prioridades por prazo</p>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-xs font-medium">
+                  <span className="size-2.5 rounded-full bg-destructive" aria-hidden="true" />
+                  Crítico · menos de 30 dias
+                </span>
+                <span className="text-xs font-bold tabular-nums">{current.pending ? "—" : urgentes}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-xs font-medium">
+                  <span className="size-2.5 rounded-full bg-warning" aria-hidden="true" />
+                  Atenção · 30 a 60 dias
+                </span>
+                <span className="text-xs font-bold tabular-nums">
+                  {current.pending ? "—" : current.items.filter((task) => criticidadeTarefa(task.dias) === "attention").length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-xs font-medium">
+                  <span className="size-2.5 rounded-full bg-primary" aria-hidden="true" />
+                  Planejamento · 61 a 120 dias
+                </span>
+                <span className="text-xs font-bold tabular-nums">
+                  {current.pending ? "—" : current.items.filter((task) => criticidadeTarefa(task.dias) === "info").length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </section>
   );
 }
