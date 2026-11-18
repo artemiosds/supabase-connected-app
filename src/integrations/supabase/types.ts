@@ -1823,6 +1823,68 @@ export type Database = {
           },
         ]
       }
+      procurement_process_compliance: {
+        Row: {
+          funding_source_description: string | null
+          funding_source_type: string
+          in65_applicability: string
+          legal_review_notes: string | null
+          legal_review_status: string
+          local_regulation_name: string | null
+          local_regulation_reference: string | null
+          normative_basis: string
+          process_id: string
+          tenant_id: string
+          transfer_agreement_number: string | null
+          updated_at: string
+          updated_by: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          funding_source_description?: string | null
+          funding_source_type?: string
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          process_id: string
+          tenant_id: string
+          transfer_agreement_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          funding_source_description?: string | null
+          funding_source_type?: string
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          process_id?: string
+          tenant_id?: string
+          transfer_agreement_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_process_compliance_process_fk"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: true
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       procurement_processes: {
         Row: {
           created_at: string
