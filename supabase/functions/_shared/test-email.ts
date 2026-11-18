@@ -37,3 +37,16 @@ export function maskRecipient(email: string): string {
   const [local = "", domain = ""] = email.split("@");
   return `${local.slice(0, 2)}***@${domain}`;
 }
+
+/** Valida a combinação de porta e segurança suportada pelo transporte SMTP institucional. */
+export function smtpPortSecurityError(
+  port: number | string | null | undefined,
+  security: string | null | undefined,
+): string | null {
+  const numericPort = Number(port);
+  if ((numericPort === 465 && security === "tls") ||
+      (numericPort === 2525 && security === "starttls")) return null;
+  if (numericPort === 465) return "A porta SMTP 465 exige TLS, não STARTTLS. Selecione TLS e salve antes de testar.";
+  if (numericPort === 2525) return "A porta SMTP 2525 exige STARTTLS. Selecione STARTTLS e salve antes de testar.";
+  return "Use TLS na porta 465 ou STARTTLS na porta 2525, conforme o transporte autorizado.";
+}
