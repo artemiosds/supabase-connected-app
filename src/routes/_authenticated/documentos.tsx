@@ -1663,6 +1663,26 @@ function Documentos() {
     await carregar();
   }
 
+  useEffect(() => {
+    if (loading || !selecionado?.id || tenantCarregadoId !== selecionado.id) return;
+    const url = new URL(window.location.href);
+    const documentoId = url.searchParams.get("documento");
+    if (!documentoId) return;
+    if (!documentos.some((item) => item.id === documentoId)) {
+      toast.error("O documento solicitado não está disponível nesta Secretaria.");
+    } else {
+      setAba("vencimentos");
+      window.requestAnimationFrame(() => {
+        document.getElementById(`documento-${documentoId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    }
+    url.searchParams.delete("documento");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [loading, selecionado?.id, tenantCarregadoId, documentos]);
+
   if (!selecionado)
     return (
       <Alert>
@@ -1802,7 +1822,7 @@ function Documentos() {
                             ? normalizeExternalDocumentUrl(d.external_url)
                             : null;
                           return (
-                            <tr key={d.id} className="border-t">
+                            <tr key={d.id} id={`documento-${d.id}`} className="border-t">
                               <td className="p-3">
                                 <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">
