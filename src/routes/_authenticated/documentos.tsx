@@ -2807,30 +2807,30 @@ function Documentos() {
                     calculados no servidor. Revise o rascunho gerado; campos ainda pendentes
                     aparecem na lista e impedem o envio para aprovação.
                   </p>
+                  {(previaGeracao.missingKeys.length > 0 ||
+                    previaGeracao.unknownKeys.length > 0) && (
+                    <Alert className="border-amber-400 bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Campos que precisam de conferência</AlertTitle>
+                      <AlertDescription>
+                        {previaGeracao.missingKeys.length > 0 && (
+                          <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
+                        )}
+                        {previaGeracao.unknownKeys.length > 0 && (
+                          <p>
+                            Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.
+                          </p>
+                        )}
+                        O rascunho manterá marcadores visíveis para impedir que dados ausentes
+                        pareçam preenchidos.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <details className="rounded-md border p-3">
                     <summary className="cursor-pointer text-sm font-medium">
                       Pré-visualizar o conteúdo preenchido
                     </summary>
                     <div className="mt-3 space-y-3">
-                      {(previaGeracao.missingKeys.length > 0 ||
-                        previaGeracao.unknownKeys.length > 0) && (
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Campos que precisam de conferência</AlertTitle>
-                          <AlertDescription>
-                            {previaGeracao.missingKeys.length > 0 && (
-                              <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
-                            )}
-                            {previaGeracao.unknownKeys.length > 0 && (
-                              <p>
-                                Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.
-                              </p>
-                            )}
-                            O rascunho manterá marcadores visíveis para impedir que dados ausentes
-                            pareçam preenchidos.
-                          </AlertDescription>
-                        </Alert>
-                      )}
                       <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-5">
                         {previaGeracao.content}
                       </pre>
