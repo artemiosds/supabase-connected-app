@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   normalizeTestRecipient,
+  smtpPortSecurityError,
   TEST_EMAIL_MAX_LENGTH,
 } from "../../../supabase/functions/_shared/test-email.ts";
 
@@ -90,7 +91,7 @@ export function TenantIntegrationsSettings() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [testRecipient, setTestRecipient] = useState("artemiosouza99@gmail.com");
   const [testResult, setTestResult] = useState<{
-    outcome: "accepted" | "rejected" | "uncertain" | "error";
+    outcome: "accepted" | "rejected" | "uncertain" | "configuration" | "error";
     message: string;
   } | null>(null);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
@@ -106,6 +107,10 @@ export function TenantIntegrationsSettings() {
   const [reviewDecision, setReviewDecision] = useState<"approved" | "rejected">("approved");
   const [reviewLegalBasis, setReviewLegalBasis] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
+  const smtpPortError =
+    settings.email_provider === "smtp_gateway"
+      ? smtpPortSecurityError(settings.email_smtp_port, settings.email_smtp_security)
+      : null;
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
     setSettings((current) => ({ ...current, [key]: value }));
@@ -203,6 +208,10 @@ export function TenantIntegrationsSettings() {
   async function testEmail() {
     if (!selecionado?.id || testingEmail) return;
     const recipient = normalizeTestRecipient(testRecipient);
+    if (smtpPortError) {
+      setTestResult({ outcome: "configuration", message: smtpPortError });
+      return;
+    }
     if (!recipient) {
       setTestResult({
         outcome: "error",
@@ -223,7 +232,10 @@ export function TenantIntegrationsSettings() {
       return;
     }
     const outcome =
-      data.outcome === "accepted" || data.outcome === "uncertain" || data.outcome === "rejected"
+      data.outcome === "accepted" ||
+      data.outcome === "uncertain" ||
+      data.outcome === "rejected" ||
+      data.outcome === "configuration"
         ? data.outcome
         : data.success
           ? "accepted"
@@ -283,6 +295,10 @@ export function TenantIntegrationsSettings() {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!selecionado?.id) return;
+    if (smtpPortError) {
+      toast.error(smtpPortError);
+      return;
+    }
     setSaving(true);
     const { data, error } = await db.functions.invoke("tenant-integration-settings", {
       body: {
@@ -439,6 +455,11 @@ export function TenantIntegrationsSettings() {
                       <option value="starttls">STARTTLS</option>
                     </select>
                   </div>
+                  {smtpPortError && (
+                    <p role="alert" className="text-sm text-destructive sm:col-span-2">
+                      {smtpPortError}
+                    </p>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="smtp-user">Usuário SMTP</Label>
                     <Input
@@ -871,7 +892,7 @@ export function TenantIntegrationsSettings() {
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={testingEmail || saving || !normalizeTestRecipient(testRecipient)}
+                      disabled={testingEmail || saving || Boolean(smtpPortError) || !normalizeTestRecipient(testRecipient)}
                       onClick={() => void testEmail()}
                     >
                       {testingEmail ? (
@@ -896,7 +917,9 @@ export function TenantIntegrationsSettings() {
                             ? "Resultado incerto"
                             : testResult.outcome === "rejected"
                               ? "Rejeitado pelo servidor"
-                              : "Teste não enviado"}
+                              : testResult.outcome === "configuration"
+                                ? "Configuração SMTP inválida"
+                                : "Teste não enviado"}
                       </AlertTitle>
                       <AlertDescription>{testResult.message}</AlertDescription>
                     </Alert>
