@@ -2630,9 +2630,124 @@ function DadosEstruturados(props: {
               <DialogTitle>Mapa comparativo de preços — {props.processNumber}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Comparação das cotações ativas por item, com preço unitário, frete e total informado.
+              Mapa com memória de cálculo, histórico de expurgos, documentos comprobatórios e aprovação do preço estimado por item.
             </p>
-            <div className="flex justify-end">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Enquadramento normativo exige validação do órgão</AlertTitle>
+              <AlertDescription>
+                A IN SEGES/ME nº 65/2021 não se aplica automaticamente a todo município. A Secretaria deve registrar a aplicabilidade conforme a origem dos recursos e a regulamentação local. O sistema não substitui parecer jurídico.
+              </AlertDescription>
+            </Alert>
+            <Card>
+              <CardContent className="space-y-3 pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">Enquadramento normativo da Secretaria</p>
+                    <p className="text-xs text-muted-foreground">
+                      A validação é identificada pelo usuário autorizado e registrada com data e auditoria.
+                    </p>
+                  </div>
+                  <Badge variant={compliance?.legal_review_status === "validated" ? "default" : "destructive"}>
+                    {compliance?.legal_review_status === "validated" ? "Validado" : "Pendente de validação"}
+                  </Badge>
+                </div>
+                {canApprovePrice ? (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label>Base normativa declarada</Label>
+                        <Select
+                          value={complianceForm.normative_basis}
+                          onValueChange={(value) =>
+                            setComplianceForm((current) => ({ ...current, normative_basis: value }))
+                          }
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pendente de enquadramento</SelectItem>
+                            <SelectItem value="in65_2021">IN SEGES/ME nº 65/2021</SelectItem>
+                            <SelectItem value="local_regulation">Regulamentação municipal/local</SelectItem>
+                            <SelectItem value="other">Outro fundamento normativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Aplicabilidade da IN 65/2021</Label>
+                        <Select
+                          value={complianceForm.in65_applicability}
+                          onValueChange={(value) =>
+                            setComplianceForm((current) => ({ ...current, in65_applicability: value }))
+                          }
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pendente de análise</SelectItem>
+                            <SelectItem value="applicable">Aplicável ao órgão/recursos</SelectItem>
+                            <SelectItem value="adopted">Adotada por regulamentação local</SelectItem>
+                            <SelectItem value="not_applicable">Não aplicável (exige justificativa)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {complianceForm.normative_basis === "local_regulation" && (
+                        <>
+                          <div className="space-y-1">
+                            <Label>Nome do regulamento local *</Label>
+                            <Input
+                              required
+                              value={complianceForm.local_regulation_name}
+                              onChange={(event) =>
+                                setComplianceForm((current) => ({ ...current, local_regulation_name: event.target.value }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Referência legal / publicação *</Label>
+                            <Input
+                              required
+                              value={complianceForm.local_regulation_reference}
+                              onChange={(event) =>
+                                setComplianceForm((current) => ({ ...current, local_regulation_reference: event.target.value }))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label>Fundamentação e observações da análise jurídica</Label>
+                        <Textarea
+                          rows={3}
+                          value={complianceForm.legal_review_notes}
+                          onChange={(event) =>
+                            setComplianceForm((current) => ({ ...current, legal_review_notes: event.target.value }))
+                          }
+                          placeholder="Registre a origem dos recursos, a norma local aplicável ou a justificativa de não aplicabilidade."
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {compliance?.validated_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Última validação: {formatarData(compliance.validated_at)} · usuário autenticado {compliance.validated_by}
+                        </p>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => void salvarConformidadeNormativa()}
+                        disabled={saving || complianceForm.normative_basis === "pending" || complianceForm.in65_applicability === "pending"}
+                      >
+                        Registrar validação normativa
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Seu perfil pode consultar a situação, mas somente a autoridade com permissão de aprovação de preços pode registrar a validação normativa.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -2640,7 +2755,7 @@ function DadosEstruturados(props: {
                   const csv = gerarCsvMapaDePrecos(
                     props.processNumber,
                     items as ItemMapa[],
-                    quotes.filter((quote) => quote.is_active) as CotacaoMapa[],
+                    quotes as CotacaoMapa[],
                   );
                   const url = URL.createObjectURL(
                     new Blob([csv], { type: "text/csv;charset=utf-8" }),
@@ -2671,8 +2786,28 @@ function DadosEstruturados(props: {
                   (a, b) =>
                     (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity),
                 );
-              if (!rows.length) return null;
               const resumo = calcularResumoDePrecos(rows);
+              const archivedRows = quotes.filter((q) => q.procurement_item_id === item.id && !q.is_active);
+              const itemApproval = approvals.find((approval) => approval.procurement_item_id === item.id && approval.status === "approved");
+              const approvalForm = approvalForms[item.id] ?? {
+                method: "mediana" as const,
+                methodJustification: "",
+                exceptionalJustification: "",
+                otherUnitPrice: "",
+              };
+              let approvalPreview: ReturnType<typeof calcularPrecoHomologado> | null = null;
+              try {
+                if (rows.length > 0) {
+                  approvalPreview = calcularPrecoHomologado(
+                    approvalForm.method,
+                    rows,
+                    item.quantity,
+                    approvalForm.method === "outro" ? numeroDecimal(approvalForm.otherUnitPrice) : undefined,
+                  );
+                }
+              } catch {
+                approvalPreview = null;
+              }
               const sinais = expurgarAmostrasInconsistentes(rows);
               const dispersao = analisarDispersaoPrecos(
                 rows.map(precoUnitarioComFrete).filter((v): v is number => v !== null),
