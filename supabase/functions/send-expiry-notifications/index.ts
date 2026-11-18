@@ -311,39 +311,6 @@ async function deliverTask(
   from: string,
   appUrl: string,
 ): Promise<"sent" | "failed" | "skipped" | "uncertain"> {
-  let effectiveApiKey = apiKey;
-  let effectiveFrom = from;
-  let effectiveReplyTo: string | undefined;
-  const { data: tenantEmail, error: tenantEmailError } = await admin
-    .from("tenant_integration_settings")
-    .select(
-      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext",
-    )
-    .eq("tenant_id", task.tenantId)
-    .maybeSingle();
-  if (tenantEmailError) return "failed";
-  if (tenantEmail?.email_provider === "smtp_gateway") {
-    // The Edge runtime has no supported generic SMTP transport. Never silently
-    // send through the platform-wide provider when the tenant selected SMTP.
-    return "failed";
-  }
-  if (tenantEmail?.email_provider === "resend") {
-    if (!tenantEmail.email_api_secret_ciphertext || !tenantEmail.email_from_address) {
-      return "failed";
-    }
-    try {
-      effectiveApiKey = await decryptTenantEmailSecret(tenantEmail.email_api_secret_ciphertext);
-      effectiveFrom = tenantEmail.email_from_name
-        ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
-        : tenantEmail.email_from_address;
-      effectiveReplyTo =
-        typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
-    } catch {
-      console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
-      return "failed";
-    }
-  }
-
   const uniqueFilter = {
     tenant_id: task.tenantId,
     entity_type: task.entityType,
@@ -382,6 +349,50 @@ async function deliverTask(
   );
   const claimed = Array.isArray(claimData) ? claimData[0] : claimData;
   if (claimError || !claimed) return "skipped";
+
+  async function failConfiguration(): Promise<"failed" | "uncertain"> {
+    const { data, error } = await admin.rpc("finish_expiry_notification_delivery", {
+      p_delivery_id: deliveryId,
+      p_status: "failed",
+      p_error_code: "EMAIL_PROVIDER_CONFIGURATION",
+    });
+    return error || data !== true ? "uncertain" : "failed";
+  }
+
+  let effectiveApiKey = apiKey;
+  let effectiveFrom = from;
+  let effectiveReplyTo: string | undefined;
+  const { data: tenantEmail, error: tenantEmailError } = await admin
+    .from("tenant_integration_settings")
+    .select(
+      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext",
+    )
+    .eq("tenant_id", task.tenantId)
+    .maybeSingle();
+  if (tenantEmailError) return failConfiguration();
+  if (tenantEmail?.email_provider === "smtp_gateway") {
+    // The Edge runtime has no supported generic SMTP transport. Never silently
+    // send through the platform-wide provider when the tenant selected SMTP.
+    return failConfiguration();
+  }
+  if (tenantEmail?.email_provider === "resend") {
+    if (!tenantEmail.email_api_secret_ciphertext || !tenantEmail.email_from_address) {
+      return failConfiguration();
+    }
+    try {
+      effectiveApiKey = await decryptTenantEmailSecret(tenantEmail.email_api_secret_ciphertext);
+      effectiveFrom = tenantEmail.email_from_name
+        ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
+        : tenantEmail.email_from_address;
+      effectiveReplyTo =
+        typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
+    } catch {
+      console.error("Não foi possível abrir a credencial Resend da Secretaria", task.tenantId);
+      return failConfiguration();
+    }
+  }
+
+  if (!effectiveApiKey.trim() || !effectiveFrom.trim()) return failConfiguration();
 
   const email = makeEmail(task, appUrl);
   const idempotencyKey = expiryAlertIdempotencyKey({
