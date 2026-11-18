@@ -246,15 +246,15 @@ export type Database = {
       }
       contracts: {
         Row: {
-          inspector_user_id: string | null
-          manager_user_id: string | null
           created_at: string
           created_by: string
           end_date: string
           id: string
           inspector_name: string | null
+          inspector_user_id: string | null
           instrument_type: string
           manager_name: string | null
+          manager_user_id: string | null
           modality: string
           notes: string | null
           number: string
@@ -270,15 +270,15 @@ export type Database = {
           updated_by: string
         }
         Insert: {
-          inspector_user_id?: string | null
-          manager_user_id?: string | null
           created_at?: string
           created_by: string
           end_date: string
           id?: string
           inspector_name?: string | null
+          inspector_user_id?: string | null
           instrument_type?: string
           manager_name?: string | null
+          manager_user_id?: string | null
           modality?: string
           notes?: string | null
           number: string
@@ -294,15 +294,15 @@ export type Database = {
           updated_by: string
         }
         Update: {
-          inspector_user_id?: string | null
-          manager_user_id?: string | null
           created_at?: string
           created_by?: string
           end_date?: string
           id?: string
           inspector_name?: string | null
+          inspector_user_id?: string | null
           instrument_type?: string
           manager_name?: string | null
+          manager_user_id?: string | null
           modality?: string
           notes?: string | null
           number?: string
@@ -318,6 +318,20 @@ export type Database = {
           updated_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "contracts_inspector_user_id_fk"
+            columns: ["tenant_id", "inspector_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
+          {
+            foreignKeyName: "contracts_manager_user_id_fk"
+            columns: ["tenant_id", "manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
           {
             foreignKeyName: "contracts_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -901,6 +915,56 @@ export type Database = {
           },
         ]
       }
+      operational_email_events: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          entity_id: string
+          event_day: string
+          id: string
+          kind: string
+          reason: string | null
+          recipient: string | null
+          stage: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          entity_id: string
+          event_day?: string
+          id?: string
+          kind: string
+          reason?: string | null
+          recipient?: string | null
+          stage?: string
+          status: string
+          tenant_id: string
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          entity_id?: string
+          event_day?: string
+          id?: string
+          kind?: string
+          reason?: string | null
+          recipient?: string | null
+          stage?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_email_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -1298,7 +1362,6 @@ export type Database = {
       }
       process_items: {
         Row: {
-          responsible_user_id: string | null
           created_at: string
           created_by: string
           document_url: string | null
@@ -1307,6 +1370,7 @@ export type Database = {
           is_done: boolean
           process_id: string
           responsible_name: string | null
+          responsible_user_id: string | null
           sort_order: number
           stage: string
           tenant_id: string
@@ -1315,7 +1379,6 @@ export type Database = {
           updated_by: string
         }
         Insert: {
-          responsible_user_id?: string | null
           created_at?: string
           created_by: string
           document_url?: string | null
@@ -1324,6 +1387,7 @@ export type Database = {
           is_done?: boolean
           process_id: string
           responsible_name?: string | null
+          responsible_user_id?: string | null
           sort_order?: number
           stage: string
           tenant_id: string
@@ -1332,7 +1396,6 @@ export type Database = {
           updated_by: string
         }
         Update: {
-          responsible_user_id?: string | null
           created_at?: string
           created_by?: string
           document_url?: string | null
@@ -1341,6 +1404,7 @@ export type Database = {
           is_done?: boolean
           process_id?: string
           responsible_name?: string | null
+          responsible_user_id?: string | null
           sort_order?: number
           stage?: string
           tenant_id?: string
@@ -1355,6 +1419,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "procurement_processes"
             referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "process_items_responsible_user_id_fk"
+            columns: ["tenant_id", "responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
         ]
       }
@@ -1578,7 +1649,6 @@ export type Database = {
       }
       procurement_processes: {
         Row: {
-          responsible_user_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1590,6 +1660,7 @@ export type Database = {
           priority: string
           requesting_unit: string | null
           responsible_name: string | null
+          responsible_user_id: string | null
           stage: string
           status: string
           tenant_id: string
@@ -1598,7 +1669,6 @@ export type Database = {
           updated_by: string
         }
         Insert: {
-          responsible_user_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1610,6 +1680,7 @@ export type Database = {
           priority?: string
           requesting_unit?: string | null
           responsible_name?: string | null
+          responsible_user_id?: string | null
           stage?: string
           status?: string
           tenant_id: string
@@ -1618,7 +1689,6 @@ export type Database = {
           updated_by: string
         }
         Update: {
-          responsible_user_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -1630,6 +1700,7 @@ export type Database = {
           priority?: string
           requesting_unit?: string | null
           responsible_name?: string | null
+          responsible_user_id?: string | null
           stage?: string
           status?: string
           tenant_id?: string
@@ -1638,6 +1709,13 @@ export type Database = {
           updated_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_processes_responsible_user_id_fk"
+            columns: ["tenant_id", "responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
           {
             foreignKeyName: "procurement_processes_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2829,6 +2907,7 @@ export type Database = {
         }
         Returns: Json
       }
+      queue_idle_process_emails: { Args: never; Returns: undefined }
       record_contract_item_consumption: {
         Args: {
           p_contract_item_id: string
