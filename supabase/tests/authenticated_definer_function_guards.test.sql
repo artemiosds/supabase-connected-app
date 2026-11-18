@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(49);
+SELECT extensions.plan(51);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -48,6 +48,7 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.get_document_workflow_capabilities(uuid)','get_document_workflow_capabilities checks tenant permission, standing and module access',ARRAY['%has_tenant_data_permission%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
  ('public.get_procurement_price_capabilities(uuid)','get_procurement_price_capabilities checks procurement approval permission, standing and module access',ARRAY['%procurement:approve_price%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
  ('public.approve_procurement_item_price(uuid,uuid,text,text,text,numeric)','approve_procurement_item_price binds the authenticated actor and records auditable pricing calculations',ARRAY['%auth.uid()%','%procurement:approve_price%','%procurement_price_approvals%','%audit_events%']::text[]),
+ ('public.select_procurement_price_quote(uuid,uuid,uuid)','select_procurement_price_quote binds the authenticated actor and checks tenant permission, standing and module access',ARRAY['%auth.uid()%','%has_tenant_data_permission%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%app_auth.price_estimate_write%']::text[]),
  ('public.get_my_platform_staff_access()','get_my_platform_staff_access reads only the current user staff record',ARRAY['%user_id=(SELECT auth.uid())%']::text[]),
  ('public.get_my_platform_support_status()','get_my_platform_support_status scopes returned support status to the current user',ARRAY['%auth.uid()%']::text[]),
  ('public.get_platform_staff_metrics()','get_platform_staff_metrics requires an explicit internal metrics or billing permission',ARRAY['%has_platform_staff_permission%']::text[]),
@@ -160,6 +161,12 @@ SELECT extensions.ok(
  AND NOT pg_catalog.has_function_privilege('authenticated','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
  AND NOT pg_catalog.has_function_privilege('anon','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE'),
  'verified signature finalizer is callable only by the trusted service role'
+);
+
+SELECT extensions.ok(
+ pg_catalog.pg_get_functiondef('public.fn_guard_procurement_item_estimate()'::regprocedure) LIKE '%current_user=''postgres''%'
+ AND pg_catalog.pg_get_functiondef('public.fn_guard_procurement_process_estimate()'::regprocedure) LIKE '%current_user=''postgres''%',
+ 'procurement estimate guards accept the internal GUC only from the trusted function owner'
 );
 
 SELECT * FROM extensions.finish();
