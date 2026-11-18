@@ -138,6 +138,7 @@ function Processos() {
   const [erro, setErro] = useState<string | null>(null);
   const [visao, setVisao] = useState<"kanban" | "lista">("kanban");
   const [novo, setNovo] = useState(false);
+  const [novoViaDfd, setNovoViaDfd] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const members = useAssignees(abertoId ? selecionado?.id : undefined);
   useEffect(() => {
@@ -145,6 +146,7 @@ function Processos() {
     const id = url.searchParams.get("processo");
     if (id) setAbertoId(id);
     if (url.searchParams.get("novo") === "dfd") {
+      setNovoViaDfd(true);
       setNovo(true);
       url.searchParams.delete("novo");
       window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
@@ -556,10 +558,15 @@ function Processos() {
 
       <NovoProcesso
         aberto={novo}
-        onFechar={() => setNovo(false)}
+        onFechar={() => { setNovo(false); setNovoViaDfd(false); }}
         tenantId={selecionado.id}
         userId={userId}
-        onSalvo={carregar}
+        onSalvo={(processoId) => {
+          void carregar();
+          if (novoViaDfd) {
+            window.location.assign(`/documentos?processo=${encodeURIComponent(processoId)}&tipo=dfd`);
+          }
+        }}
       />
 
       <Dialog open={!!aberto} onOpenChange={(o) => !o && setAbertoId(null)}>
@@ -2041,7 +2048,7 @@ function NovoProcesso(props: {
   onFechar: () => void;
   tenantId: string;
   userId: string;
-  onSalvo: () => void;
+  onSalvo: (processoId: string) => void;
 }) {
   const vazio = {
     number: "",
@@ -2087,8 +2094,8 @@ function NovoProcesso(props: {
 
     toast.success("Processo criado com o checklist completo.");
     setF(vazio);
+    props.onSalvo(processId);
     props.onFechar();
-    props.onSalvo();
   }
 
   return (
