@@ -44,7 +44,7 @@ describe("SpecularButton institucional nos botões do Primus", () => {
     expect(link.className).toContain("primus-specular-button");
   });
 
-  it("não acrescenta brilho em botões fantasma, links ou somente ícone", () => {
+  it("inclui botões fantasma e somente ícone, preservando links textuais e opt-out", () => {
     render(
       <>
         <Button variant="ghost">Fechar</Button>
@@ -55,7 +55,12 @@ describe("SpecularButton institucional nos botões do Primus", () => {
         <Button specular={false}>Sem efeito</Button>
       </>,
     );
-    for (const name of ["Fechar", "Ajuda", "Abrir menu", "Sem efeito"]) {
+    for (const name of ["Fechar", "Abrir menu"]) {
+      expect(screen.getByRole("button", { name }).className).toContain(
+        "primus-specular-button",
+      );
+    }
+    for (const name of ["Ajuda", "Sem efeito"]) {
       expect(screen.getByRole("button", { name }).className).not.toContain(
         "primus-specular-button",
       );
