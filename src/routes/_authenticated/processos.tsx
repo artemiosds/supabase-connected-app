@@ -141,8 +141,14 @@ function Processos() {
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const members = useAssignees(abertoId ? selecionado?.id : undefined);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("processo");
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("processo");
     if (id) setAbertoId(id);
+    if (url.searchParams.get("novo") === "dfd") {
+      setNovo(true);
+      url.searchParams.delete("novo");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
   }, []);
   const [dadosAbertos, setDadosAbertos] = useState(false);
   const [busca, setBusca] = useState("");
