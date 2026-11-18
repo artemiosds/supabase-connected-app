@@ -63,7 +63,7 @@ jobs:
       - name: Type check Supabase Edge Functions
         run: |
           for function in supabase/functions/*/index.ts; do
-            deno check "$function"
+            deno check --config supabase/functions/deno.json "$function"
           done
 
       - name: Lint
