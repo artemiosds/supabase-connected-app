@@ -366,7 +366,8 @@ export function combineCnpjResults(
   for (const item of valid) {
     merged.sources.push(item.source);
     for (const key of Object.keys(item) as Array<keyof CnpjLookupData>) {
-      if (key === "source" || key === "sources" || key === "consulted_at" || key === "cnpj") continue;
+      if (key === "source" || key === "sources" || key === "consulted_at" || key === "cnpj")
+        continue;
       const current = merged[key];
       const empty =
         current === null || current === "" || (Array.isArray(current) && current.length === 0);
@@ -395,11 +396,7 @@ export function situacaoTone(status: string | null | undefined): CnpjTone {
   if (!value) return "neutral";
   if (value.includes("ATIVA") && !value.includes("INATIVA")) return "success";
   if (value.includes("SUSPENSA")) return "warning";
-  if (
-    value.includes("INAPTA") ||
-    value.includes("BAIXADA") ||
-    value.includes("NULA")
-  )
+  if (value.includes("INAPTA") || value.includes("BAIXADA") || value.includes("NULA"))
     return "destructive";
   return "neutral";
 }

@@ -110,7 +110,8 @@ Deno.serve(async (request: Request) => {
 
     return json(
       {
-        error: "Não foi possível consultar este CNPJ nas fontes disponíveis. Você pode preencher os campos manualmente ou tentar novamente.",
+        error:
+          "Não foi possível consultar este CNPJ nas fontes disponíveis. Você pode preencher os campos manualmente ou tentar novamente.",
         providers_attempted: failures,
         retryable: true,
       },

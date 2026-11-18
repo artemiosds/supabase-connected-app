@@ -2817,9 +2817,7 @@ function Documentos() {
                           <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
                         )}
                         {previaGeracao.unknownKeys.length > 0 && (
-                          <p>
-                            Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.
-                          </p>
+                          <p>Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.</p>
                         )}
                         O rascunho manterá marcadores visíveis para impedir que dados ausentes
                         pareçam preenchidos.
