@@ -124,3 +124,7 @@ A main e o SMS2 apresentam 95 versões cada. Há 91 identificadores coincidentes
 | allow_platform_admin_tenant_integration_settings | 20261117095000 | 20261117125315 |
 
 Antes do próximo deploy de schema, comparar o SQL registrado e os objetos efetivos. Evitar reaplicar estas migrations com base apenas na diferença dos identificadores.
+
+### Comparação do SQL registrado (18/11/2026)
+
+Cada registro contém um único elemento em `statements`. A comparação linha a linha com os arquivos do commit `2929786` confirmou: histórico de unidade difere por comentário e linha vazia; supressão contratual coincide; fundação de integrações difere por uma linha vazia; permissões administrativas diferem por comentários e linhas vazias. Nenhuma diferença de instrução SQL foi observada. O histórico não detecta alterações posteriores nos objetos. Para alinhar identificadores, preservar integralmente o conteúdo dos quatro arquivos, alterar somente o prefixo conforme a tabela acima e validar o conjunto em banco descartável antes de qualquer deploy.
