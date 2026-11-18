@@ -244,6 +244,38 @@ export type Database = {
           },
         ]
       }
+      contract_renewal_followups: {
+        Row: {
+          contract_id: string
+          started_at: string
+          started_by: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          contract_id: string
+          started_at?: string
+          started_by: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          contract_id?: string
+          started_at?: string
+          started_by?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_renewal_followups_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           created_at: string
