@@ -1,0 +1,123 @@
+/*
+ * Borda especular inspirada no SpecularButton (React Bits).
+ * Sem canvas/WebGL por botão: preserva desempenho em tabelas, formulários e listas.
+ * Variáveis vêm do design system institucional do Primus (claro/escuro).
+ */
+.primus-specular-button {
+  --primus-specular-x: 50%;
+  --primus-specular-y: 50%;
+  --primus-specular-edge: var(--primary-foreground);
+  position: relative;
+  isolation: isolate;
+  border-radius: max(0.5rem, var(--radius-sm));
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 240ms ease,
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primus-specular-button[data-specular-variant="outline"],
+.primus-specular-button[data-specular-variant="secondary"] {
+  --primus-specular-edge: var(--primary);
+}
+
+.primus-specular-button[data-specular-variant="destructive"] {
+  --primus-specular-edge: var(--destructive-foreground);
+}
+
+.primus-specular-button::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120px 82px at var(--primus-specular-x) var(--primus-specular-y),
+      color-mix(in oklch, var(--primus-specular-edge) 94%, transparent),
+      color-mix(in oklch, var(--primus-specular-edge) 30%, transparent) 45%,
+      transparent 83%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.22;
+  transition: opacity 200ms ease;
+}
+
+.primus-specular-button::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    135px 95px at var(--primus-specular-x) var(--primus-specular-y),
+    color-mix(in oklch, var(--primus-specular-edge) 17%, transparent),
+    transparent 74%
+  );
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.primus-specular-button:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) {
+  box-shadow:
+    0 12px 22px -15px color-mix(in oklch, var(--primary) 47%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--primus-specular-edge) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.primus-specular-button:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"])::before {
+  opacity: 0.95;
+}
+
+.primus-specular-button:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"])::after {
+  opacity: 1;
+}
+
+.primus-specular-button:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(0) scale(0.986);
+}
+
+.primus-specular-button:is(:disabled, [aria-disabled="true"])::before,
+.primus-specular-button:is(:disabled, [aria-disabled="true"])::after {
+  opacity: 0;
+}
+
+/* Suporte a navegação por teclado: preservar anel de foco do shadcn. */
+.primus-specular-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primus-specular-button {
+    transition: none !important;
+  }
+
+  .primus-specular-button::before,
+  .primus-specular-button::after {
+    transition: none !important;
+  }
+
+  .primus-specular-button:is(:hover, :focus-visible, :active) {
+    transform: none !important;
+  }
+}
+
+@media (hover: none) {
+  .primus-specular-button::after {
+    display: none;
+  }
+}
