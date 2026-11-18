@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(45);
+SELECT extensions.plan(49);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -46,6 +46,8 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.can_manage_platform_support_team()','can_manage_platform_support_team delegates to the scoped support authorization helper',ARRAY['%app_auth.can_manage_platform_support_team()%']::text[]),
  ('public.end_platform_support_session(uuid)','end_platform_support_session can close only the current actor own session',ARRAY['%actor_id=(SELECT auth.uid())%']::text[]),
  ('public.get_document_workflow_capabilities(uuid)','get_document_workflow_capabilities checks tenant permission, standing and module access',ARRAY['%has_tenant_data_permission%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
+ ('public.get_procurement_price_capabilities(uuid)','get_procurement_price_capabilities checks procurement approval permission, standing and module access',ARRAY['%procurement:approve_price%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
+ ('public.approve_procurement_item_price(uuid,uuid,text,text,text,numeric)','approve_procurement_item_price binds the authenticated actor and records auditable pricing calculations',ARRAY['%auth.uid()%','%procurement:approve_price%','%procurement_price_approvals%','%audit_events%']::text[]),
  ('public.get_my_platform_staff_access()','get_my_platform_staff_access reads only the current user staff record',ARRAY['%user_id=(SELECT auth.uid())%']::text[]),
  ('public.get_my_platform_support_status()','get_my_platform_support_status scopes returned support status to the current user',ARRAY['%auth.uid()%']::text[]),
  ('public.get_platform_staff_metrics()','get_platform_staff_metrics requires an explicit internal metrics or billing permission',ARRAY['%has_platform_staff_permission%']::text[]),
@@ -143,6 +145,21 @@ SELECT extensions.ok(
     AND acl.privilege_type='EXECUTE'
  ),
  'document cancellation trigger has no EXECUTE grant inherited from PUBLIC'
+);
+
+SELECT extensions.ok(
+ (SELECT p.prosecdef
+    AND COALESCE(p.proconfig,ARRAY[]::text[]) @> ARRAY['search_path=""']
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)'::regprocedure),
+ 'verified signature finalizer uses SECURITY DEFINER with an empty search_path'
+);
+
+SELECT extensions.ok(
+ pg_catalog.has_function_privilege('service_role','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('authenticated','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('anon','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE'),
+ 'verified signature finalizer is callable only by the trusted service role'
 );
 
 SELECT * FROM extensions.finish();
