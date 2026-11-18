@@ -391,7 +391,7 @@ function Fornecedores() {
               signal: AbortSignal.timeout(6500),
             });
             if (!response.ok) continue;
-            const raw = await response.json() as Record<string, unknown>;
+            const raw = (await response.json()) as Record<string, unknown>;
             const mapped = mapCnpjProvider(raw, provider.name);
             if (!mapped.legal_name || cnpjDivergente(mapped, cnpj)) continue;
             dados = mapped;
@@ -949,8 +949,7 @@ function Fornecedores() {
                     <div className="mt-3 space-y-3">
                       <p className="text-xs text-muted-foreground">
                         Fonte(s): {consultaCnpj.sources.join(", ") || consultaCnpj.source} ·
-                        Consulta em{" "}
-                        {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}
+                        Consulta em {new Date(consultaCnpj.consulted_at).toLocaleString("pt-BR")}
                       </p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {(
@@ -1032,7 +1031,6 @@ function Fornecedores() {
                     </div>
                   </details>
                 )}
-
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-categoria">Categoria *</Label>
