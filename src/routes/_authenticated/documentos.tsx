@@ -1449,11 +1449,45 @@ function Documentos() {
     setConteudoEdicaoGerado(documento.content_snapshot);
   }
 
-  async function baixarRascunho(documento: DocumentoGerado, formato: "docx" | "pdf") {
+  async function baixarRascunho(
+    documento: DocumentoGerado,
+    formato: "docx" | "pdf",
+    retornarBytes = false,
+  ): Promise<Uint8Array | null> {
     if (!selecionado || !["draft", "signed"].includes(documento.status) || baixandoRascunhoId)
-      return;
+      return null;
     setBaixandoRascunhoId(documento.id);
     try {
+      if (documento.status === "signed") {
+        if (formato !== "pdf" || !documento.signed_pdf_storage_path || !documento.signed_pdf_sha256) {
+          toast.error("Este documento não possui PDF final imutável associado à assinatura. Não é possível apresentar uma cópia regenerada como arquivo assinado.");
+          return null;
+        }
+        const { data: signedPdf, error: downloadError } = await db.storage
+          .from("gfs-private-documents")
+          .download(documento.signed_pdf_storage_path);
+        if (downloadError || !signedPdf) throw downloadError ?? new Error("PDF assinado indisponível.");
+        const bytes = new Uint8Array(await signedPdf.arrayBuffer());
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        const actualHash = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+        if (actualHash !== documento.signed_pdf_sha256) {
+          toast.error("Falha na verificação de integridade: o SHA-256 do PDF não corresponde ao registro de assinatura. O download foi bloqueado.");
+          return null;
+        }
+        const url = URL.createObjectURL(signedPdf);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${documento.title.replace(/[^a-zA-Z0-9._-]+/gu, "-")}-assinado.pdf`;
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        toast.success("Integridade do PDF assinado confirmada por SHA-256.");
+        return null;
+      }
       const { assertPdfCompatible, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
         await import("@/lib/docx-engine");
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
@@ -1551,6 +1585,7 @@ function Documentos() {
                 useTemplatePageSize: true,
               });
             })();
+      if (retornarBytes) return new Uint8Array(bytes);
       const mimeType =
         formato === "docx"
           ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1581,7 +1616,8 @@ function Documentos() {
         );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o rascunho.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o documento.");
+      return null;
     } finally {
       setBaixandoRascunhoId(null);
     }
@@ -1642,22 +1678,43 @@ function Documentos() {
   }
 
   async function assinarDocumento(d: DocumentoGerado) {
-    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved")
-      return;
+    if (
+      !selecionado ||
+      !capacidades.can_sign ||
+      fluxoPorDocumento.get(d.id)?.status !== "approved" ||
+      d.status !== "draft" ||
+      baixandoRascunhoId
+    ) return;
     const confirmou = window.confirm(
-      "Confirma a assinatura eletrônica simples deste documento? A assinatura ficará registrada com sua conta, nome e data, e o conteúdo será bloqueado.",
+      "Confirma a assinatura eletrônica simples? O Primus vai gerar o PDF final, arquivá-lo sem sobrescrita, conferir o arquivo no servidor e registrar o SHA-256 vinculado à sua conta. Esta assinatura não é qualificada ICP-Brasil.",
     );
     if (!confirmou) return;
-    const { error: updateError } = await db
-      .from("generated_documents")
-      .update({ status: "signed" })
-      .eq("id", d.id)
-      .eq("tenant_id", selecionado.id);
-    if (updateError) {
-      toast.error(updateError.message);
+
+    const pdfBytes = await baixarRascunho(d, "pdf", true);
+    if (!pdfBytes) return;
+    const storagePath = `${selecionado.id}/generated-documents/${d.id}/${crypto.randomUUID()}.pdf`;
+    const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
+    const { error: uploadError } = await db.storage
+      .from("gfs-private-documents")
+      .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: false });
+    if (uploadError) {
+      toast.error(uploadError.message);
       return;
     }
-    toast.success("Assinatura registrada.");
+
+    const { data, error } = await db.functions.invoke("sign-generated-document", {
+      body: {
+        tenantId: selecionado.id,
+        documentId: d.id,
+        storagePath,
+      },
+    });
+    if (error || !data?.success) {
+      await db.storage.from("gfs-private-documents").remove([storagePath]);
+      toast.error(error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.");
+      return;
+    }
+    toast.success(`Assinatura registrada. SHA-256 do PDF: ${String(data.sha256).slice(0, 16)}…`);
     await carregar();
   }
 
