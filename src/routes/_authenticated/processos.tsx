@@ -1688,12 +1688,15 @@ function DadosEstruturados(props: {
         item.quantity,
         otherPrice,
       );
-      if (activeQuotes.length < 3 && form.exceptionalJustification.trim().length < 10) {
-        toast.error("Com menos de três preços, registre a justificativa excepcional.");
+      if (preview.quantidadeAmostras < 3 && form.exceptionalJustification.trim().length < 10) {
+        toast.error("Com menos de três preços válidos, registre a justificativa excepcional (mínimo de 10 caracteres).");
         return;
       }
-      if (form.methodJustification.trim().length < 10) {
-        toast.error("Justifique a escolha do método (mínimo de 10 caracteres).");
+      const minimumMethodJustification = form.method === "outro" ? 20 : 10;
+      if (form.methodJustification.trim().length < minimumMethodJustification) {
+        toast.error(
+          `Justifique a escolha do método (mínimo de ${minimumMethodJustification} caracteres).`,
+        );
         return;
       }
       setSaving(true);
@@ -1722,6 +1725,32 @@ function DadosEstruturados(props: {
   async function salvarConformidadeNormativa() {
     if (!canApprovePrice) {
       toast.error("Seu perfil não pode validar o enquadramento normativo.");
+      return;
+    }
+    const legalNotes = complianceForm.legal_review_notes.trim();
+    if (
+      complianceForm.normative_basis === "local_regulation" &&
+      (!complianceForm.local_regulation_name.trim() || !complianceForm.local_regulation_reference.trim())
+    ) {
+      toast.error("Informe o nome e a referência oficial do regulamento local.");
+      return;
+    }
+    if (
+      complianceForm.in65_applicability === "adopted" &&
+      complianceForm.normative_basis !== "local_regulation"
+    ) {
+      toast.error("A adoção local da IN 65 exige a identificação do regulamento municipal ou estadual.");
+      return;
+    }
+    if (
+      complianceForm.in65_applicability === "not_applicable" &&
+      (complianceForm.normative_basis === "in65_2021" || legalNotes.length < 20)
+    ) {
+      toast.error("Para declarar a IN 65 não aplicável, selecione outro fundamento e registre justificativa jurídica (mínimo de 20 caracteres).");
+      return;
+    }
+    if (complianceForm.normative_basis === "other" && legalNotes.length < 10) {
+      toast.error("Descreva o fundamento normativo alternativo (mínimo de 10 caracteres).");
       return;
     }
     setSaving(true);
@@ -3012,7 +3041,9 @@ function DadosEstruturados(props: {
                           </div>
                         )}
                         <div className="space-y-1 sm:col-span-2">
-                          <Label>Justificativa da escolha do método *</Label>
+                          <Label>
+                            Justificativa da escolha do método * (mínimo de {approvalForm.method === "outro" ? 20 : 10} caracteres)
+                          </Label>
                           <Textarea
                             rows={2}
                             value={approvalForm.methodJustification}
@@ -3025,7 +3056,7 @@ function DadosEstruturados(props: {
                             placeholder="Explique por que o método é adequado à série de preços e ao objeto."
                           />
                         </div>
-                        {rows.length < 3 && (
+                        {approvalPreview && approvalPreview.quantidadeAmostras < 3 && (
                           <div className="space-y-1 sm:col-span-2">
                             <Label>Justificativa excepcional para menos de três preços *</Label>
                             <Textarea
