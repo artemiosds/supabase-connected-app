@@ -1435,34 +1435,146 @@ function DadosEstruturados(props: {
         .single();
       if (profileError) throw profileError;
       const branding = await carregarTimbradoSecretaria(props.tenantId, tenant.name);
-      const clean = (v: unknown) => String(v ?? "").replace(/[\t\r\n]/g, " ");
+      const clean = (value: unknown) => String(value ?? "Não informado").replace(/[\t\r\n]/g, " ");
+      const activeItems = items.filter((item) => item.is_active);
+      const currentApprovals = approvals.filter((approval) => approval.status === "approved");
+      const allItemsApproved =
+        activeItems.length > 0 &&
+        activeItems.every(
+          (item) =>
+            item.estimated_price_source === "approved" &&
+            currentApprovals.some((approval) => approval.procurement_item_id === item.id),
+        );
+      const normativeValidated = compliance?.legal_review_status === "validated";
+      const mapaPronto = allItemsApproved && normativeValidated;
+      const basisLabel =
+        compliance?.normative_basis === "in65_2021"
+          ? "IN SEGES/ME nº 65/2021"
+          : compliance?.normative_basis === "local_regulation"
+            ? `Regulamentação local: ${compliance.local_regulation_name ?? "não informada"} — ${compliance.local_regulation_reference ?? "referência pendente"}`
+            : compliance?.normative_basis === "other"
+              ? "Outro enquadramento normativo"
+              : "Enquadramento normativo pendente";
+      const applicabilityLabel =
+        compliance?.in65_applicability === "applicable"
+          ? "IN 65 aplicável"
+          : compliance?.in65_applicability === "adopted"
+            ? "IN 65 adotada pelo órgão"
+            : compliance?.in65_applicability === "not_applicable"
+              ? "IN 65 declarada não aplicável — ver justificativa"
+              : "Aplicabilidade pendente de análise";
       const lines = [
+        "MAPA COMPARATIVO DE PREÇOS — PESQUISA E ESTIMATIVA",
+        mapaPronto
+          ? "Situação: preços dos itens aprovados e enquadramento normativo validado pela Secretaria."
+          : "RASCUNHO — NÃO HOMOLOGADO — PENDENTE DE APROVAÇÃO DOS PREÇOS E/OU VALIDAÇÃO NORMATIVA.",
         `Processo: ${props.processNumber}`,
+        `Órgão: ${tenant.name}`,
         `Emitido em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (Brasília)`,
         `Responsável pela emissão: ${profile.full_name}`,
-        ...(formato === "workflow"
-          ? []
-          : ["Rascunho para conferência. Assinatura eletrônica pendente."]),
-      ];
-      for (const item of items.filter((i) => i.is_active)) {
-        const rows = quotes.filter((q) => q.procurement_item_id === item.id && q.is_active);
+        `Base normativa declarada: ${basisLabel}`,
+        `Aplicabilidade da IN 65/2021: ${applicabilityLabel}`,
+        `Validação normativa: ${normativeValidated ? "Validada pela autoridade registrada no sistema em " + formatarData(compliance?.validated_at ?? "") : "Pendente de validação da assessoria/autoridade competente"}`,
+        compliance?.legal_review_notes ? `Observações jurídicas: ${clean(compliance.legal_review_notes)}` : "",
+        "Critério de análise: as cotações ativas compõem a série de preços; os alertas estatísticos são subsídios de análise e não excluem automaticamente valores.",
+        "Fórmula de preço efetivo: (preço unitário × quantidade cotada + frete) ÷ quantidade cotada. Total aprovado: preço unitário aprovado × quantidade prevista do item.",
+      ].filter(Boolean);
+      for (const item of activeItems) {
+        const rows = quotes
+          .filter((quote) => quote.procurement_item_id === item.id && quote.is_active)
+          .sort(
+            (a, b) =>
+              (precoUnitarioComFrete(a) ?? Infinity) -
+              (precoUnitarioComFrete(b) ?? Infinity),
+          );
+        const archived = quotes.filter(
+          (quote) => quote.procurement_item_id === item.id && !quote.is_active,
+        );
         const summary = calcularResumoDePrecos(rows);
-        lines.push("", clean(item.description), "Fonte\tCNPJ\tData\tUnitário\tFrete\tEfetivo");
-        for (const q of rows)
+        const approval = currentApprovals.find(
+          (entry) => entry.procurement_item_id === item.id,
+        );
+        const signals = expurgarAmostrasInconsistentes(rows);
+        const dispersion = analisarDispersaoPrecos(
+          rows.map(precoUnitarioComFrete).filter((value): value is number => value !== null),
+        );
+        lines.push(
+          "",
+          `ITEM ${item.line_number} — ${clean(item.description)}`,
+          `Especificação: ${clean(item.technical_specification)}`,
+          `Unidade: ${item.unit} · Quantidade prevista: ${item.quantity} · Local de entrega: ${clean(item.delivery_location)}`,
+          `Preço unitário atualmente registrado: ${formatarMoeda(item.estimated_unit_price)} · Total do item: ${formatarMoeda(item.estimated_total)}`,
+          `Situação do preço: ${approval ? "APROVADO" : "PENDENTE DE APROVAÇÃO"}`,
+          `Cotações ativas consideradas: ${summary.quantidade}`,
+        );
+        if (approval) {
+          lines.push(
+            `Método aprovado: ${approval.method}`,
+            `Justificativa do método: ${clean(approval.method_justification)}`,
+            `Preço unitário aprovado: ${formatarMoeda(approval.approved_unit_price)}`,
+            `Preço total aprovado: ${formatarMoeda(approval.approved_total_price)}`,
+            `Aprovado em: ${formatarData(approval.approved_at)} · Responsável autenticado: ${approval.approved_by}`,
+            `Amostras consideradas na aprovação: ${approval.sample_count}`,
+            ...(approval.exceptional_justification
+              ? [`Justificativa excepcional para menos de três preços: ${clean(approval.exceptional_justification)}`]
+              : []),
+          );
+        } else {
+          lines.push("Método e valor homologado: pendentes. A mediana abaixo é apenas referência estatística, não preço aprovado.");
+        }
+        lines.push(
+          "COTAÇÕES ATIVAS — SÉRIE DE PREÇOS",
+          "Fonte | Tipo | Identificador | CPF/CNPJ | Data da cotação | Acesso | Quantidade | Unitário | Frete | Total | Unitário efetivo | Condições | Referência | Comprovante",
+        );
+        for (const quote of rows) {
+          const supplier = suppliers.find((entry) => entry.id === quote.supplier_id);
           lines.push(
             [
-              q.source_name,
-              suppliers.find((s) => s.id === q.supplier_id)?.cnpj,
-              formatarData(q.quoted_at),
-              formatarMoeda(q.unit_price),
-              formatarMoeda(q.delivery_cost),
-              formatarMoeda(precoUnitarioComFrete(q)),
+              quote.source_name,
+              quote.source_type,
+              quote.reference_identifier,
+              quote.source_tax_id ?? supplier?.cnpj,
+              formatarData(quote.quoted_at),
+              quote.accessed_at ? new Date(quote.accessed_at).toLocaleString("pt-BR") : "",
+              quote.quantity,
+              formatarMoeda(quote.unit_price),
+              formatarMoeda(quote.delivery_cost),
+              formatarMoeda(quote.total_price),
+              formatarMoeda(precoUnitarioComFrete(quote)),
+              [quote.delivery_term, quote.payment_terms, quote.warranty_terms, quote.brand_model].filter(Boolean).join(" / "),
+              quote.reference_url,
+              quote.evidence_file_name,
             ]
               .map(clean)
-              .join("\t"),
+              .join(" | "),
           );
+          if (quote.source_contact_name || quote.source_contact_email || quote.source_address) {
+            lines.push(
+              `Contato: ${clean(quote.source_contact_name)} · ${clean(quote.source_contact_email)} · ${clean(quote.source_contact_phone)} · Endereço: ${clean(quote.source_address)}`,
+            );
+          }
+          const signal = signals.find((entry) => entry.cotacao.id === quote.id);
+          if (signal?.motivos.length) {
+            lines.push(`Alerta estatístico para análise humana: ${signal.motivos.join("; ")}`);
+          }
+        }
         lines.push(
-          `Menor: ${formatarMoeda(summary.menor)}; média: ${formatarMoeda(summary.media)}; mediana sugerida: ${formatarMoeda(summary.mediana)}; CV amostral: ${summary.coeficienteVariacao?.toFixed(2) ?? "não calculável"}%.`,
+          "COTAÇÕES EXPURGADAS — PRESERVADAS PARA RASTREABILIDADE",
+        );
+        if (archived.length === 0) {
+          lines.push("Nenhuma cotação expurgada deste item.");
+        } else {
+          for (const quote of archived) {
+            lines.push(
+              `Fonte: ${quote.source_name} · Tipo: ${quote.source_type} · Data: ${formatarData(quote.quoted_at)} · Unitário efetivo: ${formatarMoeda(precoUnitarioComFrete(quote))} · Motivo do expurgo: ${clean(quote.justificativa_expurgo)} · Comprovante: ${clean(quote.evidence_file_name)}`,
+            );
+          }
+        }
+        lines.push(
+          `Menor preço ativo: ${formatarMoeda(summary.menor)} · Média: ${formatarMoeda(summary.media)} · Mediana: ${formatarMoeda(summary.mediana)} · CV amostral: ${summary.coeficienteVariacao?.toFixed(2) ?? "não calculável"}%.`,
+          dispersion.dispersaoExcessiva
+            ? "ALERTA: coeficiente de variação superior a 25%; revisar fontes, comparabilidade e justificativas."
+            : "Dispersão: sem alerta de CV superior a 25% nesta amostra.",
         );
       }
       if (formato === "workflow") {
@@ -1473,16 +1585,25 @@ function DadosEstruturados(props: {
             process_id: props.processId,
             title: `Mapa comparativo — ${props.processNumber}`,
             content_snapshot: lines.join("\n"),
+            process_snapshot: { document_kind: "price_map" },
             status: "draft",
           })
           .select("id")
           .single();
         if (error) throw error;
+        if (!mapaPronto) {
+          toast.warning("Rascunho criado. A tramitação será liberada após aprovar todos os preços e validar o enquadramento normativo.");
+        } else {
+          toast.success("Mapa completo gerado como rascunho para conferência e aprovação independente.");
+        }
         window.location.assign("/documentos?documento=" + encodeURIComponent(data.id));
         return;
       }
       const generated = await generateDocx({
-        template: await buildDocxFromText(lines.join("\n"), "MAPA COMPARATIVO DE PREÇOS"),
+        template: await buildDocxFromText(
+          lines.join("\n"),
+          mapaPronto ? "MAPA COMPARATIVO DE PREÇOS" : "RASCUNHO — MAPA COMPARATIVO DE PREÇOS",
+        ),
         values: {},
         items: [],
         branding,
@@ -1492,10 +1613,7 @@ function DadosEstruturados(props: {
           ? generated.bytes
           : await renderPdf(
               { ...(await docxToModel(generated.bytes)), footerText: [] },
-              {
-                branding,
-                title: "Mapa comparativo",
-              },
+              { branding, title: mapaPronto ? "Mapa comparativo" : "Rascunho — mapa comparativo" },
             );
       const url = URL.createObjectURL(
         new Blob([new Uint8Array(bytes)], {
@@ -1510,13 +1628,15 @@ function DadosEstruturados(props: {
       a.download = `mapa-${props.processNumber.replace(/[^a-z0-9_-]/gi, "-")}.${formato}`;
       a.click();
       URL.revokeObjectURL(url);
+      if (!mapaPronto) {
+        toast.warning("Arquivo exportado como RASCUNHO. A aprovação do preço e a validação normativa continuam pendentes.");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o mapa.");
     } finally {
       setSaving(false);
     }
   }
-
   async function selecionarCotacao(quote: CotacaoCompra) {
     const { error } = await db.rpc("select_procurement_price_quote", {
       p_tenant_id: props.tenantId,
