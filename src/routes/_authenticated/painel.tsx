@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Building2, FileText, Loader2, Truck, Users, AlertTriangle, Clock } from "lucide-react";
+import { MyTasks } from "@/components/dashboard/my-tasks";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { db } from "@/lib/db";
@@ -207,6 +208,7 @@ function Painel() {
               <AlertDescription>{erro}</AlertDescription>
             </Alert>
           )}
+          {session?.user.id && <MyTasks tenantId={selecionado.id} userId={session.user.id} />}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
