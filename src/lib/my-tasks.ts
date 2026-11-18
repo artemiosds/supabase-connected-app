@@ -3,7 +3,14 @@ import type { Tables } from "@/integrations/supabase/types";
 
 export type ProcessoMinhaTarefa = Pick<
   Tables<"procurement_processes">,
-  "id" | "number" | "title" | "stage" | "status" | "responsible_user_id" | "responsible_name" | "due_date"
+  | "id"
+  | "number"
+  | "title"
+  | "stage"
+  | "status"
+  | "responsible_user_id"
+  | "responsible_name"
+  | "due_date"
 >;
 export type EtapaMinhaTarefa = Pick<
   Tables<"process_items">,
@@ -29,7 +36,11 @@ export type MinhaTarefa = {
 };
 
 const TIPOS_CERTIDAO = new Set([
-  "certidao_federal", "certidao_estadual", "certidao_municipal", "fgts", "trabalhista",
+  "certidao_federal",
+  "certidao_estadual",
+  "certidao_municipal",
+  "fgts",
+  "trabalhista",
 ]);
 
 const mesmaPessoa = (
@@ -39,8 +50,10 @@ const mesmaPessoa = (
   nomeConfirmado: string | null,
 ) =>
   responsavelId === userId ||
-  (!responsavelId && !!nomeConfirmado &&
-    responsavelNome?.trim().toLocaleLowerCase("pt-BR") === nomeConfirmado.trim().toLocaleLowerCase("pt-BR"));
+  (!responsavelId &&
+    !!nomeConfirmado &&
+    responsavelNome?.trim().toLocaleLowerCase("pt-BR") ===
+      nomeConfirmado.trim().toLocaleLowerCase("pt-BR"));
 
 export function montarMinhasTarefas(
   userId: string,
@@ -57,21 +70,31 @@ export function montarMinhasTarefas(
   for (const processo of processos) {
     if (processo.status === "concluido" || processo.status === "arquivado") continue;
     const minhasEtapas = etapas.filter(
-      (etapa) => etapa.process_id === processo.id && etapa.stage === processo.stage &&
-        !etapa.is_done && mesmaPessoa(
-          etapa.responsible_user_id, etapa.responsible_name, userId, nomeConfirmado,
-        ),
+      (etapa) =>
+        etapa.process_id === processo.id &&
+        etapa.stage === processo.stage &&
+        !etapa.is_done &&
+        mesmaPessoa(etapa.responsible_user_id, etapa.responsible_name, userId, nomeConfirmado),
     );
     if (
-      !mesmaPessoa(processo.responsible_user_id, processo.responsible_name, userId, nomeConfirmado) &&
+      !mesmaPessoa(
+        processo.responsible_user_id,
+        processo.responsible_name,
+        userId,
+        nomeConfirmado,
+      ) &&
       minhasEtapas.length === 0
-    ) continue;
+    )
+      continue;
     tarefas.push({
       id: `processo-${processo.id}`,
       tipo: "processo",
       titulo: `Processo nº ${processo.number}`,
       descricao: minhasEtapas.length
-        ? `Etapa atual: ${minhasEtapas.map((item) => item.title).slice(0, 2).join("; ")}`
+        ? `Etapa atual: ${minhasEtapas
+            .map((item) => item.title)
+            .slice(0, 2)
+            .join("; ")}`
         : processo.title,
       dias: processo.due_date ? diasAte(processo.due_date, hoje) : null,
       destino: "/processos",
@@ -80,7 +103,8 @@ export function montarMinhasTarefas(
   }
 
   const meusContratos = contratos.filter(
-    (contrato) => contrato.status === "vigente" &&
+    (contrato) =>
+      contrato.status === "vigente" &&
       (contrato.manager_user_id === userId || contrato.inspector_user_id === userId),
   );
   for (const contrato of meusContratos) {
@@ -90,9 +114,10 @@ export function montarMinhasTarefas(
       id: `contrato-${contrato.id}`,
       tipo: "contrato",
       titulo: `Contrato nº ${contrato.number}`,
-      descricao: contrato.inspector_user_id === userId
-        ? "Contrato sob sua fiscalização"
-        : "Contrato sob sua gestão",
+      descricao:
+        contrato.inspector_user_id === userId
+          ? "Contrato sob sua fiscalização"
+          : "Contrato sob sua gestão",
       dias,
       destino: "/contratos",
       entityId: contrato.id,
@@ -104,10 +129,12 @@ export function montarMinhasTarefas(
   );
   for (const documento of documentos) {
     if (
-      documento.status !== "active" || !documento.expires_at ||
+      documento.status !== "active" ||
+      !documento.expires_at ||
       !meusFornecedores.has(documento.supplier_id) ||
       !TIPOS_CERTIDAO.has(documento.document_type)
-    ) continue;
+    )
+      continue;
     const dias = diasAte(documento.expires_at, hoje);
     if (dias > 120) continue;
     tarefas.push({
@@ -128,7 +155,9 @@ export function montarMinhasTarefas(
   });
 }
 
-export function criticidadeTarefa(dias: number | null): "critical" | "attention" | "info" | "normal" {
+export function criticidadeTarefa(
+  dias: number | null,
+): "critical" | "attention" | "info" | "normal" {
   if (dias === null || dias > 120) return "normal";
   if (dias < 30) return "critical";
   if (dias <= 60) return "attention";
