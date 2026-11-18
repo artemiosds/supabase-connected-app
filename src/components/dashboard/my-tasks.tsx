@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ClipboardList,
   FilePlus2,
-  FileSearch,
+  FileText,
   FolderKanban,
   Loader2,
   Plus,
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import {
   criticidadeTarefa,
