@@ -1593,6 +1593,7 @@ export type Database = {
       }
       procurement_price_quotes: {
         Row: {
+          justificativa_expurgo: string | null
           contract_id: string | null
           created_at: string
           created_by: string
@@ -1614,6 +1615,7 @@ export type Database = {
           updated_by: string
         }
         Insert: {
+          justificativa_expurgo?: string | null
           contract_id?: string | null
           created_at?: string
           created_by: string
@@ -1635,6 +1637,7 @@ export type Database = {
           updated_by: string
         }
         Update: {
+          justificativa_expurgo?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string

@@ -61,18 +61,79 @@ export function calcularResumoDePrecos(quotes: Precificacao[]): ResumoDePrecos {
   if (firstValue === undefined) {
     return { quantidade: 0, menor: null, media: null, mediana: null, coeficienteVariacao: null };
   }
-  const middle = Math.floor(values.length / 2);
-  const lower = values[middle - 1] ?? firstValue;
-  const upper = values[middle] ?? firstValue;
-  const mediana = values.length % 2 === 0 ? (lower + upper) / 2 : upper;
-  const variance = values.reduce((sum, value) => sum + (value - media) ** 2, 0) / values.length;
+  const dispersao = analisarDispersaoPrecos(values);
   return {
     quantidade: values.length,
     menor: firstValue,
     media,
-    mediana,
-    coeficienteVariacao: media > 0 ? (Math.sqrt(variance) / media) * 100 : null,
+    mediana: calcularMediana(values),
+    coeficienteVariacao: dispersao.coeficienteVariacao,
   };
+}
+
+export function calcularPrecoUnitarioEfetivo(
+  quantidade: number,
+  precoUnitario: number,
+  freteRateado: number,
+): number | null {
+  if (
+    ![quantidade, precoUnitario, freteRateado].every(Number.isFinite) ||
+    quantidade <= 0 ||
+    precoUnitario < 0 ||
+    freteRateado < 0
+  )
+    return null;
+  const valor = precoUnitario + freteRateado / quantidade;
+  return Number.isFinite(valor) ? valor : null;
+}
+function validarPrecos(precos: number[]) {
+  if (precos.some((p) => !Number.isFinite(p) || p < 0))
+    throw new RangeError("Preços devem ser finitos e não negativos.");
+}
+export function calcularMediana(precosValidos: number[]): number | null {
+  validarPrecos(precosValidos);
+  if (!precosValidos.length) return null;
+  const p = [...precosValidos].sort((a, b) => a - b),
+    i = Math.floor(p.length / 2);
+  return p.length % 2 ? p[i]! : p[i - 1]! / 2 + p[i]! / 2;
+}
+export function analisarDispersaoPrecos(precosValidos: number[]) {
+  validarPrecos(precosValidos);
+  const n = precosValidos.length;
+  const media = n ? precosValidos.reduce((s, p) => s + p / n, 0) : null;
+  const desvioPadraoAmostral =
+    n > 1 && media !== null
+      ? Math.hypot(...precosValidos.map((p) => (p - media) / Math.sqrt(n - 1)))
+      : null;
+  const coeficienteVariacao =
+    media !== null && media > 0 && desvioPadraoAmostral !== null
+      ? (desvioPadraoAmostral / media) * 100
+      : null;
+  return {
+    media,
+    desvioPadraoAmostral,
+    coeficienteVariacao,
+    dispersaoExcessiva: coeficienteVariacao !== null && coeficienteVariacao > 25,
+  };
+}
+export function expurgarAmostrasInconsistentes(precos: CotacaoMapa[]) {
+  // Sinaliza para análise humana; não altera a seleção nem mistura itens.
+  return precos.map((cotacao) => {
+    const cesta = precos
+      .filter((p) => p.procurement_item_id === cotacao.procurement_item_id)
+      .map(precoUnitarioComFrete)
+      .filter((p): p is number => p !== null);
+    const { media, desvioPadraoAmostral: s } = analisarDispersaoPrecos(cesta);
+    const valor = precoUnitarioComFrete(cotacao);
+    const motivos: string[] = [];
+    if (valor === null) motivos.push("Valor inválido");
+    else if (media !== null) {
+      if (valor < media * 0.5) motivos.push("Valor inferior a 50% da média");
+      if (s !== null && Math.abs(valor - media) > 2 * s)
+        motivos.push("Valor fora de média ± 2 desvios amostrais");
+    }
+    return { cotacao, sinalizada: motivos.length > 0, motivos };
+  });
 }
 
 function escaparCelulaCsv(value: string | number | boolean | null | undefined): string {

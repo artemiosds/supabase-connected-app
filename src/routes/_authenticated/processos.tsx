@@ -59,6 +59,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calcularResumoDePrecos,
+  analisarDispersaoPrecos,
+  expurgarAmostrasInconsistentes,
   gerarCsvMapaDePrecos,
   precoUnitarioComFrete,
   type CotacaoMapa,
@@ -977,7 +979,7 @@ type DotacaoCompra = {
   is_active: boolean;
 };
 
-type FornecedorCompra = { id: string; legal_name: string };
+type FornecedorCompra = { id: string; legal_name: string; cnpj?: string };
 
 function DadosEstruturados(props: {
   aberto: boolean;
@@ -1204,6 +1206,86 @@ function DadosEstruturados(props: {
     await carregarDados();
   }
 
+  async function exportarMapa(formato: "docx" | "pdf") {
+    setSaving(true);
+    try {
+      const { buildDocxFromText, generateDocx, docxToModel, renderPdf } =
+        await import("@/lib/docx-engine");
+      const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
+      const { data: tenant, error } = await db
+        .from("tenants")
+        .select("name")
+        .eq("id", props.tenantId)
+        .single();
+      if (error) throw error;
+      const { data: profile, error: profileError } = await db
+        .from("profiles")
+        .select("full_name")
+        .eq("id", props.userId)
+        .single();
+      if (profileError) throw profileError;
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenant.name);
+      const clean = (v: unknown) => String(v ?? "").replace(/[\t\r\n]/g, " ");
+      const lines = [
+        `Processo: ${props.processNumber}`,
+        `Emitido em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (Brasília)`,
+        `Responsável pela emissão: ${profile.full_name}`,
+        "Rascunho para conferência. Assinatura eletrônica pendente.",
+      ];
+      for (const item of items.filter((i) => i.is_active)) {
+        const rows = quotes.filter((q) => q.procurement_item_id === item.id && q.is_active);
+        const summary = calcularResumoDePrecos(rows);
+        lines.push("", clean(item.description), "Fonte\tCNPJ\tData\tUnitário\tFrete\tEfetivo");
+        for (const q of rows)
+          lines.push(
+            [
+              q.source_name,
+              suppliers.find((s) => s.id === q.supplier_id)?.cnpj,
+              formatarData(q.quoted_at),
+              formatarMoeda(q.unit_price),
+              formatarMoeda(q.delivery_cost),
+              formatarMoeda(precoUnitarioComFrete(q)),
+            ]
+              .map(clean)
+              .join("\t"),
+          );
+        lines.push(
+          `Menor: ${formatarMoeda(summary.menor)}; média: ${formatarMoeda(summary.media)}; mediana sugerida: ${formatarMoeda(summary.mediana)}; CV amostral: ${summary.coeficienteVariacao?.toFixed(2) ?? "não calculável"}%.`,
+        );
+      }
+      const generated = await generateDocx({
+        template: await buildDocxFromText(lines.join("\n"), "MAPA COMPARATIVO DE PREÇOS"),
+        values: {},
+        items: [],
+        branding,
+      });
+      const bytes =
+        formato === "docx"
+          ? generated.bytes
+          : await renderPdf(await docxToModel(generated.bytes), {
+              branding,
+              title: "Mapa comparativo",
+            });
+      const url = URL.createObjectURL(
+        new Blob([new Uint8Array(bytes)], {
+          type:
+            formato === "pdf"
+              ? "application/pdf"
+              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mapa-${props.processNumber.replace(/[^a-z0-9_-]/gi, "-")}.${formato}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível gerar o mapa.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function selecionarCotacao(quote: CotacaoCompra) {
     const { error } = await db.rpc("select_procurement_price_quote", {
       p_tenant_id: props.tenantId,
@@ -1219,10 +1301,17 @@ function DadosEstruturados(props: {
   }
 
   async function arquivarCotacao(quote: CotacaoCompra) {
+    const justificativa = window.prompt("Justificativa para excluir esta cotação da pesquisa:");
+    if (!justificativa?.trim()) return;
     setSaving(true);
     const { error } = await db
       .from("procurement_price_quotes")
-      .update({ is_active: false, selected_for_estimate: false, updated_by: props.userId })
+      .update({
+        is_active: false,
+        selected_for_estimate: false,
+        justificativa_expurgo: justificativa.trim(),
+        updated_by: props.userId,
+      })
       .eq("id", quote.id)
       .eq("tenant_id", props.tenantId);
     setSaving(false);
@@ -1933,6 +2022,12 @@ function DadosEstruturados(props: {
               >
                 Exportar mapa para Excel (CSV)
               </Button>
+              <Button disabled={saving} onClick={() => void exportarMapa("pdf")}>
+                Gerar mapa PDF
+              </Button>
+              <Button disabled={saving} onClick={() => void exportarMapa("docx")}>
+                Gerar mapa DOCX
+              </Button>
             </div>
             {items.map((item) => {
               const rows = quotes
@@ -1943,6 +2038,10 @@ function DadosEstruturados(props: {
                 );
               if (!rows.length) return null;
               const resumo = calcularResumoDePrecos(rows);
+              const sinais = expurgarAmostrasInconsistentes(rows);
+              const dispersao = analisarDispersaoPrecos(
+                rows.map(precoUnitarioComFrete).filter((v): v is number => v !== null),
+              );
               return (
                 <section key={item.id} className="space-y-2 rounded-lg border p-3">
                   <div className="flex flex-wrap justify-between gap-2">
@@ -1956,6 +2055,8 @@ function DadosEstruturados(props: {
                       <thead className="text-left text-muted-foreground">
                         <tr>
                           <th className="p-2">Fornecedor / fonte</th>
+                          <th className="p-2">CNPJ</th>
+                          <th className="p-2">Referência</th>
                           <th className="p-2">Data</th>
                           <th className="p-2 text-right">Unitário</th>
                           <th className="p-2 text-right">Frete</th>
@@ -1974,6 +2075,28 @@ function DadosEstruturados(props: {
                                   Selecionada
                                 </Badge>
                               )}
+                            </td>
+                            <td className="p-2">
+                              {suppliers.find((s) => s.id === q.supplier_id)?.cnpj ||
+                                "Não informado"}
+                            </td>
+                            <td className="p-2">
+                              <button
+                                type="button"
+                                disabled={q.selected_for_estimate}
+                                aria-pressed={q.selected_for_estimate}
+                                onClick={() => void selecionarCotacao(q)}
+                              >
+                                Selecionar para preço de referência:{" "}
+                                {q.selected_for_estimate ? "Sim" : "Não"}
+                              </button>
+                              {sinais
+                                .find((s) => s.cotacao.id === q.id)
+                                ?.motivos.map((m) => (
+                                  <p key={m} className="text-amber-700">
+                                    {m}
+                                  </p>
+                                ))}
                             </td>
                             <td className="p-2">{formatarData(q.quoted_at)}</td>
                             <td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td>
@@ -2003,6 +2126,23 @@ function DadosEstruturados(props: {
                       </tbody>
                     </table>
                   </div>
+                  {dispersao.dispersaoExcessiva && (
+                    <p
+                      role="status"
+                      className="rounded border border-amber-400 bg-amber-50 p-3 text-amber-950"
+                    >
+                      Dispersão superior a 25%. Revise as fontes e justifique as exclusões antes da
+                      homologação.
+                    </p>
+                  )}
+                  {rows.length < 3 && (
+                    <p className="text-amber-700">
+                      Menos de três cotações: exige análise e justificativa da equipe.
+                    </p>
+                  )}
+                  <p>
+                    Valor sugerido (mediana, sujeito à homologação): {formatarMoeda(resumo.mediana)}
+                  </p>
                   <dl className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <dt className="text-muted-foreground">Menor unitário c/ frete</dt>
