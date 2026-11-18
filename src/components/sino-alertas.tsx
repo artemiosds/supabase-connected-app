@@ -20,14 +20,17 @@ export function SinoAlertas() {
   const [avisos, setAvisos] = useState<AvisoVencimento[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [falhaParcial, setFalhaParcial] = useState(false);
-  const [andamento, setAndamento] = useState<{ tenantId: string; ids: string[]; canEdit: boolean }>({
-    tenantId: "",
-    ids: [],
-    canEdit: false,
-  });
+  const [andamento, setAndamento] = useState<{ tenantId: string; ids: string[]; canEdit: boolean }>(
+    {
+      tenantId: "",
+      ids: [],
+      canEdit: false,
+    },
+  );
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
   const tenantIdAtual = selecionado?.id ?? "";
-  const marcados = andamento.tenantId === tenantIdAtual ? new Set(andamento.ids) : new Set<string>();
+  const marcados =
+    andamento.tenantId === tenantIdAtual ? new Set(andamento.ids) : new Set<string>();
   const podeMarcar = andamento.tenantId === tenantIdAtual && andamento.canEdit;
 
   useEffect(() => {
@@ -76,16 +79,25 @@ export function SinoAlertas() {
         )
           .then((data) => ({ data, falhou: false }))
           .catch(() => ({ data: [], falhou: true })),
-        db.from("contract_renewal_followups")
-          .select("contract_id").eq("tenant_id", tenantId)
-          .then(({ data, error }) => ({ ids: (data ?? []).map((row) => row.contract_id), falhou: !!error })),
+        db
+          .from("contract_renewal_followups")
+          .select("contract_id")
+          .eq("tenant_id", tenantId)
+          .then(({ data, error }) => ({
+            ids: (data ?? []).map((row) => row.contract_id),
+            falhou: !!error,
+          })),
         db.rpc("get_document_capabilities", { p_tenant_id: tenantId }),
       ]);
 
       if (!ativo) return;
       setAvisos(calcularAvisosVencimento(contratos.data, documentos.data));
       setFalhaParcial(contratos.falhou || documentos.falhou || followups.falhou);
-      setAndamento({ tenantId, ids: followups.ids, canEdit: !capabilities.error && capabilities.data?.[0]?.can_update === true });
+      setAndamento({
+        tenantId,
+        ids: followups.ids,
+        canEdit: !capabilities.error && capabilities.data?.[0]?.can_update === true,
+      });
       setCarregando(false);
     }
 
@@ -110,9 +122,10 @@ export function SinoAlertas() {
       toast.error("Não foi possível registrar o acompanhamento. Verifique suas permissões.");
       return;
     }
-    setAndamento((current) => current.tenantId === tenantId
-      ? { ...current, ids: Array.from(new Set([...current.ids, contractId])) }
-      : current,
+    setAndamento((current) =>
+      current.tenantId === tenantId
+        ? { ...current, ids: Array.from(new Set([...current.ids, contractId])) }
+        : current,
     );
     toast.success("Acompanhamento de renovação registrado para esta Secretaria.");
   }
@@ -168,11 +181,12 @@ export function SinoAlertas() {
                   const emAndamento = contrato && marcados.has(aviso.id);
                   const detailHref = `${aviso.destino}?${contrato ? "contrato" : "documento"}=${encodeURIComponent(aviso.id)}`;
                   const aditivoHref = `/contratos?contrato=${encodeURIComponent(aviso.id)}&aditivo=novo`;
-                  const statusClass = aviso.dias < 30
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : aviso.dias <= 60
-                      ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                      : "border-primary/30 bg-primary/10 text-primary";
+                  const statusClass =
+                    aviso.dias < 30
+                      ? "border-destructive/30 bg-destructive/10 text-destructive"
+                      : aviso.dias <= 60
+                        ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        : "border-primary/30 bg-primary/10 text-primary";
                   return (
                     <li key={`${aviso.tipo}-${aviso.id}`} className="rounded-md border p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -185,7 +199,9 @@ export function SinoAlertas() {
                         </Badge>
                         {emAndamento && <Badge variant="secondary">Em andamento</Badge>}
                       </div>
-                      <p className="mt-2 font-medium">{aviso.tipo}: {aviso.titulo}</p>
+                      <p className="mt-2 font-medium">
+                        {aviso.tipo}: {aviso.titulo}
+                      </p>
                       {aviso.complemento && (
                         <p className="mt-1 text-xs text-muted-foreground">{aviso.complemento}</p>
                       )}
@@ -199,9 +215,15 @@ export function SinoAlertas() {
                               <a href={aditivoHref}>Iniciar aditivo</a>
                             </Button>
                             {!emAndamento && (
-                              <Button size="sm" variant="secondary" disabled={marcandoId === aviso.id}
-                                onClick={() => void marcarEmAndamento(aviso.id)}>
-                                {marcandoId === aviso.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={marcandoId === aviso.id}
+                                onClick={() => void marcarEmAndamento(aviso.id)}
+                              >
+                                {marcandoId === aviso.id && (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                )}
                                 Marcar como em andamento
                               </Button>
                             )}
