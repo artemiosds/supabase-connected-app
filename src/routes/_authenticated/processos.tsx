@@ -3320,6 +3320,12 @@ function DadosEstruturados(props: {
                               <tr key={q.id} className="border-t align-top">
                                 <td className="p-2">
                                   {q.source_name}
+                                  {q.source_type === "fornecedor" &&
+                                    q.supplier_selection_justification && (
+                                      <p className="mt-1 max-w-[240px] whitespace-normal text-xs text-muted-foreground">
+                                        Escolha do fornecedor: {q.supplier_selection_justification}
+                                      </p>
+                                    )}
                                   {q.selected_for_estimate && (
                                     <Badge className="ml-2" variant="secondary">
                                       Referência escolhida
