@@ -201,6 +201,16 @@ const TIPOS = [
   ["outros", "Outros"],
 ] as const;
 
+const ROTULOS_CATEGORIA_MODELO: Record<string, string> = {
+  dfd: "DFD",
+  etp: "ETP",
+  risk_analysis: "Análise de riscos",
+  risk_matrix: "Matriz contratual de riscos",
+  tr: "Termo de Referência",
+  term_addendum_renewal: "Termo aditivo de prorrogação",
+  custom: "Outro documento",
+};
+
 function dataLocal(data: string | null): string {
   if (!data) return "Sem vencimento";
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
@@ -2194,7 +2204,9 @@ function Documentos() {
                         </p>
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant="outline">Versão {m.version}</Badge>
-                          <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
+                          <Badge variant="outline">
+                            {ROTULOS_CATEGORIA_MODELO[m.template_type] ?? m.template_type}
+                          </Badge>
                           {m.legal_basis && <span>{m.legal_basis}</span>}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
@@ -2709,6 +2721,9 @@ function Documentos() {
                   <SelectItem value="risk_analysis">Análise de riscos</SelectItem>
                   <SelectItem value="risk_matrix">Matriz contratual de riscos</SelectItem>
                   <SelectItem value="tr">Termo de Referência</SelectItem>
+                  <SelectItem value="term_addendum_renewal">
+                    Termo aditivo de prorrogação
+                  </SelectItem>
                   <SelectItem value="custom">Outro documento</SelectItem>
                 </SelectContent>
               </Select>
