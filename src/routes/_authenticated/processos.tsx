@@ -1952,14 +1952,14 @@ function DadosEstruturados(props: {
     const hasPriorityPriceSources = quotes.some(
       (quote) =>
         quote.is_active &&
-        ["painel_precos", "contratacoes_publicas"].includes(quote.source_type),
+        ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(quote.source_type),
     );
     if (
       !hasPriorityPriceSources &&
       complianceForm.priority_sources_justification.trim().length < 20
     ) {
       toast.error(
-        "Justifique a impossibilidade de priorizar o Painel oficial ou contratações públicas similares (mínimo de 20 caracteres).",
+        "Justifique a impossibilidade de priorizar o Painel oficial, Banco de Preços em Saúde ou contratações públicas similares (mínimo de 20 caracteres).",
       );
       return;
     }
@@ -3208,11 +3208,11 @@ function DadosEstruturados(props: {
                       {!quotes.some(
                         (quote) =>
                           quote.is_active &&
-                          ["painel_precos", "contratacoes_publicas"].includes(quote.source_type),
+                          ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(quote.source_type),
                       ) && (
                         <div className="space-y-1 sm:col-span-2">
                           <Label>
-                            Justificativa para não priorizar Painel oficial/contratações públicas *
+                            Justificativa para não priorizar fontes públicas prioritárias *
                           </Label>
                           <Textarea
                             rows={2}
@@ -3224,7 +3224,7 @@ function DadosEstruturados(props: {
                                 priority_sources_justification: event.target.value,
                               }))
                             }
-                            placeholder="Explique por que não foi possível utilizar os parâmetros prioritários I e II do art. 5º, § 1º, da IN 65/2021."
+                            placeholder="Explique por que não foi possível utilizar Painel de Preços, Banco de Preços em Saúde ou contratações públicas similares (art. 5º, § 1º, IN 65/2021)."
                           />
                         </div>
                       )}
