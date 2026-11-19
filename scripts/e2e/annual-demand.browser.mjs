@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 
-export async function verifyAnnualDemand({
-  page,
-  browser,
-  appUrl,
-  password,
-  tenantId,
-  readRows,
-  callRpc,
-}) {
+export async function verifyAnnualDemand({ page, reviewer, appUrl, tenantId, readRows, callRpc }) {
   const title = "PCA E2E — materiais de atenção básica";
   const justification = "Planejamento anual de reposição da unidade sintética";
   const number = "E2E-PCA-2026-001";
@@ -45,25 +37,11 @@ export async function verifyAnnualDemand({
     p_data: { number, modality: "pregao" },
   };
   assert.ok((await callRpc("manage_annual_demand", args)).status >= 400);
-  const reviewerContext = await browser.newContext();
-  try {
-    const reviewer = await reviewerContext.newPage();
-    await reviewer.addInitScript((id) => localStorage.setItem("gfs:organizacao-id", id), tenantId);
-    await reviewer.goto(appUrl + "/entrar?portal=secretaria");
-    await reviewer.getByLabel("E-mail").fill("reviewer.secretaria.a@example.invalid");
-    await reviewer.locator("#senha").fill(password);
-    await Promise.all([
-      reviewer.waitForURL(/\/painel(?:[/?#]|$)/),
-      reviewer.getByRole("button", { name: "Entrar", exact: true }).click(),
-    ]);
-    await open(reviewer);
-    await card(reviewer).getByText("Aguardando aprovação").waitFor();
-    assert.equal(await reviewer.getByLabel("Objeto da demanda").count(), 0);
-    await card(reviewer).getByRole("button", { name: "Aprovar demanda" }).click();
-    await card(reviewer).getByText("Demanda aprovada").waitFor();
-  } finally {
-    await reviewerContext.close();
-  }
+  await open(reviewer);
+  await card(reviewer).getByText("Aguardando aprovação").waitFor();
+  assert.equal(await reviewer.getByLabel("Objeto da demanda").count(), 0);
+  await card(reviewer).getByRole("button", { name: "Aprovar demanda" }).click();
+  await card(reviewer).getByText("Demanda aprovada").waitFor();
   await open(page);
   await card(page).getByLabel("Número do processo").fill(number);
   await card(page).getByLabel("Modalidade").selectOption("pregao");

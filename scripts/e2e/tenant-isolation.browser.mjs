@@ -1590,6 +1590,7 @@ async function verifyProcurementLifecycle() {
       const reviewerRow = reviewer.getByRole("row").filter({ hasText: mapTitle });
       await reviewerRow.getByRole("button", { name: "Aprovar", exact: true }).click();
       await reviewerRow.getByText("Aprovado", { exact: true }).waitFor();
+      await verifyAnnualDemand({ page, reviewer, appUrl, tenantId, readRows, callRpc });
     } finally {
       await reviewerContext.close();
     }
@@ -1631,7 +1632,6 @@ async function verifyProcurementLifecycle() {
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );
-    await verifyAnnualDemand({ page, browser, appUrl, password, tenantId, readRows, callRpc });
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
     await page
