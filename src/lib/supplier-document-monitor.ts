@@ -7,12 +7,7 @@ export type DocumentoMonitorado = {
 };
 
 export type SituacaoMonitoramento =
-  | "vencido"
-  | "vence_hoje"
-  | "a_vencer"
-  | "sem_documentos"
-  | "sem_validade"
-  | "sem_alerta";
+  "vencido" | "vence_hoje" | "a_vencer" | "sem_documentos" | "sem_validade" | "sem_alerta";
 
 export type ResumoDocumentalFornecedor = {
   total: number;
