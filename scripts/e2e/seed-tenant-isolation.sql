@@ -201,7 +201,7 @@ WHERE roles.id IN (
   )
   AND permissions.code IN (
     'org:view', 'org:edit', 'suppliers:view', 'suppliers:create', 'suppliers:update',
-    'documents:view', 'documents:create', 'documents:update', 'documents:approve', 'documents:manage_templates', 'documents:sign'
+    'documents:view', 'documents:create', 'documents:update', 'documents:approve', 'documents:manage_templates', 'documents:sign', 'audit:view'
   )
 ON CONFLICT DO NOTHING;
 

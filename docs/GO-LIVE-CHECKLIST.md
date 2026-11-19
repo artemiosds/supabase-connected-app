@@ -1,5 +1,11 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
+## Complemento de homologação do mapa — 19/11/2026
+
+- Corrigida a abertura do mapa na aba de documentos gerados e preservada a orientação A4 paisagem no GED. O cenário de navegador agora percorre validação normativa, aprovação do preço, aprovação documental por outro usuário, assinatura simples e conferência do SHA-256 do PDF final.
+- O primeiro ensaio identificou um erro do gatilho de auditoria na gravação do enquadramento normativo. A migration incremental `20261119120941_fix_procurement_compliance_audit_identity.sql` corrige o identificador do evento para usar o processo. Validar na CI e programar a aplicação controlada no SMS2; não reaplicar a história existente.
+- A homologação com documento oficial, norma aplicável e responsáveis reais do órgão continua pendente de aceite humano. A execução automatizada usa exclusivamente dados sintéticos em ambiente descartável.
+
 ## Atualização técnica — 19/11/2026
 
 **Decisão operacional: PENDENTE DE HOMOLOGAÇÃO.** O mapa comparativo tem cotação com rastreabilidade da fonte, frete rateado, seleção de referência, aprovação do preço por item, justificativa excepcional quando há menos de três preços e validação normativa por processo. A exportação é identificada como rascunho enquanto essas validações estiverem pendentes. O fluxo documental exige aprovação independente antes da assinatura eletrônica simples; o PDF final é armazenado no bucket privado e o download confere seu SHA-256. Isso não substitui o aceite jurídico e visual da Secretaria nem equivale a uma assinatura qualificada ICP-Brasil.

@@ -1502,6 +1502,14 @@ async function verifyProcurementLifecycle() {
       .fill("Enquadramento exclusivamente sintético para validar o fluxo em banco descartável.");
     await mapDialog.getByRole("button", { name: "Registrar validação normativa" }).click();
     await page.getByText("Enquadramento normativo registrado para este processo.").waitFor();
+    await mapDialog.getByText("Validado", { exact: true }).waitFor();
+    const complianceAudit = await readRows(
+      "audit_events",
+      { tenant_id: tenantId, entity: "procurement_process_compliance", entity_id: processId },
+      "action,actor_id,details",
+    );
+    assert.equal(complianceAudit.status, 200);
+    assert.ok(complianceAudit.body.some((event) => event.action === "INSERT"));
     await mapDialog
       .getByPlaceholder("Explique por que o método é adequado à série de preços e ao objeto.")
       .fill("Mediana da série sintética de preços efetivos para comprovar o cálculo.");
