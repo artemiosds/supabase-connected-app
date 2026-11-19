@@ -1525,7 +1525,7 @@ function Documentos() {
         documento.process_snapshot &&
           typeof documento.process_snapshot === "object" &&
           !Array.isArray(documento.process_snapshot) &&
-          documento.process_snapshot.document_kind === "price_map"
+          documento.process_snapshot["document_kind"] === "price_map"
           ? "landscape"
           : "portrait",
       );
