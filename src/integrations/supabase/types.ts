@@ -1712,6 +1712,8 @@ export type Database = {
           source_name: string
           source_tax_id: string | null
           source_type: string
+          supplier_consultation_response_deadline: string | null
+          supplier_consultation_sent_at: string | null
           supplier_id: string | null
           supplier_response_deadline: string | null
           supplier_selection_justification: string | null
@@ -1752,6 +1754,8 @@ export type Database = {
           source_name: string
           source_tax_id?: string | null
           source_type?: string
+          supplier_consultation_response_deadline?: string | null
+          supplier_consultation_sent_at?: string | null
           supplier_id?: string | null
           supplier_response_deadline?: string | null
           supplier_selection_justification?: string | null
@@ -1792,6 +1796,8 @@ export type Database = {
           source_name?: string
           source_tax_id?: string | null
           source_type?: string
+          supplier_consultation_response_deadline?: string | null
+          supplier_consultation_sent_at?: string | null
           supplier_id?: string | null
           supplier_response_deadline?: string | null
           supplier_selection_justification?: string | null
