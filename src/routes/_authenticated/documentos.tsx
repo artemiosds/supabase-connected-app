@@ -1378,7 +1378,7 @@ function Documentos() {
       return;
     }
     setSalvandoGerado(true);
-    if (processoGeracao) {
+    if (processoGeracao && modeloDoGerador?.template_type !== "term_addendum_renewal") {
       if (!modeloSelecionado) {
         setSalvandoGerado(false);
         toast.error("Selecione um modelo instalado nesta Secretaria.");
