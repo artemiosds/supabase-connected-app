@@ -143,7 +143,7 @@ function Metrica({
 }: {
   label: string;
   value: number | null;
-  detail?: string;
+  detail?: string | undefined;
 }) {
   return (
     <div className="rounded-lg border bg-card p-3">
@@ -241,9 +241,9 @@ export function FichaFornecedor({
   const [recarregar, setRecarregar] = useState(0);
   const open = fornecedor !== null;
   const supplierId = fornecedor?.id ?? null;
-  const documentosEnabled = enabledModules.documentos === true;
-  const processosEnabled = enabledModules.processos === true;
-  const contratosEnabled = enabledModules.contratos === true;
+  const documentosEnabled = enabledModules["documentos"] === true;
+  const processosEnabled = enabledModules["processos"] === true;
+  const contratosEnabled = enabledModules["contratos"] === true;
   const hoje = dataLocalIso();
 
   useEffect(() => {
