@@ -33,6 +33,7 @@ export type CotacaoMapa = {
   payment_terms?: string | null;
   warranty_terms?: string | null;
   notes?: string | null;
+  supplier_selection_justification?: string | null;
   evidence_file_name?: string | null;
   evidence_mime_type?: string | null;
   evidence_file_size?: number | null;
@@ -248,6 +249,7 @@ export function gerarCsvMapaDePrecos(
       "Condição de pagamento",
       "Garantia",
       "Observações da fonte",
+      "Justificativa da escolha do fornecedor",
       "Quantidade cotada",
       "Preço unitário",
       "Frete",
@@ -293,6 +295,7 @@ export function gerarCsvMapaDePrecos(
         quote.payment_terms ?? "",
         quote.warranty_terms ?? "",
         quote.notes ?? "",
+        quote.supplier_selection_justification ?? "",
         quote.quantity,
         quote.unit_price,
         quote.delivery_cost,
