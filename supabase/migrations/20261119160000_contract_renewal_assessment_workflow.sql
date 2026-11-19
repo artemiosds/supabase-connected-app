@@ -637,6 +637,10 @@ DECLARE
   v_can_generate boolean;
   v_blockers text[];
   v_contract_process_id uuid;
+  v_template_variables jsonb;
+  v_variable record;
+  v_variable_key text;
+  v_variable_value text;
 BEGIN
   IF NEW.document_type IS DISTINCT FROM 'term_addendum_renewal' THEN
     RETURN NEW;
@@ -658,6 +662,13 @@ BEGIN
   IF NOT v_template_ok THEN
     RAISE EXCEPTION 'Selecione um modelo ativo de termo aditivo de prorrogação desta Secretaria.';
   END IF;
+
+  SELECT t.variables_schema
+    INTO v_template_variables
+  FROM public.document_templates t
+  WHERE t.tenant_id = NEW.tenant_id
+    AND t.id = NEW.template_id
+    AND t.is_active;
 
   SELECT c.process_id INTO v_contract_process_id
   FROM public.contracts c
