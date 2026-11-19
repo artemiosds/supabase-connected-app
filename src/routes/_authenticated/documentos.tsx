@@ -1624,6 +1624,7 @@ function Documentos() {
             " criado a partir do texto revisado; a formatação do DOCX original não está vinculada a este rascunho.",
         );
       }
+      return null;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Não foi possível exportar o documento.",
