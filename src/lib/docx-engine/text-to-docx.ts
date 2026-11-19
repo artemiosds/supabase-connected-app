@@ -37,16 +37,21 @@ function isHeading(line: string): boolean {
 
 function table(rows: string[][], tableWidth = 9000): string {
   const cols = Math.max(...rows.map((r) => r.length));
-  const width = Math.floor(tableWidth / cols);
+  const baseWidth = Math.floor(tableWidth / cols);
+  const remainder = tableWidth - baseWidth * cols;
+  const columnWidths = Array.from(
+    { length: cols },
+    (_, index) => baseWidth + (index < remainder ? 1 : 0),
+  );
   const border = (s: string) => `<w:${s} w:val="single" w:sz="4" w:color="808080"/>`;
-  const grid = Array.from({ length: cols }, () => `<w:gridCol w:w="${width}"/>`).join("");
+  const grid = columnWidths.map((width) => `<w:gridCol w:w="${width}"/>`).join("");
   const body = rows
     .map(
       (r, ri) =>
-        `<w:tr>${ri === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${Array.from({ length: cols }, (_, ci) => `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr><w:p>${runs(r[ci] ?? "", ri === 0)}</w:p></w:tc>`).join("")}</w:tr>`,
+        `<w:tr>${ri === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${Array.from({ length: cols }, (_, ci) => `<w:tc><w:tcPr><w:tcW w:w="${columnWidths[ci]}" w:type="dxa"/></w:tcPr><w:p>${runs(r[ci] ?? "", ri === 0)}</w:p></w:tc>`).join("")}</w:tr>`,
     )
     .join("");
-  return `<w:tbl><w:tblPr><w:tblW w:w="${width * cols}" w:type="dxa"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(border).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${body}</w:tbl><w:p/>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidth}" w:type="dxa"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(border).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${body}</w:tbl><w:p/>`;
 }
 
 /**
