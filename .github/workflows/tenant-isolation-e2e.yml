@@ -92,9 +92,9 @@ jobs:
           export EXPIRY_ALERTS_CRON_SECRET="gfs-e2e-local-only-secret-2026-11-13"
           edge_env_file="$(mktemp)"
           printf 'EXPIRY_ALERTS_CRON_SECRET=%s\n' "$EXPIRY_ALERTS_CRON_SECRET" > "$edge_env_file"
+          printf 'APP_URL=http://127.0.0.1:4173\n' >> "$edge_env_file"
 
-          supabase functions serve send-expiry-notifications \
-            --no-verify-jwt \
+          supabase functions serve \
             --env-file "$edge_env_file" \
             > /tmp/gfs-expiry-functions.log 2>&1 &
           echo "$!" > /tmp/gfs-expiry-functions.pid

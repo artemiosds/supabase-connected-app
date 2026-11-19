@@ -1522,6 +1522,12 @@ function Documentos() {
                 .join("\n")
           : documento.content_snapshot,
         documento.title,
+        documento.process_snapshot &&
+          typeof documento.process_snapshot === "object" &&
+          !Array.isArray(documento.process_snapshot) &&
+          documento.process_snapshot.document_kind === "price_map"
+          ? "landscape"
+          : "portrait",
       );
       let values: Record<string, string> = {};
       let originalUsado = false;
@@ -1867,20 +1873,23 @@ function Documentos() {
     const url = new URL(window.location.href);
     const documentoId = url.searchParams.get("documento");
     if (!documentoId) return;
-    if (!documentos.some((item) => item.id === documentoId)) {
+    const gerado = gerados.some((item) => item.id === documentoId);
+    if (!gerado && !documentos.some((item) => item.id === documentoId)) {
       toast.error("O documento solicitado não está disponível nesta Secretaria.");
     } else {
-      setAba("vencimentos");
+      setAba(gerado ? "gerados" : "vencimentos");
       window.requestAnimationFrame(() => {
-        document.getElementById(`documento-${documentoId}`)?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        document
+          .getElementById(`${gerado ? "gerado" : "documento"}-${documentoId}`)
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
       });
     }
     url.searchParams.delete("documento");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-  }, [loading, selecionado?.id, tenantCarregadoId, documentos]);
+  }, [loading, selecionado?.id, tenantCarregadoId, documentos, gerados]);
 
   if (!selecionado)
     return (
@@ -2238,7 +2247,7 @@ function Documentos() {
                         gerados.map((d) => {
                           const camposPendentes = extractPendingDocumentFields(d.content_snapshot);
                           return (
-                            <tr key={d.id} className="border-t">
+                            <tr key={d.id} id={`gerado-${d.id}`} className="border-t">
                               <td className="p-3">
                                 <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 import JSZip from "jszip";
+import { PDFDocument } from "pdf-lib";
 
 const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -1474,6 +1476,115 @@ async function verifyProcurementLifecycle() {
     assert.equal(budgets.status, 200);
     assert.equal(budgets.body.length, 1);
     assert.equal(budgets.body[0].budget_unit, "Fundo Municipal de Saúde E2E");
+
+    // Complete the official map only after the contract lifecycle has finished.
+    await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
+    await processCard.click();
+    await detailDialog.getByRole("button", { name: "Itens, preços e orçamento" }).click();
+    await composition.getByRole("button", { name: "Mapa comparativo (2)" }).click();
+    const mapField = (label) => mapDialog.getByText(label, { exact: true }).locator("..");
+    async function chooseMapOption(label, option) {
+      await mapField(label).getByRole("combobox").click();
+      await page.getByRole("option", { name: option, exact: true }).click();
+    }
+    await chooseMapOption("Origem dos recursos do processo *", "Recursos próprios do ente");
+    await chooseMapOption("Base normativa declarada", "Outro fundamento normativo");
+    await chooseMapOption("Aplicabilidade da IN 65/2021", "Não aplicável (exige justificativa)");
+    await mapDialog
+      .getByPlaceholder(
+        "Liste fornecedor, data da consulta, canal e prazo de resposta; se nenhum deixou de responder, declare expressamente.",
+      )
+      .fill("Cenário sintético de CI: nenhum fornecedor consultado deixou de responder.");
+    await mapDialog
+      .getByPlaceholder(
+        "Registre a origem dos recursos, a norma local aplicável ou a justificativa de não aplicabilidade.",
+      )
+      .fill("Enquadramento exclusivamente sintético para validar o fluxo em banco descartável.");
+    await mapDialog.getByRole("button", { name: "Registrar validação normativa" }).click();
+    await page.getByText("Enquadramento normativo registrado para este processo.").waitFor();
+    await mapDialog
+      .getByPlaceholder("Explique por que o método é adequado à série de preços e ao objeto.")
+      .fill("Mediana da série sintética de preços efetivos para comprovar o cálculo.");
+    await mapDialog
+      .getByPlaceholder(
+        "Registre a impossibilidade de obter três preços e a fundamentação para prosseguir.",
+      )
+      .fill("Duas fontes sintéticas disponíveis exclusivamente neste cenário de CI.");
+    await mapDialog.getByRole("button", { name: "Registrar aprovação do preço" }).click();
+    await page.getByText(/Preço aprovado:/).waitFor();
+    await mapDialog.getByText("Preço estimado aprovado", { exact: true }).waitFor();
+    await mapDialog
+      .getByRole("button", { name: "Encaminhar mapa para aprovação e assinatura" })
+      .click();
+    const mapTitle = `Mapa comparativo — ${processNumber}`;
+    const mapRow = page.getByRole("row").filter({ hasText: mapTitle });
+    await mapRow.waitFor();
+    const [draftDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      mapRow.getByRole("button", { name: "PDF (rascunho)", exact: true }).click(),
+    ]);
+    const draftPdf = await PDFDocument.load(await readFile(await draftDownload.path()));
+    assert.ok(draftPdf.getPages().every((p) => p.getWidth() > p.getHeight()));
+    await mapRow.getByRole("button", { name: "Enviar para aprovação", exact: true }).click();
+    await mapRow.getByText("Aguardando aprovação", { exact: true }).waitFor();
+
+    const reviewerContext = await browser.newContext();
+    try {
+      const reviewer = await reviewerContext.newPage();
+      await reviewer.addInitScript(
+        (id) => localStorage.setItem("gfs:organizacao-id", id),
+        tenantId,
+      );
+      await reviewer.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
+      await reviewer.getByLabel("E-mail").fill("reviewer.secretaria.a@example.invalid");
+      await reviewer.locator("#senha").fill(password);
+      await Promise.all([
+        reviewer.waitForURL(/\/painel(?:[/?#]|$)/),
+        reviewer.getByRole("button", { name: "Entrar", exact: true }).click(),
+      ]);
+      await reviewer.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
+      await reviewer.getByRole("tab", { name: /Gerados/ }).click();
+      const reviewerRow = reviewer.getByRole("row").filter({ hasText: mapTitle });
+      await reviewerRow.getByRole("button", { name: "Aprovar", exact: true }).click();
+      await reviewerRow.getByText("Aprovado", { exact: true }).waitFor();
+    } finally {
+      await reviewerContext.close();
+    }
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: /Gerados/ }).click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await mapRow.getByRole("button", { name: "Assinar", exact: true }).click();
+    const signedDownloadButton = mapRow.getByRole("button", { name: /PDF assinado/ });
+    await signedDownloadButton.waitFor();
+    const [signedDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      signedDownloadButton.click(),
+    ]);
+    const signedBytes = await readFile(await signedDownload.path());
+    const signedPdf = await PDFDocument.load(signedBytes);
+    assert.equal(signedPdf.getPageCount(), draftPdf.getPageCount() + 1);
+    assert.ok(
+      signedPdf
+        .getPages()
+        .slice(0, -1)
+        .every((p) => p.getWidth() > p.getHeight()),
+    );
+    const signedRows = await readRows(
+      "generated_documents",
+      { tenant_id: tenantId, title: mapTitle },
+      "status,signed_pdf_sha256,signed_pdf_size",
+    );
+    assert.equal(signedRows.status, 200);
+    assert.equal(signedRows.body.length, 1);
+    assert.equal(signedRows.body[0].status, "signed");
+    assert.equal(signedRows.body[0].signed_pdf_size, signedBytes.length);
+    assert.equal(
+      signedRows.body[0].signed_pdf_sha256,
+      createHash("sha256").update(signedBytes).digest("hex"),
+    );
+    console.log(
+      "PASS official price map: approved estimate, normative decision, independent review, landscape PDF and signed artifact integrity",
+    );
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );
