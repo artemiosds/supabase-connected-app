@@ -1,3 +1,4 @@
+import { verifyAnnualDemand } from "./annual-demand.browser.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -1630,6 +1631,7 @@ async function verifyProcurementLifecycle() {
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );
+    await verifyAnnualDemand({ page, browser, appUrl, password, tenantId, readRows, callRpc });
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
     await page
