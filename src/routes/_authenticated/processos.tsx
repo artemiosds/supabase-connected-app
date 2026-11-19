@@ -1863,6 +1863,7 @@ function DadosEstruturados(props: {
         template: await buildDocxFromText(
           lines.join("\n"),
           mapaPronto ? "MAPA COMPARATIVO DE PREÇOS" : "RASCUNHO — MAPA COMPARATIVO DE PREÇOS",
+          "landscape",
         ),
         values: {},
         items: [],
