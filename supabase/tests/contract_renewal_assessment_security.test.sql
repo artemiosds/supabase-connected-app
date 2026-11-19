@@ -1,7 +1,7 @@
 -- Segurança, isolamento por Secretaria e bloqueio de geração da renovação contínua.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(25);
+SELECT extensions.plan(26);
 
 SELECT extensions.ok(
   to_regclass('public.contract_renewal_assessments') IS NOT NULL,
@@ -170,6 +170,16 @@ SELECT extensions.ok(
       AND pg_catalog.pg_get_triggerdef(t.oid) ILIKE '%process_id%'
   ),
   'the server revalidates renewal draft content and relationship edits, not only initial insertion'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%OLD.document_type%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%template_type = ''term_addendum_renewal''%',
+  'the server prevents renewal drafts from being reclassified and prevents using the renewal template as a generic document'
 );
 
 SELECT extensions.ok(
