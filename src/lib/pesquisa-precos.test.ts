@@ -67,7 +67,8 @@ describe("mapa de pesquisa de preços", () => {
           selected_for_estimate: false,
           is_active: true,
           source_type: "fornecedor",
-          supplier_selection_justification: "Fornecedor selecionado por atender à especificação e ao prazo local.",
+          supplier_selection_justification:
+            "Fornecedor selecionado por atender à especificação e ao prazo local.",
           reference_identifier: "PNCP-123",
           accessed_at: "2026-11-18T10:00:00-03:00",
           supplier_response_deadline: "2026-11-30",
