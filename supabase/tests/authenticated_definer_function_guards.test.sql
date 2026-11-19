@@ -11,8 +11,8 @@ SELECT extensions.is(
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='public' AND p.prosecdef
     AND pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')),
- 42,
- 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 42 functions'
+ 43,
+ 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 43 functions'
 );
 
 SELECT extensions.is(

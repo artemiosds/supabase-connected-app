@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_procurement_demands: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          id: string
+          items: Json
+          justification: string
+          plan_year: number
+          process_id: string | null
+          submitted_at: string
+          submitted_by: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          id: string
+          items: Json
+          justification: string
+          plan_year: number
+          process_id?: string | null
+          submitted_at?: string
+          submitted_by: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          id?: string
+          items?: Json
+          justification?: string
+          plan_year?: number
+          process_id?: string | null
+          submitted_at?: string
+          submitted_by?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annual_procurement_demands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annual_procurement_demands_tenant_id_process_id_fkey"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           action: string
@@ -3091,6 +3148,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      annual_demand_capabilities: {
+        Args: { p_tenant_id: string }
+        Returns: { can_create: boolean; can_approve: boolean }[]
+      }
+      manage_annual_demand: {
+        Args: { p_tenant_id: string; p_id: string; p_action: string; p_data: Json }
+        Returns: string
+      }
       accept_my_tenant_invitations: { Args: never; Returns: number }
       activate_my_platform_staff: { Args: never; Returns: boolean }
       activate_my_platform_support_agent: { Args: never; Returns: boolean }
