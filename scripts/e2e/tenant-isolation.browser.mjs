@@ -1141,6 +1141,20 @@ async function verifyProcurementLifecycle() {
 
     await page.goto(`${appUrl}/contratos`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Contratos e vencimentos", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Central de renovações", exact: true }).click();
+    await page.getByRole("heading", { name: "Central de renovações", exact: true }).waitFor();
+    await page.getByRole("textbox", { name: "Pesquisar contratos" }).fill("E2E-2026-A");
+    await page.getByRole("button", { name: "Iniciar acompanhamento", exact: true }).click();
+    await page.getByText(/Acompanhamento registrado em/).waitFor();
+    await page.getByRole("button", { name: "Registrar aditivo formalizado", exact: true }).click();
+    const renewalDialog = page
+      .getByRole("dialog")
+      .filter({ hasText: "Termo aditivo — Contrato E2E-2026-A" });
+    await renewalDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await page.getByRole("button", { name: /Contratos e atas/ }).click();
+    console.log(
+      "PASS renewal workspace: upcoming contract, persisted follow-up and amendment shortcut",
+    );
     await page.getByRole("button", { name: "Novo contrato", exact: false }).click();
     const contractDialog = page.getByRole("dialog").filter({ hasText: "Novo contrato" });
     await contractDialog.getByPlaceholder("042/2026").fill(contractNumber);

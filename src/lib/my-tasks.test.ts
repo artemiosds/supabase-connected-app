@@ -91,7 +91,7 @@ describe("minhas tarefas municipais", () => {
     expect(tasks.map((task) => task.entityId)).toEqual(["p1"]);
   });
 
-  it("filtra contratos de 90 dias e certidões apenas de fornecedores fiscalizados", () => {
+  it("filtra contratos de até 120 dias e certidões apenas de fornecedores fiscalizados", () => {
     const tasks = montarMinhasTarefas(
       "user-1",
       null,
@@ -110,6 +110,23 @@ describe("minhas tarefas municipais", () => {
       hoje,
     );
     expect(tasks.map((task) => task.id)).toEqual(["certidao-d1", "contrato-c1"]);
+  });
+
+  it("inclui planejamento antecipado e contratos vencidos ainda vigentes", () => {
+    const tasks = montarMinhasTarefas(
+      "user-1",
+      null,
+      [],
+      [],
+      [
+        contrato({ id: "overdue", end_date: "2026-11-17" }),
+        contrato({ id: "planning", end_date: "2027-03-01" }),
+        contrato({ id: "closed", status: "encerrado", end_date: "2026-11-17" }),
+      ],
+      [],
+      hoje,
+    );
+    expect(tasks.map((task) => task.entityId)).toEqual(["overdue", "planning"]);
   });
 
   it("define as faixas de criticidade solicitadas", () => {

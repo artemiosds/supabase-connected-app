@@ -402,7 +402,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                       : FileText;
                 const critical = criticidadeTarefa(task.dias) === "critical";
                 const attention = criticidadeTarefa(task.dias) === "attention";
-                const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}`;
+                const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}${task.tipo === "contrato" ? "&renovacao=1" : ""}`;
                 return (
                   <div className="group relative bg-card transition-colors hover:bg-muted/25">
                     <div

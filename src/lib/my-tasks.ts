@@ -109,15 +109,15 @@ export function montarMinhasTarefas(
   );
   for (const contrato of meusContratos) {
     const dias = diasAte(contrato.end_date, hoje);
-    if (dias < 0 || dias > 90) continue;
+    if (dias > 120) continue;
     tarefas.push({
       id: `contrato-${contrato.id}`,
       tipo: "contrato",
       titulo: `Contrato nº ${contrato.number}`,
       descricao:
         contrato.inspector_user_id === userId
-          ? "Contrato sob sua fiscalização"
-          : "Contrato sob sua gestão",
+          ? "Revisar vigência do contrato sob sua fiscalização"
+          : "Planejar providências para o contrato sob sua gestão",
       dias,
       destino: "/contratos",
       entityId: contrato.id,

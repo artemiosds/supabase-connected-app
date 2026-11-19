@@ -28,6 +28,12 @@ export function SinoAlertas() {
     },
   );
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    const atualize = () => setRefresh((value) => value + 1);
+    window.addEventListener("primus:renewal-followup", atualize);
+    return () => window.removeEventListener("primus:renewal-followup", atualize);
+  }, []);
   const tenantIdAtual = selecionado?.id ?? "";
   const marcados =
     andamento.tenantId === tenantIdAtual ? new Set(andamento.ids) : new Set<string>();
@@ -105,7 +111,7 @@ export function SinoAlertas() {
     return () => {
       ativo = false;
     };
-  }, [selecionado?.id]);
+  }, [selecionado?.id, refresh]);
 
   async function marcarEmAndamento(contractId: string) {
     const tenantId = selecionado?.id;

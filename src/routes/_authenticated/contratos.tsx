@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import type { CsvColumn } from "@/lib/csv-export";
 import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
+import { RenewalWorkspace } from "@/components/contracts/renewal-workspace";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -170,7 +171,7 @@ function Contratos() {
   const [contratoEditando, setContratoEditando] = useState<Contrato | null>(null);
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "alerta" | NivelAlerta>("todos");
-  const [aba, setAba] = useState<"contratos" | "aditivos">("contratos");
+  const [aba, setAba] = useState<"contratos" | "aditivos" | "renovacoes">("contratos");
   const [busca, setBusca] = useState("");
   const [tipoAditivo, setTipoAditivo] = useState("todos");
   const [seletorAberto, setSeletorAberto] = useState(false);
@@ -276,7 +277,9 @@ function Contratos() {
     const novo = url.searchParams.get("novo");
     const contractId = url.searchParams.get("contrato");
     const novoAditivo = url.searchParams.get("aditivo") === "novo";
-    if (!novo && !contractId) return;
+    const renovacao = url.searchParams.get("renovacao") === "1";
+    if (!novo && !contractId && !renovacao) return;
+    if (renovacao) setAba("renovacoes");
     if (novo === "1") {
       setContratoEditando(null);
       setNovoAberto(true);
@@ -285,6 +288,8 @@ function Contratos() {
       const contrato = lista.find((item) => item.id === contractId);
       if (!contrato) {
         toast.error("O contrato solicitado não está disponível nesta Secretaria.");
+      } else if (renovacao) {
+        setBusca(contrato.number);
       } else if (novoAditivo) {
         setAditivoDe(contrato);
       } else {
@@ -297,6 +302,7 @@ function Contratos() {
     url.searchParams.delete("novo");
     url.searchParams.delete("contrato");
     url.searchParams.delete("aditivo");
+    url.searchParams.delete("renovacao");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   }, [loading, selecionado?.id, tenantCarregadoId, lista]);
 
@@ -501,15 +507,24 @@ function Contratos() {
         >
           <History className="h-4 w-4" /> Central de aditivos ({aditivosAtuais.length})
         </Button>
+        <Button
+          variant={aba === "renovacoes" ? "default" : "ghost"}
+          onClick={() => {
+            setAba("renovacoes");
+            setBusca("");
+          }}
+        >
+          Central de renovações
+        </Button>
       </div>
 
       <div className="relative max-w-lg">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          aria-label={aba === "contratos" ? "Pesquisar contratos" : "Pesquisar aditivos"}
+          aria-label={aba === "aditivos" ? "Pesquisar aditivos" : "Pesquisar contratos"}
           placeholder={
-            aba === "contratos"
+            aba !== "aditivos"
               ? "Número, fornecedor, objeto, processo ou responsável"
               : "Número do aditivo, contrato, fornecedor ou justificativa"
           }
@@ -536,7 +551,20 @@ function Contratos() {
         </Alert>
       )}
 
-      {aba === "contratos" ? (
+      {aba === "renovacoes" ? (
+        loadingAtual ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <RenewalWorkspace
+            key={selecionado.id}
+            tenantId={selecionado.id}
+            userId={session?.user.id ?? ""}
+            contracts={listaAtual.filter((c) => termosBusca(textoContrato(c), busca))}
+            supplierName={nomeFornecedor}
+            onAmendment={(id) => setAditivoDe(listaAtual.find((c) => c.id === id) ?? null)}
+          />
+        )
+      ) : aba === "contratos" ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {(["vencido", "30", "60", "90", "120"] as NivelAlerta[]).map((n) => (
