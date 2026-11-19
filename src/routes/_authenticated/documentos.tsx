@@ -1,3 +1,4 @@
+import { AnnualDemandSource } from "@/components/annual-demand-source";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -2984,6 +2985,9 @@ function Documentos() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
+            {dialogGerar && selecionado && processoGeracao && (
+              <AnnualDemandSource tenantId={selecionado.id} processId={processoGeracao} />
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {selecionado.enabled_modules["processos"] === true &&
                 selecionado.enabled_modules["documentos"] === true &&

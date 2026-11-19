@@ -1,3 +1,4 @@
+import { verifyAnnualDemand } from "./annual-demand.browser.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -1589,6 +1590,7 @@ async function verifyProcurementLifecycle() {
       const reviewerRow = reviewer.getByRole("row").filter({ hasText: mapTitle });
       await reviewerRow.getByRole("button", { name: "Aprovar", exact: true }).click();
       await reviewerRow.getByText("Aprovado", { exact: true }).waitFor();
+      await verifyAnnualDemand({ page, reviewer, appUrl, tenantId, readRows, callRpc });
     } finally {
       await reviewerContext.close();
     }
