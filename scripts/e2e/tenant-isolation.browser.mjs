@@ -1468,6 +1468,26 @@ async function verifyProcurementLifecycle() {
       "supressao",
     ]);
 
+    await page.getByRole("button", { name: /Central de aditivos/ }).click();
+    await page.getByRole("heading", { name: "Histórico consolidado de aditivos" }).waitFor();
+    await page.getByRole("textbox", { name: "Pesquisar aditivos" }).fill("4º Aditivo E2E");
+    await page.getByText("4º Aditivo E2E", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Ver contrato e histórico", exact: true }).click();
+    await page.getByText("Histórico de aditivos do contrato", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Novo aditivo", exact: true }).click();
+    const contractPicker = page
+      .getByRole("dialog")
+      .filter({ hasText: "Selecionar contrato para novo aditivo" });
+    await contractPicker
+      .getByRole("textbox", { name: "Buscar contrato para aditivo" })
+      .fill(contractNumber);
+    await contractPicker.getByRole("button", { name: new RegExp(contractNumber) }).click();
+    await amendmentDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await amendmentDialog.waitFor({ state: "hidden" });
+    console.log(
+      "PASS amendment workspace: search, consolidated history and quick contract selection",
+    );
+
     const budgets = await readRows(
       "procurement_budget_allocations",
       { tenant_id: tenantId, process_id: processId },
