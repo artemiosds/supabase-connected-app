@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   authenticated-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     concurrency:
       group: supabase-disposable-${{ github.ref }}
@@ -69,7 +69,14 @@ jobs:
       - name: Install pinned Playwright browser
         run: |
           npm install --no-save --package-lock=false playwright@1.65.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
+          # Hosted runners already carry most browser libraries. Only reach
+          # the apt mirrors when the actual Chromium launch requires them.
+          probe='import { chromium } from "playwright"; const browser = await chromium.launch(); await browser.close();'
+          if ! node --input-type=module -e "$probe"; then
+            npx playwright install --with-deps chromium
+            node --input-type=module -e "$probe"
+          fi
 
       - name: Seed synthetic users and run authenticated browser isolation tests
         shell: bash
