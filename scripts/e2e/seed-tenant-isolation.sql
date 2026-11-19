@@ -144,7 +144,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000001',
     'active',
-    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true,"processos":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true,"processos":true,"auditoria":true}'::jsonb
   ),
   (
     '91000000-0000-4000-8000-000000000002',
