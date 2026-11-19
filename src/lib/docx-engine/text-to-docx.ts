@@ -35,9 +35,9 @@ function isHeading(line: string): boolean {
   return letters.length >= 3 && letters === letters.toUpperCase();
 }
 
-function table(rows: string[][]): string {
+function table(rows: string[][], tableWidth = 9000): string {
   const cols = Math.max(...rows.map((r) => r.length));
-  const width = Math.floor(9000 / cols);
+  const width = Math.floor(tableWidth / cols);
   const border = (s: string) => `<w:${s} w:val="single" w:sz="4" w:color="808080"/>`;
   const grid = Array.from({ length: cols }, () => `<w:gridCol w:w="${width}"/>`).join("");
   const body = rows
@@ -61,6 +61,7 @@ export async function buildDocxFromText(
 ): Promise<Uint8Array> {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const parts: string[] = [];
+  const tableWidth = orientation === "landscape" ? 14500 : 9000;
   if (title?.trim()) parts.push(paragraph(title.trim(), "Title"));
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!;
@@ -71,7 +72,7 @@ export async function buildDocxFromText(
         i += 1;
       }
       i -= 1;
-      parts.push(table(rows));
+      parts.push(table(rows, tableWidth));
       continue;
     }
     parts.push(
