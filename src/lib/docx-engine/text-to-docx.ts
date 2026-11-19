@@ -84,8 +84,12 @@ export async function buildDocxFromText(
     orientation === "landscape"
       ? '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>'
       : '<w:pgSz w:w="11906" w:h="16838"/>';
+  const pageMargins =
+    orientation === "landscape"
+      ? '<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="709" w:footer="567" w:gutter="0"/>'
+      : '<w:pgMar w:top="1701" w:right="1134" w:bottom="1134" w:left="1701" w:header="709" w:footer="567" w:gutter="0"/>';
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr>${pageSize}<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="709" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr>${pageSize}${pageMargins}</w:sectPr></w:body></w:document>`;
   const zip = new JSZip();
   zip.file("[Content_Types].xml", CONTENT_TYPES);
   zip.file("_rels/.rels", ROOT_RELS);
