@@ -1052,7 +1052,9 @@ async function verifyProcurementLifecycle() {
       }
 
       await quoteForm.getByRole("button", { name: "Salvar cotação", exact: true }).click();
-      await page.getByText("Cotação registrada.", { exact: true }).waitFor();
+      await page
+        .getByText("Cotação registrada com rastreabilidade da fonte.", { exact: true })
+        .waitFor();
     }
 
     await addQuote(
