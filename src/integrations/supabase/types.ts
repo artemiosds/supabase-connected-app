@@ -276,6 +276,204 @@ export type Database = {
           },
         ]
       }
+      contract_renewal_assessments: {
+        Row: {
+          accumulated_months: number | null
+          authority_approved: boolean
+          budget_confirmed: boolean
+          contract_allows_extension: boolean
+          contract_nature: string
+          contract_id: string
+          continuity_justification: string | null
+          created_at: string
+          created_by: string
+          current_period_value: number | null
+          edital_allows_extension: boolean
+          execution_report: string | null
+          habilitation_confirmed: boolean
+          id: string
+          legal_basis: string | null
+          legal_regime: string
+          legal_review_reference: string | null
+          legal_review_status: string
+          market_reference_value: number | null
+          notes: string | null
+          price_advantage_attested: boolean
+          price_analysis: string | null
+          proposed_end_date: string | null
+          proposed_months: number | null
+          proposed_start_date: string | null
+          public_interest_justification: string | null
+          reference_date: string | null
+          reference_source: string | null
+          comparison_basis: string | null
+          supplier_agreed: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+          vantajosidade_method: string | null
+        }
+        Insert: {
+          accumulated_months?: number | null
+          authority_approved?: boolean
+          budget_confirmed?: boolean
+          contract_allows_extension?: boolean
+          contract_nature?: string
+          contract_id: string
+          continuity_justification?: string | null
+          created_at?: string
+          created_by?: string
+          current_period_value?: number | null
+          edital_allows_extension?: boolean
+          execution_report?: string | null
+          habilitation_confirmed?: boolean
+          id?: string
+          legal_basis?: string | null
+          legal_regime?: string
+          legal_review_reference?: string | null
+          legal_review_status?: string
+          market_reference_value?: number | null
+          notes?: string | null
+          price_advantage_attested?: boolean
+          price_analysis?: string | null
+          proposed_end_date?: string | null
+          proposed_months?: number | null
+          proposed_start_date?: string | null
+          public_interest_justification?: string | null
+          reference_date?: string | null
+          reference_source?: string | null
+          comparison_basis?: string | null
+          supplier_agreed?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string
+          vantajosidade_method?: string | null
+        }
+        Update: {
+          accumulated_months?: number | null
+          authority_approved?: boolean
+          budget_confirmed?: boolean
+          contract_allows_extension?: boolean
+          contract_nature?: string
+          contract_id?: string
+          continuity_justification?: string | null
+          created_at?: string
+          created_by?: string
+          current_period_value?: number | null
+          edital_allows_extension?: boolean
+          execution_report?: string | null
+          habilitation_confirmed?: boolean
+          id?: string
+          legal_basis?: string | null
+          legal_regime?: string
+          legal_review_reference?: string | null
+          legal_review_status?: string
+          market_reference_value?: number | null
+          notes?: string | null
+          price_advantage_attested?: boolean
+          price_analysis?: string | null
+          proposed_end_date?: string | null
+          proposed_months?: number | null
+          proposed_start_date?: string | null
+          public_interest_justification?: string | null
+          reference_date?: string | null
+          reference_source?: string | null
+          comparison_basis?: string | null
+          supplier_agreed?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+          vantajosidade_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_renewal_assessments_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      contract_renewal_checklist_items: {
+        Row: {
+          assessment_id: string
+          assigned_user_id: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          due_date: string | null
+          evidence_reference: string | null
+          id: string
+          is_required: boolean
+          item_key: string
+          notes: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          assessment_id: string
+          assigned_user_id?: string | null
+          contract_id: string
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          evidence_reference?: string | null
+          id?: string
+          is_required?: boolean
+          item_key: string
+          notes?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          assessment_id?: string
+          assigned_user_id?: string | null
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          evidence_reference?: string | null
+          id?: string
+          is_required?: boolean
+          item_key?: string
+          notes?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_renewal_checklist_assessment_fk"
+            columns: ["tenant_id", "assessment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_renewal_assessments"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "contract_renewal_checklist_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "contract_renewal_checklist_assignee_fk"
+            columns: ["tenant_id", "assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           created_at: string
@@ -3006,6 +3204,27 @@ export type Database = {
           p_template_id: string
         }
         Returns: string
+      }
+      save_contract_renewal_assessment: {
+        Args: { p_contract_id: string; p_payload: Json; p_tenant_id: string }
+        Returns: string
+      }
+      save_contract_renewal_checklist_item: {
+        Args: {
+          p_assigned_user_id?: string | null
+          p_contract_id: string
+          p_due_date?: string | null
+          p_evidence_reference?: string | null
+          p_item_key: string
+          p_notes?: string | null
+          p_status?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      validate_contract_renewal_addendum: {
+        Args: { p_contract_id: string; p_tenant_id: string }
+        Returns: { blockers: string[]; can_generate: boolean }[]
       }
       get_document_capabilities: {
         Args: { p_tenant_id: string }

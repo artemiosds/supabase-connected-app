@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(52);
+SELECT extensions.plan(55);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -11,8 +11,8 @@ SELECT extensions.is(
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='public' AND p.prosecdef
     AND pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')),
- 39,
- 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 39 functions'
+ 42,
+ 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 42 functions'
 );
 
 SELECT extensions.is(
@@ -70,6 +70,9 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.revoke_platform_staff_invitation(uuid)','revoke_platform_staff_invitation requires Master authorization',ARRAY['%app_auth.is_platform_admin()%']::text[]),
  ('public.revoke_platform_support_invitation(uuid)','revoke_platform_support_invitation requires scoped support-management permission',ARRAY['%app_auth.can_manage_platform_support_team()%']::text[]),
  ('public.save_platform_staff_role(uuid,text,text,text,text[])','save_platform_staff_role requires Master authorization and retains the base dashboard permission',ARRAY['%app_auth.is_platform_admin()%','%dashboard.view%']::text[]),
+ ('public.save_contract_renewal_assessment(uuid,uuid,jsonb)','save_contract_renewal_assessment requires tenant update permission, standing and the contracts module',ARRAY['%has_tenant_data_permission%','%documents:update%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%ON CONFLICT (tenant_id, contract_id)%']::text[]),
+ ('public.save_contract_renewal_checklist_item(uuid,uuid,text,uuid,date,text,text,text)','save_contract_renewal_checklist_item requires tenant update permission and validates active assignees and evidence',ARRAY['%has_tenant_data_permission%','%documents:update%','%tenant_memberships%','%status = ''active''%','%evidence_reference%']::text[]),
+ ('public.validate_contract_renewal_addendum(uuid,uuid)','validate_contract_renewal_addendum checks legal prerequisites, the ten-year limit and required checklist completion',ARRAY['%has_tenant_data_permission%','%documents:view%','%documents:create%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%contract_renewal_checklist_items%','%proposed_end_date%','%accumulated_months%']::text[]),
  ('public.save_tenant_role_with_permissions(uuid,uuid,text,text,text,uuid[])','save_tenant_role_with_permissions checks the tenant role-management permission and tenant-scoped role lookup',ARRAY['%has_tenant_permission%','%r.tenant_id=p_tenant_id%']::text[]),
  ('public.set_platform_staff_roles(uuid,uuid[])','set_platform_staff_roles requires Master authorization',ARRAY['%app_auth.is_platform_admin()%']::text[]),
  ('public.set_platform_staff_status(uuid,text)','set_platform_staff_status requires Master authorization and confirmed Auth identity before reactivation',ARRAY['%app_auth.is_platform_admin()%','%email_confirmed_at%']::text[]),
