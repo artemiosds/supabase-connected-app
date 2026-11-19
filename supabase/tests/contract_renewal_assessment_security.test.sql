@@ -1,7 +1,7 @@
 -- Segurança, isolamento por Secretaria e bloqueio de geração da renovação contínua.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(27);
+SELECT extensions.plan(28);
 
 SELECT extensions.ok(
   to_regclass('public.contract_renewal_assessments') IS NOT NULL,
@@ -196,6 +196,19 @@ SELECT extensions.ok(
       AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
   ),
   'the trigger uses a locked-down SECURITY DEFINER function and rechecks tenant permissions before reading template metadata'
+);
+
+SELECT extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%app_auth.is_platform_admin()%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%auth.role()%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%service_role%',
+  'the trigger preserves trusted platform-admin and service-role handling for ordinary documents'
 );
 
 SELECT extensions.ok(
