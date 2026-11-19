@@ -165,7 +165,22 @@ async function verifyAuthenticatedTenant(scenario) {
       .waitFor();
     await page.goto(`${appUrl}/fornecedores`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
-    await page.getByText(scenario.ownSupplier, { exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` })
+      .waitFor();
+
+    // The monitoring panel must classify only the active document of the current tenant.
+    // Each fixture has an active certificate expiring in 10 days.
+    const monitor = page.getByRole("region", {
+      name: "Monitoramento documental dos fornecedores",
+    });
+    await monitor.getByText(scenario.ownSupplier, { exact: true }).waitFor();
+    await monitor.getByText("Até 30 dias", { exact: true }).waitFor();
+    assert.equal(
+      await monitor.getByText(scenario.otherSupplier, { exact: true }).count(),
+      0,
+      "the document monitoring panel must not expose suppliers from another tenant",
+    );
 
     // The 360º panel must open for the authenticated tenant's supplier only.
     await page.getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` }).click();

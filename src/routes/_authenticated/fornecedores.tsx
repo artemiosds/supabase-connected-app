@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import { FichaFornecedor } from "@/components/suppliers/supplier-profile";
+import { MonitoramentoDocumentalFornecedores } from "@/components/suppliers/supplier-document-monitor";
 import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
@@ -783,6 +784,17 @@ function Fornecedores() {
               </p>
             </div>
           </div>
+
+          <MonitoramentoDocumentalFornecedores
+            key={selecionado?.id}
+            tenantId={selecionado?.id ?? ""}
+            enabled={selecionado?.enabled_modules["documentos"] === true}
+            fornecedores={fornecedores}
+            onAbrirFicha={(id) => {
+              const fornecedor = fornecedores.find((item) => item.id === id);
+              if (fornecedor) setFornecedorFicha(fornecedor);
+            }}
+          />
 
           <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
