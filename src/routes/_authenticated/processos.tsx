@@ -1,3 +1,4 @@
+import { SupplierSelect } from "@/components/supplier-select";
 import { AnnualDemandPanel } from "@/components/annual-demand-panel";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -1023,6 +1024,7 @@ type ConformidadeCompra = {
 };
 
 type FornecedorCompra = {
+  trade_name: string | null;
   id: string;
   legal_name: string;
   cnpj: string | null;
@@ -1185,7 +1187,7 @@ function DadosEstruturados(props: {
           db
             .from("suppliers")
             .select(
-              "id,legal_name,cnpj,contact_name,contact_email,contact_phone,street,street_number,complement,neighborhood,city,state,postal_code",
+              "id,legal_name,trade_name,cnpj,contact_name,contact_email,contact_phone,street,street_number,complement,neighborhood,city,state,postal_code",
             )
             .eq("tenant_id", props.tenantId)
             .order("legal_name")
@@ -2465,7 +2467,12 @@ function DadosEstruturados(props: {
                               </div>
                               <div className="space-y-1">
                                 <Label>Fornecedor cadastrado (opcional)</Label>
-                                <Select
+                                <SupplierSelect
+                                  suppliers={suppliers}
+                                  emptyOption={{
+                                    value: "sem_fornecedor",
+                                    label: "Outra fonte de mercado",
+                                  }}
                                   value={quoteForm.supplier_id}
                                   onValueChange={(value) => {
                                     const supplier = suppliers.find((entry) => entry.id === value);
@@ -2478,12 +2485,15 @@ function DadosEstruturados(props: {
                                           : "fornecedor",
                                       source_name: supplier?.legal_name ?? current.source_name,
                                       source_tax_id: supplier?.cnpj ?? current.source_tax_id,
-                                      source_contact_name:
-                                        supplier?.contact_name ?? current.source_contact_name,
-                                      source_contact_email:
-                                        supplier?.contact_email ?? current.source_contact_email,
-                                      source_contact_phone:
-                                        supplier?.contact_phone ?? current.source_contact_phone,
+                                      source_contact_name: supplier
+                                        ? (supplier.contact_name ?? "")
+                                        : current.source_contact_name,
+                                      source_contact_email: supplier
+                                        ? (supplier.contact_email ?? "")
+                                        : current.source_contact_email,
+                                      source_contact_phone: supplier
+                                        ? (supplier.contact_phone ?? "")
+                                        : current.source_contact_phone,
                                       source_address: supplier
                                         ? [
                                             supplier.street,
@@ -2499,21 +2509,7 @@ function DadosEstruturados(props: {
                                         : current.source_address,
                                     }));
                                   }}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="sem_fornecedor">
-                                      Outra fonte de mercado
-                                    </SelectItem>
-                                    {suppliers.map((supplier) => (
-                                      <SelectItem key={supplier.id} value={supplier.id}>
-                                        {supplier.legal_name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                />
                               </div>
                               <div className="space-y-1">
                                 <Label>Tipo de fonte *</Label>
