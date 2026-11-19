@@ -1011,17 +1011,42 @@ async function verifyProcurementLifecycle() {
       const quoteForm = composition.locator("form").filter({
         hasText: "Fonte da cotação / fornecedor *",
       });
+      const field = (label) => quoteForm.getByText(label, { exact: true }).locator("..");
       if (supplierName) {
-        await quoteForm.getByRole("combobox").nth(0).click();
+        await field("Fornecedor cadastrado (opcional)").getByRole("combobox").click();
         await page.getByRole("option", { name: supplierName, exact: true }).click();
       }
-      const quoteInputs = quoteForm.locator("input");
-      await quoteInputs.nth(0).fill(source);
-      await quoteInputs.nth(1).fill("2026-11-16");
-      await quoteInputs.nth(2).fill("2");
-      await quoteInputs.nth(3).fill(unitPrice);
-      await quoteInputs.nth(4).fill(deliveryCost);
-      await quoteInputs.nth(5).fill(referenceUrl);
+
+      await field("Fonte da cotação / fornecedor *").locator("input").fill(source);
+      await field("Data e hora de acesso à fonte").locator("input").fill("2026-11-16T10:00");
+      await field("Data da cotação *").locator("input").fill("2026-11-16");
+      await field("Quantidade cotada *").locator("input").fill("2");
+      await field("Preço unitário (R$) *").locator("input").fill(unitPrice);
+      await field("Frete (R$)").locator("input").fill(deliveryCost);
+      await field("Referência HTTPS").locator("input").fill(referenceUrl);
+
+      if (supplierName) {
+        await field("Data do envio da solicitação formal *").locator("input").fill("2026-11-16");
+        await field("Prazo concedido para resposta *").locator("input").fill("2026-11-20");
+        await field("Justificativa da escolha deste fornecedor *")
+          .locator("textarea")
+          .fill("Fornecedor consultado por compatibilidade técnica e disponibilidade regional.");
+        await field("CPF/CNPJ do fornecedor *").locator("input").fill("12345678000195");
+        await field("Responsável pela proposta *").locator("input").fill("Representante Sintético E2E");
+        await field("E-mail de contato *").locator("input").fill("propostas@fornecedor-e2e.invalid");
+        await field("Telefone de contato *").locator("input").fill("92999990000");
+        await field("Endereço do fornecedor *")
+          .locator("input")
+          .fill("Rua E2E, 100, Centro, Oriximiná/PA, CEP 68270-000");
+        await quoteForm.locator('input[type="file"]').setInputFiles({
+          name: "proposta-formal-e2e.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from(
+            "%PDF-1.4\\n1 0 obj\\n<< /Type /Catalog /Pages 2 0 R >>\\nendobj\\n2 0 obj\\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\\nendobj\\n3 0 obj\\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\\nendobj\\ntrailer\\n<< /Root 1 0 R >>\\n%%EOF\\n",
+          ),
+        });
+      }
+
       await quoteForm.getByRole("button", { name: "Salvar cotação", exact: true }).click();
       await page.getByText("Cotação registrada.", { exact: true }).waitFor();
     }
