@@ -1346,6 +1346,13 @@ function DadosEstruturados(props: {
       "image/png",
     ]);
     if (
+      quoteForm.source_type === "fornecedor" &&
+      quoteForm.supplier_selection_justification.trim().length < 10
+    ) {
+      toast.error("Justifique a escolha do fornecedor consultado (mínimo de 10 caracteres).");
+      return;
+    }
+    if (
       evidenceFile &&
       (!allowedEvidenceTypes.has(evidenceFile.type) || evidenceFile.size > 20 * 1024 * 1024)
     ) {
@@ -1457,6 +1464,7 @@ function DadosEstruturados(props: {
       delivery_cost: "0",
       notes: "",
       source_type: "painel_precos",
+      supplier_selection_justification: "",
       reference_identifier: "",
       accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
@@ -1657,6 +1665,21 @@ function DadosEstruturados(props: {
               .map(clean)
               .join("\t"),
           );
+        }
+
+        lines.push(
+          "JUSTIFICATIVA DA ESCOLHA DOS FORNECEDORES",
+          ["Fornecedor", "Justificativa documentada"].join("\t"),
+        );
+        const directSupplierQuotes = rows.filter((quote) => quote.source_type === "fornecedor");
+        if (directSupplierQuotes.length === 0) {
+          lines.push("Não foram utilizadas cotações diretas de fornecedores neste item.");
+        } else {
+          for (const quote of directSupplierQuotes) {
+            lines.push(
+              [quote.source_name, quote.supplier_selection_justification].map(clean).join("\t"),
+            );
+          }
         }
 
         lines.push(
