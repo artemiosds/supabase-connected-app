@@ -12,7 +12,14 @@ import {
   type DocumentoMonitorado,
   type SituacaoMonitoramento,
 } from "@/lib/supplier-document-monitor";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type FornecedorMonitorado = {
   id: string;
@@ -180,7 +187,10 @@ export function MonitoramentoDocumentalFornecedores({
   const exibidas = mostrarTodos ? filtradas : filtradas.slice(0, 12);
 
   return (
-    <section className="space-y-4 rounded-lg border bg-card p-4" aria-labelledby="monitoramento-documental">
+    <section
+      className="space-y-4 rounded-lg border bg-card p-4"
+      aria-labelledby="monitoramento-documental"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="monitoramento-documental" className="flex items-center gap-2 font-semibold">
@@ -188,7 +198,8 @@ export function MonitoramentoDocumentalFornecedores({
             Monitoramento documental dos fornecedores
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Prazos dos documentos cadastrados nesta Secretaria. Atualização periódica enquanto a página estiver aberta.
+            Prazos dos documentos cadastrados nesta Secretaria. Atualização periódica enquanto a
+            página estiver aberta.
           </p>
         </div>
         {enabled && (
@@ -211,7 +222,8 @@ export function MonitoramentoDocumentalFornecedores({
 
       {!enabled ? (
         <p className="text-sm text-muted-foreground">
-          O módulo Documentos está desabilitado nesta Secretaria. Não é possível avaliar os prazos documentais.
+          O módulo Documentos está desabilitado nesta Secretaria. Não é possível avaliar os
+          prazos documentais.
         </p>
       ) : !atual || loading ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -220,11 +232,16 @@ export function MonitoramentoDocumentalFornecedores({
         </p>
       ) : atual.status === "no_access" ? (
         <p role="status" className="rounded-md border p-3 text-sm text-muted-foreground">
-          Seu perfil não possui permissão para consultar documentos. A regularidade documental não foi verificada.
+          Seu perfil não possui permissão para consultar documentos. A regularidade documental
+          não foi verificada.
         </p>
       ) : atual.status === "error" ? (
-        <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
-          Não foi possível consultar todos os documentos desta Secretaria. Nenhuma conclusão sobre vencimentos pode ser apresentada. Tente atualizar.
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/40 p-3 text-sm text-destructive"
+        >
+          Não foi possível consultar todos os documentos desta Secretaria. Nenhuma conclusão
+          sobre vencimentos pode ser apresentada. Tente atualizar.
         </p>
       ) : (
         <>
@@ -261,7 +278,8 @@ export function MonitoramentoDocumentalFornecedores({
               </select>
             </label>
             <span className="text-xs text-muted-foreground">
-              Conferido em {formatarData(atual.checkedAt)} · {filtradas.length} fornecedor(es) no filtro
+              Conferido em {formatarData(atual.checkedAt)} · {filtradas.length} fornecedor(es) no
+              filtro
             </span>
           </div>
 
@@ -317,7 +335,12 @@ export function MonitoramentoDocumentalFornecedores({
                           : "Não informada"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button type="button" size="sm" variant="outline" onClick={() => onAbrirFicha(fornecedor.id)}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onAbrirFicha(fornecedor.id)}
+                        >
                           Ficha 360º
                         </Button>
                       </TableCell>
@@ -328,7 +351,12 @@ export function MonitoramentoDocumentalFornecedores({
             </div>
           )}
           {filtradas.length > 12 && (
-            <Button type="button" size="sm" variant="ghost" onClick={() => setMostrarTodos(!mostrarTodos)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setMostrarTodos(!mostrarTodos)}
+            >
               {mostrarTodos ? "Mostrar apenas 12" : "Mostrar todos os resultados"}
             </Button>
           )}
