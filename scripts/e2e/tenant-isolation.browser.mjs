@@ -167,6 +167,21 @@ async function verifyAuthenticatedTenant(scenario) {
     await page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
     await page.getByText(scenario.ownSupplier, { exact: true }).waitFor();
 
+    // The 360º panel must open for the authenticated tenant's supplier only.
+    await page.getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` }).click();
+    const profileDialog = page.getByRole("dialog", { name: "Ficha 360º do fornecedor" });
+    await profileDialog.waitFor();
+    await profileDialog.getByText(scenario.ownSupplier, { exact: true }).waitFor();
+    await profileDialog.getByRole("tab", { name: "Cotações" }).waitFor();
+    await profileDialog.getByRole("tab", { name: "Contratos e atas" }).waitFor();
+    assert.equal(
+      await profileDialog.getByText(scenario.otherSupplier, { exact: true }).count(),
+      0,
+      "the supplier 360 profile must not expose another tenant's supplier",
+    );
+    await page.keyboard.press("Escape");
+    await profileDialog.waitFor({ state: "hidden" });
+
     assert.equal(
       await page.getByText(scenario.otherSupplier, { exact: true }).count(),
       0,
