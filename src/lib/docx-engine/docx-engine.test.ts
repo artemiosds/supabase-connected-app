@@ -355,6 +355,15 @@ describe("docx engine — analysis, model and PDF", () => {
     ).rejects.toThrow(/caracteres que o PDF não suporta/);
   });
 
+  it("builds comparative tables in A4 landscape when requested", async () => {
+    const bytes = await buildDocxFromText("Fonte\tData\tPreço\nPNCP\t18/11/2026\tR$ 10,00", "Mapa comparativo", "landscape");
+    const xml = await readPart(bytes, "word/document.xml");
+    expect(xml).toContain('<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>');
+    const model = await docxToModel(bytes);
+    expect(model.pageLayout.widthPt).toBeGreaterThan(model.pageLayout.heightPt);
+    expect(model.blocks.some((block) => block.kind === "table")).toBe(true);
+  });
+
   it("turns tab-separated text into a Word table when a model has no original DOCX", async () => {
     const bytes = await buildDocxFromText(
       "1. OBJETO\nAquisição para {{secretaria}}\nItem\tQtd\nLuva\t10",
