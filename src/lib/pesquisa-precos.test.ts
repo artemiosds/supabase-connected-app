@@ -133,6 +133,23 @@ describe("estatística amostral", () => {
     expect(analisarDispersaoPrecos([0, 0]).coeficienteVariacao).toBeNull();
     expect(() => calcularMediana([NaN])).toThrow();
   });
+  it("sinaliza preço acima de média mais dois desvios amostrais sem exclusão automática", () => {
+    const quotes = [...Array(9).fill(10), 100].map((unit_price, i) => ({
+      id: String(i),
+      procurement_item_id: "i",
+      source_name: "Fonte",
+      quoted_at: "2026-11-18",
+      quantity: 1,
+      unit_price,
+      delivery_cost: 0,
+      total_price: null,
+      selected_for_estimate: true,
+    }));
+    const result = expurgarAmostrasInconsistentes(quotes);
+    expect(result[9]?.motivos).toContain("Valor fora de média ± 2 desvios amostrais");
+    expect(quotes[9]?.selected_for_estimate).toBe(true);
+  });
+
   it("sinaliza baixo preço sem excluir a cotação", () => {
     const quotes = [1, 100, 100].map((unit_price, i) => ({
       id: String(i),
