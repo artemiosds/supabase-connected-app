@@ -1,7 +1,7 @@
 -- Segurança, isolamento por Secretaria e bloqueio de geração da renovação contínua.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(23);
+SELECT extensions.plan(24);
 
 SELECT extensions.ok(
   to_regclass('public.contract_renewal_assessments') IS NOT NULL,
@@ -337,6 +337,17 @@ SELECT extensions.is(
   (SELECT count(*)::integer FROM public.contract_renewal_checklist_items
    WHERE tenant_id='62000000-0000-4000-8000-000000000002'),0,
   'tenant A cannot read tenant B checklist items'
+);
+
+SELECT extensions.ok(
+  (
+    SELECT NOT v.can_generate AND cardinality(v.blockers) > 0
+    FROM public.validate_contract_renewal_addendum(
+      '62000000-0000-4000-8000-000000000001',
+      '65000000-0000-4000-8000-000000000001'
+    ) v
+  ),
+  'the server validator blocks a draft while legal evidence and required checklist items are pending'
 );
 
 SELECT pg_catalog.set_config(
