@@ -2541,8 +2541,38 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               {quoteForm.source_type === "fornecedor" && (
-                                <div className="space-y-1 sm:col-span-2">
-                                  <Label>Justificativa da escolha deste fornecedor *</Label>
+                                <>
+                                  <div className="space-y-1">
+                                    <Label>Data do envio da solicitação formal *</Label>
+                                    <Input
+                                      type="date"
+                                      required
+                                      value={quoteForm.supplier_consultation_sent_at}
+                                      onChange={(event) =>
+                                        setQuoteForm((current) => ({
+                                          ...current,
+                                          supplier_consultation_sent_at: event.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label>Prazo concedido para resposta *</Label>
+                                    <Input
+                                      type="date"
+                                      required
+                                      min={quoteForm.supplier_consultation_sent_at}
+                                      value={quoteForm.supplier_consultation_response_deadline}
+                                      onChange={(event) =>
+                                        setQuoteForm((current) => ({
+                                          ...current,
+                                          supplier_consultation_response_deadline: event.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <div className="space-y-1 sm:col-span-2">
+                                    <Label>Justificativa da escolha deste fornecedor *</Label>
                                   <Textarea
                                     required
                                     minLength={10}
@@ -2556,7 +2586,8 @@ function DadosEstruturados(props: {
                                     }
                                     placeholder="Registre o critério objetivo da escolha do fornecedor consultado, conforme art. 3º, VIII, e art. 5º, IV, da IN 65/2021."
                                   />
-                                </div>
+                                  </div>
+                                </>
                               )}
                               <div className="space-y-1">
                                 <Label>Prazo de validade da proposta</Label>
@@ -2572,8 +2603,9 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>CPF/CNPJ da fonte (se não vinculada)</Label>
+                                <Label>{quoteForm.source_type === "fornecedor" ? "CPF/CNPJ do fornecedor *" : "CPF/CNPJ da fonte"}</Label>
                                 <Input
+                                  required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_tax_id}
                                   onChange={(event) =>
                                     setQuoteForm((current) => ({
@@ -2584,8 +2616,9 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>Responsável / contato</Label>
+                                <Label>{quoteForm.source_type === "fornecedor" ? "Responsável pela proposta *" : "Responsável / contato"}</Label>
                                 <Input
+                                  required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_contact_name}
                                   onChange={(event) =>
                                     setQuoteForm((current) => ({
@@ -2596,9 +2629,10 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>E-mail de contato</Label>
+                                <Label>{quoteForm.source_type === "fornecedor" ? "E-mail de contato *" : "E-mail de contato"}</Label>
                                 <Input
                                   type="email"
+                                  required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_contact_email}
                                   onChange={(event) =>
                                     setQuoteForm((current) => ({
@@ -2609,8 +2643,9 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>Telefone de contato</Label>
+                                <Label>{quoteForm.source_type === "fornecedor" ? "Telefone de contato *" : "Telefone de contato"}</Label>
                                 <Input
+                                  required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_contact_phone}
                                   onChange={(event) =>
                                     setQuoteForm((current) => ({
@@ -2621,8 +2656,9 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1 sm:col-span-2">
-                                <Label>Endereço da fonte / fornecedor</Label>
+                                <Label>{quoteForm.source_type === "fornecedor" ? "Endereço do fornecedor *" : "Endereço da fonte / fornecedor"}</Label>
                                 <Input
+                                  required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_address}
                                   onChange={(event) =>
                                     setQuoteForm((current) => ({
@@ -2682,10 +2718,13 @@ function DadosEstruturados(props: {
                               </div>
                               <div className="space-y-1 sm:col-span-2">
                                 <Label>
-                                  Comprovante da cotação (PDF, DOCX, XLSX ou imagem · até 20 MB)
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "Proposta formal / comprovante obrigatório (PDF, DOCX, XLSX ou imagem · até 20 MB)"
+                                    : "Comprovante da cotação (PDF, DOCX, XLSX ou imagem · até 20 MB)"}
                                 </Label>
                                 <Input
                                   type="file"
+                                  required={quoteForm.source_type === "fornecedor"}
                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                                   onChange={(event) =>
                                     setEvidenceFile(event.target.files?.[0] ?? null)
