@@ -71,6 +71,8 @@ describe("mapa de pesquisa de preços", () => {
           reference_identifier: "PNCP-123",
           accessed_at: "2026-11-18T10:00:00-03:00",
           supplier_response_deadline: "2026-11-30",
+          supplier_consultation_sent_at: "2026-11-01",
+          supplier_consultation_response_deadline: "2026-11-05",
           source_contact_phone: "(93) 99999-0000",
           notes: "Frete incluso no prazo informado.",
           evidence_file_name: "proposta.pdf",
@@ -99,6 +101,8 @@ describe("mapa de pesquisa de preços", () => {
     expect(csv).toContain('"Preço incompatível com a especificação técnica."');
     expect(csv).toContain('"PNCP-123"');
     expect(csv).toContain('"2026-11-30"');
+    expect(csv).toContain('"2026-11-01"');
+    expect(csv).toContain('"2026-11-05"');
     expect(csv).toContain('"(93) 99999-0000"');
     expect(csv).toContain('"Frete incluso no prazo informado."');
     expect(csv).toContain('"Fornecedor selecionado por atender à especificação e ao prazo local."');
