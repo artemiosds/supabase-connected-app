@@ -1366,8 +1366,7 @@ function DadosEstruturados(props: {
       quoteForm.source_type === "fornecedor" &&
       (!quoteForm.supplier_consultation_sent_at ||
         !quoteForm.supplier_consultation_response_deadline ||
-        quoteForm.supplier_consultation_response_deadline <
-          quoteForm.supplier_consultation_sent_at)
+        quoteForm.supplier_consultation_response_deadline < quoteForm.supplier_consultation_sent_at)
     ) {
       toast.error("Informe a data de envio e um prazo de resposta válido para o fornecedor.");
       return;
@@ -1692,7 +1691,9 @@ function DadosEstruturados(props: {
                 quote.supplier_consultation_response_deadline
                   ? formatarData(quote.supplier_consultation_response_deadline)
                   : "",
-              ].map(clean).join("\t"),
+              ]
+                .map(clean)
+                .join("\t"),
             );
           }
         }
@@ -2603,26 +2604,27 @@ function DadosEstruturados(props: {
                                       onChange={(event) =>
                                         setQuoteForm((current) => ({
                                           ...current,
-                                          supplier_consultation_response_deadline: event.target.value,
+                                          supplier_consultation_response_deadline:
+                                            event.target.value,
                                         }))
                                       }
                                     />
                                   </div>
                                   <div className="space-y-1 sm:col-span-2">
                                     <Label>Justificativa da escolha deste fornecedor *</Label>
-                                  <Textarea
-                                    required
-                                    minLength={10}
-                                    rows={2}
-                                    value={quoteForm.supplier_selection_justification}
-                                    onChange={(event) =>
-                                      setQuoteForm((current) => ({
-                                        ...current,
-                                        supplier_selection_justification: event.target.value,
-                                      }))
-                                    }
-                                    placeholder="Registre o critério objetivo da escolha do fornecedor consultado, conforme art. 3º, VIII, e art. 5º, IV, da IN 65/2021."
-                                  />
+                                    <Textarea
+                                      required
+                                      minLength={10}
+                                      rows={2}
+                                      value={quoteForm.supplier_selection_justification}
+                                      onChange={(event) =>
+                                        setQuoteForm((current) => ({
+                                          ...current,
+                                          supplier_selection_justification: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="Registre o critério objetivo da escolha do fornecedor consultado, conforme art. 3º, VIII, e art. 5º, IV, da IN 65/2021."
+                                    />
                                   </div>
                                 </>
                               )}
@@ -2640,7 +2642,11 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>{quoteForm.source_type === "fornecedor" ? "CPF/CNPJ do fornecedor *" : "CPF/CNPJ da fonte"}</Label>
+                                <Label>
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "CPF/CNPJ do fornecedor *"
+                                    : "CPF/CNPJ da fonte"}
+                                </Label>
                                 <Input
                                   required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_tax_id}
@@ -2653,7 +2659,11 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>{quoteForm.source_type === "fornecedor" ? "Responsável pela proposta *" : "Responsável / contato"}</Label>
+                                <Label>
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "Responsável pela proposta *"
+                                    : "Responsável / contato"}
+                                </Label>
                                 <Input
                                   required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_contact_name}
@@ -2666,7 +2676,11 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>{quoteForm.source_type === "fornecedor" ? "E-mail de contato *" : "E-mail de contato"}</Label>
+                                <Label>
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "E-mail de contato *"
+                                    : "E-mail de contato"}
+                                </Label>
                                 <Input
                                   type="email"
                                   required={quoteForm.source_type === "fornecedor"}
@@ -2680,7 +2694,11 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label>{quoteForm.source_type === "fornecedor" ? "Telefone de contato *" : "Telefone de contato"}</Label>
+                                <Label>
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "Telefone de contato *"
+                                    : "Telefone de contato"}
+                                </Label>
                                 <Input
                                   required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_contact_phone}
@@ -2693,7 +2711,11 @@ function DadosEstruturados(props: {
                                 />
                               </div>
                               <div className="space-y-1 sm:col-span-2">
-                                <Label>{quoteForm.source_type === "fornecedor" ? "Endereço do fornecedor *" : "Endereço da fonte / fornecedor"}</Label>
+                                <Label>
+                                  {quoteForm.source_type === "fornecedor"
+                                    ? "Endereço do fornecedor *"
+                                    : "Endereço da fonte / fornecedor"}
+                                </Label>
                                 <Input
                                   required={quoteForm.source_type === "fornecedor"}
                                   value={quoteForm.source_address}
@@ -3536,9 +3558,11 @@ function DadosEstruturados(props: {
                                   </p>
                                   {q.source_type === "fornecedor" && (
                                     <p className="text-xs text-muted-foreground">
-                                      Solicitação: {q.supplier_consultation_sent_at
+                                      Solicitação:{" "}
+                                      {q.supplier_consultation_sent_at
                                         ? formatarData(q.supplier_consultation_sent_at)
-                                        : "Não registrada"} · Resposta até:{" "}
+                                        : "Não registrada"}{" "}
+                                      · Resposta até:{" "}
                                       {q.supplier_consultation_response_deadline
                                         ? formatarData(q.supplier_consultation_response_deadline)
                                         : "Não informado"}
