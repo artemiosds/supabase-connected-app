@@ -964,6 +964,8 @@ type CotacaoCompra = {
   quoted_at: string;
   accessed_at: string | null;
   supplier_response_deadline: string | null;
+  supplier_consultation_sent_at: string | null;
+  supplier_consultation_response_deadline: string | null;
   quantity: number;
   unit_price: number;
   delivery_cost: number;
@@ -1127,6 +1129,8 @@ function DadosEstruturados(props: {
     payment_terms: "",
     warranty_terms: "",
     supplier_response_deadline: "",
+    supplier_consultation_sent_at: new Date().toISOString().slice(0, 10),
+    supplier_consultation_response_deadline: "",
   });
   const [budgetForm, setBudgetForm] = useState({
     fiscal_year: String(new Date().getFullYear()),
@@ -1383,6 +1387,12 @@ function DadosEstruturados(props: {
         quoted_at: quoteForm.quoted_at,
         accessed_at: quoteForm.accessed_at ? new Date(quoteForm.accessed_at).toISOString() : null,
         supplier_response_deadline: quoteForm.supplier_response_deadline || null,
+        supplier_consultation_sent_at:
+          quoteForm.source_type === "fornecedor" ? quoteForm.supplier_consultation_sent_at : null,
+        supplier_consultation_response_deadline:
+          quoteForm.source_type === "fornecedor"
+            ? quoteForm.supplier_consultation_response_deadline
+            : null,
         source_tax_id: quoteForm.source_tax_id.trim() || supplier?.cnpj || null,
         source_contact_name: quoteForm.source_contact_name.trim() || supplier?.contact_name || null,
         source_contact_email:
@@ -1476,6 +1486,8 @@ function DadosEstruturados(props: {
         .toISOString()
         .slice(0, 16),
       supplier_response_deadline: "",
+      supplier_consultation_sent_at: new Date().toISOString().slice(0, 10),
+      supplier_consultation_response_deadline: "",
       source_tax_id: "",
       source_contact_name: "",
       source_contact_email: "",
