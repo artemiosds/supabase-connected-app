@@ -1713,10 +1713,7 @@ function Documentos() {
         db.from("profiles").select("full_name").eq("id", session.user.id).maybeSingle(),
         import("pdf-lib"),
       ]);
-      const signerName =
-        signerProfile?.full_name?.trim() ||
-        String(session.user.user_metadata?.["full_name"] ?? "").trim() ||
-        "Usuário autenticado";
+      const signerName = signerProfile?.full_name?.trim() || "Usuário autenticado";
       const signerEmail = session.user.email ?? "Não informado";
 
       // Append an audit page without changing the source document's original
