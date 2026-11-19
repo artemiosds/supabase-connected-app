@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(37);
+SELECT extensions.plan(43);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -537,6 +537,21 @@ SELECT extensions.throws_ok(
   'Não é permitido alterar itens de um processo concluído.',
   'checklist items of a completed process are immutable'
 );
+
+
+RESET ROLE;
+INSERT INTO public.tenant_role_permissions(role_id,permission_id)
+SELECT '10000000-0000-4000-8000-000000000005',id FROM public.permissions
+WHERE code IN ('documents:create','documents:approve') ON CONFLICT DO NOTHING;
+SET LOCAL ROLE authenticated;
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','submit','{"year":2027,"title":"Material anual","justification":"Demanda anual","items":[{"description":"Material de consumo","unit":"caixa","quantity":3.5}]}'),'10000000-0000-4000-8000-000000000080'::uuid,'PCA submission persists');
+SELECT extensions.throws_ok($q$SELECT public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}')$q$,'P0001','Aprove a demanda antes de criar o processo.','pending demands cannot start a process');
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','approve','{}'),'10000000-0000-4000-8000-000000000080'::uuid,'authorized reviewer approves');
+SELECT extensions.ok(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}') IS NOT NULL,'conversion creates the process and checklist');
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}'),(SELECT process_id FROM public.annual_procurement_demands WHERE id='10000000-0000-4000-8000-000000000080'),'retry reuses the same process');
+SELECT extensions.ok(EXISTS (SELECT 1 FROM public.procurement_items i
+JOIN public.annual_procurement_demands d ON d.process_id=i.process_id AND d.tenant_id=i.tenant_id
+WHERE d.id='10000000-0000-4000-8000-000000000080' AND i.quantity=3.5 AND i.unit='caixa' AND i.description='Material de consumo'),'conversion preserves demand items');
 
 SELECT * FROM extensions.finish();
 ROLLBACK;

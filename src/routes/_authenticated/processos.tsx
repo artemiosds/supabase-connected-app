@@ -1,3 +1,4 @@
+import { AnnualDemandPanel } from "@/components/annual-demand-panel";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -399,6 +400,7 @@ function Processos() {
 
   return (
     <div className="space-y-6">
+      <AnnualDemandPanel key={selecionado.id} tenantId={selecionado.id} onConverted={carregar} />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Processos de contratação</h1>

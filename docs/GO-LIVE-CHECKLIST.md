@@ -420,3 +420,11 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 - [ ] Conferir manualmente a caixa de entrada/spam do destinatário e anotar pasta e cabeçalhos (SPF/DKIM/DMARC).
 
 **Aceito ≠ entregue:** "aceito pelo servidor SMTP/provedor" só significa que o servidor recebeu a mensagem para encaminhar. A entrega na caixa depende de DNS, reputação e filtros do destinatário e só é comprovada pela conferência manual. "Incerto" (timeout/conexão interrompida) é persistido como `failed`, mas não deve ser repetido antes de conferir a caixa. O teste não aciona `send-expiry-notifications`, filas nem alertas; a auditoria grava apenas ação, resultado, provedor e destinatário mascarado.
+
+## PCA por Secretaria — homologação do vínculo com o DFD
+
+- [ ] Em base descartável, validar a migration `20261119190000_plan_annual_procurement_demands.sql` e os testes de processo.
+- [ ] Em Processos > Plano de Contratações Anual, enviar demanda com dois itens de unidades diferentes. Conferir o exercício, o objeto, a justificativa e as quantidades antes da aprovação.
+- [ ] Verificar com perfis distintos a visibilidade por Secretaria e as permissões para cadastrar, aprovar e abrir o processo.
+- [ ] Após aprovação, criar o processo, conferir seus itens e abrir o DFD vinculado. Repetir a conversão e verificar que o processo é o mesmo.
+- [ ] Registrar aceite e reconciliar o histórico antes de uma implantação controlada no SMS2. Consolidação entre Secretarias, classificação de catálogo e publicação externa pertencem a etapas posteriores.
