@@ -1060,12 +1060,17 @@ function DadosEstruturados(props: {
   const [budgets, setBudgets] = useState<DotacaoCompra[]>([]);
   const [suppliers, setSuppliers] = useState<FornecedorCompra[]>([]);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
-  const [approvalForms, setApprovalForms] = useState<Record<string, {
-    method: "media" | "mediana" | "menor" | "outro";
-    methodJustification: string;
-    exceptionalJustification: string;
-    otherUnitPrice: string;
-  }>>({});
+  const [approvalForms, setApprovalForms] = useState<
+    Record<
+      string,
+      {
+        method: "media" | "mediana" | "menor" | "outro";
+        methodJustification: string;
+        exceptionalJustification: string;
+        otherUnitPrice: string;
+      }
+    >
+  >({});
   const [complianceForm, setComplianceForm] = useState({
     funding_source_type: "unknown",
     funding_source_description: "",
@@ -1103,7 +1108,9 @@ function DadosEstruturados(props: {
     notes: "",
     source_type: "painel_precos",
     reference_identifier: "",
-    accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+    accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16),
     source_tax_id: "",
     source_contact_name: "",
     source_contact_email: "",
@@ -1140,60 +1147,62 @@ function DadosEstruturados(props: {
         tenantComplianceResult,
         capabilityResult,
       ] = await Promise.all([
-          carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
-            db
-              .from("procurement_items")
-              .select("*")
-              .eq("tenant_id", props.tenantId)
-              .eq("process_id", props.processId)
-              .eq("is_active", true)
-              .order("line_number")
-              .order("id")
-              .range(inicio, fim),
-          ),
-          carregarTodasAsPaginas<DotacaoCompra>((inicio, fim) =>
-            db
-              .from("procurement_budget_allocations")
-              .select("*")
-              .eq("tenant_id", props.tenantId)
-              .eq("process_id", props.processId)
-              .eq("is_active", true)
-              .order("fiscal_year", { ascending: false })
-              .order("id", { ascending: false })
-              .range(inicio, fim),
-          ),
-          carregarTodasAsPaginas<FornecedorCompra>((inicio, fim) =>
-            db
-              .from("suppliers")
-              .select("id,legal_name,cnpj,contact_name,contact_email,contact_phone,street,street_number,complement,neighborhood,city,state,postal_code")
-              .eq("tenant_id", props.tenantId)
-              .order("legal_name")
-              .order("id")
-              .range(inicio, fim),
-          ),
-          carregarTodasAsPaginas<AprovacaoPrecoCompra>((inicio, fim) =>
-            db
-              .from("procurement_price_approvals")
-              .select("*")
-              .eq("tenant_id", props.tenantId)
-              .eq("process_id", props.processId)
-              .order("approved_at", { ascending: false })
-              .order("id", { ascending: false })
-              .range(inicio, fim),
-          ),
+        carregarTodasAsPaginas<ItemCompra>((inicio, fim) =>
           db
-            .from("procurement_process_compliance")
+            .from("procurement_items")
             .select("*")
             .eq("tenant_id", props.tenantId)
             .eq("process_id", props.processId)
-            .maybeSingle(),
+            .eq("is_active", true)
+            .order("line_number")
+            .order("id")
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<DotacaoCompra>((inicio, fim) =>
           db
-            .from("tenant_procurement_compliance")
+            .from("procurement_budget_allocations")
             .select("*")
             .eq("tenant_id", props.tenantId)
-            .maybeSingle(),
-          db.rpc("get_procurement_price_capabilities", { p_tenant_id: props.tenantId }),
-        ]);
+            .eq("process_id", props.processId)
+            .eq("is_active", true)
+            .order("fiscal_year", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<FornecedorCompra>((inicio, fim) =>
+          db
+            .from("suppliers")
+            .select(
+              "id,legal_name,cnpj,contact_name,contact_email,contact_phone,street,street_number,complement,neighborhood,city,state,postal_code",
+            )
+            .eq("tenant_id", props.tenantId)
+            .order("legal_name")
+            .order("id")
+            .range(inicio, fim),
+        ),
+        carregarTodasAsPaginas<AprovacaoPrecoCompra>((inicio, fim) =>
+          db
+            .from("procurement_price_approvals")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("process_id", props.processId)
+            .order("approved_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(inicio, fim),
+        ),
+        db
+          .from("procurement_process_compliance")
+          .select("*")
+          .eq("tenant_id", props.tenantId)
+          .eq("process_id", props.processId)
+          .maybeSingle(),
+        db
+          .from("tenant_procurement_compliance")
+          .select("*")
+          .eq("tenant_id", props.tenantId)
+          .maybeSingle(),
+        db.rpc("get_procurement_price_capabilities", { p_tenant_id: props.tenantId }),
+      ]);
       if (processComplianceResult.error) throw processComplianceResult.error;
       if (tenantComplianceResult.error) throw tenantComplianceResult.error;
       if (capabilityResult.error) throw capabilityResult.error;
@@ -1209,11 +1218,15 @@ function DadosEstruturados(props: {
         normative_basis:
           processCompliance?.normative_basis ?? tenantCompliance?.normative_basis ?? "pending",
         in65_applicability:
-          processCompliance?.in65_applicability ?? tenantCompliance?.in65_applicability ?? "pending",
+          processCompliance?.in65_applicability ??
+          tenantCompliance?.in65_applicability ??
+          "pending",
         local_regulation_name:
           processCompliance?.local_regulation_name ?? tenantCompliance?.local_regulation_name ?? "",
         local_regulation_reference:
-          processCompliance?.local_regulation_reference ?? tenantCompliance?.local_regulation_reference ?? "",
+          processCompliance?.local_regulation_reference ??
+          tenantCompliance?.local_regulation_reference ??
+          "",
         legal_review_notes: processCompliance?.legal_review_notes ?? "",
       });
 
@@ -1330,7 +1343,10 @@ function DadosEstruturados(props: {
       "image/jpeg",
       "image/png",
     ]);
-    if (evidenceFile && (!allowedEvidenceTypes.has(evidenceFile.type) || evidenceFile.size > 20 * 1024 * 1024)) {
+    if (
+      evidenceFile &&
+      (!allowedEvidenceTypes.has(evidenceFile.type) || evidenceFile.size > 20 * 1024 * 1024)
+    ) {
       toast.error("O comprovante deve ser PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG de até 20 MB.");
       return;
     }
@@ -1350,12 +1366,23 @@ function DadosEstruturados(props: {
         supplier_response_deadline: quoteForm.supplier_response_deadline || null,
         source_tax_id: quoteForm.source_tax_id.trim() || supplier?.cnpj || null,
         source_contact_name: quoteForm.source_contact_name.trim() || supplier?.contact_name || null,
-        source_contact_email: quoteForm.source_contact_email.trim() || supplier?.contact_email || null,
-        source_contact_phone: quoteForm.source_contact_phone.trim() || supplier?.contact_phone || null,
+        source_contact_email:
+          quoteForm.source_contact_email.trim() || supplier?.contact_email || null,
+        source_contact_phone:
+          quoteForm.source_contact_phone.trim() || supplier?.contact_phone || null,
         source_address:
           quoteForm.source_address.trim() ||
-          [supplier?.street, supplier?.street_number, supplier?.complement, supplier?.neighborhood,
-            supplier?.city, supplier?.state, supplier?.postal_code].filter(Boolean).join(", ") ||
+          [
+            supplier?.street,
+            supplier?.street_number,
+            supplier?.complement,
+            supplier?.neighborhood,
+            supplier?.city,
+            supplier?.state,
+            supplier?.postal_code,
+          ]
+            .filter(Boolean)
+            .join(", ") ||
           null,
         brand_model: quoteForm.brand_model.trim() || null,
         delivery_term: quoteForm.delivery_term.trim() || null,
@@ -1425,7 +1452,9 @@ function DadosEstruturados(props: {
       notes: "",
       source_type: "painel_precos",
       reference_identifier: "",
-      accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16),
       supplier_response_deadline: "",
       source_tax_id: "",
       source_contact_name: "",
@@ -1438,7 +1467,8 @@ function DadosEstruturados(props: {
       warranty_terms: "",
     });
     toast.success("Cotação registrada com rastreabilidade da fonte.");
-    if (evidenceWarning) toast.warning(`Cotação salva, mas o comprovante não foi vinculado: ${evidenceWarning}`);
+    if (evidenceWarning)
+      toast.warning(`Cotação salva, mas o comprovante não foi vinculado: ${evidenceWarning}`);
     await carregarDados();
   }
 
@@ -1481,7 +1511,8 @@ function DadosEstruturados(props: {
         mixed: "Recursos de origens mistas",
       };
       const fundingSourceLabel =
-        fundingSourceLabels[compliance?.funding_source_type ?? ""] ?? "Origem dos recursos não informada";
+        fundingSourceLabels[compliance?.funding_source_type ?? ""] ??
+        "Origem dos recursos não informada";
       const basisLabel =
         compliance?.normative_basis === "in65_2021"
           ? "IN SEGES/ME nº 65/2021"
@@ -1513,7 +1544,9 @@ function DadosEstruturados(props: {
         `Base normativa declarada: ${basisLabel}`,
         `Aplicabilidade da IN 65/2021: ${applicabilityLabel}`,
         `Validação normativa: ${normativeValidated ? "Validada pela autoridade registrada no sistema em " + formatarData(compliance?.validated_at ?? "") : "Pendente de validação da assessoria/autoridade competente"}`,
-        compliance?.legal_review_notes ? `Observações jurídicas: ${clean(compliance.legal_review_notes)}` : "",
+        compliance?.legal_review_notes
+          ? `Observações jurídicas: ${clean(compliance.legal_review_notes)}`
+          : "",
         "Critério de análise: as cotações ativas compõem a série de preços; os alertas estatísticos são subsídios de análise e não excluem automaticamente valores.",
         "Fórmula de preço efetivo: (preço unitário × quantidade cotada + frete) ÷ quantidade cotada. Total aprovado: preço unitário aprovado × quantidade prevista do item.",
       ].filter(Boolean);
@@ -1522,16 +1555,13 @@ function DadosEstruturados(props: {
           .filter((quote) => quote.procurement_item_id === item.id && quote.is_active)
           .sort(
             (a, b) =>
-              (precoUnitarioComFrete(a) ?? Infinity) -
-              (precoUnitarioComFrete(b) ?? Infinity),
+              (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity),
           );
         const archived = quotes.filter(
           (quote) => quote.procurement_item_id === item.id && !quote.is_active,
         );
         const summary = calcularResumoDePrecos(rows);
-        const approval = currentApprovals.find(
-          (entry) => entry.procurement_item_id === item.id,
-        );
+        const approval = currentApprovals.find((entry) => entry.procurement_item_id === item.id);
         const signals = expurgarAmostrasInconsistentes(rows);
         const dispersion = analisarDispersaoPrecos(
           rows.map(precoUnitarioComFrete).filter((value): value is number => value !== null),
@@ -1554,11 +1584,15 @@ function DadosEstruturados(props: {
             `Aprovado em: ${formatarData(approval.approved_at)} · Responsável autenticado: ${approval.approved_by}`,
             `Amostras consideradas na aprovação: ${approval.sample_count}`,
             ...(approval.exceptional_justification
-              ? [`Justificativa excepcional para menos de três preços: ${clean(approval.exceptional_justification)}`]
+              ? [
+                  `Justificativa excepcional para menos de três preços: ${clean(approval.exceptional_justification)}`,
+                ]
               : []),
           );
         } else {
-          lines.push("Método e valor homologado: pendentes. A mediana abaixo é apenas referência estatística, não preço aprovado.");
+          lines.push(
+            "Método e valor homologado: pendentes. A mediana abaixo é apenas referência estatística, não preço aprovado.",
+          );
         }
         lines.push(
           "COTAÇÕES ATIVAS — SÉRIE DE PREÇOS",
@@ -1574,16 +1608,26 @@ function DadosEstruturados(props: {
               quote.source_tax_id ?? supplier?.cnpj,
               formatarData(quote.quoted_at),
               quote.accessed_at ? new Date(quote.accessed_at).toLocaleString("pt-BR") : "",
-              quote.supplier_response_deadline ? formatarData(quote.supplier_response_deadline) : "",
+              quote.supplier_response_deadline
+                ? formatarData(quote.supplier_response_deadline)
+                : "",
               quote.quantity,
               formatarMoeda(quote.unit_price),
               formatarMoeda(quote.delivery_cost),
               formatarMoeda(quote.total_price),
               formatarMoeda(precoUnitarioComFrete(quote)),
-              [quote.delivery_term, quote.payment_terms, quote.warranty_terms, quote.brand_model].filter(Boolean).join(" / "),
+              [quote.delivery_term, quote.payment_terms, quote.warranty_terms, quote.brand_model]
+                .filter(Boolean)
+                .join(" / "),
               quote.notes,
               quote.reference_url,
-              [quote.evidence_file_name, quote.evidence_mime_type, quote.evidence_file_size ? `${quote.evidence_file_size} bytes` : ""].filter(Boolean).join(" / "),
+              [
+                quote.evidence_file_name,
+                quote.evidence_mime_type,
+                quote.evidence_file_size ? `${quote.evidence_file_size} bytes` : "",
+              ]
+                .filter(Boolean)
+                .join(" / "),
             ]
               .map(clean)
               .join(" | "),
@@ -1598,9 +1642,7 @@ function DadosEstruturados(props: {
             lines.push(`Alerta estatístico para análise humana: ${signal.motivos.join("; ")}`);
           }
         }
-        lines.push(
-          "COTAÇÕES EXPURGADAS — PRESERVADAS PARA RASTREABILIDADE",
-        );
+        lines.push("COTAÇÕES EXPURGADAS — PRESERVADAS PARA RASTREABILIDADE");
         if (archived.length === 0) {
           lines.push("Nenhuma cotação expurgada deste item.");
         } else {
@@ -1632,9 +1674,13 @@ function DadosEstruturados(props: {
           .single();
         if (error) throw error;
         if (!mapaPronto) {
-          toast.warning("Rascunho criado. A tramitação será liberada após aprovar todos os preços e validar o enquadramento normativo.");
+          toast.warning(
+            "Rascunho criado. A tramitação será liberada após aprovar todos os preços e validar o enquadramento normativo.",
+          );
         } else {
-          toast.success("Mapa completo gerado como rascunho para conferência e aprovação independente.");
+          toast.success(
+            "Mapa completo gerado como rascunho para conferência e aprovação independente.",
+          );
         }
         window.location.assign("/documentos?documento=" + encodeURIComponent(data.id));
         return;
@@ -1669,7 +1715,9 @@ function DadosEstruturados(props: {
       a.click();
       URL.revokeObjectURL(url);
       if (!mapaPronto) {
-        toast.warning("Arquivo exportado como RASCUNHO. A aprovação do preço e a validação normativa continuam pendentes.");
+        toast.warning(
+          "Arquivo exportado como RASCUNHO. A aprovação do preço e a validação normativa continuam pendentes.",
+        );
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o mapa.");
@@ -1714,7 +1762,9 @@ function DadosEstruturados(props: {
       exceptionalJustification: "",
       otherUnitPrice: "",
     };
-    const activeQuotes = quotes.filter((quote) => quote.procurement_item_id === item.id && quote.is_active);
+    const activeQuotes = quotes.filter(
+      (quote) => quote.procurement_item_id === item.id && quote.is_active,
+    );
     let otherPrice: number | undefined;
     if (form.method === "outro") {
       otherPrice = numeroDecimal(form.otherUnitPrice);
@@ -1724,14 +1774,11 @@ function DadosEstruturados(props: {
       }
     }
     try {
-      const preview = calcularPrecoHomologado(
-        form.method,
-        activeQuotes,
-        item.quantity,
-        otherPrice,
-      );
+      const preview = calcularPrecoHomologado(form.method, activeQuotes, item.quantity, otherPrice);
       if (preview.quantidadeAmostras < 3 && form.exceptionalJustification.trim().length < 10) {
-        toast.error("Com menos de três preços válidos, registre a justificativa excepcional (mínimo de 10 caracteres).");
+        toast.error(
+          "Com menos de três preços válidos, registre a justificativa excepcional (mínimo de 10 caracteres).",
+        );
         return;
       }
       const minimumMethodJustification = form.method === "outro" ? 20 : 10;
@@ -1770,9 +1817,12 @@ function DadosEstruturados(props: {
       return;
     }
     const legalNotes = complianceForm.legal_review_notes.trim();
-    const transferFunding = ["federal_transfer", "state_transfer", "other_transfer", "mixed"].includes(
-      complianceForm.funding_source_type,
-    );
+    const transferFunding = [
+      "federal_transfer",
+      "state_transfer",
+      "other_transfer",
+      "mixed",
+    ].includes(complianceForm.funding_source_type);
     if (complianceForm.funding_source_type === "unknown") {
       toast.error("Identifique a origem dos recursos deste processo antes de validar.");
       return;
@@ -1787,7 +1837,8 @@ function DadosEstruturados(props: {
     }
     if (
       complianceForm.normative_basis === "local_regulation" &&
-      (!complianceForm.local_regulation_name.trim() || !complianceForm.local_regulation_reference.trim())
+      (!complianceForm.local_regulation_name.trim() ||
+        !complianceForm.local_regulation_reference.trim())
     ) {
       toast.error("Informe o nome e a referência oficial do regulamento local.");
       return;
@@ -1796,14 +1847,18 @@ function DadosEstruturados(props: {
       complianceForm.in65_applicability === "adopted" &&
       complianceForm.normative_basis !== "local_regulation"
     ) {
-      toast.error("A adoção local da IN 65 exige a identificação do regulamento municipal ou estadual.");
+      toast.error(
+        "A adoção local da IN 65 exige a identificação do regulamento municipal ou estadual.",
+      );
       return;
     }
     if (
       complianceForm.in65_applicability === "not_applicable" &&
       (complianceForm.normative_basis === "in65_2021" || legalNotes.length < 20)
     ) {
-      toast.error("Para declarar a IN 65 não aplicável, selecione outro fundamento e registre justificativa jurídica (mínimo de 20 caracteres).");
+      toast.error(
+        "Para declarar a IN 65 não aplicável, selecione outro fundamento e registre justificativa jurídica (mínimo de 20 caracteres).",
+      );
       return;
     }
     if (complianceForm.normative_basis === "other" && legalNotes.length < 10) {
@@ -2120,7 +2175,8 @@ function DadosEstruturados(props: {
                       (quote) => quote.procurement_item_id === item.id && !quote.is_active,
                     );
                     const itemApproval = approvals.find(
-                      (approval) => approval.procurement_item_id === item.id && approval.status === "approved",
+                      (approval) =>
+                        approval.procurement_item_id === item.id && approval.status === "approved",
                     );
                     return (
                       <Card key={item.id}>
@@ -2210,15 +2266,30 @@ function DadosEstruturados(props: {
                                     setQuoteForm((current) => ({
                                       ...current,
                                       supplier_id: value,
-                                      source_type: value === "sem_fornecedor" ? current.source_type : "fornecedor",
+                                      source_type:
+                                        value === "sem_fornecedor"
+                                          ? current.source_type
+                                          : "fornecedor",
                                       source_name: supplier?.legal_name ?? current.source_name,
                                       source_tax_id: supplier?.cnpj ?? current.source_tax_id,
-                                      source_contact_name: supplier?.contact_name ?? current.source_contact_name,
-                                      source_contact_email: supplier?.contact_email ?? current.source_contact_email,
-                                      source_contact_phone: supplier?.contact_phone ?? current.source_contact_phone,
+                                      source_contact_name:
+                                        supplier?.contact_name ?? current.source_contact_name,
+                                      source_contact_email:
+                                        supplier?.contact_email ?? current.source_contact_email,
+                                      source_contact_phone:
+                                        supplier?.contact_phone ?? current.source_contact_phone,
                                       source_address: supplier
-                                        ? [supplier.street, supplier.street_number, supplier.complement, supplier.neighborhood,
-                                            supplier.city, supplier.state, supplier.postal_code].filter(Boolean).join(", ")
+                                        ? [
+                                            supplier.street,
+                                            supplier.street_number,
+                                            supplier.complement,
+                                            supplier.neighborhood,
+                                            supplier.city,
+                                            supplier.state,
+                                            supplier.postal_code,
+                                          ]
+                                            .filter(Boolean)
+                                            .join(", ")
                                         : current.source_address,
                                     }));
                                   }}
@@ -2246,15 +2317,31 @@ function DadosEstruturados(props: {
                                     setQuoteForm((current) => ({ ...current, source_type: value }))
                                   }
                                 >
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="painel_precos">Painel oficial de preços</SelectItem>
-                                    <SelectItem value="contratacoes_publicas">Contratações públicas / PNCP</SelectItem>
-                                    <SelectItem value="midia_especializada">Mídia especializada</SelectItem>
-                                    <SelectItem value="site_especializado">Site especializado</SelectItem>
-                                    <SelectItem value="fornecedor">Cotação direta de fornecedor</SelectItem>
-                                    <SelectItem value="nota_fiscal_eletronica">Nota fiscal eletrônica</SelectItem>
-                                    <SelectItem value="banco_precos_saude">Banco de Preços em Saúde</SelectItem>
+                                    <SelectItem value="painel_precos">
+                                      Painel oficial de preços
+                                    </SelectItem>
+                                    <SelectItem value="contratacoes_publicas">
+                                      Contratações públicas / PNCP
+                                    </SelectItem>
+                                    <SelectItem value="midia_especializada">
+                                      Mídia especializada
+                                    </SelectItem>
+                                    <SelectItem value="site_especializado">
+                                      Site especializado
+                                    </SelectItem>
+                                    <SelectItem value="fornecedor">
+                                      Cotação direta de fornecedor
+                                    </SelectItem>
+                                    <SelectItem value="nota_fiscal_eletronica">
+                                      Nota fiscal eletrônica
+                                    </SelectItem>
+                                    <SelectItem value="banco_precos_saude">
+                                      Banco de Preços em Saúde
+                                    </SelectItem>
                                     <SelectItem value="outro">Outra fonte identificável</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -2264,7 +2351,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.reference_identifier}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, reference_identifier: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      reference_identifier: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2272,10 +2362,20 @@ function DadosEstruturados(props: {
                                 <Label>Data e hora de acesso à fonte</Label>
                                 <Input
                                   type="datetime-local"
-                                  required={["painel_precos", "contratacoes_publicas", "midia_especializada", "site_especializado", "banco_precos_saude", "nota_fiscal_eletronica"].includes(quoteForm.source_type)}
+                                  required={[
+                                    "painel_precos",
+                                    "contratacoes_publicas",
+                                    "midia_especializada",
+                                    "site_especializado",
+                                    "banco_precos_saude",
+                                    "nota_fiscal_eletronica",
+                                  ].includes(quoteForm.source_type)}
                                   value={quoteForm.accessed_at}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, accessed_at: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      accessed_at: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2285,7 +2385,10 @@ function DadosEstruturados(props: {
                                   type="date"
                                   value={quoteForm.supplier_response_deadline}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, supplier_response_deadline: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      supplier_response_deadline: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2294,7 +2397,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.source_tax_id}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, source_tax_id: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_tax_id: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2303,7 +2409,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.source_contact_name}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, source_contact_name: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_contact_name: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2313,7 +2422,10 @@ function DadosEstruturados(props: {
                                   type="email"
                                   value={quoteForm.source_contact_email}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, source_contact_email: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_contact_email: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2322,7 +2434,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.source_contact_phone}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, source_contact_phone: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_contact_phone: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2331,7 +2446,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.source_address}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, source_address: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      source_address: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2340,7 +2458,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.brand_model}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, brand_model: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      brand_model: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2349,7 +2470,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.delivery_term}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, delivery_term: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      delivery_term: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2358,7 +2482,10 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.payment_terms}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, payment_terms: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      payment_terms: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
@@ -2367,18 +2494,29 @@ function DadosEstruturados(props: {
                                 <Input
                                   value={quoteForm.warranty_terms}
                                   onChange={(event) =>
-                                    setQuoteForm((current) => ({ ...current, warranty_terms: event.target.value }))
+                                    setQuoteForm((current) => ({
+                                      ...current,
+                                      warranty_terms: event.target.value,
+                                    }))
                                   }
                                 />
                               </div>
                               <div className="space-y-1 sm:col-span-2">
-                                <Label>Comprovante da cotação (PDF, DOCX, XLSX ou imagem · até 20 MB)</Label>
+                                <Label>
+                                  Comprovante da cotação (PDF, DOCX, XLSX ou imagem · até 20 MB)
+                                </Label>
                                 <Input
                                   type="file"
                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                                  onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
+                                  onChange={(event) =>
+                                    setEvidenceFile(event.target.files?.[0] ?? null)
+                                  }
                                 />
-                                {evidenceFile && <p className="text-xs text-muted-foreground">{evidenceFile.name}</p>}
+                                {evidenceFile && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {evidenceFile.name}
+                                  </p>
+                                )}
                               </div>
                               <div className="space-y-1">
                                 <Label>Data da cotação *</Label>
@@ -2544,9 +2682,12 @@ function DadosEstruturados(props: {
                               <div className="space-y-2">
                                 {archivedQuotes.map((quote) => (
                                   <div key={quote.id} className="rounded bg-muted/30 p-2 text-xs">
-                                    <p className="font-medium">{quote.source_name} · {formatarData(quote.quoted_at)}</p>
+                                    <p className="font-medium">
+                                      {quote.source_name} · {formatarData(quote.quoted_at)}
+                                    </p>
                                     <p className="text-muted-foreground">
-                                      Motivo do expurgo: {quote.justificativa_expurgo || "Não registrado"}
+                                      Motivo do expurgo:{" "}
+                                      {quote.justificativa_expurgo || "Não registrado"}
                                     </p>
                                   </div>
                                 ))}
@@ -2557,11 +2698,13 @@ function DadosEstruturados(props: {
                             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
                               <p className="font-semibold">Preço estimado aprovado</p>
                               <p>
-                                Método: {itemApproval.method} · Unitário: {formatarMoeda(itemApproval.approved_unit_price)} ·
-                                Total: {formatarMoeda(itemApproval.approved_total_price)}
+                                Método: {itemApproval.method} · Unitário:{" "}
+                                {formatarMoeda(itemApproval.approved_unit_price)} · Total:{" "}
+                                {formatarMoeda(itemApproval.approved_total_price)}
                               </p>
                               <p className="text-muted-foreground">
-                                Aprovado em {formatarData(itemApproval.approved_at)} · {itemApproval.sample_count} amostra(s)
+                                Aprovado em {formatarData(itemApproval.approved_at)} ·{" "}
+                                {itemApproval.sample_count} amostra(s)
                               </p>
                             </div>
                           )}
@@ -2730,26 +2873,38 @@ function DadosEstruturados(props: {
               <DialogTitle>Mapa comparativo de preços — {props.processNumber}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Mapa com memória de cálculo, histórico de expurgos, documentos comprobatórios e aprovação do preço estimado por item.
+              Mapa com memória de cálculo, histórico de expurgos, documentos comprobatórios e
+              aprovação do preço estimado por item.
             </p>
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Enquadramento normativo exige validação do órgão</AlertTitle>
               <AlertDescription>
-                A aplicabilidade da IN SEGES/ME nº 65/2021 deve ser analisada em cada contratação conforme a origem dos recursos e a regulamentação local. O sistema não substitui o parecer jurídico da Administração.
+                A aplicabilidade da IN SEGES/ME nº 65/2021 deve ser analisada em cada contratação
+                conforme a origem dos recursos e a regulamentação local. O sistema não substitui o
+                parecer jurídico da Administração.
               </AlertDescription>
             </Alert>
             <Card>
               <CardContent className="space-y-3 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-semibold">Enquadramento normativo e origem dos recursos deste processo</p>
+                    <p className="font-semibold">
+                      Enquadramento normativo e origem dos recursos deste processo
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      A aplicabilidade é validada individualmente para esta contratação; o perfil da Secretaria serve apenas como referência inicial.
+                      A aplicabilidade é validada individualmente para esta contratação; o perfil da
+                      Secretaria serve apenas como referência inicial.
                     </p>
                   </div>
-                  <Badge variant={compliance?.legal_review_status === "validated" ? "default" : "destructive"}>
-                    {compliance?.legal_review_status === "validated" ? "Validado" : "Pendente de validação"}
+                  <Badge
+                    variant={
+                      compliance?.legal_review_status === "validated" ? "default" : "destructive"
+                    }
+                  >
+                    {compliance?.legal_review_status === "validated"
+                      ? "Validado"
+                      : "Pendente de validação"}
                   </Badge>
                 </div>
                 {canApprovePrice ? (
@@ -2760,16 +2915,23 @@ function DadosEstruturados(props: {
                         <Select
                           value={complianceForm.funding_source_type}
                           onValueChange={(value) =>
-                            setComplianceForm((current) => ({ ...current, funding_source_type: value }))
+                            setComplianceForm((current) => ({
+                              ...current,
+                              funding_source_type: value,
+                            }))
                           }
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="unknown">Ainda não identificada</SelectItem>
                             <SelectItem value="own_resources">Recursos próprios do ente</SelectItem>
                             <SelectItem value="federal_transfer">Transferência da União</SelectItem>
                             <SelectItem value="state_transfer">Transferência estadual</SelectItem>
-                            <SelectItem value="other_transfer">Outra transferência voluntária</SelectItem>
+                            <SelectItem value="other_transfer">
+                              Outra transferência voluntária
+                            </SelectItem>
                             <SelectItem value="mixed">Recursos de origens mistas</SelectItem>
                           </SelectContent>
                         </Select>
@@ -2779,7 +2941,10 @@ function DadosEstruturados(props: {
                         <Input
                           value={complianceForm.funding_source_description}
                           onChange={(event) =>
-                            setComplianceForm((current) => ({ ...current, funding_source_description: event.target.value }))
+                            setComplianceForm((current) => ({
+                              ...current,
+                              funding_source_description: event.target.value,
+                            }))
                           }
                           placeholder="Programa, ação orçamentária ou origem do repasse"
                         />
@@ -2789,7 +2954,10 @@ function DadosEstruturados(props: {
                         <Input
                           value={complianceForm.transfer_agreement_number}
                           onChange={(event) =>
-                            setComplianceForm((current) => ({ ...current, transfer_agreement_number: event.target.value }))
+                            setComplianceForm((current) => ({
+                              ...current,
+                              transfer_agreement_number: event.target.value,
+                            }))
                           }
                         />
                       </div>
@@ -2801,11 +2969,15 @@ function DadosEstruturados(props: {
                             setComplianceForm((current) => ({ ...current, normative_basis: value }))
                           }
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pending">Pendente de enquadramento</SelectItem>
                             <SelectItem value="in65_2021">IN SEGES/ME nº 65/2021</SelectItem>
-                            <SelectItem value="local_regulation">Regulamentação municipal/local</SelectItem>
+                            <SelectItem value="local_regulation">
+                              Regulamentação municipal/local
+                            </SelectItem>
                             <SelectItem value="other">Outro fundamento normativo</SelectItem>
                           </SelectContent>
                         </Select>
@@ -2815,15 +2987,24 @@ function DadosEstruturados(props: {
                         <Select
                           value={complianceForm.in65_applicability}
                           onValueChange={(value) =>
-                            setComplianceForm((current) => ({ ...current, in65_applicability: value }))
+                            setComplianceForm((current) => ({
+                              ...current,
+                              in65_applicability: value,
+                            }))
                           }
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pending">Pendente de análise</SelectItem>
                             <SelectItem value="applicable">Aplicável ao órgão/recursos</SelectItem>
-                            <SelectItem value="adopted">Adotada por regulamentação local</SelectItem>
-                            <SelectItem value="not_applicable">Não aplicável (exige justificativa)</SelectItem>
+                            <SelectItem value="adopted">
+                              Adotada por regulamentação local
+                            </SelectItem>
+                            <SelectItem value="not_applicable">
+                              Não aplicável (exige justificativa)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2835,7 +3016,10 @@ function DadosEstruturados(props: {
                               required
                               value={complianceForm.local_regulation_name}
                               onChange={(event) =>
-                                setComplianceForm((current) => ({ ...current, local_regulation_name: event.target.value }))
+                                setComplianceForm((current) => ({
+                                  ...current,
+                                  local_regulation_name: event.target.value,
+                                }))
                               }
                             />
                           </div>
@@ -2845,7 +3029,10 @@ function DadosEstruturados(props: {
                               required
                               value={complianceForm.local_regulation_reference}
                               onChange={(event) =>
-                                setComplianceForm((current) => ({ ...current, local_regulation_reference: event.target.value }))
+                                setComplianceForm((current) => ({
+                                  ...current,
+                                  local_regulation_reference: event.target.value,
+                                }))
                               }
                             />
                           </div>
@@ -2857,7 +3044,10 @@ function DadosEstruturados(props: {
                           rows={3}
                           value={complianceForm.legal_review_notes}
                           onChange={(event) =>
-                            setComplianceForm((current) => ({ ...current, legal_review_notes: event.target.value }))
+                            setComplianceForm((current) => ({
+                              ...current,
+                              legal_review_notes: event.target.value,
+                            }))
                           }
                           placeholder="Registre a origem dos recursos, a norma local aplicável ou a justificativa de não aplicabilidade."
                         />
@@ -2866,7 +3056,8 @@ function DadosEstruturados(props: {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       {compliance?.validated_at && (
                         <p className="text-xs text-muted-foreground">
-                          Última validação: {formatarData(compliance.validated_at)} · usuário autenticado {compliance.validated_by}
+                          Última validação: {formatarData(compliance.validated_at)} · usuário
+                          autenticado {compliance.validated_by}
                         </p>
                       )}
                       <Button
@@ -2885,7 +3076,8 @@ function DadosEstruturados(props: {
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Seu perfil pode consultar a situação, mas somente a autoridade com permissão de aprovação de preços pode registrar a validação normativa.
+                    Seu perfil pode consultar a situação, mas somente a autoridade com permissão de
+                    aprovação de preços pode registrar a validação normativa.
                   </p>
                 )}
               </CardContent>
@@ -2930,8 +3122,13 @@ function DadosEstruturados(props: {
                     (precoUnitarioComFrete(a) ?? Infinity) - (precoUnitarioComFrete(b) ?? Infinity),
                 );
               const resumo = calcularResumoDePrecos(rows);
-              const archivedRows = quotes.filter((q) => q.procurement_item_id === item.id && !q.is_active);
-              const itemApproval = approvals.find((approval) => approval.procurement_item_id === item.id && approval.status === "approved");
+              const archivedRows = quotes.filter(
+                (q) => q.procurement_item_id === item.id && !q.is_active,
+              );
+              const itemApproval = approvals.find(
+                (approval) =>
+                  approval.procurement_item_id === item.id && approval.status === "approved",
+              );
               const approvalForm = approvalForms[item.id] ?? {
                 method: "mediana" as const,
                 methodJustification: "",
@@ -2945,7 +3142,9 @@ function DadosEstruturados(props: {
                     approvalForm.method,
                     rows,
                     item.quantity,
-                    approvalForm.method === "outro" ? numeroDecimal(approvalForm.otherUnitPrice) : undefined,
+                    approvalForm.method === "outro"
+                      ? numeroDecimal(approvalForm.otherUnitPrice)
+                      : undefined,
                   );
                 }
               } catch {
@@ -2992,15 +3191,21 @@ function DadosEstruturados(props: {
                                 <td className="p-2">
                                   {q.source_name}
                                   {q.selected_for_estimate && (
-                                    <Badge className="ml-2" variant="secondary">Referência escolhida</Badge>
+                                    <Badge className="ml-2" variant="secondary">
+                                      Referência escolhida
+                                    </Badge>
                                   )}
                                   {signals?.motivos.map((reason) => (
-                                    <p key={reason} className="mt-1 text-xs text-amber-700">{reason}</p>
+                                    <p key={reason} className="mt-1 text-xs text-amber-700">
+                                      {reason}
+                                    </p>
                                   ))}
                                 </td>
                                 <td className="p-2">
                                   <p>{q.source_type.replaceAll("_", " ")}</p>
-                                  <p className="text-xs text-muted-foreground">{q.source_tax_id || supplier?.cnpj || "CNPJ/CPF não informado"}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {q.source_tax_id || supplier?.cnpj || "CNPJ/CPF não informado"}
+                                  </p>
                                 </td>
                                 <td className="p-2">
                                   <p>{q.reference_identifier || "—"}</p>
@@ -3011,31 +3216,56 @@ function DadosEstruturados(props: {
                                     aria-pressed={q.selected_for_estimate}
                                     onClick={() => void selecionarCotacao(q)}
                                   >
-                                    {q.selected_for_estimate ? "Referência selecionada" : "Selecionar referência"}
+                                    {q.selected_for_estimate
+                                      ? "Referência selecionada"
+                                      : "Selecionar referência"}
                                   </button>
                                 </td>
                                 <td className="p-2">
                                   <p>{formatarData(q.quoted_at)}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    Acesso: {q.accessed_at ? new Date(q.accessed_at).toLocaleString("pt-BR") : "Não registrado"}
+                                    Acesso:{" "}
+                                    {q.accessed_at
+                                      ? new Date(q.accessed_at).toLocaleString("pt-BR")
+                                      : "Não registrado"}
                                   </p>
                                 </td>
                                 <td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td>
                                 <td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td>
-                                <td className="p-2 text-right font-medium">{formatarMoeda(q.total_price ?? 0)}</td>
-                                <td className="p-2 text-right">{formatarMoeda(precoUnitarioComFrete(q))}</td>
+                                <td className="p-2 text-right font-medium">
+                                  {formatarMoeda(q.total_price ?? 0)}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {formatarMoeda(precoUnitarioComFrete(q))}
+                                </td>
                                 <td className="p-2">
                                   <p className="max-w-[260px] whitespace-normal text-xs">
-                                    {[q.brand_model, q.delivery_term, q.payment_terms, q.warranty_terms].filter(Boolean).join(" · ") || "Condições não detalhadas"}
+                                    {[
+                                      q.brand_model,
+                                      q.delivery_term,
+                                      q.payment_terms,
+                                      q.warranty_terms,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ") || "Condições não detalhadas"}
                                   </p>
                                   <div className="mt-1 flex flex-wrap gap-2">
                                     {q.reference_url && (
-                                      <a className="text-xs text-primary underline" href={q.reference_url} target="_blank" rel="noreferrer">
+                                      <a
+                                        className="text-xs text-primary underline"
+                                        href={q.reference_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
                                         Consultar fonte
                                       </a>
                                     )}
                                     {q.evidence_storage_path && (
-                                      <button type="button" className="text-xs text-primary underline" onClick={() => void abrirComprovanteCotacao(q)}>
+                                      <button
+                                        type="button"
+                                        className="text-xs text-primary underline"
+                                        onClick={() => void abrirComprovanteCotacao(q)}
+                                      >
                                         Comprovante: {q.evidence_file_name}
                                       </button>
                                     )}
@@ -3055,16 +3285,29 @@ function DadosEstruturados(props: {
                       </p>
                       <div className="space-y-2">
                         {archivedRows.map((quote) => (
-                          <div key={quote.id} className="flex flex-wrap justify-between gap-2 rounded bg-muted/30 p-2 text-xs">
+                          <div
+                            key={quote.id}
+                            className="flex flex-wrap justify-between gap-2 rounded bg-muted/30 p-2 text-xs"
+                          >
                             <div>
-                              <p className="font-medium">{quote.source_name} · {formatarData(quote.quoted_at)}</p>
-                              <p className="text-muted-foreground">
-                                Tipo: {quote.source_type.replaceAll("_", " ")} · Unitário efetivo: {formatarMoeda(precoUnitarioComFrete(quote))}
+                              <p className="font-medium">
+                                {quote.source_name} · {formatarData(quote.quoted_at)}
                               </p>
-                              <p className="text-amber-800">Justificativa do expurgo: {quote.justificativa_expurgo || "Não registrada"}</p>
+                              <p className="text-muted-foreground">
+                                Tipo: {quote.source_type.replaceAll("_", " ")} · Unitário efetivo:{" "}
+                                {formatarMoeda(precoUnitarioComFrete(quote))}
+                              </p>
+                              <p className="text-amber-800">
+                                Justificativa do expurgo:{" "}
+                                {quote.justificativa_expurgo || "Não registrada"}
+                              </p>
                             </div>
                             {quote.evidence_storage_path && (
-                              <button type="button" className="text-primary underline" onClick={() => void abrirComprovanteCotacao(quote)}>
+                              <button
+                                type="button"
+                                className="text-primary underline"
+                                onClick={() => void abrirComprovanteCotacao(quote)}
+                              >
                                 Consultar comprovante
                               </button>
                             )}
@@ -3088,15 +3331,17 @@ function DadosEstruturados(props: {
                     </p>
                   )}
                   <p>
-                    Referência estatística (mediana, não homologada): {formatarMoeda(resumo.mediana)}
+                    Referência estatística (mediana, não homologada):{" "}
+                    {formatarMoeda(resumo.mediana)}
                   </p>
                   {itemApproval && (
                     <Alert>
                       <AlertTitle>Preço estimado aprovado</AlertTitle>
                       <AlertDescription>
-                        Método: {itemApproval.method} · Unitário: {formatarMoeda(itemApproval.approved_unit_price)} ·
-                        Total: {formatarMoeda(itemApproval.approved_total_price)} ·
-                        Aprovado em {formatarData(itemApproval.approved_at)}.
+                        Método: {itemApproval.method} · Unitário:{" "}
+                        {formatarMoeda(itemApproval.approved_unit_price)} · Total:{" "}
+                        {formatarMoeda(itemApproval.approved_total_price)} · Aprovado em{" "}
+                        {formatarData(itemApproval.approved_at)}.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -3105,7 +3350,8 @@ function DadosEstruturados(props: {
                       <div>
                         <p className="font-semibold">Aprovação do preço estimado</p>
                         <p className="text-xs text-muted-foreground">
-                          A aprovação é por item e fica registrada com método, justificativa, amostras e responsável.
+                          A aprovação é por item e fica registrada com método, justificativa,
+                          amostras e responsável.
                         </p>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -3116,11 +3362,16 @@ function DadosEstruturados(props: {
                             onValueChange={(value) =>
                               setApprovalForms((current) => ({
                                 ...current,
-                                [item.id]: { ...approvalForm, method: value as "media" | "mediana" | "menor" | "outro" },
+                                [item.id]: {
+                                  ...approvalForm,
+                                  method: value as "media" | "mediana" | "menor" | "outro",
+                                },
                               }))
                             }
                           >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="media">Média aritmética</SelectItem>
                               <SelectItem value="mediana">Mediana</SelectItem>
@@ -3138,7 +3389,10 @@ function DadosEstruturados(props: {
                               onChange={(event) =>
                                 setApprovalForms((current) => ({
                                   ...current,
-                                  [item.id]: { ...approvalForm, otherUnitPrice: event.target.value },
+                                  [item.id]: {
+                                    ...approvalForm,
+                                    otherUnitPrice: event.target.value,
+                                  },
                                 }))
                               }
                             />
@@ -3146,7 +3400,8 @@ function DadosEstruturados(props: {
                         )}
                         <div className="space-y-1 sm:col-span-2">
                           <Label>
-                            Justificativa da escolha do método * (mínimo de {approvalForm.method === "outro" ? 20 : 10} caracteres)
+                            Justificativa da escolha do método * (mínimo de{" "}
+                            {approvalForm.method === "outro" ? 20 : 10} caracteres)
                           </Label>
                           <Textarea
                             rows={2}
@@ -3154,7 +3409,10 @@ function DadosEstruturados(props: {
                             onChange={(event) =>
                               setApprovalForms((current) => ({
                                 ...current,
-                                [item.id]: { ...approvalForm, methodJustification: event.target.value },
+                                [item.id]: {
+                                  ...approvalForm,
+                                  methodJustification: event.target.value,
+                                },
                               }))
                             }
                             placeholder="Explique por que o método é adequado à série de preços e ao objeto."
@@ -3169,7 +3427,10 @@ function DadosEstruturados(props: {
                               onChange={(event) =>
                                 setApprovalForms((current) => ({
                                   ...current,
-                                  [item.id]: { ...approvalForm, exceptionalJustification: event.target.value },
+                                  [item.id]: {
+                                    ...approvalForm,
+                                    exceptionalJustification: event.target.value,
+                                  },
                                 }))
                               }
                               placeholder="Registre a impossibilidade de obter três preços e a fundamentação para prosseguir."
@@ -3179,8 +3440,10 @@ function DadosEstruturados(props: {
                       </div>
                       {approvalPreview && (
                         <p className="text-sm">
-                          Prévia do método: <strong>{formatarMoeda(approvalPreview.precoUnitarioAprovado)}</strong> por unidade ·
-                          total <strong>{formatarMoeda(approvalPreview.precoTotalAprovado)}</strong> ·
+                          Prévia do método:{" "}
+                          <strong>{formatarMoeda(approvalPreview.precoUnitarioAprovado)}</strong>{" "}
+                          por unidade · total{" "}
+                          <strong>{formatarMoeda(approvalPreview.precoTotalAprovado)}</strong> ·
                           {approvalPreview.quantidadeAmostras} amostra(s)
                         </p>
                       )}

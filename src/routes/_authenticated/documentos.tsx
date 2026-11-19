@@ -1459,21 +1459,30 @@ function Documentos() {
     setBaixandoRascunhoId(documento.id);
     try {
       if (documento.status === "signed") {
-        if (formato !== "pdf" || !documento.signed_pdf_storage_path || !documento.signed_pdf_sha256) {
-          toast.error("Este documento não possui PDF final imutável associado à assinatura. Não é possível apresentar uma cópia regenerada como arquivo assinado.");
+        if (
+          formato !== "pdf" ||
+          !documento.signed_pdf_storage_path ||
+          !documento.signed_pdf_sha256
+        ) {
+          toast.error(
+            "Este documento não possui PDF final imutável associado à assinatura. Não é possível apresentar uma cópia regenerada como arquivo assinado.",
+          );
           return null;
         }
         const { data: signedPdf, error: downloadError } = await db.storage
           .from("gfs-private-documents")
           .download(documento.signed_pdf_storage_path);
-        if (downloadError || !signedPdf) throw downloadError ?? new Error("PDF assinado indisponível.");
+        if (downloadError || !signedPdf)
+          throw downloadError ?? new Error("PDF assinado indisponível.");
         const bytes = new Uint8Array(await signedPdf.arrayBuffer());
         const digest = await crypto.subtle.digest("SHA-256", bytes);
         const actualHash = [...new Uint8Array(digest)]
           .map((byte) => byte.toString(16).padStart(2, "0"))
           .join("");
         if (actualHash !== documento.signed_pdf_sha256) {
-          toast.error("Falha na verificação de integridade: o SHA-256 do PDF não corresponde ao registro de assinatura. O download foi bloqueado.");
+          toast.error(
+            "Falha na verificação de integridade: o SHA-256 do PDF não corresponde ao registro de assinatura. O download foi bloqueado.",
+          );
           return null;
         }
         const url = URL.createObjectURL(signedPdf);
@@ -1616,7 +1625,9 @@ function Documentos() {
         );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o documento.");
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível exportar o documento.",
+      );
       return null;
     } finally {
       setBaixandoRascunhoId(null);
@@ -1685,7 +1696,8 @@ function Documentos() {
       fluxoPorDocumento.get(d.id)?.status !== "approved" ||
       d.status !== "draft" ||
       baixandoRascunhoId
-    ) return;
+    )
+      return;
     const confirmou = window.confirm(
       "Confirma a assinatura eletrônica simples? O Primus vai gerar o PDF final com uma folha de identificação do assinante, arquivá-lo sem sobrescrita, conferir o arquivo no servidor e registrar o SHA-256 vinculado à sua conta. Esta assinatura não é qualificada ICP-Brasil.",
     );
@@ -1698,11 +1710,7 @@ function Documentos() {
       if (!pdfBytes) return;
 
       const [{ data: signerProfile }, { PDFDocument, StandardFonts, rgb }] = await Promise.all([
-        db
-          .from("profiles")
-          .select("full_name")
-          .eq("id", session.user.id)
-          .maybeSingle(),
+        db.from("profiles").select("full_name").eq("id", session.user.id).maybeSingle(),
         import("pdf-lib"),
       ]);
       const signerName =
@@ -1810,7 +1818,9 @@ function Documentos() {
       if (error || !data?.success) {
         await db.storage.from("gfs-private-documents").remove([storagePath]);
         uploaded = false;
-        throw new Error(error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.");
+        throw new Error(
+          error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.",
+        );
       }
 
       uploaded = false;
@@ -1831,7 +1841,9 @@ function Documentos() {
         await carregar();
         return;
       }
-      toast.error(error instanceof Error ? error.message : "Não foi possível concluir a assinatura.");
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível concluir a assinatura.",
+      );
     }
   }
   async function cancelarGerado(d: DocumentoGerado) {
@@ -3184,7 +3196,9 @@ function Documentos() {
                 {documentoImpressao.signed_pdf_sha256 && (
                   <>
                     <p>Arquivo final arquivado e conferível por SHA-256.</p>
-                    <p className="break-all text-xs">SHA-256: {documentoImpressao.signed_pdf_sha256}</p>
+                    <p className="break-all text-xs">
+                      SHA-256: {documentoImpressao.signed_pdf_sha256}
+                    </p>
                   </>
                 )}
                 <p className="text-xs text-muted-foreground">
