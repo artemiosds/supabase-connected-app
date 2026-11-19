@@ -1836,6 +1836,7 @@ export type Database = {
           local_regulation_name: string | null
           local_regulation_reference: string | null
           normative_basis: string
+          priority_sources_justification: string | null
           process_id: string
           tenant_id: string
           transfer_agreement_number: string | null
@@ -1853,6 +1854,7 @@ export type Database = {
           local_regulation_name?: string | null
           local_regulation_reference?: string | null
           normative_basis?: string
+          priority_sources_justification?: string | null
           process_id: string
           tenant_id: string
           transfer_agreement_number?: string | null
@@ -1870,6 +1872,7 @@ export type Database = {
           local_regulation_name?: string | null
           local_regulation_reference?: string | null
           normative_basis?: string
+          priority_sources_justification?: string | null
           process_id?: string
           tenant_id?: string
           transfer_agreement_number?: string | null
