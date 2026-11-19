@@ -1012,6 +1012,7 @@ type ConformidadeCompra = {
   local_regulation_reference: string | null;
   legal_review_status: string;
   legal_review_notes: string | null;
+  priority_sources_justification: string | null;
   validated_by: string | null;
   validated_at: string | null;
 };
@@ -1081,6 +1082,7 @@ function DadosEstruturados(props: {
     local_regulation_name: "",
     local_regulation_reference: "",
     legal_review_notes: "",
+    priority_sources_justification: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1230,6 +1232,8 @@ function DadosEstruturados(props: {
           tenantCompliance?.local_regulation_reference ??
           "",
         legal_review_notes: processCompliance?.legal_review_notes ?? "",
+        priority_sources_justification:
+          processCompliance?.priority_sources_justification ?? "",
       });
 
       const itemIds = itemRows.map((item) => item.id);
@@ -1560,6 +1564,9 @@ function DadosEstruturados(props: {
         `Validação normativa: ${normativeValidated ? "Validada pela autoridade registrada no sistema em " + formatarData(compliance?.validated_at ?? "") : "Pendente de validação da assessoria/autoridade competente"}`,
         compliance?.legal_review_notes
           ? `Observações jurídicas: ${clean(compliance.legal_review_notes)}`
+          : "",
+        compliance?.priority_sources_justification
+          ? `Justificativa para não priorizar os parâmetros I e II do art. 5º: ${clean(compliance.priority_sources_justification)}`
           : "",
         "Critério de análise: as cotações ativas compõem a série de preços; os alertas estatísticos são subsídios de análise e não excluem automaticamente valores.",
         "Fórmula de preço efetivo: (preço unitário × quantidade cotada + frete) ÷ quantidade cotada. Total aprovado: preço unitário aprovado × quantidade prevista do item.",
@@ -1929,6 +1936,20 @@ function DadosEstruturados(props: {
       return;
     }
     const legalNotes = complianceForm.legal_review_notes.trim();
+    const hasPriorityPriceSources = quotes.some(
+      (quote) =>
+        quote.is_active &&
+        ["painel_precos", "contratacoes_publicas"].includes(quote.source_type),
+    );
+    if (
+      !hasPriorityPriceSources &&
+      complianceForm.priority_sources_justification.trim().length < 20
+    ) {
+      toast.error(
+        "Justifique a impossibilidade de priorizar o Painel oficial ou contratações públicas similares (mínimo de 20 caracteres).",
+      );
+      return;
+    }
     const transferFunding = [
       "federal_transfer",
       "state_transfer",
@@ -1991,6 +2012,8 @@ function DadosEstruturados(props: {
         local_regulation_reference: complianceForm.local_regulation_reference.trim() || null,
         legal_review_status: "validated",
         legal_review_notes: complianceForm.legal_review_notes.trim() || null,
+        priority_sources_justification:
+          complianceForm.priority_sources_justification.trim() || null,
         updated_by: props.userId,
       },
       { onConflict: "tenant_id,process_id" },
@@ -3167,6 +3190,29 @@ function DadosEstruturados(props: {
                             />
                           </div>
                         </>
+                      )}
+                      {!quotes.some(
+                        (quote) =>
+                          quote.is_active &&
+                          ["painel_precos", "contratacoes_publicas"].includes(quote.source_type),
+                      ) && (
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label>
+                            Justificativa para não priorizar Painel oficial/contratações públicas *
+                          </Label>
+                          <Textarea
+                            rows={2}
+                            minLength={20}
+                            value={complianceForm.priority_sources_justification}
+                            onChange={(event) =>
+                              setComplianceForm((current) => ({
+                                ...current,
+                                priority_sources_justification: event.target.value,
+                              }))
+                            }
+                            placeholder="Explique por que não foi possível utilizar os parâmetros prioritários I e II do art. 5º, § 1º, da IN 65/2021."
+                          />
+                        </div>
                       )}
                       <div className="space-y-1 sm:col-span-2">
                         <Label>Fundamentação e observações da análise jurídica</Label>
