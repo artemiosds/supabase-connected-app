@@ -1714,6 +1714,7 @@ export type Database = {
           source_type: string
           supplier_id: string | null
           supplier_response_deadline: string | null
+          supplier_selection_justification: string | null
           tenant_id: string
           total_price: number | null
           unit_price: number
@@ -1753,6 +1754,7 @@ export type Database = {
           source_type?: string
           supplier_id?: string | null
           supplier_response_deadline?: string | null
+          supplier_selection_justification?: string | null
           tenant_id: string
           total_price?: number | null
           unit_price: number
@@ -1792,6 +1794,7 @@ export type Database = {
           source_type?: string
           supplier_id?: string | null
           supplier_response_deadline?: string | null
+          supplier_selection_justification?: string | null
           tenant_id?: string
           total_price?: number | null
           unit_price?: number
