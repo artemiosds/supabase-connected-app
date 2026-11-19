@@ -21,12 +21,7 @@ export function diasAteDataIso(data: string | null, hoje: string): number | null
 }
 
 export type SituacaoDocumentoPerfil =
-  | "arquivado"
-  | "sem_vencimento"
-  | "vencido"
-  | "vence_hoje"
-  | "a_vencer"
-  | "em_dia";
+  "arquivado" | "sem_vencimento" | "vencido" | "vence_hoje" | "a_vencer" | "em_dia";
 
 export function situacaoDocumentoPerfil(
   documento: DocumentoPerfil,

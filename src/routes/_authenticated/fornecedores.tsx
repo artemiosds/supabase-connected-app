@@ -1257,9 +1257,7 @@ function Fornecedores() {
 
       <FichaFornecedor
         fornecedor={
-          selecionado?.id === tenantCarregadoId && capacidades.can_view
-            ? fornecedorFicha
-            : null
+          selecionado?.id === tenantCarregadoId && capacidades.can_view ? fornecedorFicha : null
         }
         tenantId={selecionado?.id ?? ""}
         enabledModules={selecionado?.enabled_modules ?? {}}

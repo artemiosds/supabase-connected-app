@@ -1,16 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { dataLocalIso, diasAteDataIso, resumirFichaFornecedor, situacaoDocumentoPerfil } from "./supplier-profile";
+import {
+  dataLocalIso,
+  diasAteDataIso,
+  resumirFichaFornecedor,
+  situacaoDocumentoPerfil,
+} from "./supplier-profile";
 
 describe("Ficha 360º de fornecedores", () => {
   const hoje = "2026-11-19";
 
   it("diferencia documentos arquivados, vencidos e com vencimento próximo", () => {
-    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-11-18" }, hoje)).toBe("vencido");
-    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-11-19" }, hoje)).toBe("vence_hoje");
-    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-12-19" }, hoje)).toBe("a_vencer");
-    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-12-20" }, hoje)).toBe("em_dia");
-    expect(situacaoDocumentoPerfil({ status: "active", expires_at: null }, hoje)).toBe("sem_vencimento");
-    expect(situacaoDocumentoPerfil({ status: "archived", expires_at: "2026-01-01" }, hoje)).toBe("arquivado");
+    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-11-18" }, hoje)).toBe(
+      "vencido",
+    );
+    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-11-19" }, hoje)).toBe(
+      "vence_hoje",
+    );
+    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-12-19" }, hoje)).toBe(
+      "a_vencer",
+    );
+    expect(situacaoDocumentoPerfil({ status: "active", expires_at: "2026-12-20" }, hoje)).toBe(
+      "em_dia",
+    );
+    expect(situacaoDocumentoPerfil({ status: "active", expires_at: null }, hoje)).toBe(
+      "sem_vencimento",
+    );
+    expect(situacaoDocumentoPerfil({ status: "archived", expires_at: "2026-01-01" }, hoje)).toBe(
+      "arquivado",
+    );
   });
 
   it("não sofre desvios de fuso na contagem de dias", () => {

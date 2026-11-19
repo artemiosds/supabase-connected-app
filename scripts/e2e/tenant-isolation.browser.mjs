@@ -168,9 +168,7 @@ async function verifyAuthenticatedTenant(scenario) {
     await page.getByText(scenario.ownSupplier, { exact: true }).waitFor();
 
     // The 360º panel must open for the authenticated tenant's supplier only.
-    await page
-      .getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` })
-      .click();
+    await page.getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` }).click();
     const profileDialog = page.getByRole("dialog", { name: "Ficha 360º do fornecedor" });
     await profileDialog.waitFor();
     await profileDialog.getByText(scenario.ownSupplier, { exact: true }).waitFor();
