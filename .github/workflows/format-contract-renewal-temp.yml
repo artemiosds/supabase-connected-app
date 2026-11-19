@@ -1,0 +1,53 @@
+name: Temporary formatter for contract renewal PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  format-renewal:
+    if: github.event.pull_request.number == 39
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format renewal implementation
+        run: |
+          bunx prettier --write \
+            src/routes/_authenticated/documentos.tsx \
+            src/components/contracts/renewal-workspace.tsx \
+            src/components/dashboard/my-tasks.tsx \
+            src/lib/contract-renewal.ts \
+            src/lib/contract-renewal.test.ts \
+            src/lib/my-tasks.ts \
+            src/lib/my-tasks.test.ts \
+            docs/CONTRATOS-RENOVACAO-INTELIGENTE.md
+
+      - name: Commit formatting changes to the PR branch
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/routes/_authenticated/documentos.tsx src/components/contracts/renewal-workspace.tsx src/components/dashboard/my-tasks.tsx src/lib/contract-renewal.ts src/lib/contract-renewal.test.ts src/lib/my-tasks.ts src/lib/my-tasks.test.ts docs/CONTRATOS-RENOVACAO-INTELIGENTE.md
+            git commit -m "style: format contract renewal workflow"
+            git push origin "HEAD:${PR_BRANCH}"
+          fi
