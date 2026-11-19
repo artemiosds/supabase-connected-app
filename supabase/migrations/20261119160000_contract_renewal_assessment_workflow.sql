@@ -680,6 +680,24 @@ BEGIN
     RAISE EXCEPTION 'A minuta possui campos automáticos ou complementares não preenchidos. Revise o conteúdo antes de gerar.';
   END IF;
 
+  FOR v_variable IN
+    SELECT value
+    FROM jsonb_array_elements(COALESCE(v_template_variables, '[]'::jsonb))
+  LOOP
+    IF v_variable->>'required' = 'true' THEN
+      v_variable_key := v_variable->>'key';
+      v_variable_value := NEW.variables_snapshot->>v_variable_key;
+      IF v_variable_key IS NULL
+         OR v_variable_value IS NULL
+         OR btrim(v_variable_value) = ''
+         OR v_variable_value LIKE '[PREENCHER:%' THEN
+        RAISE EXCEPTION 'Campo obrigatório não preenchido na minuta de renovação: %.',
+          COALESCE(v_variable->>'label', v_variable_key, 'campo sem identificador')
+          USING ERRCODE = '23514';
+      END IF;
+    END IF;
+  END LOOP;
+
   SELECT v.can_generate, v.blockers
     INTO v_can_generate, v_blockers
   FROM public.validate_contract_renewal_addendum(NEW.tenant_id, NEW.contract_id) v;
