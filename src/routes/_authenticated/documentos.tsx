@@ -1366,6 +1366,17 @@ function Documentos() {
   async function gerarDocumento(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
+    if (
+      modeloSelecionado &&
+      camposDoModelo.some((campo) => campo.required && !camposComplementares[campo.key]?.trim())
+    ) {
+      toast.error("Preencha todos os campos obrigatórios do modelo antes de gerar a minuta.");
+      return;
+    }
+    if (modeloDoGerador?.template_type === "term_addendum_renewal" && !contratoGeracao) {
+      toast.error("A minuta de prorrogação exige um contrato vinculado.");
+      return;
+    }
     setSalvandoGerado(true);
     if (processoGeracao) {
       if (!modeloSelecionado) {
@@ -1419,7 +1430,7 @@ function Documentos() {
         status: "draft",
         document_type: modeloDoGerador?.template_type ?? "custom",
         template_version: modeloDoGerador?.version ?? null,
-        variables_snapshot: valoresAutomaticosGeracao as unknown as Json,
+        variables_snapshot: valoresCompletosGeracao as unknown as Json,
       });
       setSalvandoGerado(false);
       if (insertError) {
@@ -1508,14 +1519,25 @@ function Documentos() {
       : null,
   };
   const valoresAutomaticosGeracao = buildDocumentVariableValues(contextoVariaveisGeracao);
-  const previaGeracao = renderDocumentTemplate(conteudoGerado, valoresAutomaticosGeracao);
   const modeloDoGerador = modelos.find((m) => m.id === modeloSelecionado);
-  const camposDoModelo = (
-    (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
-  ).filter(
+  const schemaCamposGeracao =
+    (modeloDoGerador?.variables_schema as unknown as CampoComplementar[] | undefined) ?? [];
+  const camposDoModelo = schemaCamposGeracao.filter(
     (campo) =>
-      !campo.source?.startsWith("process.") && !valoresAutomaticosGeracao[campo.key]?.trim(),
+      (!processoGeracao || !campo.source?.startsWith("process.")) &&
+      !valoresAutomaticosGeracao[campo.key]?.trim(),
   );
+  const chavesDeclaradasGeracao = new Set(schemaCamposGeracao.map((campo) => campo.key));
+  const overridesGeracao = Object.fromEntries(
+    Object.entries(camposComplementares).filter(
+      ([key]) => chavesDeclaradasGeracao.has(key) && !valoresAutomaticosGeracao[key]?.trim(),
+    ),
+  );
+  const valoresCompletosGeracao = {
+    ...valoresAutomaticosGeracao,
+    ...overridesGeracao,
+  };
+  const previaGeracao = renderDocumentTemplate(conteudoGerado, valoresCompletosGeracao);
   const modelosInstalados = new Set(
     modelos
       .filter((m) => m.catalog_template_id && m.is_active)
@@ -3079,7 +3101,7 @@ function Documentos() {
                   />
                 </div>
               )}
-              {processoGeracao && (
+              {(processoGeracao || contratoGeracao) && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Dados complementares do documento</Label>
                   <p className="text-xs text-muted-foreground">
@@ -3088,11 +3110,9 @@ function Documentos() {
                     cadastro ficam identificados no rascunho para conferência.
                   </p>
                   {camposDoModelo.length === 0 ? (
-                    <Alert>
-                      <AlertDescription>
-                        Selecione um modelo-base instalado que contenha os campos de preenchimento.
-                      </AlertDescription>
-                    </Alert>
+                    <p className="text-sm text-muted-foreground">
+                      Não há campos complementares pendentes para este modelo.
+                    </p>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {camposDoModelo.map((campo) => (
@@ -3181,7 +3201,7 @@ function Documentos() {
                 type="submit"
                 disabled={
                   salvandoGerado ||
-                  (processoGeracao
+                  ((processoGeracao || contratoGeracao)
                     ? !modeloSelecionado ||
                       camposDoModelo.some(
                         (campo) => campo.required && !camposComplementares[campo.key]?.trim(),

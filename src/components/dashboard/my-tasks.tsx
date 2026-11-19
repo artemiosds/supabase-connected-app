@@ -25,6 +25,7 @@ import {
   type EtapaMinhaTarefa,
   type MinhaTarefa,
   type ProcessoMinhaTarefa,
+  type TarefaRenovacaoMinhaTarefa,
 } from "@/lib/my-tasks";
 
 type TaskState = {
@@ -81,6 +82,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
         processesResult,
         stagesResult,
         contractsResult,
+        renewalTasksResult,
         profileResult,
         documentCap,
         supplierCap,
@@ -113,6 +115,17 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
             .order("id")
             .range(start, end),
         ),
+        carregarTodasAsPaginas<TarefaRenovacaoMinhaTarefa>((start, end) =>
+          db
+            .from("contract_renewal_checklist_items")
+            .select("id,contract_id,title,due_date,status,item_key")
+            .eq("tenant_id", tenantId)
+            .eq("assigned_user_id", userId)
+            .in("status", ["pending", "in_progress"])
+            .order("due_date", { ascending: true, nullsFirst: false })
+            .order("id")
+            .range(start, end),
+        ),
         db.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
         db.rpc("get_document_capabilities", { p_tenant_id: tenantId }),
         db.rpc("get_supplier_capabilities", { p_tenant_id: tenantId }),
@@ -121,6 +134,8 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
       const processes = processesResult.status === "fulfilled" ? processesResult.value : [];
       const stages = stagesResult.status === "fulfilled" ? stagesResult.value : [];
       const contracts = contractsResult.status === "fulfilled" ? contractsResult.value : [];
+      const renewalTasks =
+        renewalTasksResult.status === "fulfilled" ? renewalTasksResult.value : [];
       const fullName =
         profileResult.status === "fulfilled" && !profileResult.value.error
           ? (profileResult.value.data?.full_name ?? null)
@@ -175,8 +190,18 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           processesResult.status === "rejected" ||
           stagesResult.status === "rejected" ||
           contractsResult.status === "rejected" ||
+          renewalTasksResult.status === "rejected" ||
           documentsFailed,
-        items: montarMinhasTarefas(userId, fullName, processes, stages, contracts, documents),
+        items: montarMinhasTarefas(
+          userId,
+          fullName,
+          processes,
+          stages,
+          contracts,
+          documents,
+          new Date(),
+          renewalTasks,
+        ),
         canCreateDocuments,
         canViewSuppliers,
         canCreateSuppliers,
@@ -196,12 +221,14 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
   const processos = current.items.filter((task) => task.tipo === "processo").length;
   const contratos = current.items.filter((task) => task.tipo === "contrato").length;
   const certidoes = current.items.filter((task) => task.tipo === "certidao").length;
+  const renovacoes = current.items.filter((task) => task.tipo === "renovacao").length;
   const filtros = [
     { value: "todas", label: "Todas", count: current.items.length },
     { value: "urgentes", label: "Urgentes", count: urgentes },
     { value: "processo", label: "Processos", count: processos },
     { value: "contrato", label: "Contratos", count: contratos },
     { value: "certidao", label: "Certidões", count: certidoes },
+    { value: "renovacao", label: "Renovações", count: renovacoes },
   ] as const;
   const tarefasVisiveis = current.items.filter((task) =>
     filtro === "todas"
@@ -399,10 +426,15 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                     ? FolderKanban
                     : task.tipo === "contrato"
                       ? ClipboardList
-                      : FileText;
+                      : task.tipo === "renovacao"
+                        ? CalendarClock
+                        : FileText;
                 const critical = criticidadeTarefa(task.dias) === "critical";
                 const attention = criticidadeTarefa(task.dias) === "attention";
-                const detalhe = `${task.destino}?${task.tipo === "processo" ? "processo" : task.tipo === "contrato" ? "contrato" : "documento"}=${encodeURIComponent(task.entityId)}${task.tipo === "contrato" ? "&renovacao=1" : ""}`;
+                const detalhe =
+                  task.tipo === "renovacao" || task.tipo === "contrato"
+                    ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&renovacao=1`
+                    : `${task.destino}?${task.tipo === "processo" ? "processo" : "documento"}=${encodeURIComponent(task.entityId)}`;
                 return (
                   <div className="group relative bg-card transition-colors hover:bg-muted/25">
                     <div
@@ -432,7 +464,9 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                             ? "Processo administrativo"
                             : task.tipo === "contrato"
                               ? "Gestão e fiscalização"
-                              : "Regularidade documental"}
+                              : task.tipo === "renovacao"
+                                ? "Providência de renovação contratual"
+                                : "Regularidade documental"}
                         </p>
                       </div>
                       <Button

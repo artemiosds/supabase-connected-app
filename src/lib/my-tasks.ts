@@ -24,10 +24,14 @@ export type DocumentoMinhaTarefa = Pick<
   Tables<"supplier_documents">,
   "id" | "supplier_id" | "title" | "document_type" | "expires_at" | "status"
 >;
+export type TarefaRenovacaoMinhaTarefa = Pick<
+  Tables<"contract_renewal_checklist_items">,
+  "id" | "contract_id" | "title" | "due_date" | "status" | "item_key"
+>;
 
 export type MinhaTarefa = {
   id: string;
-  tipo: "processo" | "contrato" | "certidao";
+  tipo: "processo" | "contrato" | "certidao" | "renovacao";
   titulo: string;
   descricao: string;
   dias: number | null;
@@ -63,6 +67,7 @@ export function montarMinhasTarefas(
   contratos: ContratoMinhaTarefa[],
   documentos: DocumentoMinhaTarefa[],
   hoje = new Date(),
+  tarefasRenovacao: TarefaRenovacaoMinhaTarefa[] = [],
 ): MinhaTarefa[] {
   if (!userId) return [];
   const tarefas: MinhaTarefa[] = [];
@@ -145,6 +150,19 @@ export function montarMinhasTarefas(
       dias,
       destino: "/documentos",
       entityId: documento.id,
+    });
+  }
+
+  for (const tarefa of tarefasRenovacao) {
+    if (tarefa.status !== "pending" && tarefa.status !== "in_progress") continue;
+    tarefas.push({
+      id: `renovacao-${tarefa.id}`,
+      tipo: "renovacao",
+      titulo: tarefa.title,
+      descricao: `Providência da renovação contratual · ${tarefa.item_key.replaceAll("_", " ")}`,
+      dias: tarefa.due_date ? diasAte(tarefa.due_date, hoje) : null,
+      destino: "/contratos",
+      entityId: tarefa.contract_id,
     });
   }
 
