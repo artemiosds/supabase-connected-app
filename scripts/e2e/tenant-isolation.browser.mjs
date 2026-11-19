@@ -1631,6 +1631,16 @@ async function verifyProcurementLifecycle() {
     console.log(
       "PASS official price map: approved estimate, normative decision, independent review, landscape PDF and signed artifact integrity",
     );
+    await page.goto(appUrl + "/fornecedores");
+    await page
+      .getByRole("button", { name: "Fornecedor Sintético Exclusivo A", exact: true })
+      .click();
+    const profile = page.getByRole("dialog", { name: "Fornecedor Sintético Exclusivo A" });
+    await profile.getByRole("tab", { name: "Contratos e atas" }).click();
+    await profile.getByText("Contrato " + contractNumber, { exact: true }).waitFor();
+    await profile.getByRole("tab", { name: "Cotações" }).click();
+    await profile.getByRole("listitem").first().waitFor();
+    console.log("PASS supplier profile: linked contract and quotations visible to the tenant");
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );

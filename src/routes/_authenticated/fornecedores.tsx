@@ -1,3 +1,4 @@
+import { SupplierProfile } from "@/components/supplier-profile";
 import { clearSupplierAutofill, fillEmptySupplierFields } from "@/lib/supplier-autofill";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -142,6 +143,10 @@ function Fornecedores() {
     can_update: false,
     can_deactivate: false,
   });
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const profile = fornecedores.find(
+    (row) => row.id === profileId && row.tenant_id === selecionado?.id,
+  );
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "active" | "inactive">("todos");
   const [filtroCategoria, setFiltroCategoria] = useState<"todas" | Categoria>("todas");
@@ -856,7 +861,13 @@ function Fornecedores() {
                   lista.map((fornecedor) => (
                     <TableRow key={fornecedor.id}>
                       <TableCell>
-                        <p className="font-medium text-foreground">{fornecedor.legal_name}</p>
+                        <button
+                          type="button"
+                          className="text-left font-medium text-primary underline-offset-4 hover:underline"
+                          onClick={() => setProfileId(fornecedor.id)}
+                        >
+                          {fornecedor.legal_name}
+                        </button>
                         {fornecedor.trade_name && (
                           <p className="text-xs text-muted-foreground">{fornecedor.trade_name}</p>
                         )}
@@ -922,6 +933,16 @@ function Fornecedores() {
             limite fixo. O acesso aos dados é validado no banco por Secretaria e permissão.
           </p>
         </>
+      )}
+
+      {profile && selecionado && tenantCarregadoId === selecionado.id && capacidades.can_view && (
+        <SupplierProfile
+          key={profile.id}
+          supplier={profile}
+          modules={selecionado.enabled_modules}
+          category={CATEGORIAS.find((c) => c.value === profile.category)?.label ?? "Outros"}
+          onClose={() => setProfileId(null)}
+        />
       )}
 
       <Dialog
