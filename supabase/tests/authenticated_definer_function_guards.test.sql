@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(51);
+SELECT extensions.plan(52);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -161,6 +161,15 @@ SELECT extensions.ok(
  AND NOT pg_catalog.has_function_privilege('authenticated','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
  AND NOT pg_catalog.has_function_privilege('anon','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE'),
  'verified signature finalizer is callable only by the trusted service role'
+);
+
+SELECT extensions.ok(
+ pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','status','SELECT')
+ AND pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','tenant_id','SELECT')
+ AND pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','document_id','SELECT')
+ AND NOT pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','decision_comment','SELECT')
+ AND NOT pg_catalog.has_table_privilege('service_role','public.generated_document_workflows','UPDATE'),
+ 'signature service can read only the workflow status and keys, without direct workflow changes'
 );
 
 SELECT extensions.ok(
