@@ -1241,25 +1241,88 @@ function Documentos() {
     if (loading || !selecionado?.id || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const processoId = params.get("processo");
+    const contratoId = params.get("contrato");
     const tipoSolicitado = params.get("tipo");
-    if (!processoId || !tipoSolicitado) return;
+    const codigoModelo = params.get("modelo");
+    if ((!processoId && !contratoId) || (!tipoSolicitado && !codigoModelo)) return;
 
-    const processoExiste = processos.some((processo) => processo.id === processoId);
-    if (!processoExiste) {
-      toast.error("O processo solicitado não está disponível nesta Secretaria.");
+    const limparParametros = () => {
       params.delete("processo");
+      params.delete("contrato");
       params.delete("tipo");
+      params.delete("modelo");
       const query = params.toString();
       window.history.replaceState(
         window.history.state,
         "",
         `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
       );
+    };
+
+    if (!capacidades.can_create) {
+      toast.error("Seu perfil não possui permissão para gerar documentos.");
+      limparParametros();
       return;
     }
 
-    iniciarGeracao(processoId);
-    const modelo = modelos.find((item) => item.is_active && item.template_type === tipoSolicitado);
+    const processo = processoId ? processos.find((item) => item.id === processoId) : null;
+    if (processoId && !processo) {
+      toast.error("O processo solicitado não está disponível nesta Secretaria.");
+      limparParametros();
+      return;
+    }
+
+    const contrato = contratoId ? contratos.find((item) => item.id === contratoId) : null;
+    if (
+      contratoId &&
+      (!contrato || contrato.instrument_type !== "contrato" || contrato.status !== "vigente")
+    ) {
+      toast.error("O contrato solicitado não está disponível para preparar esta minuta.");
+      limparParametros();
+      return;
+    }
+    if (contrato && contrato.end_date < new Date().toLocaleDateString("sv-SE")) {
+      toast.error(
+        "A vigência deste contrato já terminou. Encaminhe a situação para análise jurídica.",
+      );
+      limparParametros();
+      return;
+    }
+    if (processoId && contrato && contrato.process_id !== processoId) {
+      toast.error("O contrato selecionado não pertence ao processo informado.");
+      limparParametros();
+      return;
+    }
+
+    const modelo = modelos.find(
+      (item) =>
+        item.is_active &&
+        (codigoModelo
+          ? item.template_code === codigoModelo
+          : item.template_type === tipoSolicitado),
+    );
+    if (contratoId && codigoModelo && !modelo) {
+      if (moduloModelosAtivo && capacidades.can_manage_templates) {
+        setAba("biblioteca");
+        toast.info("Instale o modelo-base de prorrogação na Biblioteca-base para continuar.");
+        return;
+      }
+      toast.info(
+        "O modelo-base ainda não está instalado nesta Secretaria. Solicite a instalação a um administrador.",
+      );
+      limparParametros();
+      return;
+    }
+
+    const processoVinculado =
+      contrato?.process_id && processos.some((item) => item.id === contrato.process_id)
+        ? contrato.process_id
+        : "";
+    iniciarGeracao(processoId || processoVinculado);
+    if (contrato) {
+      setContratoGeracao(contrato.id);
+      setFornecedorGeracao(contrato.supplier_id ?? "nenhum");
+    }
     if (modelo) {
       setModeloSelecionado(modelo.id);
       setTituloGerado(modelo.title);
@@ -1268,15 +1331,17 @@ function Documentos() {
       toast.info("Instale o modelo correspondente na Biblioteca-base para gerar este documento.");
     }
 
-    params.delete("processo");
-    params.delete("tipo");
-    const query = params.toString();
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-    );
-  }, [loading, selecionado?.id, processos, modelos]);
+    limparParametros();
+  }, [
+    loading,
+    selecionado?.id,
+    processos,
+    modelos,
+    contratos,
+    capacidades.can_create,
+    capacidades.can_manage_templates,
+    moduloModelosAtivo,
+  ]);
 
   function selecionarModelo(id: string) {
     setModeloSelecionado(id);
@@ -1341,6 +1406,9 @@ function Documentos() {
         title: tituloGerado.trim(),
         content_snapshot: snapshot,
         status: "draft",
+        document_type: modeloDoGerador?.template_type ?? "custom",
+        template_version: modeloDoGerador?.version ?? null,
+        variables_snapshot: valoresAutomaticosGeracao as unknown as Json,
       });
       setSalvandoGerado(false);
       if (insertError) {

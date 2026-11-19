@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, FilePlus2, Loader2 } from "lucide-react";
+import { CalendarClock, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function RenewalWorkspace(props: {
     tenantId: string;
     rows: Followup[];
     canEdit: boolean;
+    canCreate: boolean;
     failed: boolean;
   } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -64,6 +65,10 @@ export function RenewalWorkspace(props: {
           capabilities.status === "fulfilled" &&
           !capabilities.value.error &&
           capabilities.value.data?.[0]?.can_update === true,
+        canCreate:
+          capabilities.status === "fulfilled" &&
+          !capabilities.value.error &&
+          capabilities.value.data?.[0]?.can_create === true,
         failed:
           followups.status === "rejected" ||
           capabilities.status === "rejected" ||
@@ -130,6 +135,12 @@ export function RenewalWorkspace(props: {
           autoriza nem prorroga a vigência.
         </p>
       </div>
+      <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+        Nos contratos regidos pela Lei nº 14.133/2021, a prorrogação do art. 107 exige serviço ou
+        fornecimento contínuo, previsão no edital e demonstração de vantagem. Contratos por escopo
+        (art. 111) e atas de registro de preços seguem regras próprias. A minuta é apenas um
+        rascunho: não altera a vigência nem registra o aditivo.
+      </p>
       {!current ? (
         <Loader2 className="h-5 w-5 animate-spin" />
       ) : (
@@ -212,6 +223,15 @@ export function RenewalWorkspace(props: {
                       : "Verifique a previsão contratual, vantajosidade, disponibilidade orçamentária e autorização antes da formalização."}
                   </p>
                   <div className="flex flex-wrap gap-2">
+                    {days >= 0 && c.instrument_type === "contrato" && current.canCreate && (
+                      <Button size="sm" variant="outline" asChild>
+                        <a
+                          href={`/documentos?contrato=${encodeURIComponent(c.id)}&modelo=ADITIVO_PRORROGACAO_CONTINUO`}
+                        >
+                          <FileText className="h-4 w-4" /> Preparar minuta (se cabível)
+                        </a>
+                      </Button>
+                    )}
                     {!followup && days >= 0 && (
                       <Button
                         size="sm"
