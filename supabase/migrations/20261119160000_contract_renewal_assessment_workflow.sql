@@ -681,18 +681,18 @@ BEGIN
   END IF;
 
   FOR v_variable IN
-    SELECT value
+    SELECT value AS item
     FROM jsonb_array_elements(COALESCE(v_template_variables, '[]'::jsonb))
   LOOP
-    IF v_variable->>'required' = 'true' THEN
-      v_variable_key := v_variable->>'key';
+    IF v_variable.item->>'required' = 'true' THEN
+      v_variable_key := v_variable.item->>'key';
       v_variable_value := NEW.variables_snapshot->>v_variable_key;
       IF v_variable_key IS NULL
          OR v_variable_value IS NULL
          OR btrim(v_variable_value) = ''
          OR v_variable_value LIKE '[PREENCHER:%' THEN
         RAISE EXCEPTION 'Campo obrigatório não preenchido na minuta de renovação: %.',
-          COALESCE(v_variable->>'label', v_variable_key, 'campo sem identificador')
+          COALESCE(v_variable.item->>'label', v_variable_key, 'campo sem identificador')
           USING ERRCODE = '23514';
       END IF;
     END IF;
