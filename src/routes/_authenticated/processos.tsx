@@ -1234,10 +1234,8 @@ function DadosEstruturados(props: {
           tenantCompliance?.local_regulation_reference ??
           "",
         legal_review_notes: processCompliance?.legal_review_notes ?? "",
-        priority_sources_justification:
-          processCompliance?.priority_sources_justification ?? "",
-        supplier_non_response_record:
-          processCompliance?.supplier_non_response_record ?? "",
+        priority_sources_justification: processCompliance?.priority_sources_justification ?? "",
+        supplier_non_response_record: processCompliance?.supplier_non_response_record ?? "",
       });
 
       const itemIds = itemRows.map((item) => item.id);
@@ -1952,7 +1950,9 @@ function DadosEstruturados(props: {
     const hasPriorityPriceSources = quotes.some(
       (quote) =>
         quote.is_active &&
-        ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(quote.source_type),
+        ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(
+          quote.source_type,
+        ),
     );
     if (
       !hasPriorityPriceSources &&
@@ -3208,7 +3208,9 @@ function DadosEstruturados(props: {
                       {!quotes.some(
                         (quote) =>
                           quote.is_active &&
-                          ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(quote.source_type),
+                          ["painel_precos", "banco_precos_saude", "contratacoes_publicas"].includes(
+                            quote.source_type,
+                          ),
                       ) && (
                         <div className="space-y-1 sm:col-span-2">
                           <Label>
@@ -3230,7 +3232,8 @@ function DadosEstruturados(props: {
                       )}
                       <div className="space-y-1 sm:col-span-2">
                         <Label>
-                          Fornecedores consultados que não apresentaram proposta (ou declaração de inexistência) *
+                          Fornecedores consultados que não apresentaram proposta (ou declaração de
+                          inexistência) *
                         </Label>
                         <Textarea
                           required
