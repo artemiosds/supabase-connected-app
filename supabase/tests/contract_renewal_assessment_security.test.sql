@@ -164,8 +164,14 @@ SELECT extensions.ok(
   ) ILIKE '%content_snapshot%'
   AND pg_catalog.pg_get_functiondef(
     'public.fn_guard_contract_renewal_addendum()'::regprocedure
-  ) ILIKE '%position%',
-  'the server refuses to save renewal drafts with unresolved template placeholders'
+  ) ILIKE '%position%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%variables_schema%'
+  AND pg_catalog.pg_get_functiondef(
+    'public.fn_guard_contract_renewal_addendum()'::regprocedure
+  ) ILIKE '%required%',
+  'the server blocks unresolved placeholders and missing required template variables'
 );
 
 SELECT extensions.ok(
