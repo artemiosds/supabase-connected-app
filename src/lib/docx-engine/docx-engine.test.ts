@@ -362,6 +362,9 @@ describe("docx engine — analysis, model and PDF", () => {
     const model = await docxToModel(bytes);
     expect(model.pageLayout.widthPt).toBeGreaterThan(model.pageLayout.heightPt);
     expect(model.blocks.some((block) => block.kind === "table")).toBe(true);
+    const pdf = await renderPdf(model, { branding: DEFAULT_BRANDING });
+    const page = (await PDFDocument.load(pdf)).getPages()[0]!;
+    expect(page.getWidth()).toBeGreaterThan(page.getHeight());
   });
 
   it("turns tab-separated text into a Word table when a model has no original DOCX", async () => {
