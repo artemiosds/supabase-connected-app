@@ -1,3 +1,4 @@
+import { SupplierSelect, type SupplierOption } from "@/components/supplier-select";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -158,7 +159,7 @@ function Contratos() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const [lista, setLista] = useState<Contrato[]>([]);
-  const [fornecedores, setFornecedores] = useState<{ id: string; legal_name: string }[]>([]);
+  const [fornecedores, setFornecedores] = useState<SupplierOption[]>([]);
   const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
@@ -220,7 +221,7 @@ function Contratos() {
         carregarTodasAsPaginas((inicio, fim) =>
           db
             .from("suppliers")
-            .select("id, legal_name")
+            .select("id,legal_name,trade_name,cnpj,city")
             .eq("tenant_id", tenantId)
             .order("legal_name")
             .order("id")
@@ -926,7 +927,7 @@ function NovoContrato(props: {
   onFechar: () => void;
   tenantId: string;
   userId: string;
-  fornecedores: { id: string; legal_name: string }[];
+  fornecedores: SupplierOption[];
   processos: ProcessoOpcao[];
   onSalvo: () => void;
 }) {
@@ -1161,22 +1162,12 @@ function NovoContrato(props: {
             </Select>
           </Campo>
           <Campo label="Fornecedor">
-            <Select
+            <SupplierSelect
+              suppliers={props.fornecedores}
+              emptyOption={{ value: "sem_fornecedor", label: "Sem fornecedor vinculado" }}
               value={f.supplier_id || "sem_fornecedor"}
               onValueChange={(value) => set("supplier_id")(value === "sem_fornecedor" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sem_fornecedor">Sem fornecedor vinculado</SelectItem>
-                {props.fornecedores.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id}>
-                    {supplier.legal_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </Campo>
           <Campo label="Valor global (R$)">
             <Input

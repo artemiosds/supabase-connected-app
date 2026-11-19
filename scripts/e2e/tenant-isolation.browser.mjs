@@ -1017,6 +1017,7 @@ async function verifyProcurementLifecycle() {
       const field = (label) => quoteForm.getByText(label, { exact: true }).locator("..");
       if (supplierName) {
         await field("Fornecedor cadastrado (opcional)").getByRole("combobox").click();
+        await page.getByPlaceholder("Nome, CNPJ ou município").fill("12.345.678/0001-95");
         await page.getByRole("option", { name: supplierName, exact: true }).click();
       }
 
@@ -1164,6 +1165,7 @@ async function verifyProcurementLifecycle() {
     await contractComboboxes.nth(2).click();
     await page.getByRole("option", { name: new RegExp(processNumber) }).click();
     await contractComboboxes.nth(3).click();
+    await page.getByPlaceholder("Nome, CNPJ ou município").fill("sintetico exclusivo");
     await page
       .getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true })
       .click();

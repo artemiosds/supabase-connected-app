@@ -1,3 +1,4 @@
+import { SupplierSelect } from "@/components/supplier-select";
 import { AnnualDemandSource } from "@/components/annual-demand-source";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -70,7 +71,7 @@ export const Route = createFileRoute("/_authenticated/documentos")({
   component: Documentos,
 });
 
-type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj">;
+type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj" | "city">;
 type DocumentoFornecedor = Tables<"supplier_documents">;
 type Modelo = Tables<"document_templates">;
 type ModeloCatalogo = Tables<"document_template_catalog">;
@@ -430,7 +431,7 @@ function Documentos() {
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
           db
             .from("suppliers")
-            .select("id,legal_name,trade_name,cnpj")
+            .select("id,legal_name,trade_name,cnpj,city")
             .eq("tenant_id", selecionado.id)
             .order("legal_name")
             .order("id")
@@ -2577,22 +2578,12 @@ function Documentos() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label>Fornecedor *</Label>
-                <Select
+                <SupplierSelect
+                  suppliers={fornecedores}
                   value={fornecedorId}
                   onValueChange={setFornecedorId}
                   disabled={!!documentoEditando}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fornecedores.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.legal_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Título *</Label>
@@ -3074,23 +3065,13 @@ function Documentos() {
               {!processoGeracao && (
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
-                  <Select
+                  <SupplierSelect
+                    suppliers={fornecedores}
+                    emptyOption={{ value: "nenhum", label: "Sem fornecedor" }}
                     value={fornecedorGeracao}
                     onValueChange={setFornecedorGeracao}
                     disabled={!!contratoGeracao}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Vincular fornecedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nenhum">Sem fornecedor</SelectItem>
-                      {fornecedores.map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.legal_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               )}
               {!processoGeracao && (

@@ -1,3 +1,4 @@
+import { clearSupplierAutofill, fillEmptySupplierFields } from "@/lib/supplier-autofill";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -82,6 +83,7 @@ type Capacidades = {
 };
 
 type FormularioFornecedor = {
+  automaticFields: string[];
   cnpj: string;
   legal_name: string;
   trade_name: string;
@@ -101,6 +103,7 @@ type FormularioFornecedor = {
 };
 
 const FORMULARIO_VAZIO: FormularioFornecedor = {
+  automaticFields: [],
   cnpj: "",
   legal_name: "",
   trade_name: "",
@@ -280,6 +283,9 @@ function Fornecedores() {
   }, [fornecedores, busca, filtroStatus, filtroCategoria]);
 
   function abrirNovo() {
+    consultaCnpjRef.current += 1;
+    ultimoCnpjConsultadoRef.current = "";
+    setConsultandoCnpj(false);
     setEditando(null);
     setFormulario(FORMULARIO_VAZIO);
     setConsultaCnpj(null);
@@ -297,9 +303,13 @@ function Fornecedores() {
   }, [loading, selecionado?.id, tenantCarregadoId, capacidades.can_create]);
 
   function abrirEdicao(fornecedor: Fornecedor) {
+    consultaCnpjRef.current += 1;
+    ultimoCnpjConsultadoRef.current = "";
+    setConsultandoCnpj(false);
     setConsultaCnpj(null);
     setEditando(fornecedor);
     setFormulario({
+      automaticFields: [],
       cnpj: formatarCnpj(fornecedor.cnpj),
       legal_name: fornecedor.legal_name,
       trade_name: fornecedor.trade_name ?? "",
@@ -332,7 +342,16 @@ function Fornecedores() {
       setConsultandoCnpj(false);
       setConsultaCnpj(null);
     }
-    setFormulario((atual) => ({ ...atual, [campo]: valor }));
+    setFormulario((atual) => {
+      if (campo === "cnpj" && normalizarCnpj(String(valor)) !== normalizarCnpj(atual.cnpj)) {
+        return { ...clearSupplierAutofill(atual), cnpj: String(valor) };
+      }
+      return {
+        ...atual,
+        [campo]: valor,
+        automaticFields: atual.automaticFields.filter((key) => key !== campo),
+      };
+    });
   }
 
   const consultarCnpj = useCallback(async (valor: string) => {
@@ -347,7 +366,7 @@ function Fornecedores() {
     const aplicarDados = (dados: CnpjLookupData) => {
       setFormulario((atual) => {
         if (normalizarCnpj(atual.cnpj) !== cnpj) return atual;
-        const preenchimento: Partial<FormularioFornecedor> = {
+        const preenchimento = {
           legal_name: dados.legal_name ?? "",
           trade_name: dados.trade_name ?? "",
           street: dados.street ?? "",
@@ -361,14 +380,7 @@ function Fornecedores() {
           contact_email: dados.contact_email ?? "",
           website: dados.website ?? "",
         };
-        const proximo = { ...atual };
-        for (const [campo, conteudo] of Object.entries(preenchimento)) {
-          const chave = campo as keyof FormularioFornecedor;
-          if (conteudo && !String(atual[chave] ?? "").trim()) {
-            Object.assign(proximo, { [chave]: conteudo });
-          }
-        }
-        return proximo;
+        return fillEmptySupplierFields(atual, preenchimento);
       });
       setConsultaCnpj(dados);
     };
@@ -454,6 +466,23 @@ function Fornecedores() {
       return;
     }
 
+    if (
+      consultaCnpj?.legal_name &&
+      formulario.legal_name.trim().toLocaleUpperCase("pt-BR") !==
+        consultaCnpj.legal_name.trim().toLocaleUpperCase("pt-BR") &&
+      !window.confirm(
+        "A razão social informada difere da consulta deste CNPJ. Deseja manter a razão social digitada?",
+      )
+    )
+      return;
+    if (
+      editando &&
+      normalizarCnpj(editando.cnpj) !== cnpj &&
+      !window.confirm(
+        "Você está alterando o CNPJ de um fornecedor já cadastrado. Os vínculos existentes continuarão neste registro. Confirma a correção da identificação?",
+      )
+    )
+      return;
     const payload = {
       tenant_id: selecionado.id,
       cnpj,
