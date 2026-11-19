@@ -1363,6 +1363,20 @@ function DadosEstruturados(props: {
       return;
     }
     if (
+      quoteForm.source_type === "fornecedor" &&
+      (!quoteForm.supplier_consultation_sent_at ||
+        !quoteForm.supplier_consultation_response_deadline ||
+        quoteForm.supplier_consultation_response_deadline <
+          quoteForm.supplier_consultation_sent_at)
+    ) {
+      toast.error("Informe a data de envio e um prazo de resposta válido para o fornecedor.");
+      return;
+    }
+    if (quoteForm.source_type === "fornecedor" && !evidenceFile) {
+      toast.error("Anexe a proposta formal do fornecedor antes de registrar a cotação.");
+      return;
+    }
+    if (
       evidenceFile &&
       (!allowedEvidenceTypes.has(evidenceFile.type) || evidenceFile.size > 20 * 1024 * 1024)
     ) {
@@ -1658,6 +1672,29 @@ function DadosEstruturados(props: {
               .map(clean)
               .join("\t"),
           );
+        }
+
+        lines.push(
+          "FORMALIZAÇÃO DA CONSULTA A FORNECEDORES",
+          ["Fornecedor", "Envio da solicitação", "Prazo concedido para resposta"].join("\t"),
+        );
+        const formalSupplierQuotes = rows.filter((quote) => quote.source_type === "fornecedor");
+        if (formalSupplierQuotes.length === 0) {
+          lines.push("Não houve pesquisa direta com fornecedores neste item.");
+        } else {
+          for (const quote of formalSupplierQuotes) {
+            lines.push(
+              [
+                quote.source_name,
+                quote.supplier_consultation_sent_at
+                  ? formatarData(quote.supplier_consultation_sent_at)
+                  : "",
+                quote.supplier_consultation_response_deadline
+                  ? formatarData(quote.supplier_consultation_response_deadline)
+                  : "",
+              ].map(clean).join("\t"),
+            );
+          }
         }
 
         lines.push(
@@ -3497,6 +3534,16 @@ function DadosEstruturados(props: {
                                       ? new Date(q.accessed_at).toLocaleString("pt-BR")
                                       : "Não registrado"}
                                   </p>
+                                  {q.source_type === "fornecedor" && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Solicitação: {q.supplier_consultation_sent_at
+                                        ? formatarData(q.supplier_consultation_sent_at)
+                                        : "Não registrada"} · Resposta até:{" "}
+                                      {q.supplier_consultation_response_deadline
+                                        ? formatarData(q.supplier_consultation_response_deadline)
+                                        : "Não informado"}
+                                    </p>
+                                  )}
                                 </td>
                                 <td className="p-2 text-right">{formatarMoeda(q.unit_price)}</td>
                                 <td className="p-2 text-right">{formatarMoeda(q.delivery_cost)}</td>
