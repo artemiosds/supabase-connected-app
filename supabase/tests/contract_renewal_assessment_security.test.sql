@@ -1,7 +1,7 @@
 -- Segurança, isolamento por Secretaria e bloqueio de geração da renovação contínua.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(24);
+SELECT extensions.plan(25);
 
 SELECT extensions.ok(
   to_regclass('public.contract_renewal_assessments') IS NOT NULL,
@@ -156,6 +156,20 @@ SELECT extensions.ok(
       AND NOT t.tgisinternal
   ),
   'creating an assessment initializes the assigned documentary checklist'
+);
+
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_trigger t
+    WHERE t.tgrelid = 'public.generated_documents'::regclass
+      AND t.tgname = 'trg_guard_generated_documents_renewal_addendum'
+      AND NOT t.tgisinternal
+      AND pg_catalog.pg_get_triggerdef(t.oid) ILIKE '%variables_snapshot%'
+      AND pg_catalog.pg_get_triggerdef(t.oid) ILIKE '%content_snapshot%'
+      AND pg_catalog.pg_get_triggerdef(t.oid) ILIKE '%process_id%'
+  ),
+  'the server revalidates renewal draft content and relationship edits, not only initial insertion'
 );
 
 SELECT extensions.ok(
