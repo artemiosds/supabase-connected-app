@@ -958,6 +958,7 @@ type CotacaoCompra = {
   supplier_id: string | null;
   source_name: string;
   source_type: string;
+  supplier_selection_justification: string | null;
   reference_identifier: string | null;
   reference_url: string | null;
   quoted_at: string;
@@ -1107,6 +1108,7 @@ function DadosEstruturados(props: {
     delivery_cost: "0",
     notes: "",
     source_type: "painel_precos",
+    supplier_selection_justification: "",
     reference_identifier: "",
     accessed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
       .toISOString()
@@ -1359,6 +1361,10 @@ function DadosEstruturados(props: {
         supplier_id: quoteForm.supplier_id === "sem_fornecedor" ? null : quoteForm.supplier_id,
         source_name: quoteForm.source_name.trim() || supplier?.legal_name || "",
         source_type: quoteForm.source_type,
+        supplier_selection_justification:
+          quoteForm.source_type === "fornecedor"
+            ? quoteForm.supplier_selection_justification.trim()
+            : null,
         reference_identifier: quoteForm.reference_identifier.trim() || null,
         reference_url: quoteForm.reference_url.trim() || null,
         quoted_at: quoteForm.quoted_at,
@@ -2462,6 +2468,24 @@ function DadosEstruturados(props: {
                                   }
                                 />
                               </div>
+                              {quoteForm.source_type === "fornecedor" && (
+                                <div className="space-y-1 sm:col-span-2">
+                                  <Label>Justificativa da escolha deste fornecedor *</Label>
+                                  <Textarea
+                                    required
+                                    minLength={10}
+                                    rows={2}
+                                    value={quoteForm.supplier_selection_justification}
+                                    onChange={(event) =>
+                                      setQuoteForm((current) => ({
+                                        ...current,
+                                        supplier_selection_justification: event.target.value,
+                                      }))
+                                    }
+                                    placeholder="Registre o critério objetivo da escolha do fornecedor consultado, conforme art. 3º, VIII, e art. 5º, IV, da IN 65/2021."
+                                  />
+                                </div>
+                              )}
                               <div className="space-y-1">
                                 <Label>Prazo de validade da proposta</Label>
                                 <Input
