@@ -165,7 +165,9 @@ async function verifyAuthenticatedTenant(scenario) {
       .waitFor();
     await page.goto(`${appUrl}/fornecedores`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
-    await page.getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` }).waitFor();
+    await page
+      .getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` })
+      .waitFor();
 
     // The monitoring panel must classify only the active document of the current tenant.
     // Each fixture has an active certificate expiring in 10 days.
