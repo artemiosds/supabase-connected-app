@@ -1838,6 +1838,7 @@ export type Database = {
           normative_basis: string
           priority_sources_justification: string | null
           process_id: string
+          supplier_non_response_record: string | null
           tenant_id: string
           transfer_agreement_number: string | null
           updated_at: string
@@ -1856,6 +1857,7 @@ export type Database = {
           normative_basis?: string
           priority_sources_justification?: string | null
           process_id: string
+          supplier_non_response_record?: string | null
           tenant_id: string
           transfer_agreement_number?: string | null
           updated_at?: string
@@ -1874,6 +1876,7 @@ export type Database = {
           normative_basis?: string
           priority_sources_justification?: string | null
           process_id?: string
+          supplier_non_response_record?: string | null
           tenant_id?: string
           transfer_agreement_number?: string | null
           updated_at?: string
