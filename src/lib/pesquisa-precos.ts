@@ -23,6 +23,8 @@ export type CotacaoMapa = {
   reference_identifier?: string | null;
   accessed_at?: string | null;
   supplier_response_deadline?: string | null;
+  supplier_consultation_sent_at?: string | null;
+  supplier_consultation_response_deadline?: string | null;
   source_tax_id?: string | null;
   source_contact_name?: string | null;
   source_contact_email?: string | null;
@@ -239,6 +241,8 @@ export function gerarCsvMapaDePrecos(
       "Data da cotação",
       "Data/hora de acesso",
       "Validade da proposta",
+      "Data de envio da solicitação",
+      "Prazo concedido para resposta",
       "CPF/CNPJ da fonte",
       "Responsável pela cotação",
       "E-mail de contato",
@@ -285,6 +289,8 @@ export function gerarCsvMapaDePrecos(
         quote.quoted_at,
         quote.accessed_at ?? "",
         quote.supplier_response_deadline ?? "",
+        quote.supplier_consultation_sent_at ?? "",
+        quote.supplier_consultation_response_deadline ?? "",
         quote.source_tax_id ?? "",
         quote.source_contact_name ?? "",
         quote.source_contact_email ?? "",
