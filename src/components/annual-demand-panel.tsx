@@ -114,7 +114,7 @@ function AnnualDemands({ tenantId, onConverted }: Props) {
         <p>{demand.justification}</p>
         <ul className="list-inside list-disc text-sm">{Array.isArray(demand.items) && demand.items.map((item, index) =>
           item && typeof item === "object" && !Array.isArray(item) &&
-          <li key={index}>{String(item.description)} — {String(item.quantity)} {String(item.unit)}</li>)}</ul>
+          <li key={index}>{String(item["description"])} — {String(item["quantity"])} {String(item["unit"])}</li>)}</ul>
         <p>{demand.process_id ? "Processo vinculado" : demand.approved_at ? "Demanda aprovada" : "Aguardando aprovação"}</p>
         {!demand.approved_at && permissions?.can_approve && <Button disabled={busy}
           onClick={() => void save("approve", demand.id, {})}>Aprovar demanda</Button>}
