@@ -1595,8 +1595,34 @@ function DadosEstruturados(props: {
           );
         }
         lines.push(
-          "COTAÇÕES ATIVAS — SÉRIE DE PREÇOS",
-          "Fonte | Tipo | Identificador | CPF/CNPJ | Data da cotação | Acesso | Validade da proposta | Quantidade | Unitário | Frete | Total | Unitário efetivo | Condições | Observações | Referência | Comprovante",
+          "COMPARATIVO DOS PREÇOS EFETIVOS",
+          [
+            "Fonte",
+            "Data",
+            "Quantidade",
+            "Preço unitário",
+            "Frete total",
+            "Preço total",
+            "Unitário com frete",
+          ].join("\t"),
+        );
+        for (const quote of rows) {
+          lines.push(
+            [
+              quote.source_name,
+              formatarData(quote.quoted_at),
+              quote.quantity,
+              formatarMoeda(quote.unit_price),
+              formatarMoeda(quote.delivery_cost),
+              formatarMoeda(quote.total_price),
+              formatarMoeda(precoUnitarioComFrete(quote)),
+            ].map(clean).join("\t"),
+          );
+        }
+
+        lines.push(
+          "IDENTIFICAÇÃO E RASTREABILIDADE DAS FONTES",
+          ["Fonte", "Tipo", "Identificador", "CPF/CNPJ", "Acesso à fonte", "Validade", "Referência eletrônica"].join("\t"),
         );
         for (const quote of rows) {
           const supplier = suppliers.find((entry) => entry.id === quote.supplier_id);
@@ -1606,40 +1632,63 @@ function DadosEstruturados(props: {
               quote.source_type,
               quote.reference_identifier,
               quote.source_tax_id ?? supplier?.cnpj,
-              formatarData(quote.quoted_at),
               quote.accessed_at ? new Date(quote.accessed_at).toLocaleString("pt-BR") : "",
               quote.supplier_response_deadline
                 ? formatarData(quote.supplier_response_deadline)
                 : "",
-              quote.quantity,
-              formatarMoeda(quote.unit_price),
-              formatarMoeda(quote.delivery_cost),
-              formatarMoeda(quote.total_price),
-              formatarMoeda(precoUnitarioComFrete(quote)),
-              [quote.delivery_term, quote.payment_terms, quote.warranty_terms, quote.brand_model]
-                .filter(Boolean)
-                .join(" / "),
-              quote.notes,
               quote.reference_url,
+            ].map(clean).join("\t"),
+          );
+        }
+
+        lines.push(
+          "CONDIÇÕES COMERCIAIS E COMPROVANTES",
+          ["Fonte", "Marca/modelo", "Entrega", "Pagamento", "Garantia", "Comprovante", "Observações"].join("\t"),
+        );
+        for (const quote of rows) {
+          lines.push(
+            [
+              quote.source_name,
+              quote.brand_model,
+              quote.delivery_term,
+              quote.payment_terms,
+              quote.warranty_terms,
               [
                 quote.evidence_file_name,
                 quote.evidence_mime_type,
                 quote.evidence_file_size ? `${quote.evidence_file_size} bytes` : "",
-              ]
-                .filter(Boolean)
-                .join(" / "),
-            ]
-              .map(clean)
-              .join(" | "),
+              ].filter(Boolean).join(" / "),
+              quote.notes,
+            ].map(clean).join("\t"),
           );
-          if (quote.source_contact_name || quote.source_contact_email || quote.source_address) {
-            lines.push(
-              `Contato: ${clean(quote.source_contact_name)} · ${clean(quote.source_contact_email)} · ${clean(quote.source_contact_phone)} · Endereço: ${clean(quote.source_address)}`,
-            );
-          }
+        }
+
+        lines.push(
+          "CONTATOS DAS FONTES",
+          ["Fonte", "Responsável", "E-mail", "Telefone", "Endereço"].join("\t"),
+        );
+        for (const quote of rows) {
+          const supplier = suppliers.find((entry) => entry.id === quote.supplier_id);
+          lines.push(
+            [
+              quote.source_name,
+              quote.source_contact_name ?? supplier?.contact_name,
+              quote.source_contact_email ?? supplier?.contact_email,
+              quote.source_contact_phone ?? supplier?.contact_phone,
+              quote.source_address ??
+                [supplier?.street, supplier?.street_number, supplier?.complement,
+                  supplier?.neighborhood, supplier?.city, supplier?.state, supplier?.postal_code]
+                  .filter(Boolean).join(", "),
+            ].map(clean).join("\t"),
+          );
+        }
+
+        for (const quote of rows) {
           const signal = signals.find((entry) => entry.cotacao.id === quote.id);
           if (signal?.motivos.length) {
-            lines.push(`Alerta estatístico para análise humana: ${signal.motivos.join("; ")}`);
+            lines.push(
+              `Alerta estatístico para análise humana — ${clean(quote.source_name)}: ${signal.motivos.join("; ")}`,
+            );
           }
         }
         lines.push("COTAÇÕES EXPURGADAS — PRESERVADAS PARA RASTREABILIDADE");
