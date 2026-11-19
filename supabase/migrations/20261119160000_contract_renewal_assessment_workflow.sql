@@ -173,22 +173,77 @@ CREATE TRIGGER trg_seed_contract_renewal_checklist
   AFTER INSERT ON public.contract_renewal_assessments
   FOR EACH ROW EXECUTE FUNCTION public.fn_seed_contract_renewal_checklist();
 
-CREATE TRIGGER trg_contract_renewal_assessments_updated_at
-  BEFORE UPDATE ON public.contract_renewal_assessments
-  FOR EACH ROW EXECUTE FUNCTION public.fn_set_updated_at();
-CREATE TRIGGER trg_contract_renewal_assessments_identity
-  BEFORE UPDATE ON public.contract_renewal_assessments
-  FOR EACH ROW EXECUTE FUNCTION public.fn_protect_tenant_row_identity();
+CREATE OR REPLACE FUNCTION public.fn_guard_contract_renewal_assessment()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_by := (SELECT auth.uid());
+    NEW.updated_by := (SELECT auth.uid());
+    NEW.created_at := now();
+    NEW.updated_at := now();
+  ELSE
+    IF NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR NEW.contract_id IS DISTINCT FROM OLD.contract_id
+       OR NEW.created_by IS DISTINCT FROM OLD.created_by
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Identidade, Secretaria, contrato e dados de criação da análise são imutáveis.';
+    END IF;
+    NEW.updated_by := (SELECT auth.uid());
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.fn_guard_contract_renewal_checklist_item()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_by := (SELECT auth.uid());
+    NEW.updated_by := (SELECT auth.uid());
+    NEW.created_at := now();
+    NEW.updated_at := now();
+  ELSE
+    IF NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR NEW.assessment_id IS DISTINCT FROM OLD.assessment_id
+       OR NEW.contract_id IS DISTINCT FROM OLD.contract_id
+       OR NEW.item_key IS DISTINCT FROM OLD.item_key
+       OR NEW.title IS DISTINCT FROM OLD.title
+       OR NEW.is_required IS DISTINCT FROM OLD.is_required
+       OR NEW.created_by IS DISTINCT FROM OLD.created_by
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Identidade, Secretaria, contrato e definição da providência são imutáveis.';
+    END IF;
+    NEW.updated_by := (SELECT auth.uid());
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.fn_guard_contract_renewal_assessment()
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.fn_guard_contract_renewal_checklist_item()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE TRIGGER trg_contract_renewal_assessments_guard
+  BEFORE INSERT OR UPDATE ON public.contract_renewal_assessments
+  FOR EACH ROW EXECUTE FUNCTION public.fn_guard_contract_renewal_assessment();
 CREATE TRIGGER trg_contract_renewal_assessments_audit
   AFTER INSERT OR UPDATE ON public.contract_renewal_assessments
   FOR EACH ROW EXECUTE FUNCTION public.fn_audit_document_module();
 
-CREATE TRIGGER trg_contract_renewal_checklist_updated_at
-  BEFORE UPDATE ON public.contract_renewal_checklist_items
-  FOR EACH ROW EXECUTE FUNCTION public.fn_set_updated_at();
-CREATE TRIGGER trg_contract_renewal_checklist_identity
-  BEFORE UPDATE ON public.contract_renewal_checklist_items
-  FOR EACH ROW EXECUTE FUNCTION public.fn_protect_tenant_row_identity();
+CREATE TRIGGER trg_contract_renewal_checklist_guard
+  BEFORE INSERT OR UPDATE ON public.contract_renewal_checklist_items
+  FOR EACH ROW EXECUTE FUNCTION public.fn_guard_contract_renewal_checklist_item();
 CREATE TRIGGER trg_contract_renewal_checklist_audit
   AFTER INSERT OR UPDATE ON public.contract_renewal_checklist_items
   FOR EACH ROW EXECUTE FUNCTION public.fn_audit_document_module();
