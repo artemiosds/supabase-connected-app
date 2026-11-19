@@ -1707,7 +1707,7 @@ function Documentos() {
       ]);
       const signerName =
         signerProfile?.full_name?.trim() ||
-        String(session.user.user_metadata?.full_name ?? "").trim() ||
+        String(session.user.user_metadata?.["full_name"] ?? "").trim() ||
         "Usuário autenticado";
       const signerEmail = session.user.email ?? "Não informado";
 
@@ -1791,7 +1791,9 @@ function Documentos() {
 
       const finalPdfBytes = await finalPdf.save();
       storagePath = `${selecionado.id}/generated-documents/${d.id}/${crypto.randomUUID()}.pdf`;
-      const pdfBlob = new Blob([finalPdfBytes], { type: "application/pdf" });
+      const pdfBuffer = new ArrayBuffer(finalPdfBytes.byteLength);
+      new Uint8Array(pdfBuffer).set(finalPdfBytes);
+      const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
       const { error: uploadError } = await db.storage
         .from("gfs-private-documents")
         .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: false });
