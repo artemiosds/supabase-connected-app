@@ -1,5 +1,14 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
+## Homologação técnica do mapa — 19/11/2026 (CI aprovada)
+
+- Código validado em `3887007bf64d2754df43d86b64fce253324880b6`. [E2E 44527588758](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588758) concluiu a gravação normativa com auditoria, aprovação do preço, criação do mapa pelo motor nativo, revisão por usuário distinto, assinatura simples, A4 paisagem e SHA-256 do PDF arquivado. O job de aplicação e o de segurança do banco também passaram: [44527588706](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588706).
+- Foram corrigidos três bloqueios encontrados pelo E2E: identidade da auditoria do processo, conflito da geração nativa com o validador de modelos e leitura restrita do status de aprovação pela função de assinatura.
+- **Rollout pendente:** 118 migrations no repositório e 115 no SMS2. Aplicar exclusivamente as versões `20261119120941`, `20261119124309` e `20261119124921`, nesta ordem, após a prova de restauração e a janela de implantação. Não executar `db push` indiscriminado. A consulta somente leitura confirmou que as três correções ainda não estão presentes no SMS2.
+- **Aceite institucional pendente:** responsável autorizado deve registrar enquadramento normativo e aprovação de preços de processo real, conferir a identidade visual e valores do mapa, submeter à revisão independente, assinar se autorizado e verificar o SHA-256 do PDF arquivado. Registrar processo, versão, data, responsável, evidência de integridade e decisão; não publicar dados pessoais ou segredos. Nenhum dado sintético foi gravado no SMS2.
+
+O teste automatizado está aprovado; a liberação operacional permanece pendente dos gates de recuperação e aceite real.
+
 ## Complemento de homologação do mapa — 19/11/2026
 
 - Corrigida a abertura do mapa na aba de documentos gerados e preservada a orientação A4 paisagem no GED. O cenário de navegador agora percorre validação normativa, aprovação do preço, aprovação documental por outro usuário, assinatura simples e conferência do SHA-256 do PDF final.

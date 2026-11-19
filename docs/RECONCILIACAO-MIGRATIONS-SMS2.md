@@ -1,5 +1,13 @@
 # Reconciliação de migrations — SMS2
 
+## Complemento de conferência — 19/11/2026
+
+- `main`: **118 migrations**, SMS2: **115 registradas**. Três incrementos estão validados na CI `3887007` ([E2E](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588758), [aplicação e segurança](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588706)) e aguardam rollout controlado.
+- `20261119120941_fix_procurement_compliance_audit_identity.sql`: usa o identificador do processo na trilha de auditoria.
+- `20261119124309_allow_native_price_map_draft.sql`: permite o rascunho do mapa nativo, preservando a validação dos documentos baseados em modelo e as guardas de tramitação.
+- `20261119124921_grant_signature_service_workflow_status_read.sql`: leitura de status e chaves do workflow somente para o serviço de assinatura.
+- Aplicar em ordem, após os gates de recuperação e janela de implantação, e reconciliar os identificadores efetivamente registrados. Os demais registros permanecem históricos. Nenhuma alteração no SMS2 foi executada nessa conferência.
+
 ## Conferência somente leitura — 19/11/2026
 
 - `main`: **115 arquivos SQL** em `supabase/migrations/`.
