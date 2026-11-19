@@ -157,7 +157,9 @@ async function verifyAuthenticatedTenant(scenario) {
       page.getByRole("button", { name: "Entrar", exact: true }).click(),
     ]);
 
-    await page.getByRole("heading", { name: "Seu trabalho, com mais clareza.", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Seu trabalho, com mais clareza.", exact: true })
+      .waitFor();
     await page.goto(`${appUrl}/fornecedores`, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
     await page.getByText(scenario.ownSupplier, { exact: true }).waitFor();

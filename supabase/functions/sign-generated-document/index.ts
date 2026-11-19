@@ -63,7 +63,8 @@ Deno.serve(async (request: Request) => {
     global: { headers: { Authorization: authorization } },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) return json({ error: "Sessão inválida ou expirada." }, 401, origin);
+  if (authError || !authData.user)
+    return json({ error: "Sessão inválida ou expirada." }, 401, origin);
 
   let body: Record<string, unknown>;
   try {
@@ -111,37 +112,54 @@ Deno.serve(async (request: Request) => {
     ]);
 
   if (documentError || workflowError) {
-    return json({ error: "Não foi possível conferir o documento e o fluxo de aprovação." }, 500, origin);
+    return json(
+      { error: "Não foi possível conferir o documento e o fluxo de aprovação." },
+      500,
+      origin,
+    );
   }
   if (!document || document.status !== "draft" || workflow?.status !== "approved") {
-    return json({ error: "O documento precisa estar aprovado e disponível para assinatura." }, 409, origin);
+    return json(
+      { error: "O documento precisa estar aprovado e disponível para assinatura." },
+      409,
+      origin,
+    );
   }
 
   const { data: pdf, error: downloadError } = await admin.storage
     .from("gfs-private-documents")
     .download(storagePath);
-  if (downloadError || !pdf) return json({ error: "Não foi possível recuperar o PDF final." }, 422, origin);
+  if (downloadError || !pdf)
+    return json({ error: "Não foi possível recuperar o PDF final." }, 422, origin);
   if (pdf.size < 1 || pdf.size > MAX_PDF_SIZE) {
     return json({ error: "O PDF final deve ter até 20 MB." }, 413, origin);
   }
 
   const bytes = new Uint8Array(await pdf.arrayBuffer());
   const header = new TextDecoder().decode(bytes.slice(0, 5));
-  if (header !== "%PDF-") return json({ error: "O arquivo enviado não é um PDF válido." }, 415, origin);
+  if (header !== "%PDF-")
+    return json({ error: "O arquivo enviado não é um PDF válido." }, 415, origin);
 
   const fileSha256 = await sha256Hex(bytes);
   const contentSha256 = await sha256Hex(new TextEncoder().encode(document.content_snapshot));
-  const { data: finalized, error: finalizeError } = await admin.rpc("finalize_generated_document_signature", {
-    p_actor_id: authData.user.id,
-    p_tenant_id: tenantId,
-    p_document_id: documentId,
-    p_storage_path: storagePath,
-    p_file_sha256: fileSha256,
-    p_file_size: bytes.byteLength,
-    p_content_sha256: contentSha256,
-  });
+  const { data: finalized, error: finalizeError } = await admin.rpc(
+    "finalize_generated_document_signature",
+    {
+      p_actor_id: authData.user.id,
+      p_tenant_id: tenantId,
+      p_document_id: documentId,
+      p_storage_path: storagePath,
+      p_file_sha256: fileSha256,
+      p_file_size: bytes.byteLength,
+      p_content_sha256: contentSha256,
+    },
+  );
   if (finalizeError) {
-    return json({ error: finalizeError.message || "Não foi possível finalizar a assinatura." }, 409, origin);
+    return json(
+      { error: finalizeError.message || "Não foi possível finalizar a assinatura." },
+      409,
+      origin,
+    );
   }
 
   return json(
