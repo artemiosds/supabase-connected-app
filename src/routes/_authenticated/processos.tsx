@@ -1436,7 +1436,6 @@ function DadosEstruturados(props: {
       delivery_term: "",
       payment_terms: "",
       warranty_terms: "",
-      supplier_response_deadline: "",
     });
     toast.success("Cotação registrada com rastreabilidade da fonte.");
     if (evidenceWarning) toast.warning(`Cotação salva, mas o comprovante não foi vinculado: ${evidenceWarning}`);
