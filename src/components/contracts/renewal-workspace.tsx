@@ -576,7 +576,7 @@ export function RenewalWorkspace(props: {
 
                   <p className="text-sm text-muted-foreground">
                     {followup
-                      ? `Acompanhamento iniciado em ${formatarData(followup.started_at.slice(0, 10))}.`
+                      ? `Acompanhamento registrado em ${formatarData(followup.started_at.slice(0, 10))}.`
                       : "Sem acompanhamento registrado."}
                   </p>
 
