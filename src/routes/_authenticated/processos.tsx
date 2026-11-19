@@ -1013,6 +1013,7 @@ type ConformidadeCompra = {
   legal_review_status: string;
   legal_review_notes: string | null;
   priority_sources_justification: string | null;
+  supplier_non_response_record: string | null;
   validated_by: string | null;
   validated_at: string | null;
 };
@@ -1083,6 +1084,7 @@ function DadosEstruturados(props: {
     local_regulation_reference: "",
     legal_review_notes: "",
     priority_sources_justification: "",
+    supplier_non_response_record: "",
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1234,6 +1236,8 @@ function DadosEstruturados(props: {
         legal_review_notes: processCompliance?.legal_review_notes ?? "",
         priority_sources_justification:
           processCompliance?.priority_sources_justification ?? "",
+        supplier_non_response_record:
+          processCompliance?.supplier_non_response_record ?? "",
       });
 
       const itemIds = itemRows.map((item) => item.id);
@@ -1567,6 +1571,9 @@ function DadosEstruturados(props: {
           : "",
         compliance?.priority_sources_justification
           ? `Justificativa para não priorizar os parâmetros I e II do art. 5º: ${clean(compliance.priority_sources_justification)}`
+          : "",
+        compliance?.supplier_non_response_record
+          ? `Fornecedores consultados sem proposta: ${clean(compliance.supplier_non_response_record)}`
           : "",
         "Critério de análise: as cotações ativas compõem a série de preços; os alertas estatísticos são subsídios de análise e não excluem automaticamente valores.",
         "Fórmula de preço efetivo: (preço unitário × quantidade cotada + frete) ÷ quantidade cotada. Total aprovado: preço unitário aprovado × quantidade prevista do item.",
@@ -1936,6 +1943,12 @@ function DadosEstruturados(props: {
       return;
     }
     const legalNotes = complianceForm.legal_review_notes.trim();
+    if (complianceForm.supplier_non_response_record.trim().length < 10) {
+      toast.error(
+        "Registre os fornecedores consultados sem proposta ou declare que não houve fornecedores sem resposta (mínimo de 10 caracteres).",
+      );
+      return;
+    }
     const hasPriorityPriceSources = quotes.some(
       (quote) =>
         quote.is_active &&
@@ -2014,6 +2027,7 @@ function DadosEstruturados(props: {
         legal_review_notes: complianceForm.legal_review_notes.trim() || null,
         priority_sources_justification:
           complianceForm.priority_sources_justification.trim() || null,
+        supplier_non_response_record: complianceForm.supplier_non_response_record.trim(),
         updated_by: props.userId,
       },
       { onConflict: "tenant_id,process_id" },
@@ -3214,6 +3228,24 @@ function DadosEstruturados(props: {
                           />
                         </div>
                       )}
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label>
+                          Fornecedores consultados que não apresentaram proposta (ou declaração de inexistência) *
+                        </Label>
+                        <Textarea
+                          required
+                          minLength={10}
+                          rows={3}
+                          value={complianceForm.supplier_non_response_record}
+                          onChange={(event) =>
+                            setComplianceForm((current) => ({
+                              ...current,
+                              supplier_non_response_record: event.target.value,
+                            }))
+                          }
+                          placeholder="Liste fornecedor, data da consulta, canal e prazo de resposta; se nenhum deixou de responder, declare expressamente."
+                        />
+                      </div>
                       <div className="space-y-1 sm:col-span-2">
                         <Label>Fundamentação e observações da análise jurídica</Label>
                         <Textarea
