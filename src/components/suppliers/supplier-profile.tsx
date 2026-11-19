@@ -273,12 +273,11 @@ export function FichaFornecedor({
           : SEM_COTACOES;
       setDados({
         documentos: secao(documentosResult, documentosEnabled),
-        cotacoes: secao(
-          cotacoesResult.status === "fulfilled"
-            ? { status: "fulfilled", value: cotacoesResult.value?.quotes ?? null }
-            : cotacoesResult,
-          processosEnabled,
-        ),
+        cotacoes: !processosEnabled
+          ? { status: "disabled", rows: [] }
+          : cotacoesResult.status === "fulfilled" && cotacoesResult.value
+            ? { status: "ready", rows: cotacoesResult.value.quotes }
+            : { status: "error", rows: [] },
         cotacoesContexto,
         instrumentos: secao(instrumentosResult, contratosEnabled),
         sancoes: secao(sancoesResult, true),
@@ -373,7 +372,7 @@ export function FichaFornecedor({
                   />
                 </div>
 
-                {(resumo?.vencidos || resumo?.aVencer || resumo?.vencimentosContratuais || resumo?.sancoesVigentes) ? (
+                {resumo && (resumo.vencidos || resumo.aVencer || resumo.vencimentosContratuais || resumo.sancoesVigentes) ? (
                   <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/50 p-3 text-sm">
                     <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                     <span>Itens que exigem acompanhamento:</span>
