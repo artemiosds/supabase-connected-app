@@ -1012,7 +1012,7 @@ async function verifyProcurementLifecycle() {
         hasText: "Fonte da cotação / fornecedor *",
       });
       if (supplierName) {
-        await quoteForm.getByRole("combobox").click();
+        await quoteForm.getByRole("combobox").nth(0).click();
         await page.getByRole("option", { name: supplierName, exact: true }).click();
       }
       const quoteInputs = quoteForm.locator("input");
