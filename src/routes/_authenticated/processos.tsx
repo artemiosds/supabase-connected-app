@@ -1874,7 +1874,11 @@ function DadosEstruturados(props: {
           ? generated.bytes
           : await renderPdf(
               { ...(await docxToModel(generated.bytes)), footerText: [] },
-              { branding, title: mapaPronto ? "Mapa comparativo" : "Rascunho — mapa comparativo" },
+              {
+                branding,
+                title: mapaPronto ? "Mapa comparativo" : "Rascunho — mapa comparativo",
+                useTemplatePageSize: true,
+              },
             );
       const url = URL.createObjectURL(
         new Blob([new Uint8Array(bytes)], {
