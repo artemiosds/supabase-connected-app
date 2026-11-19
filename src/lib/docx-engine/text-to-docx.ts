@@ -54,7 +54,11 @@ function table(rows: string[][]): string {
  * Consecutive tab-separated lines become a bordered table; short uppercase lines
  * become headings. Placeholders are kept so the regular generator can fill them.
  */
-export async function buildDocxFromText(text: string, title?: string): Promise<Uint8Array> {
+export async function buildDocxFromText(
+  text: string,
+  title?: string,
+  orientation: "portrait" | "landscape" = "portrait",
+): Promise<Uint8Array> {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const parts: string[] = [];
   if (title?.trim()) parts.push(paragraph(title.trim(), "Title"));
@@ -76,8 +80,12 @@ export async function buildDocxFromText(text: string, title?: string): Promise<U
         : paragraph(line, undefined, line.trim() ? "both" : undefined),
     );
   }
+  const pageSize =
+    orientation === "landscape"
+      ? '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>'
+      : '<w:pgSz w:w="11906" w:h="16838"/>';
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1701" w:right="1134" w:bottom="1134" w:left="1701" w:header="709" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr>${pageSize}<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="709" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
   const zip = new JSZip();
   zip.file("[Content_Types].xml", CONTENT_TYPES);
   zip.file("_rels/.rels", ROOT_RELS);
