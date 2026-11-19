@@ -1616,13 +1616,23 @@ function DadosEstruturados(props: {
               formatarMoeda(quote.delivery_cost),
               formatarMoeda(quote.total_price),
               formatarMoeda(precoUnitarioComFrete(quote)),
-            ].map(clean).join("\t"),
+            ]
+              .map(clean)
+              .join("\t"),
           );
         }
 
         lines.push(
           "IDENTIFICAÇÃO E RASTREABILIDADE DAS FONTES",
-          ["Fonte", "Tipo", "Identificador", "CPF/CNPJ", "Acesso à fonte", "Validade", "Referência eletrônica"].join("\t"),
+          [
+            "Fonte",
+            "Tipo",
+            "Identificador",
+            "CPF/CNPJ",
+            "Acesso à fonte",
+            "Validade",
+            "Referência eletrônica",
+          ].join("\t"),
         );
         for (const quote of rows) {
           const supplier = suppliers.find((entry) => entry.id === quote.supplier_id);
@@ -1637,13 +1647,23 @@ function DadosEstruturados(props: {
                 ? formatarData(quote.supplier_response_deadline)
                 : "",
               quote.reference_url,
-            ].map(clean).join("\t"),
+            ]
+              .map(clean)
+              .join("\t"),
           );
         }
 
         lines.push(
           "CONDIÇÕES COMERCIAIS E COMPROVANTES",
-          ["Fonte", "Marca/modelo", "Entrega", "Pagamento", "Garantia", "Comprovante", "Observações"].join("\t"),
+          [
+            "Fonte",
+            "Marca/modelo",
+            "Entrega",
+            "Pagamento",
+            "Garantia",
+            "Comprovante",
+            "Observações",
+          ].join("\t"),
         );
         for (const quote of rows) {
           lines.push(
@@ -1657,9 +1677,13 @@ function DadosEstruturados(props: {
                 quote.evidence_file_name,
                 quote.evidence_mime_type,
                 quote.evidence_file_size ? `${quote.evidence_file_size} bytes` : "",
-              ].filter(Boolean).join(" / "),
+              ]
+                .filter(Boolean)
+                .join(" / "),
               quote.notes,
-            ].map(clean).join("\t"),
+            ]
+              .map(clean)
+              .join("\t"),
           );
         }
 
@@ -1676,10 +1700,20 @@ function DadosEstruturados(props: {
               quote.source_contact_email ?? supplier?.contact_email,
               quote.source_contact_phone ?? supplier?.contact_phone,
               quote.source_address ??
-                [supplier?.street, supplier?.street_number, supplier?.complement,
-                  supplier?.neighborhood, supplier?.city, supplier?.state, supplier?.postal_code]
-                  .filter(Boolean).join(", "),
-            ].map(clean).join("\t"),
+                [
+                  supplier?.street,
+                  supplier?.street_number,
+                  supplier?.complement,
+                  supplier?.neighborhood,
+                  supplier?.city,
+                  supplier?.state,
+                  supplier?.postal_code,
+                ]
+                  .filter(Boolean)
+                  .join(", "),
+            ]
+              .map(clean)
+              .join("\t"),
           );
         }
 
