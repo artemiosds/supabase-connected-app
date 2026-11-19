@@ -222,8 +222,8 @@ export function MonitoramentoDocumentalFornecedores({
 
       {!enabled ? (
         <p className="text-sm text-muted-foreground">
-          O módulo Documentos está desabilitado nesta Secretaria. Não é possível avaliar os
-          prazos documentais.
+          O módulo Documentos está desabilitado nesta Secretaria. Não é possível avaliar os prazos
+          documentais.
         </p>
       ) : !atual || loading ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -232,16 +232,16 @@ export function MonitoramentoDocumentalFornecedores({
         </p>
       ) : atual.status === "no_access" ? (
         <p role="status" className="rounded-md border p-3 text-sm text-muted-foreground">
-          Seu perfil não possui permissão para consultar documentos. A regularidade documental
-          não foi verificada.
+          Seu perfil não possui permissão para consultar documentos. A regularidade documental não
+          foi verificada.
         </p>
       ) : atual.status === "error" ? (
         <p
           role="alert"
           className="rounded-md border border-destructive/40 p-3 text-sm text-destructive"
         >
-          Não foi possível consultar todos os documentos desta Secretaria. Nenhuma conclusão
-          sobre vencimentos pode ser apresentada. Tente atualizar.
+          Não foi possível consultar todos os documentos desta Secretaria. Nenhuma conclusão sobre
+          vencimentos pode ser apresentada. Tente atualizar.
         </p>
       ) : (
         <>
