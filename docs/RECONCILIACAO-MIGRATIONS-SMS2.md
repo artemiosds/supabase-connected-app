@@ -1,5 +1,14 @@
 # Reconciliação de migrations — SMS2
 
+## Conferência somente leitura — 19/11/2026
+
+- `main`: **115 arquivos SQL** em `supabase/migrations/`.
+- SMS2 (`rwbbznqtocunzrpcvjvk`): **115 versões registradas**. A comparação dos prefixos locais com os identificadores registrados não encontrou versão ausente ou extra.
+- Os quatro pares de 18/11 descritos no fim deste documento foram alinhados na `main` aos identificadores `20261116200420`, `20261116201722`, `20261117121954` e `20261117125315`. Não há renomeação adicional pendente para esses pares.
+- Esta conferência atesta o histórico de versões, não a equivalência contínua dos objetos efetivos nem uma prova de restore. Nenhum SQL foi executado no SMS2 nesta revisão. Não reaplicar migrations registradas, não editar a baseline `20261106194000` e não usar `db push` indiscriminado.
+
+As contagens e pendências datadas nas seções abaixo são registros históricos.
+
 ## Rechecagem somente leitura — 16/11/2026
 
 - SMS2 (projeto `rwbbznqtocunzrpcvjvk`) registra **89 migrations**, com última versão `20261113194249_fix_branding_storage_upload_preflight_size`.

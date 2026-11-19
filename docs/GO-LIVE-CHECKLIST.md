@@ -1,5 +1,17 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
+## Atualização técnica — 19/11/2026
+
+**Decisão operacional: PENDENTE DE HOMOLOGAÇÃO.** O mapa comparativo tem cotação com rastreabilidade da fonte, frete rateado, seleção de referência, aprovação do preço por item, justificativa excepcional quando há menos de três preços e validação normativa por processo. A exportação é identificada como rascunho enquanto essas validações estiverem pendentes. O fluxo documental exige aprovação independente antes da assinatura eletrônica simples; o PDF final é armazenado no bucket privado e o download confere seu SHA-256. Isso não substitui o aceite jurídico e visual da Secretaria nem equivale a uma assinatura qualificada ICP-Brasil.
+
+- Repositório `artemiosds/supabase-connected-app`, branch `main`: a correção do seletor de cotação no E2E está em `795a9f9862e4ac8c3d9cc8060d2abbb7cd86953d`.
+- Migrations: **115 arquivos SQL locais e 115 versões registradas no SMS2**, com os mesmos identificadores na conferência somente-leitura. As quatro divergências históricas de nomes já estão reconciliadas. Nenhuma migration foi reaplicada e nenhum dado sintético foi inserido no SMS2.
+- E2E autenticado com duas Secretarias, cotações, mapa e contrato: [run 44516988969](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988969) — aprovado em banco descartável. Formatação: [run 44516988924](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988924) — aprovada. Validação de aplicação (`tsgo --noEmit`, testes e build) e segurança do banco local: [run 44516988948](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988948) — ambos os jobs aprovados.
+- A prova automatizada não cobre a aprovação do preço e a assinatura do mapa pela interface na mesma sessão; o banco contém regressões pgTAP para guardas de aprovação, contexto normativo, fingerprint da pesquisa e finalização de assinatura. A assinatura do arquivo oficial ainda depende de homologação com documento e atores reais.
+- Pendente de ação do órgão: validar fontes e enquadramento legal do processo, aprovar os valores, conferir o PDF/DOCX com timbrado e colher assinatura/aceite por responsáveis autorizados. As demais frentes de e-mail, Drive opcional e restore continuam com os bloqueios operacionais descritos abaixo.
+
+As seções anteriores são registros históricos; seus números de migrations, SHAs e status de CI não representam o estado de 19/11.
+
 ## Decisão operacional — 18/11/2026
 
 **Pendente de homologação.** Base de código `e2d2725`. E2E de isolamento aprovado (run 44307307586); formatação aprovada (44307307564). Registrar o resultado do workflow 44307307620 separadamente.
