@@ -153,25 +153,16 @@ describe("minhas tarefas municipais", () => {
     ).toEqual([]);
   });
   it("integra providências atribuídas do checklist de renovação à Central de Tarefas", () => {
-    const tasks = montarMinhasTarefas(
-      "user-1",
-      null,
-      [],
-      [],
-      [],
-      [],
-      hoje,
-      [
-        {
-          id: "renewal-task-1",
-          contract_id: "c1",
-          title: "Emitir relatório de execução",
-          due_date: "2026-11-20",
-          status: "pending",
-          item_key: "relatorio_execucao",
-        },
-      ],
-    );
+    const tasks = montarMinhasTarefas("user-1", null, [], [], [], [], hoje, [
+      {
+        id: "renewal-task-1",
+        contract_id: "c1",
+        title: "Emitir relatório de execução",
+        due_date: "2026-11-20",
+        status: "pending",
+        item_key: "relatorio_execucao",
+      },
+    ]);
 
     expect(tasks).toHaveLength(1);
     expect(tasks[0]).toMatchObject({
@@ -182,5 +173,4 @@ describe("minhas tarefas municipais", () => {
       dias: 2,
     });
   });
-
 });

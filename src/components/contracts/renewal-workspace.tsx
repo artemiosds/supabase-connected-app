@@ -31,10 +31,7 @@ import {
 } from "@/components/ui/select";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { diasAte, formatarData, formatarMoeda } from "@/lib/contratacao";
-import {
-  calcularVariacaoPrecoPercentual,
-  podeUsarMinutaProrrogacao,
-} from "@/lib/contract-renewal";
+import { calcularVariacaoPrecoPercentual, podeUsarMinutaProrrogacao } from "@/lib/contract-renewal";
 import type { Json, Tables } from "@/integrations/supabase/types";
 
 type Followup = Pick<Tables<"contract_renewal_followups">, "contract_id" | "started_at">;
@@ -206,11 +203,7 @@ export function RenewalWorkspace(props: {
 
   const load = useCallback(async () => {
     let active = true;
-    setState((old) =>
-      old?.tenantId === tenantId
-        ? { ...old, failed: false }
-        : null,
-    );
+    setState((old) => (old?.tenantId === tenantId ? { ...old, failed: false } : null));
     const [followups, capabilities, assessments, checklist] = await Promise.allSettled([
       carregarTodasAsPaginas<Followup>((start, end) =>
         db
@@ -452,8 +445,8 @@ export function RenewalWorkspace(props: {
       <div>
         <h2 className="text-lg font-semibold">Central de renovações</h2>
         <p className="text-sm text-muted-foreground">
-          Planeje providências para instrumentos vigentes com até 120 dias restantes. Acompanhar
-          não autoriza nem prorroga a vigência.
+          Planeje providências para instrumentos vigentes com até 120 dias restantes. Acompanhar não
+          autoriza nem prorroga a vigência.
         </p>
       </div>
 
@@ -493,10 +486,20 @@ export function RenewalWorkspace(props: {
                 [
                   "pending",
                   "Sem registro",
-                  eligible.filter((contract) => !recorded.has(contract.id) && diasAte(contract.end_date) >= 0).length,
+                  eligible.filter(
+                    (contract) => !recorded.has(contract.id) && diasAte(contract.end_date) >= 0,
+                  ).length,
                 ],
-                ["recorded", "Registrados", eligible.filter((contract) => recorded.has(contract.id)).length],
-                ["overdue", "Vencidos", eligible.filter((contract) => diasAte(contract.end_date) < 0).length],
+                [
+                  "recorded",
+                  "Registrados",
+                  eligible.filter((contract) => recorded.has(contract.id)).length,
+                ],
+                [
+                  "overdue",
+                  "Vencidos",
+                  eligible.filter((contract) => diasAte(contract.end_date) < 0).length,
+                ],
               ] as const
             ).map(([value, label, count]) => (
               <Button
@@ -506,7 +509,9 @@ export function RenewalWorkspace(props: {
                 onClick={() => setFilter(value)}
               >
                 {label}
-                {current.failed && (value === "pending" || value === "recorded") ? "" : ` (${count})`}
+                {current.failed && (value === "pending" || value === "recorded")
+                  ? ""
+                  : ` (${count})`}
               </Button>
             ))}
           </div>
@@ -577,8 +582,9 @@ export function RenewalWorkspace(props: {
 
                   {contract.instrument_type === "ata_registro_precos" ? (
                     <p className="rounded-md bg-muted/50 p-2 text-sm">
-                      Ata de registro de preços: não utilizar a minuta de prorrogação do art. 107.
-                      A extensão da ata segue regras próprias e deve ser analisada em fluxo específico.
+                      Ata de registro de preços: não utilizar a minuta de prorrogação do art. 107. A
+                      extensão da ata segue regras próprias e deve ser analisada em fluxo
+                      específico.
                     </p>
                   ) : (
                     <>
@@ -586,10 +592,13 @@ export function RenewalWorkspace(props: {
                         <div className="space-y-2 rounded-md border p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="text-sm font-semibold">Classificação e instrução jurídica</p>
+                              <p className="text-sm font-semibold">
+                                Classificação e instrução jurídica
+                              </p>
                               <p className="text-sm text-muted-foreground">
-                                {LEGAL_REGIMES.find(([key]) => key === assessment.legal_regime)?.[1] ??
-                                  assessment.legal_regime}
+                                {LEGAL_REGIMES.find(
+                                  ([key]) => key === assessment.legal_regime,
+                                )?.[1] ?? assessment.legal_regime}
                                 {" · "}
                                 {rotuloNatureza(assessment.contract_nature)}
                               </p>
@@ -600,7 +609,8 @@ export function RenewalWorkspace(props: {
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm">
                             <span>
-                              Checklist: {completedCount}/{requiredCount || 11} providências concluídas
+                              Checklist: {completedCount}/{requiredCount || 11} providências
+                              concluídas
                             </span>
                             <span>·</span>
                             <span>
@@ -694,17 +704,25 @@ export function RenewalWorkspace(props: {
                       {expanded[contract.id] && (
                         <div className="space-y-3 rounded-md border bg-muted/10 p-3">
                           <div>
-                            <p className="font-medium">Checklist documental com responsáveis e prazos</p>
+                            <p className="font-medium">
+                              Checklist documental com responsáveis e prazos
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              Concluir uma etapa exige registrar a referência do documento ou evidência.
-                              Atribuições aparecem automaticamente na Central de Tarefas do responsável.
+                              Concluir uma etapa exige registrar a referência do documento ou
+                              evidência. Atribuições aparecem automaticamente na Central de Tarefas
+                              do responsável.
                             </p>
                           </div>
                           {checklist.map((item) => (
-                            <div key={item.id} className="space-y-2 rounded-md border bg-background p-3">
+                            <div
+                              key={item.id}
+                              className="space-y-2 rounded-md border bg-background p-3"
+                            >
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="text-sm font-medium">{item.title}</p>
-                                <Badge variant={item.status === "completed" ? "secondary" : "outline"}>
+                                <Badge
+                                  variant={item.status === "completed" ? "secondary" : "outline"}
+                                >
                                   {statusChecklist(item.status)}
                                 </Badge>
                               </div>
@@ -716,7 +734,9 @@ export function RenewalWorkspace(props: {
                                     value={item.assigned_user_id}
                                     label={`Responsável: ${item.title}`}
                                     onChange={(value) =>
-                                      updateChecklistItem(item.id, { assigned_user_id: value || null })
+                                      updateChecklistItem(item.id, {
+                                        assigned_user_id: value || null,
+                                      })
                                     }
                                   />
                                 </div>
@@ -748,7 +768,9 @@ export function RenewalWorkspace(props: {
                                       <SelectItem value="in_progress">Em andamento</SelectItem>
                                       <SelectItem value="completed">Concluída</SelectItem>
                                       {item.item_key === "parecer_juridico" && (
-                                        <SelectItem value="not_applicable">Não aplicável</SelectItem>
+                                        <SelectItem value="not_applicable">
+                                          Não aplicável
+                                        </SelectItem>
                                       )}
                                     </SelectContent>
                                   </Select>
@@ -772,7 +794,9 @@ export function RenewalWorkspace(props: {
                                   rows={2}
                                   value={item.notes ?? ""}
                                   onChange={(event) =>
-                                    updateChecklistItem(item.id, { notes: event.target.value || null })
+                                    updateChecklistItem(item.id, {
+                                      notes: event.target.value || null,
+                                    })
                                   }
                                 />
                               </div>
@@ -831,10 +855,14 @@ export function RenewalWorkspace(props: {
                       value={form.legal_regime}
                       onValueChange={(value) => updateForm("legal_regime", value)}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {LEGAL_REGIMES.map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -845,10 +873,14 @@ export function RenewalWorkspace(props: {
                       value={form.contract_nature}
                       onValueChange={(value) => updateForm("contract_nature", value)}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {CONTRACT_NATURES.map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -903,7 +935,9 @@ export function RenewalWorkspace(props: {
                     <input
                       type="checkbox"
                       checked={form.edital_allows_extension}
-                      onChange={(event) => updateForm("edital_allows_extension", event.target.checked)}
+                      onChange={(event) =>
+                        updateForm("edital_allows_extension", event.target.checked)
+                      }
                     />
                     O edital prevê a prorrogação
                   </label>
@@ -911,7 +945,9 @@ export function RenewalWorkspace(props: {
                     <input
                       type="checkbox"
                       checked={form.contract_allows_extension}
-                      onChange={(event) => updateForm("contract_allows_extension", event.target.checked)}
+                      onChange={(event) =>
+                        updateForm("contract_allows_extension", event.target.checked)
+                      }
                     />
                     O contrato contém cláusula de prorrogação
                   </label>
@@ -970,11 +1006,15 @@ export function RenewalWorkspace(props: {
                         updateForm("vantajosidade_method", value === "none" ? "" : value)
                       }
                     >
-                      <SelectTrigger><SelectValue placeholder="Selecione a metodologia" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a metodologia" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Selecione a metodologia</SelectItem>
                         {METHOD_OPTIONS.map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1057,7 +1097,9 @@ export function RenewalWorkspace(props: {
                   <input
                     type="checkbox"
                     checked={form.price_advantage_attested}
-                    onChange={(event) => updateForm("price_advantage_attested", event.target.checked)}
+                    onChange={(event) =>
+                      updateForm("price_advantage_attested", event.target.checked)
+                    }
                   />
                   A análise fundamenta e atesta a vantagem para a Administração
                 </label>
@@ -1066,12 +1108,14 @@ export function RenewalWorkspace(props: {
               <section className="space-y-3">
                 <h3 className="font-semibold">4. Condições, anuências e autorizações</h3>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {([
-                    ["supplier_agreed", "A contratada manifestou concordância expressa"],
-                    ["habilitation_confirmed", "Habilitação e regularidade foram conferidas"],
-                    ["budget_confirmed", "Há créditos e disponibilidade orçamentária"],
-                    ["authority_approved", "A autoridade competente autorizou previamente"],
-                  ] as const).map(([key, label]) => (
+                  {(
+                    [
+                      ["supplier_agreed", "A contratada manifestou concordância expressa"],
+                      ["habilitation_confirmed", "Habilitação e regularidade foram conferidas"],
+                      ["budget_confirmed", "Há créditos e disponibilidade orçamentária"],
+                      ["authority_approved", "A autoridade competente autorizou previamente"],
+                    ] as const
+                  ).map(([key, label]) => (
                     <label key={key} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -1089,11 +1133,15 @@ export function RenewalWorkspace(props: {
                       value={form.legal_review_status}
                       onValueChange={(value) => updateForm("legal_review_status", value)}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pendente</SelectItem>
                         <SelectItem value="approved">Parecer aprovado / juntado</SelectItem>
-                        <SelectItem value="not_required">Parecer individualizado não exigido</SelectItem>
+                        <SelectItem value="not_required">
+                          Parecer individualizado não exigido
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

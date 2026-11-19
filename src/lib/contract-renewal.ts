@@ -1,9 +1,5 @@
 export type RegimeJuridicoRenovacao =
-  | "lei_14133"
-  | "lei_8666"
-  | "lei_13303"
-  | "special"
-  | "not_identified";
+  "lei_14133" | "lei_8666" | "lei_13303" | "special" | "not_identified";
 
 export type NaturezaContratoRenovacao =
   | "continuous_service"

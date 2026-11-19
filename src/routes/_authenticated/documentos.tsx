@@ -3201,7 +3201,7 @@ function Documentos() {
                 type="submit"
                 disabled={
                   salvandoGerado ||
-                  ((processoGeracao || contratoGeracao)
+                  (processoGeracao || contratoGeracao
                     ? !modeloSelecionado ||
                       camposDoModelo.some(
                         (campo) => campo.required && !camposComplementares[campo.key]?.trim(),

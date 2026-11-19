@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  calcularVariacaoPrecoPercentual,
-  podeUsarMinutaProrrogacao,
-} from "./contract-renewal";
+import { calcularVariacaoPrecoPercentual, podeUsarMinutaProrrogacao } from "./contract-renewal";
 
 describe("elegibilidade da minuta de prorrogação contínua", () => {
   it("aceita somente contrato contínuo regido pela Lei 14.133", () => {
@@ -12,7 +9,9 @@ describe("elegibilidade da minuta de prorrogação contínua", () => {
 
   it("não confunde contrato por escopo, ata ou regime jurídico diferente", () => {
     expect(podeUsarMinutaProrrogacao("contrato", "lei_14133", "scope")).toBe(false);
-    expect(podeUsarMinutaProrrogacao("ata_registro_precos", "lei_14133", "continuous_supply")).toBe(false);
+    expect(podeUsarMinutaProrrogacao("ata_registro_precos", "lei_14133", "continuous_supply")).toBe(
+      false,
+    );
     expect(podeUsarMinutaProrrogacao("contrato", "lei_8666", "continuous_service")).toBe(false);
     expect(podeUsarMinutaProrrogacao("contrato", "not_identified", "unclassified")).toBe(false);
   });
