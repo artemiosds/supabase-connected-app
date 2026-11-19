@@ -363,6 +363,7 @@ describe("docx engine — analysis, model and PDF", () => {
     );
     const xml = await readPart(bytes, "word/document.xml");
     expect(xml).toContain('<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>');
+    expect(xml).toContain('<w:tblW w:w="14500" w:type="dxa"/>');
     const generated = await generateDocx({
       template: bytes,
       values: {},
