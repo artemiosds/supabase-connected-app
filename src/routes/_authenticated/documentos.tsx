@@ -97,6 +97,7 @@ type ContratoGeracao = Pick<
   | "process_id"
   | "supplier_id"
   | "status"
+  | "instrument_type"
   | "modality"
   | "total_value"
   | "start_date"
@@ -496,7 +497,7 @@ function Documentos() {
               db
                 .from("contracts")
                 .select(
-                  "id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
+                  "id,number,object,process_id,supplier_id,status,instrument_type,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
                 )
                 .eq("tenant_id", selecionado.id)
                 .order("number")
