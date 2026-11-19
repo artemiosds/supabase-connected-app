@@ -1032,8 +1032,12 @@ async function verifyProcurementLifecycle() {
           .locator("textarea")
           .fill("Fornecedor consultado por compatibilidade técnica e disponibilidade regional.");
         await field("CPF/CNPJ do fornecedor *").locator("input").fill("12345678000195");
-        await field("Responsável pela proposta *").locator("input").fill("Representante Sintético E2E");
-        await field("E-mail de contato *").locator("input").fill("propostas@fornecedor-e2e.invalid");
+        await field("Responsável pela proposta *")
+          .locator("input")
+          .fill("Representante Sintético E2E");
+        await field("E-mail de contato *")
+          .locator("input")
+          .fill("propostas@fornecedor-e2e.invalid");
         await field("Telefone de contato *").locator("input").fill("92999990000");
         await field("Endereço do fornecedor *")
           .locator("input")
