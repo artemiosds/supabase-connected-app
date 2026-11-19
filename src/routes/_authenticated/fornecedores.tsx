@@ -788,7 +788,7 @@ function Fornecedores() {
           <MonitoramentoDocumentalFornecedores
             key={selecionado?.id}
             tenantId={selecionado?.id ?? ""}
-            enabled={selecionado?.enabled_modules.documentos === true}
+            enabled={selecionado?.enabled_modules["documentos"] === true}
             fornecedores={fornecedores}
             onAbrirFicha={(id) => {
               const fornecedor = fornecedores.find((item) => item.id === id);
