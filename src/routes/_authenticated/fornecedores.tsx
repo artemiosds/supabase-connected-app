@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import {
   Building2,
   Download,
+  ContactRound,
   History,
   Loader2,
   Pencil,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
+import { FichaFornecedor } from "@/components/suppliers/supplier-profile";
 import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
@@ -156,6 +158,7 @@ function Fornecedores() {
   const consultaCnpjRef = useRef(0);
   const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
+  const [fornecedorFicha, setFornecedorFicha] = useState<Fornecedor | null>(null);
   const [fornecedorSancoes, setFornecedorSancoes] = useState<Fornecedor | null>(null);
   const [sancoesAberto, setSancoesAberto] = useState(false);
   const [sancoes, setSancoes] = useState<SancaoFornecedor[]>([]);
@@ -177,6 +180,7 @@ function Fornecedores() {
     const tenantId = selecionado?.id;
     setTenantCarregadoId(null);
     setFornecedores([]);
+    setFornecedorFicha(null);
     setResumosSancoes([]);
     setCapacidades({
       can_view: false,
@@ -883,6 +887,15 @@ function Fornecedores() {
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setFornecedorFicha(fornecedor)}
+                            aria-label={`Abrir ficha 360º de ${fornecedor.legal_name}`}
+                          >
+                            <ContactRound className="mr-1 h-4 w-4" aria-hidden />
+                            Ficha 360º
+                          </Button>
+                          <Button
                             size="icon"
                             variant="ghost"
                             onClick={() => void abrirHistoricoSancoes(fornecedor)}
@@ -1241,6 +1254,18 @@ function Fornecedores() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <FichaFornecedor
+        fornecedor={
+          selecionado?.id === tenantCarregadoId && capacidades.can_view
+            ? fornecedorFicha
+            : null
+        }
+        tenantId={selecionado?.id ?? ""}
+        enabledModules={selecionado?.enabled_modules ?? {}}
+        onClose={() => setFornecedorFicha(null)}
+        onManageSanctions={(fornecedor) => void abrirHistoricoSancoes(fornecedor)}
+      />
 
       <Dialog
         open={sancoesAberto}
