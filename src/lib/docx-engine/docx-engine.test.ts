@@ -363,7 +363,13 @@ describe("docx engine — analysis, model and PDF", () => {
     );
     const xml = await readPart(bytes, "word/document.xml");
     expect(xml).toContain('<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>');
-    const model = await docxToModel(bytes);
+    const generated = await generateDocx({
+      template: bytes,
+      values: {},
+      items: [],
+      branding: DEFAULT_BRANDING,
+    });
+    const model = await docxToModel(generated.bytes);
     expect(model.pageLayout.widthPt).toBeGreaterThan(model.pageLayout.heightPt);
     expect(model.blocks.some((block) => block.kind === "table")).toBe(true);
     const pdf = await renderPdf(model, {
