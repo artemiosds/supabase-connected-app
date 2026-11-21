@@ -1,3 +1,9 @@
+import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
+import {
+  calculateItemTotal,
+  UNIDADES_SAUDE_PADRAO,
+  normalizeHealthUnit,
+} from "@/lib/procurement-items-parser";
 import { SupplierSelect } from "@/components/supplier-select";
 import { AnnualDemandPanel } from "@/components/annual-demand-panel";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
@@ -1309,7 +1315,7 @@ function DadosEstruturados(props: {
       line_number: Math.max(0, ...items.map((item) => item.line_number)) + 1,
       description: itemForm.description.trim(),
       technical_specification: itemForm.technical_specification.trim() || null,
-      unit: itemForm.unit.trim(),
+      unit: normalizeHealthUnit(itemForm.unit),
       quantity,
       estimated_unit_price: unitPrice,
       delivery_location: itemForm.delivery_location.trim() || null,
@@ -2214,6 +2220,12 @@ function DadosEstruturados(props: {
     0,
   );
 
+  const singleItemTotal = itemForm.estimated_unit_price.trim()
+    ? calculateItemTotal(
+        numeroDecimal(itemForm.quantity),
+        numeroDecimal(itemForm.estimated_unit_price),
+      )
+    : null;
   if (!props.aberto) return null;
 
   return (
@@ -2258,6 +2270,13 @@ function DadosEstruturados(props: {
             </TabsList>
             <TabsContent value="items" className="space-y-4">
               <div className="flex flex-wrap justify-end gap-2">
+                <BatchItemsDialog
+                  key={props.tenantId + props.processId}
+                  tenantId={props.tenantId}
+                  processId={props.processId}
+                  userId={props.userId}
+                  onSaved={carregarDados}
+                />
                 <Button
                   variant="outline"
                   onClick={() => setMapaAberto(true)}
@@ -2311,6 +2330,18 @@ function DadosEstruturados(props: {
                             setItemForm((current) => ({ ...current, unit: event.target.value }))
                           }
                         />
+                        <div className="flex flex-wrap gap-1">
+                          {UNIDADES_SAUDE_PADRAO.map((unit) => (
+                            <button
+                              type="button"
+                              key={unit}
+                              onClick={() => setItemForm((current) => ({ ...current, unit }))}
+                              className="rounded-full border px-2 py-1 text-xs hover:bg-muted"
+                            >
+                              {unit}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label>Quantidade *</Label>
@@ -2348,6 +2379,12 @@ function DadosEstruturados(props: {
                           }
                         />
                       </div>
+                      <p className="text-sm font-medium sm:col-span-2" aria-live="polite">
+                        Total estimado do item:{" "}
+                        {singleItemTotal !== null && Number.isFinite(singleItemTotal)
+                          ? formatarMoeda(singleItemTotal)
+                          : "Informe quantidade e preço unitário"}
+                      </p>
                       <div className="flex justify-end gap-2 sm:col-span-2">
                         <Button
                           type="button"

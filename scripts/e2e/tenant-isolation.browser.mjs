@@ -1,3 +1,4 @@
+import { verifyBatchItems } from "./batch-items.browser.mjs";
 import { verifySupplierCompletion } from "./supplier-completion.browser.mjs";
 import { verifyAnnualDemand } from "./annual-demand.browser.mjs";
 import assert from "node:assert/strict";
@@ -1686,6 +1687,7 @@ async function verifyProcurementLifecycle() {
     console.log("PASS supplier profile: linked contract and quotations visible to the tenant");
     await page.keyboard.press("Escape");
     await verifySupplierCompletion(page, appUrl);
+    await verifyBatchItems({ page, appUrl, tenantId, callRpc, readRows });
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );
