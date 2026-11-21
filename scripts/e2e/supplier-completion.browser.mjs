@@ -114,13 +114,18 @@ export async function verifySupplierCompletion(page, appUrl) {
   await page
     .context()
     .route("https://files.example.invalid/certificate.txt", (route) =>
-      route.fulfill({ contentType: "text/plain", body: "Certidão sintética de homologação" }),
+      route.fulfill({
+        contentType: "text/plain; charset=utf-8",
+        body: "Certidao sintetica de homologacao",
+      }),
     );
   const [certificate] = await Promise.all([
     page.context().waitForEvent("page"),
     profile.getByRole("button", { name: "Abrir arquivo", exact: true }).first().click(),
   ]);
-  await certificate.getByText("Certidão sintética de homologação", { exact: true }).waitFor();
+  await certificate.waitForLoadState("domcontentloaded");
+  assert.equal(certificate.url(), "https://files.example.invalid/certificate.txt");
+  assert.match(await certificate.locator("body").innerText(), /Certidao sintetica de homologacao/);
   await certificate.close();
 
   const manage = profile.getByRole("link", { name: /Abrir módulo/ });
