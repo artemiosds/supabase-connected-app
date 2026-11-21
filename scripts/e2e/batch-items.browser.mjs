@@ -33,8 +33,30 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
   await batch.getByLabel("Itens da planilha").fill(pasted);
   await batch.getByText("5 itens válidos", { exact: true }).waitFor();
   await batch.getByText(/Valor total previsto da contratação:.*2\.296,60/).waitFor();
+  let dropResponse = true;
+  let staleCheck = true;
+  await page.route("**/rest/v1/procurement_items**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "POST" && dropResponse && Array.isArray(request.postDataJSON())) {
+      dropResponse = false;
+      const committed = await route.fetch();
+      assert.ok(committed.ok(), "the bulk insert must commit before simulating a lost response");
+      await route.abort("failed");
+      return;
+    }
+    if (request.method() === "GET" && !dropResponse && staleCheck && url.searchParams.has("id")) {
+      staleCheck = false;
+      await route.fulfill({ headers: { "Access-Control-Allow-Origin": "*" }, json: [] });
+      return;
+    }
+    await route.continue();
+  });
   await batch.getByRole("button", { name: "Salvar 5 Itens no Processo", exact: true }).click();
+  await batch.getByRole("button", { name: "Verificar gravação", exact: true }).click();
+
   await batch.waitFor({ state: "hidden" });
+  await page.unroute("**/rest/v1/procurement_items**");
   const rows = await readRows(
     "procurement_items",
     { tenant_id: tenantId, process_id: processId },
@@ -51,6 +73,6 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
   assert.ok(ordered.slice(1).every((row) => row.delivery_location === "Almoxarifado CI"));
   await composition.getByText("2. Amoxicilina 500mg", { exact: true }).waitFor();
   console.log(
-    "PASS batch items: individual unit and total, five pasted rows, exact estimate, atomic insert and continuous numbering",
+    "PASS batch items: individual unit and total, five pasted rows, exact estimate, atomic insert, lost-response recovery without duplicates and continuous numbering",
   );
 }

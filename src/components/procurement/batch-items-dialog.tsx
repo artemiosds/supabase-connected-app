@@ -138,7 +138,26 @@ export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props
           break;
         }
         if (result.error.code === "23505") {
-          // A concurrent insert reserves the same line numbers. The statement is rolled back.
+          const confirmed = await db
+            .from("procurement_items")
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("process_id", processId)
+            .in(
+              "id",
+              rows.map((row) => row.id!),
+            );
+          if (confirmed.error)
+            throw new Error("Não foi possível conferir o lote. Verifique a gravação novamente.");
+          if (confirmed.data.length === rows.length) {
+            complete = true;
+            break;
+          }
+          if (confirmed.data.length)
+            throw new Error(
+              "A conferência retornou parte do lote. Reabra o processo antes de continuar.",
+            );
+          // A different insert reserved the same line numbers. Our statement rolled back.
           if (attempt === 2) {
             setPending(null);
             throw new Error("Outro profissional está cadastrando itens. Tente salvar novamente.");
