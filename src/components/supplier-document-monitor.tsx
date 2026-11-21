@@ -4,6 +4,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { monitorSupplierDocuments } from "@/lib/supplier-document-monitor";
 import { Badge } from "@/components/ui/badge";
+const counterLabels: Record<string, string> = {
+  valid: "Válidos",
+  expiring: "A vencer (até 30 dias)",
+  expired: "Vencidos",
+  missing: "Ausentes",
+  review: "Conferir validade",
+};
 const labels = {
   valid: "Válido",
   expiring: "A vencer (até 30 dias)",
@@ -59,7 +66,7 @@ export function SupplierDocumentMonitor({
         cadastro do arquivo depende de conferência de autenticidade, abrangência e validade.
       </p>
       <div className="flex flex-wrap gap-2">
-        {Object.entries(labels).map(([status, label]) => (
+        {Object.entries(counterLabels).map(([status, label]) => (
           <Badge key={status} variant="outline">
             {requirements.filter((r) => r.status === status).length} {label}
           </Badge>
@@ -77,6 +84,12 @@ export function SupplierDocumentMonitor({
           <li key={r.type} className="text-sm">
             <span className="font-medium">{r.label}</span>
             {r.sanitary && " · confirmar aplicabilidade"} — {labels[r.status]}
+            {r.type === "sanitaria" && (
+              <p className="text-xs text-muted-foreground">
+                Registre no tipo de documento sanitário e identifique o título com AFE ou
+                Autorização de Funcionamento.
+              </p>
+            )}
             {["missing", "expired", "review"].includes(r.status) && (
               <p className="text-xs text-muted-foreground">
                 {r.status === "review"
