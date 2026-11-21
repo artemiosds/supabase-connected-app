@@ -1,3 +1,4 @@
+import { verifySupplierCompletion } from "./supplier-completion.browser.mjs";
 import { verifyAnnualDemand } from "./annual-demand.browser.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
@@ -1670,7 +1671,21 @@ async function verifyProcurementLifecycle() {
     await profile.getByText("Contrato " + contractNumber, { exact: true }).waitFor();
     await profile.getByRole("tab", { name: "Cotações" }).click();
     await profile.getByRole("listitem").first().waitFor();
+    assert.equal(
+      new URL(
+        await profile
+          .getByRole("link", { name: "Abrir processo", exact: true })
+          .first()
+          .getAttribute("href"),
+        appUrl,
+      ).searchParams.get("processo"),
+      processId,
+    );
+    await profile.getByRole("link", { name: "Abrir processo", exact: true }).first().click();
+    await page.getByRole("dialog").getByText(processNumber, { exact: false }).first().waitFor();
     console.log("PASS supplier profile: linked contract and quotations visible to the tenant");
+    await page.keyboard.press("Escape");
+    await verifySupplierCompletion(page, appUrl);
     console.log(
       "PASS procurement browser workflow: atomic checklist, guarded stage transition, item, freight-inclusive quotes, budget, price reference, linked contract, and tenant isolation",
     );
@@ -1884,6 +1899,21 @@ async function verifyDocumentApprovalWorkflow() {
     console.log(
       "PASS document workflow: separate approval, create permission denial, synchronized cancellation, and actor history",
     );
+    await reviewer.page.goto(appUrl + "/fornecedores", { waitUntil: "networkidle" });
+    await reviewer.page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
+    await reviewer.page
+      .getByRole("button", { name: "Abrir ficha 360º de Fornecedor Sintético Exclusivo A" })
+      .waitFor();
+    assert.equal(
+      await reviewer.page.getByRole("button", { name: "Novo fornecedor", exact: true }).count(),
+      0,
+    );
+    assert.equal(await reviewer.page.getByRole("button", { name: /^Editar / }).count(), 0);
+    assert.equal(
+      await reviewer.page.getByRole("button", { name: /^(Inativar|Reativar)$/ }).count(),
+      0,
+    );
+    console.log("PASS supplier read-only role: create, update and deactivate actions hidden");
   } finally {
     await reviewer.context.close();
   }

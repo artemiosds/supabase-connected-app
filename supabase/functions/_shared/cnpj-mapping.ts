@@ -306,7 +306,7 @@ export function mapCnpjProvider(raw: JsonObject, source: string, now = new Date(
     state: first(data.uf, data.estado, endereco.uf, address.state, est.uf, data.state),
     contact_phone: phone(
       [data.ddd_telefone_1, null],
-      [data.ddd_1, data.telefone_1],
+      [data.ddd_1 ?? data.ddd_telefone_1, data.telefone_1],
       [telefones.ddd, telefones.numero],
       [est.ddd1, est.telefone1],
       [data.ddd_2, data.telefone_2],

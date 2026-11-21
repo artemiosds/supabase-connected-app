@@ -286,6 +286,7 @@ function Documentos() {
   const [dialogDocumento, setDialogDocumento] = useState(false);
   const [salvandoDocumento, setSalvandoDocumento] = useState(false);
   const [documentoEditando, setDocumentoEditando] = useState<DocumentoFornecedor | null>(null);
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [fornecedorId, setFornecedorId] = useState("");
   const [tituloDocumento, setTituloDocumento] = useState("");
   const [tipoDocumento, setTipoDocumento] = useState<string>("outros");
@@ -575,6 +576,28 @@ function Documentos() {
     };
   }, [carregar]);
 
+  useEffect(() => {
+    if (loading || tenantCarregadoId !== selecionado?.id) return;
+    const url = new URL(window.location.href);
+    const supplier = url.searchParams.get("fornecedor");
+    if (!supplier) return;
+    url.searchParams.delete("fornecedor");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    if (!fornecedores.some((row) => row.id === supplier)) {
+      toast.error("Fornecedor indisponível nesta Secretaria.");
+      return;
+    }
+    setSupplierFilter(supplier);
+    setFornecedorId(supplier);
+    setAba("vencimentos");
+  }, [loading, tenantCarregadoId, selecionado?.id, fornecedores]);
+  useEffect(() => {
+    setSupplierFilter("");
+  }, [selecionado?.id]);
+  const visibleDocuments = documentos.filter(
+    (row) => !supplierFilter || row.supplier_id === supplierFilter,
+  );
+
   const fornecedorPorId = useMemo(
     () => new Map(fornecedores.map((f) => [f.id, f])),
     [fornecedores],
@@ -592,7 +615,7 @@ function Documentos() {
 
   function abrirNovoDocumento() {
     setDocumentoEditando(null);
-    setFornecedorId("");
+    setFornecedorId(supplierFilter);
     setTituloDocumento("");
     setTipoDocumento("outros");
     setEmissao("");
@@ -2105,6 +2128,14 @@ function Documentos() {
               )}
             </TabsList>
             <TabsContent value="vencimentos" className="mt-4">
+              {supplierFilter && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <p>Documentos de {fornecedorPorId.get(supplierFilter)?.legal_name}</p>
+                  <Button variant="outline" onClick={() => setSupplierFilter("")}>
+                    Ver todos os fornecedores
+                  </Button>
+                </div>
+              )}
               <div className="overflow-hidden rounded-lg border bg-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2119,14 +2150,14 @@ function Documentos() {
                       </tr>
                     </thead>
                     <tbody>
-                      {documentos.length === 0 ? (
+                      {visibleDocuments.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="p-10 text-center text-muted-foreground">
                             Nenhum documento de fornecedor registrado.
                           </td>
                         </tr>
                       ) : (
-                        documentos.map((d) => {
+                        visibleDocuments.map((d) => {
                           const f = fornecedorPorId.get(d.supplier_id);
                           const status = situacaoVencimento(d.expires_at);
                           const safeExternalUrl = d.external_url

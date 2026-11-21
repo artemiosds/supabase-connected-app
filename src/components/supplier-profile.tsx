@@ -1,3 +1,11 @@
+import { toast } from "sonner";
+import { ExternalLink, Eye } from "lucide-react";
+import { useTenant } from "@/hooks/use-tenant";
+import { useRef } from "react";
+import { SupplierDocumentMonitor } from "@/components/supplier-document-monitor";
+import { parseSupplierVerification } from "@/lib/supplier-verification";
+import { daysUntil } from "@/lib/supplier-document-monitor";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,7 +33,21 @@ const sections = [
 type Section = (typeof sections)[number]["key"];
 const size = 25;
 
-async function loadRecords(tenant: string, supplier: string, section: Section, page: number) {
+type RecordRow = {
+  id: string;
+  title: string;
+  detail: string;
+  href?: string;
+  selected?: boolean;
+  storage?: string | null;
+  external?: string | null;
+};
+async function loadRecords(
+  tenant: string,
+  supplier: string,
+  section: Section,
+  page: number,
+): Promise<RecordRow[]> {
   const from = page * size;
   const to = from + size;
   const today = new Date().toLocaleDateString("sv-SE");
@@ -33,7 +55,7 @@ async function loadRecords(tenant: string, supplier: string, section: Section, p
     case "documents": {
       const { data, error } = await db
         .from("supplier_documents")
-        .select("id,title,expires_at")
+        .select("id,title,expires_at,storage_path,external_url,status")
         .eq("tenant_id", tenant)
         .eq("supplier_id", supplier)
         .order("expires_at", { nullsFirst: false })
@@ -43,6 +65,8 @@ async function loadRecords(tenant: string, supplier: string, section: Section, p
       return data.map((d) => ({
         id: d.id,
         title: d.title,
+        storage: d.status === "active" ? d.storage_path : null,
+        external: d.status === "active" ? d.external_url : null,
         detail: d.expires_at
           ? (d.expires_at < today
               ? "Vencido em "
@@ -55,7 +79,9 @@ async function loadRecords(tenant: string, supplier: string, section: Section, p
     case "quotes": {
       const { data, error } = await db
         .from("procurement_price_quotes")
-        .select("id,source_name,reference_identifier,quoted_at,unit_price,quantity,is_active")
+        .select(
+          "id,source_name,reference_identifier,quoted_at,unit_price,quantity,is_active,selected_for_estimate,procurement_items!inner(process_id)",
+        )
         .eq("tenant_id", tenant)
         .eq("supplier_id", supplier)
         .order("quoted_at", { ascending: false })
@@ -65,6 +91,8 @@ async function loadRecords(tenant: string, supplier: string, section: Section, p
       return data.map((q) => ({
         id: q.id,
         title: q.reference_identifier || q.source_name,
+        href: "/processos?processo=" + encodeURIComponent(q.procurement_items.process_id),
+        selected: q.selected_for_estimate,
         detail: [
           formatarData(q.quoted_at),
           "Quantidade: " + q.quantity.toLocaleString("pt-BR"),
@@ -87,12 +115,16 @@ async function loadRecords(tenant: string, supplier: string, section: Section, p
       if (error) throw error;
       return data.map((c) => ({
         id: c.id,
+        href: "/contratos?contrato=" + encodeURIComponent(c.id),
         title: (c.instrument_type === "ata_registro_precos" ? "Ata " : "Contrato ") + c.number,
         detail: [
           c.object,
           formatarData(c.start_date) + " a " + formatarData(c.end_date),
           formatarMoeda(c.total_value),
           c.status,
+          daysUntil(c.end_date) < 0
+            ? "Vencido há " + -daysUntil(c.end_date) + " dia(s)"
+            : daysUntil(c.end_date) + " dia(s) até o vencimento",
         ].join(" · "),
       }));
     }
@@ -134,6 +166,40 @@ function Records({
 }) {
   const { session } = useAuth();
   const [page, setPage] = useState(0);
+  const { selecionado } = useTenant();
+  const activeTenant = useRef(selecionado?.id);
+  activeTenant.current = selecionado?.id;
+  const [opening, setOpening] = useState(false);
+  async function openFile(row: RecordRow) {
+    if (activeTenant.current !== tenant) return;
+    if (row.external && !row.storage) {
+      try {
+        const url = new URL(row.external);
+        if (!["https:", "http:"].includes(url.protocol)) throw new Error();
+        window.open(url.href, "_blank", "noopener,noreferrer");
+      } catch {
+        toast.error("Endereço do arquivo inválido.");
+      }
+      return;
+    }
+    if (!row.storage || !row.storage.startsWith(tenant + "/")) return;
+    setOpening(true);
+    try {
+      const { data, error } = await db.storage.from("gfs-private-documents").download(row.storage);
+      if (error || !data) throw new Error();
+      if (activeTenant.current !== tenant) return;
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = row.title;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch {
+      toast.error("Não foi possível abrir o arquivo com seu perfil.");
+    } finally {
+      setOpening(false);
+    }
+  }
   const q = useQuery({
     queryKey: ["supplier-profile", session?.user.id, tenant, supplier, section, page],
     queryFn: () => loadRecords(tenant, supplier, section, page),
@@ -157,6 +223,27 @@ function Records({
             <li key={row.id} className="break-words py-2">
               <p className="font-medium">{row.title}</p>
               <p className="text-sm text-muted-foreground">{row.detail}</p>
+              {row.selected && <Badge variant="outline">Selecionada para estimativa</Badge>}
+              {row.href && (
+                <Button asChild variant="outline" size="sm">
+                  <a href={row.href}>
+                    <ExternalLink className="h-4 w-4" />
+                    {section === "quotes" ? "Abrir processo" : "Visualizar contrato / ata"}
+                  </a>
+                </Button>
+              )}
+              {(row.storage || row.external) && (
+                <Button
+                  type="button"
+                  disabled={opening}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void openFile(row)}
+                >
+                  <Eye className="h-4 w-4" />
+                  Abrir arquivo
+                </Button>
+              )}
             </li>
           ))}
         </ul>
@@ -216,7 +303,7 @@ export function SupplierProfile({
         .join(", "),
     ],
     ["Site", supplier.website],
-    ["Observações internas", supplier.notes],
+    ["Observações internas", parseSupplierVerification(supplier.notes).notes],
   ];
   return (
     <Dialog
@@ -230,6 +317,13 @@ export function SupplierProfile({
           <DialogTitle className="break-words">{supplier.legal_name}</DialogTitle>
           <DialogDescription>Ficha do fornecedor · {formatarCnpj(supplier.cnpj)}</DialogDescription>
         </DialogHeader>
+        {parseSupplierVerification(supplier.notes).verification && (
+          <p className="text-sm text-muted-foreground">
+            Última consulta cadastral:{" "}
+            {formatarData(parseSupplierVerification(supplier.notes).verification?.consultado_em)} ·{" "}
+            {parseSupplierVerification(supplier.notes).verification?.situacao}
+          </p>
+        )}
         <Tabs defaultValue="registration">
           <TabsList className="flex h-auto flex-wrap justify-start">
             <TabsTrigger value="registration">Cadastro</TabsTrigger>
@@ -253,6 +347,18 @@ export function SupplierProfile({
           </TabsContent>
           {available.map((s) => (
             <TabsContent key={s.key} value={s.key}>
+              {s.key === "documents" && (
+                <div className="space-y-3">
+                  <SupplierDocumentMonitor
+                    tenantId={supplier.tenant_id}
+                    supplierId={supplier.id}
+                    category={supplier.category}
+                  />
+                  <Button asChild variant="outline">
+                    <a href={"/documentos?fornecedor=" + supplier.id}>Gerenciar no módulo</a>
+                  </Button>
+                </div>
+              )}
               <Records tenant={supplier.tenant_id} supplier={supplier.id} section={s.key} />
             </TabsContent>
           ))}
