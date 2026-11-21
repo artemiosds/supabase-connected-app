@@ -99,7 +99,12 @@ export async function verifySupplierCompletion(page, appUrl) {
     !(await form.getByLabel("Observações internas").inputValue()).includes("RFB_VERIFICATION"),
   );
   await mkdir("artifacts", { recursive: true });
-  await page.screenshot({ path: "artifacts/supplier-desktop.png", fullPage: true });
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('[role="dialog"]')).every(
+      (el) => getComputedStyle(el).opacity === "1",
+    ),
+  );
+  await page.screenshot({ path: "artifacts/supplier-desktop.png" });
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Abrir ficha 360º de " + supplierName }).click();
@@ -110,15 +115,18 @@ export async function verifySupplierCompletion(page, appUrl) {
   assert.ok(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   );
-  await page.screenshot({ path: "artifacts/supplier-mobile.png", fullPage: true });
-  await page
-    .context()
-    .route("https://files.example.invalid/certificate.txt", (route) =>
-      route.fulfill({
-        contentType: "text/plain; charset=utf-8",
-        body: "Certidao sintetica de homologacao",
-      }),
-    );
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('[role="dialog"]')).every(
+      (el) => getComputedStyle(el).opacity === "1",
+    ),
+  );
+  await page.screenshot({ path: "artifacts/supplier-mobile.png" });
+  await page.context().route("https://files.example.invalid/certificate.txt", (route) =>
+    route.fulfill({
+      contentType: "text/plain; charset=utf-8",
+      body: "Certidao sintetica de homologacao",
+    }),
+  );
   const [certificate] = await Promise.all([
     page.context().waitForEvent("page"),
     profile.getByRole("button", { name: "Abrir arquivo", exact: true }).first().click(),
