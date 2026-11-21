@@ -46,6 +46,9 @@ jobs:
       - name: Run unit tests
         run: bun run test
 
+      - name: Run native Bun unit tests
+        run: bun test
+
       - name: Build production bundle
         run: bun run build
 

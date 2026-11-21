@@ -7,6 +7,5 @@ minimumReleaseAge = 86400
 minimumReleaseAgeExcludes = ["@lovable.dev/vite-tanstack-config", "@lovable.dev/mcp-js", "@lovable.dev/ai-gateway", "@lovable.dev/email-js", "@lovable.dev/webhooks-js"]
 
 [test]
-root = "./src"
 preload = ["./src/test/bun-setup.mjs"]
 
