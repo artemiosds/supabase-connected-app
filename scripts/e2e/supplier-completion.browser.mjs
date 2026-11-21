@@ -7,6 +7,11 @@ export async function verifySupplierCompletion(page, appUrl) {
   const form = page.getByRole("dialog", { name: "Editar fornecedor", exact: true });
   await page.route("**/functions/v1/lookup-cnpj", (route) =>
     route.fulfill({
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
+      },
       json: {
         data: {
           cnpj: "12345678000195",
@@ -23,6 +28,12 @@ export async function verifySupplierCompletion(page, appUrl) {
           contact_email: null,
           website: null,
           registration_status: "ATIVA",
+          registration_status_date: null,
+          registration_status_reason: null,
+          opening_date: null,
+          legal_nature: null,
+          company_size: null,
+          share_capital: null,
           main_activity: { code: "4644-3/01", description: "Comércio farmacêutico" },
           secondary_activities: [],
           partners: [],
