@@ -33,6 +33,12 @@ type Props = { tenantId: string; processId: string; userId: string; onSaved: () 
 const example =
   "Descrição\tUnidade\tQuantidade\tPreço\nAmoxicilina 500mg\tcp\t5000\t0,45\nDipirona 500mg/ml\tamp\t1200\t1,50\nSoro fisiológico 0,9% 500ml\tfr\t300\t5,20";
 type Insert = TablesInsert<"procurement_items">;
+const unitPriceFormat = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
 
 export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props) {
   const { selecionado } = useTenant();
@@ -268,7 +274,7 @@ export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props
                       {row.estimated_unit_price === null
                         ? "Não informado"
                         : Number.isFinite(row.estimated_unit_price)
-                          ? formatarMoeda(row.estimated_unit_price)
+                          ? unitPriceFormat.format(row.estimated_unit_price)
                           : "Inválido"}
                     </TableCell>
                     <TableCell>
