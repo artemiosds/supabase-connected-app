@@ -1,3 +1,7 @@
+import { SupplierDocumentMonitor } from "@/components/supplier-document-monitor";
+import { parseSupplierVerification } from "@/lib/supplier-verification";
+import { useRef } from "react";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -34,7 +38,17 @@ import type { Tables } from "@/integrations/supabase/types";
 type Fornecedor = Tables<"suppliers">;
 type Documento = Pick<
   Tables<"supplier_documents">,
-  "id" | "title" | "document_type" | "status" | "issue_date" | "expires_at" | "notes"
+  | "id"
+  | "title"
+  | "document_type"
+  | "status"
+  | "issue_date"
+  | "expires_at"
+  | "notes"
+  | "storage_path"
+  | "external_url"
+  | "storage_provider"
+  | "file_name"
 >;
 type Cotacao = Pick<
   Tables<"procurement_price_quotes">,
@@ -245,6 +259,46 @@ export function FichaFornecedor({
   const processosEnabled = enabledModules["processos"] === true;
   const contratosEnabled = enabledModules["contratos"] === true;
   const hoje = dataLocalIso();
+  const active = useRef({ tenantId, supplierId });
+  active.current = { tenantId, supplierId };
+  const [opening, setOpening] = useState(false);
+  async function openDocument(doc: Documento) {
+    if (doc.status !== "active") return;
+    if (doc.external_url && !doc.storage_path) {
+      try {
+        const url = new URL(doc.external_url);
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+        window.open(url.href, "_blank", "noopener,noreferrer");
+      } catch {
+        toast.error("Endereço do arquivo inválido.");
+      }
+      return;
+    }
+    if (!doc.storage_path?.startsWith(tenantId + "/")) return;
+    const request = { tenantId, supplierId };
+    setOpening(true);
+    try {
+      const { data, error } = await db.storage
+        .from("gfs-private-documents")
+        .download(doc.storage_path);
+      if (error || !data) throw new Error();
+      if (
+        active.current.tenantId !== request.tenantId ||
+        active.current.supplierId !== request.supplierId
+      )
+        return;
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = doc.file_name || doc.title;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch {
+      toast.error("Não foi possível abrir o arquivo com seu perfil.");
+    } finally {
+      setOpening(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -261,7 +315,9 @@ export function FichaFornecedor({
             ? carregarTodasAsPaginas<Documento>((start, end) =>
                 db
                   .from("supplier_documents")
-                  .select("id,title,document_type,status,issue_date,expires_at,notes")
+                  .select(
+                    "id,title,document_type,status,issue_date,expires_at,notes,storage_path,external_url,storage_provider,file_name",
+                  )
                   .eq("tenant_id", tenantId)
                   .eq("supplier_id", supplierId!)
                   .order("expires_at", { ascending: true, nullsFirst: false })
@@ -476,11 +532,18 @@ export function FichaFornecedor({
                   </TabsList>
 
                   <TabsContent value="documentos" className="space-y-3">
+                    {documentosEnabled && (
+                      <SupplierDocumentMonitor
+                        tenantId={tenantId}
+                        supplierId={fornecedor.id}
+                        category={fornecedor.category}
+                      />
+                    )}
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="font-semibold">Documentos e vencimentos</h3>
                       {documentosEnabled && (
                         <Button size="sm" variant="outline" asChild>
-                          <a href="/documentos">
+                          <a href={"/documentos?fornecedor=" + encodeURIComponent(fornecedor.id)}>
                             <FileText className="mr-1 h-4 w-4" aria-hidden />
                             Abrir módulo <ArrowUpRight className="ml-1 h-3 w-3" aria-hidden />
                           </a>
@@ -512,6 +575,17 @@ export function FichaFornecedor({
                             {doc.expires_at ? formatarData(doc.expires_at) : "Não informada"}
                           </p>
                           {doc.notes && <p className="mt-1 text-sm">{doc.notes}</p>}
+                          {doc.status === "active" && (doc.storage_path || doc.external_url) && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={opening}
+                              onClick={() => void openDocument(doc)}
+                            >
+                              Abrir arquivo
+                            </Button>
+                          )}
                         </article>
                       ))}
                   </TabsContent>
@@ -621,6 +695,13 @@ export function FichaFornecedor({
                               {formatarData(instrumento.end_date)}
                               {" · "}Valor: {formatarMoeda(Number(instrumento.total_value))}
                             </p>
+                            <p className="text-sm">
+                              {dias === null
+                                ? "Vigência não informada"
+                                : dias < 0
+                                  ? "Vencido há " + -dias + " dia(s)"
+                                  : dias + " dia(s) até o vencimento"}
+                            </p>
                             <a
                               className="mt-2 inline-flex items-center gap-1 text-sm text-primary underline underline-offset-4"
                               href={`/contratos?contrato=${encodeURIComponent(instrumento.id)}`}
@@ -682,6 +763,15 @@ export function FichaFornecedor({
                   </TabsContent>
 
                   <TabsContent value="cadastro" className="space-y-3">
+                    {parseSupplierVerification(fornecedor.notes).verification && (
+                      <Badge variant="outline">
+                        Última consulta:{" "}
+                        {formatarData(
+                          parseSupplierVerification(fornecedor.notes).verification?.consultado_em,
+                        )}{" "}
+                        · {parseSupplierVerification(fornecedor.notes).verification?.situacao}
+                      </Badge>
+                    )}
                     <h3 className="font-semibold">Dados cadastrais</h3>
                     <div className="grid gap-3 rounded-md border p-3 text-sm sm:grid-cols-2">
                       <p>
@@ -718,10 +808,12 @@ export function FichaFornecedor({
                         {fornecedor.status === "active" ? "Ativo" : "Inativo"}
                       </p>
                     </div>
-                    {fornecedor.notes && (
+                    {parseSupplierVerification(fornecedor.notes).notes && (
                       <div className="rounded-md border p-3 text-sm">
                         <p className="font-medium">Observações cadastrais</p>
-                        <p className="mt-1 whitespace-pre-wrap">{fornecedor.notes}</p>
+                        <p className="mt-1 whitespace-pre-wrap">
+                          {parseSupplierVerification(fornecedor.notes).notes}
+                        </p>
                       </div>
                     )}
                   </TabsContent>

@@ -1,3 +1,11 @@
+import { SupplierStateCity } from "@/components/supplier-address";
+import { lookupCep, normalizeCep } from "@/lib/cep";
+import { classifySupplierCnae } from "@/lib/supplier-cnae-classifier";
+import {
+  parseSupplierVerification,
+  serializeSupplierVerification,
+  type SupplierVerification,
+} from "@/lib/supplier-verification";
 import { SupplierProfile } from "@/components/supplier-profile";
 import { clearSupplierAutofill, fillEmptySupplierFields } from "@/lib/supplier-autofill";
 import { createFileRoute } from "@tanstack/react-router";
@@ -12,6 +20,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  WandSparkles,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -159,6 +168,11 @@ function Fornecedores() {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Fornecedor | null>(null);
   const [formulario, setFormulario] = useState<FormularioFornecedor>(FORMULARIO_VAZIO);
+  const [verification, setVerification] = useState<SupplierVerification | null>(null);
+  const [comparison, setComparison] = useState<CnpjLookupData | null>(null);
+  const [chosenFields, setChosenFields] = useState<string[]>([]);
+  const [cepStatus, setCepStatus] = useState("");
+  const cepRequest = useRef(0);
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [consultaCnpj, setConsultaCnpj] = useState<CnpjLookupData | null>(null);
   const consultaCnpjRef = useRef(0);
@@ -297,6 +311,8 @@ function Fornecedores() {
     ultimoCnpjConsultadoRef.current = "";
     setConsultandoCnpj(false);
     setEditando(null);
+    setVerification(null);
+    setComparison(null);
     setFormulario(FORMULARIO_VAZIO);
     setConsultaCnpj(null);
     setAberto(true);
@@ -318,6 +334,8 @@ function Fornecedores() {
     setConsultandoCnpj(false);
     setConsultaCnpj(null);
     setEditando(fornecedor);
+    setVerification(parseSupplierVerification(fornecedor.notes).verification);
+    setComparison(null);
     setFormulario({
       automaticFields: [],
       cnpj: formatarCnpj(fornecedor.cnpj),
@@ -335,7 +353,7 @@ function Fornecedores() {
       neighborhood: fornecedor.neighborhood ?? "",
       city: fornecedor.city ?? "",
       state: fornecedor.state ?? "",
-      notes: fornecedor.notes ?? "",
+      notes: parseSupplierVerification(fornecedor.notes).notes,
     });
     setAberto(true);
   }
@@ -344,7 +362,10 @@ function Fornecedores() {
     campo: K,
     valor: FormularioFornecedor[K],
   ) {
+    if (campo === "postal_code") cepRequest.current += 1;
     if (campo === "cnpj") {
+      setVerification(null);
+      setComparison(null);
       // Invalida qualquer consulta anterior assim que o usuário altera o documento.
       // Isso evita que uma resposta atrasada exiba sucesso para um CNPJ diferente.
       consultaCnpjRef.current += 1;
@@ -353,6 +374,20 @@ function Fornecedores() {
       setConsultaCnpj(null);
     }
     setFormulario((atual) => {
+      if (
+        campo === "postal_code" &&
+        normalizeCep(String(valor)) !== normalizeCep(atual.postal_code)
+      ) {
+        const addressFields = ["street", "neighborhood", "city", "state"];
+        const next = {
+          ...atual,
+          postal_code: String(valor),
+          automaticFields: atual.automaticFields.filter((key) => !addressFields.includes(key)),
+        };
+        for (const key of atual.automaticFields.filter((key) => addressFields.includes(key)))
+          Object.assign(next, { [key]: "" });
+        return next;
+      }
       if (campo === "cnpj" && normalizarCnpj(String(valor)) !== normalizarCnpj(atual.cnpj)) {
         return { ...clearSupplierAutofill(atual), cnpj: String(valor) };
       }
@@ -364,90 +399,114 @@ function Fornecedores() {
     });
   }
 
-  const consultarCnpj = useCallback(async (valor: string) => {
-    const cnpj = normalizarCnpj(valor);
-    if (!validarCnpj(cnpj)) return;
-    const requisicao = ++consultaCnpjRef.current;
-    // Marca a tentativa antes da rede para impedir loops; botão manual permite nova tentativa.
-    ultimoCnpjConsultadoRef.current = cnpj;
-    setConsultandoCnpj(true);
+  useEffect(() => {
+    consultaCnpjRef.current += 1;
+    cepRequest.current += 1;
+    setAberto(false);
+    setEditando(null);
+    setVerification(null);
+    setComparison(null);
     setConsultaCnpj(null);
+  }, [selecionado?.id]);
+  const consultarCnpj = useCallback(
+    async (valor: string) => {
+      const cnpj = normalizarCnpj(valor);
+      if (!validarCnpj(cnpj)) return;
+      const requisicao = ++consultaCnpjRef.current;
+      // Marca a tentativa antes da rede para impedir loops; botão manual permite nova tentativa.
+      ultimoCnpjConsultadoRef.current = cnpj;
+      setConsultandoCnpj(true);
+      setConsultaCnpj(null);
 
-    const aplicarDados = (dados: CnpjLookupData) => {
-      setFormulario((atual) => {
-        if (normalizarCnpj(atual.cnpj) !== cnpj) return atual;
-        const preenchimento = {
-          legal_name: dados.legal_name ?? "",
-          trade_name: dados.trade_name ?? "",
-          street: dados.street ?? "",
-          street_number: dados.street_number ?? "",
-          complement: dados.complement ?? "",
-          neighborhood: dados.neighborhood ?? "",
-          postal_code: dados.postal_code ?? "",
-          city: dados.city ?? "",
-          state: dados.state ?? "",
-          contact_phone: dados.contact_phone ?? "",
-          contact_email: dados.contact_email ?? "",
-          website: dados.website ?? "",
-        };
-        return fillEmptySupplierFields(atual, preenchimento);
-      });
-      setConsultaCnpj(dados);
-    };
-
-    try {
-      let dados: CnpjLookupData | null = null;
-      try {
-        const { data, error: consultaErro } = await db.functions.invoke("lookup-cnpj", {
-          body: { cnpj },
+      const aplicarDados = (dados: CnpjLookupData) => {
+        setFormulario((atual) => {
+          if (normalizarCnpj(atual.cnpj) !== cnpj) return atual;
+          const preenchimento = {
+            legal_name: dados.legal_name ?? "",
+            trade_name: dados.trade_name ?? "",
+            street: dados.street ?? "",
+            street_number: dados.street_number ?? "",
+            complement: dados.complement ?? "",
+            neighborhood: dados.neighborhood ?? "",
+            postal_code: dados.postal_code ?? "",
+            city: dados.city ?? "",
+            state: dados.state ?? "",
+            contact_phone: dados.contact_phone ?? "",
+            contact_email: dados.contact_email ?? "",
+            website: dados.website ?? "",
+          };
+          return fillEmptySupplierFields(atual, preenchimento);
         });
-        if (consultaErro) throw consultaErro;
-        const resposta = data?.data as CnpjLookupData | undefined;
-        if (!resposta?.legal_name || cnpjDivergente(resposta, cnpj)) {
-          throw new Error("Resposta inválida da consulta.");
-        }
-        dados = resposta;
-      } catch {
-        // Fallback público: o navegador respeita CORS de cada provedor; falha em um não impede o próximo.
-        const providers = [
-          {
-            name: "BrasilAPI",
-            url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}`,
-          },
-          { name: "Minha Receita", url: `https://minhareceita.org/${encodeURIComponent(cnpj)}` },
-        ];
-        for (const provider of providers) {
-          try {
-            const response = await fetch(provider.url, {
-              headers: { Accept: "application/json" },
-              signal: AbortSignal.timeout(6500),
-            });
-            if (!response.ok) continue;
-            const raw = (await response.json()) as Record<string, unknown>;
-            const mapped = mapCnpjProvider(raw, provider.name);
-            if (!mapped.legal_name || cnpjDivergente(mapped, cnpj)) continue;
-            dados = mapped;
-            break;
-          } catch {
-            // CORS, timeout ou indisponibilidade: tenta a próxima fonte.
+        setConsultaCnpj(dados);
+      };
+
+      try {
+        let dados: CnpjLookupData | null = null;
+        try {
+          const { data, error: consultaErro } = await db.functions.invoke("lookup-cnpj", {
+            body: { cnpj },
+          });
+          if (consultaErro) throw consultaErro;
+          const resposta = data?.data as CnpjLookupData | undefined;
+          if (!resposta?.legal_name || cnpjDivergente(resposta, cnpj)) {
+            throw new Error("Resposta inválida da consulta.");
+          }
+          dados = resposta;
+        } catch {
+          // Fallback público: o navegador respeita CORS de cada provedor; falha em um não impede o próximo.
+          const providers = [
+            {
+              name: "BrasilAPI",
+              url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}`,
+            },
+            { name: "Minha Receita", url: `https://minhareceita.org/${encodeURIComponent(cnpj)}` },
+          ];
+          for (const provider of providers) {
+            try {
+              const response = await fetch(provider.url, {
+                headers: { Accept: "application/json" },
+                signal: AbortSignal.timeout(6500),
+              });
+              if (!response.ok) continue;
+              const raw = (await response.json()) as Record<string, unknown>;
+              const mapped = mapCnpjProvider(raw, provider.name);
+              if (!mapped.legal_name || cnpjDivergente(mapped, cnpj)) continue;
+              dados = mapped;
+              break;
+            } catch {
+              // CORS, timeout ou indisponibilidade: tenta a próxima fonte.
+            }
           }
         }
-      }
 
-      if (requisicao !== consultaCnpjRef.current) return;
-      if (!dados) throw new Error("PUBLIC_SOURCES_UNAVAILABLE");
-      aplicarDados(dados);
-      toast.success("Dados cadastrais e societários localizados com sucesso.");
-    } catch {
-      if (requisicao === consultaCnpjRef.current) {
-        toast.info(
-          "Não foi possível carregar os dados automaticamente pelas bases abertas da Receita. Você pode preencher os campos manualmente e salvar o fornecedor.",
-        );
+        if (requisicao !== consultaCnpjRef.current) return;
+        if (!dados) throw new Error("PUBLIC_SOURCES_UNAVAILABLE");
+        const metadata: SupplierVerification = {
+          consultado_em: dados.consulted_at,
+          situacao: dados.registration_status ?? "Não informada",
+          fonte: (dados.sources.join(", ") || dados.source).slice(0, 150),
+          qsa_count: dados.partners.length,
+          cnpj,
+        };
+        setVerification(metadata);
+        if (editando) {
+          setConsultaCnpj(dados);
+          setComparison(dados);
+          setChosenFields([]);
+        } else aplicarDados(dados);
+        toast.success("Dados cadastrais e societários localizados com sucesso.");
+      } catch {
+        if (requisicao === consultaCnpjRef.current) {
+          toast.info(
+            "Não foi possível carregar os dados automaticamente pelas bases abertas da Receita. Você pode preencher os campos manualmente e salvar o fornecedor.",
+          );
+        }
+      } finally {
+        if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
       }
-    } finally {
-      if (requisicao === consultaCnpjRef.current) setConsultandoCnpj(false);
-    }
-  }, []);
+    },
+    [editando],
+  );
 
   useEffect(() => {
     if (!aberto || editando) return;
@@ -457,6 +516,85 @@ function Fornecedores() {
     return () => window.clearTimeout(timer);
   }, [aberto, editando, formulario.cnpj, consultarCnpj]);
 
+  useEffect(() => {
+    if (!aberto) return;
+    const code = normalizeCep(formulario.postal_code);
+    if (code.length !== 8) return;
+    const request = ++cepRequest.current;
+    const timer = setTimeout(() => {
+      setCepStatus("Consultando CEP…");
+      void lookupCep(code)
+        .then((address) => {
+          if (request !== cepRequest.current) return;
+          setFormulario((current) => {
+            if (normalizeCep(current.postal_code) !== code) return current;
+            return fillEmptySupplierFields(current, {
+              street: address.street,
+              neighborhood: address.neighborhood,
+              city: address.city,
+              state: address.state,
+            });
+          });
+          setCepStatus("Endereço localizado. Confira os dados antes de salvar.");
+        })
+        .catch(() => {
+          if (request === cepRequest.current)
+            setCepStatus("CEP indisponível. Preencha o endereço manualmente.");
+        });
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      cepRequest.current += 1;
+    };
+  }, [aberto, formulario.postal_code]);
+
+  const comparisonFields = [
+    "legal_name",
+    "trade_name",
+    "street",
+    "street_number",
+    "complement",
+    "neighborhood",
+    "postal_code",
+    "city",
+    "state",
+    "contact_phone",
+    "contact_email",
+    "website",
+  ] as const;
+  const fieldNames: Record<(typeof comparisonFields)[number], string> = {
+    legal_name: "Razão social",
+    trade_name: "Nome fantasia",
+    street: "Logradouro",
+    street_number: "Número",
+    complement: "Complemento",
+    neighborhood: "Bairro",
+    postal_code: "CEP",
+    city: "Município",
+    state: "UF",
+    contact_phone: "Telefone",
+    contact_email: "E-mail",
+    website: "Site",
+  };
+  function applyComparison() {
+    if (
+      !comparison ||
+      normalizarCnpj(formulario.cnpj) !==
+        normalizarCnpj(verification?.cnpj ?? comparison.cnpj ?? "")
+    )
+      return;
+    setFormulario((current) => {
+      const next = { ...current, automaticFields: [...current.automaticFields] };
+      for (const field of comparisonFields) {
+        if (chosenFields.includes(field) && comparison[field]) {
+          next[field] = comparison[field] ?? "";
+          if (!next.automaticFields.includes(field)) next.automaticFields.push(field);
+        }
+      }
+      return next;
+    });
+    setComparison(null);
+  }
   async function salvar(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
@@ -493,6 +631,20 @@ function Fornecedores() {
       )
     )
       return;
+    let savedNotes: string;
+    try {
+      savedNotes = serializeSupplierVerification(
+        formulario.notes.trim(),
+        verification &&
+          (verification.cnpj === cnpj ||
+            (!verification.cnpj && editando && normalizarCnpj(editando.cnpj) === cnpj))
+          ? verification
+          : null,
+      );
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Revise as observações.");
+      return;
+    }
     const payload = {
       tenant_id: selecionado.id,
       cnpj,
@@ -510,7 +662,7 @@ function Fornecedores() {
       neighborhood: formulario.neighborhood.trim() || null,
       city: formulario.city.trim() || null,
       state: formulario.state.trim().toUpperCase() || null,
-      notes: formulario.notes.trim() || null,
+      notes: savedNotes || null,
     };
 
     setSalvando(true);
@@ -521,8 +673,15 @@ function Fornecedores() {
             .update(payload)
             .eq("id", editando.id)
             .eq("tenant_id", selecionado.id)
-        : await db.from("suppliers").insert(payload);
+            .eq("updated_at", editando.updated_at)
+            .select("id")
+            .maybeSingle()
+        : await db.from("suppliers").insert(payload).select("id").single();
       if (resultado.error) throw resultado.error;
+      if (!resultado.data)
+        throw new Error(
+          "O cadastro foi atualizado por outro usuário. Reabra o fornecedor antes de salvar.",
+        );
       toast.success(editando ? "Fornecedor atualizado." : "Fornecedor cadastrado.");
       setAberto(false);
       setEditando(null);
@@ -884,6 +1043,16 @@ function Fornecedores() {
                         >
                           {fornecedor.legal_name}
                         </button>
+                        {parseSupplierVerification(fornecedor.notes).verification && (
+                          <p className="text-xs text-muted-foreground">
+                            Consultado em{" "}
+                            {new Date(
+                              parseSupplierVerification(fornecedor.notes).verification!
+                                .consultado_em,
+                            ).toLocaleDateString("pt-BR")}{" "}
+                            · {parseSupplierVerification(fornecedor.notes).verification!.situacao}
+                          </p>
+                        )}
                         {fornecedor.trade_name && (
                           <p className="text-xs text-muted-foreground">{fornecedor.trade_name}</p>
                         )}
@@ -1117,6 +1286,88 @@ function Fornecedores() {
                   </details>
                 )}
               </div>
+              {comparison && (
+                <section
+                  className="space-y-2 rounded border p-3 sm:col-span-2"
+                  aria-label="Comparação cadastral"
+                >
+                  <h3 className="font-semibold">Compare os dados antes de atualizar</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th>Aplicar</th>
+                          <th>Campo</th>
+                          <th>Dado atual cadastrado</th>
+                          <th>Dado na consulta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comparisonFields
+                          .filter(
+                            (field) => comparison[field] && comparison[field] !== formulario[field],
+                          )
+                          .map((field) => (
+                            <tr key={field}>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  aria-label={"Atualizar " + fieldNames[field]}
+                                  checked={chosenFields.includes(field)}
+                                  onChange={(e) =>
+                                    setChosenFields((current) =>
+                                      e.target.checked
+                                        ? [...current, field]
+                                        : current.filter((key) => key !== field),
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td>{fieldNames[field]}</td>
+                              <td className="break-words p-2">{formulario[field] || "—"}</td>
+                              <td className="break-words p-2">{comparison[field]}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Button type="button" disabled={!chosenFields.length} onClick={applyComparison}>
+                    Aplicar atualização cadastral
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setComparison(null)}>
+                    Manter dados atuais
+                  </Button>
+                </section>
+              )}
+              {consultaCnpj?.main_activity?.code && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto whitespace-normal sm:col-span-2"
+                  onClick={() =>
+                    atualizarCampo(
+                      "category",
+                      classifySupplierCnae(consultaCnpj.main_activity?.code),
+                    )
+                  }
+                >
+                  <WandSparkles className="h-4 w-4 shrink-0" aria-hidden /> Categoria sugerida pelo
+                  CNAE:{" "}
+                  {
+                    CATEGORIAS.find(
+                      (c) => c.value === classifySupplierCnae(consultaCnpj.main_activity?.code),
+                    )?.label
+                  }{" "}
+                  · Confirmar
+                </Button>
+              )}
+              {verification && (
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  Última consulta:{" "}
+                  {new Date(verification.consultado_em).toLocaleDateString("pt-BR")} ·{" "}
+                  {verification.situacao}. A verificação será gravada ao salvar.
+                </p>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="fornecedor-categoria">Categoria *</Label>
                 <select
@@ -1199,15 +1450,12 @@ function Fornecedores() {
                   onChange={(e) => atualizarCampo("postal_code", e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fornecedor-uf">UF</Label>
-                <Input
-                  id="fornecedor-uf"
-                  maxLength={2}
-                  value={formulario.state}
-                  onChange={(e) => atualizarCampo("state", e.target.value.toUpperCase())}
-                />
-              </div>
+
+              {cepStatus && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {cepStatus}
+                </p>
+              )}
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-logradouro">Logradouro</Label>
                 <Input
@@ -1244,15 +1492,16 @@ function Fornecedores() {
                   onChange={(e) => atualizarCampo("neighborhood", e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fornecedor-cidade">Município</Label>
-                <Input
-                  id="fornecedor-cidade"
-                  maxLength={120}
-                  value={formulario.city}
-                  onChange={(e) => atualizarCampo("city", e.target.value)}
-                />
-              </div>
+              <SupplierStateCity
+                state={formulario.state}
+                city={formulario.city}
+                onState={(value) => {
+                  atualizarCampo("state", value);
+                  atualizarCampo("city", "");
+                }}
+                onCity={(value) => atualizarCampo("city", value)}
+              />
+
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fornecedor-observacoes">Observações internas</Label>
                 <textarea
