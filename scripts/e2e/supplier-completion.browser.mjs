@@ -10,7 +10,7 @@ export async function verifySupplierCompletion(page, appUrl) {
     route.fulfill({
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Headers": "authorization,apikey,x-client-info,content-type",
         "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
       },
       json: {
@@ -58,6 +58,7 @@ export async function verifySupplierCompletion(page, appUrl) {
   assert.equal(await form.getByLabel("Categoria", { exact: false }).inputValue(), "medicamentos");
   await page.route("https://brasilapi.com.br/api/cep/v1/**", (route) =>
     route.fulfill({
+      headers: { "Access-Control-Allow-Origin": appUrl },
       json: {
         cep: "50000001",
         city: "Recife",
@@ -69,6 +70,7 @@ export async function verifySupplierCompletion(page, appUrl) {
   );
   await page.route("https://viacep.com.br/ws/**", (route) =>
     route.fulfill({
+      headers: { "Access-Control-Allow-Origin": appUrl },
       json: {
         cep: "50000-001",
         localidade: "Recife",
