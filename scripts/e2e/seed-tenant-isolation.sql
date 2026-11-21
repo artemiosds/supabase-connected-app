@@ -343,7 +343,7 @@ VALUES(
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.supplier_documents(
-  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,external_url,storage_provider,status
 )
 VALUES(
   '96000000-0000-4000-8000-000000000001',
@@ -353,6 +353,7 @@ VALUES(
   'certidao_federal',
   CURRENT_DATE-30,
   CURRENT_DATE+10,
+  'https://files.example.invalid/certificate.txt',
   'external_link',
   'active'
 )
@@ -424,7 +425,7 @@ VALUES(
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.supplier_documents(
-  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,external_url,storage_provider,status
 )
 VALUES(
   '96000000-0000-4000-8000-000000000002',
@@ -434,6 +435,7 @@ VALUES(
   'certidao_federal',
   CURRENT_DATE-30,
   CURRENT_DATE+10,
+  'https://files.example.invalid/certificate.txt',
   'external_link',
   'active'
 )

@@ -1671,6 +1671,18 @@ async function verifyProcurementLifecycle() {
     await profile.getByText("Contrato " + contractNumber, { exact: true }).waitFor();
     await profile.getByRole("tab", { name: "Cotações" }).click();
     await profile.getByRole("listitem").first().waitFor();
+    assert.equal(
+      new URL(
+        await profile
+          .getByRole("link", { name: "Abrir processo", exact: true })
+          .first()
+          .getAttribute("href"),
+        appUrl,
+      ).searchParams.get("processo"),
+      processId,
+    );
+    await profile.getByRole("link", { name: "Abrir processo", exact: true }).first().click();
+    await page.getByRole("dialog").getByText(processNumber, { exact: false }).first().waitFor();
     console.log("PASS supplier profile: linked contract and quotations visible to the tenant");
     await page.keyboard.press("Escape");
     await verifySupplierCompletion(page, appUrl);

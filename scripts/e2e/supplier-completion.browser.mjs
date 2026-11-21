@@ -111,6 +111,18 @@ export async function verifySupplierCompletion(page, appUrl) {
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   );
   await page.screenshot({ path: "artifacts/supplier-mobile.png", fullPage: true });
+  await page
+    .context()
+    .route("https://files.example.invalid/certificate.txt", (route) =>
+      route.fulfill({ contentType: "text/plain", body: "Certidão sintética de homologação" }),
+    );
+  const [certificate] = await Promise.all([
+    page.context().waitForEvent("page"),
+    profile.getByRole("button", { name: "Abrir arquivo", exact: true }).first().click(),
+  ]);
+  await certificate.getByText("Certidão sintética de homologação", { exact: true }).waitFor();
+  await certificate.close();
+
   const manage = profile.getByRole("link", { name: /Abrir módulo/ });
   assert.ok((await manage.getAttribute("href")).includes("fornecedor="));
   await manage.click();
