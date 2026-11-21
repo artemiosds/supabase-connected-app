@@ -316,6 +316,7 @@ export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props
             {formatarMoeda(total)}
           </p>
         </div>
+        <p className="text-xs text-muted-foreground">Valor referente aos itens desta importação.</p>
         {missingPrices > 0 && (
           <p className="text-sm">
             {missingPrices} item(ns) sem preço estimado. O total completo depende desses valores.
