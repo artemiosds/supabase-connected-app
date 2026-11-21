@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
 
 export async function verifySupplierCompletion(page, appUrl) {
@@ -95,6 +96,8 @@ export async function verifySupplierCompletion(page, appUrl) {
   assert.ok(
     !(await form.getByLabel("Observações internas").inputValue()).includes("RFB_VERIFICATION"),
   );
+  await mkdir("artifacts", { recursive: true });
+  await page.screenshot({ path: "artifacts/supplier-desktop.png", fullPage: true });
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Abrir ficha 360º de " + supplierName }).click();
@@ -105,7 +108,11 @@ export async function verifySupplierCompletion(page, appUrl) {
   assert.ok(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   );
-  await page.keyboard.press("Escape");
+  await page.screenshot({ path: "artifacts/supplier-mobile.png", fullPage: true });
+  const manage = profile.getByRole("link", { name: /Abrir módulo/ });
+  assert.ok((await manage.getAttribute("href")).includes("fornecedor="));
+  await manage.click();
+  await page.getByRole("button", { name: "Ver todos os fornecedores", exact: true }).waitFor();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.unroute("**/functions/v1/lookup-cnpj");
   console.log(

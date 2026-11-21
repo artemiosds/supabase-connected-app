@@ -23,8 +23,13 @@ export function SupplierDocumentMonitor({
   const { session } = useAuth();
   const query = useQuery({
     queryKey: ["supplier-document-monitor", session?.user.id, tenantId, supplierId],
-    queryFn: () =>
-      carregarTodasAsPaginas((from, to) =>
+    queryFn: async () => {
+      const { data: access, error } = await db.rpc("get_document_capabilities", {
+        p_tenant_id: tenantId,
+      });
+      if (error) throw error;
+      if (!access?.[0]?.can_view) return null;
+      return carregarTodasAsPaginas((from, to) =>
         db
           .from("supplier_documents")
           .select("id,title,document_type,expires_at,status")
@@ -32,7 +37,8 @@ export function SupplierDocumentMonitor({
           .eq("supplier_id", supplierId)
           .order("id")
           .range(from, to),
-      ),
+      );
+    },
     retry: false,
   });
   if (query.isPending) return <p role="status">Conferindo documentos…</p>;
@@ -42,6 +48,7 @@ export function SupplierDocumentMonitor({
         Não foi possível conferir os documentos. Reabra a ficha para tentar novamente.
       </p>
     );
+  if (!query.data) return <p>Seu perfil não permite conferir documentos desta Secretaria.</p>;
   const requirements = monitorSupplierDocuments(query.data, category);
   const alert = requirements.some((r) => !r.sanitary && ["expired", "missing"].includes(r.status));
   return (
