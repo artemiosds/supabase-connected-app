@@ -1,14 +1,29 @@
 import { SupplyOrderDialog } from "@/components/contracts/supply-order-dialog";
 import { ContractItemsImport } from "@/components/contracts/contract-items-import";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, Plus, RotateCcw, ShoppingCart } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Plus,
+  Printer,
+  RotateCcw,
+  ShoppingCart,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
+import { useTenant } from "@/hooks/use-tenant";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { calcularQuantidadeConsumida, calcularSaldoDisponivel } from "@/lib/contract-item-balance";
+import { groupMovementsBySupplyOrder } from "@/lib/supply-order-history-helper";
+import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
+import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
+import { carregarTimbradoSecretaria } from "@/lib/document-branding";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Contract = {
   id: string;
@@ -79,6 +94,14 @@ export function ContractItemsBalance(props: {
   tenantId: string;
   userId: string;
 }) {
+  const { selecionado } = useTenant();
+  const { session } = useAuth();
+  const scope = useRef({ tenant: selecionado?.id, user: session?.user.id });
+  scope.current = { tenant: selecionado?.id, user: session?.user.id };
+  const inScope = () =>
+    Boolean(props.userId) &&
+    scope.current.tenant === props.tenantId &&
+    scope.current.user === props.userId;
   const [aberto, setAberto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -95,6 +118,7 @@ export function ContractItemsBalance(props: {
     reference_number: "",
   });
   const [reversalReasons, setReversalReasons] = useState<Record<string, string>>({});
+  const [reprintingReference, setReprintingReference] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -159,10 +183,115 @@ export function ContractItemsBalance(props: {
       }, {}),
     [movements],
   );
+  const supplyOrders = useMemo(
+    () =>
+      groupMovementsBySupplyOrder(
+        movements,
+        items.map(({ id, line_number, description, unit }) => ({
+          id,
+          line_number,
+          description,
+          unit,
+        })),
+      ),
+    [items, movements],
+  );
   const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
   const itemEditandoTemMovimentos =
     itemEditandoId !== null &&
     movements.some((movement) => movement.contract_item_id === itemEditandoId);
+
+  async function reimprimirOrdem(order: (typeof supplyOrders)[number]) {
+    if (reprintingReference || !inScope()) {
+      if (!inScope()) toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+    setReprintingReference(order.referenceNumber);
+    try {
+      const [tenantResult, contractResult] = await Promise.all([
+        db.from("tenants").select("name").eq("id", props.tenantId).single(),
+        db
+          .from("contracts")
+          .select("number,object,process_id,supplier_id,inspector_name")
+          .eq("tenant_id", props.tenantId)
+          .eq("id", props.contract.id)
+          .single(),
+      ]);
+      if (tenantResult.error || !tenantResult.data?.name)
+        throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
+      if (contractResult.error || !contractResult.data)
+        throw new Error("Não foi possível carregar os dados do contrato ou da ata.");
+      if (!contractResult.data.supplier_id)
+        throw new Error("O contrato não possui fornecedor vinculado para identificar na OF.");
+
+      const [supplierResult, processResult] = await Promise.all([
+        db
+          .from("suppliers")
+          .select("legal_name,trade_name,cnpj")
+          .eq("tenant_id", props.tenantId)
+          .eq("id", contractResult.data.supplier_id)
+          .single(),
+        contractResult.data.process_id
+          ? db
+              .from("procurement_processes")
+              .select("number")
+              .eq("tenant_id", props.tenantId)
+              .eq("id", contractResult.data.process_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (supplierResult.error || !supplierResult.data)
+        throw new Error("Não foi possível confirmar o fornecedor vinculado.");
+      if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a geração do PDF.");
+
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantResult.data.name);
+      const documentText = buildSupplyOrderDocumentText({
+        tenantName: tenantResult.data.name,
+        contractNumber: contractResult.data.number,
+        contractObject: contractResult.data.object,
+        ...(processResult.data?.number ? { processNumber: processResult.data.number } : {}),
+        supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
+        supplierCnpj: supplierResult.data.cnpj,
+        referenceNumber: order.referenceNumber,
+        reason: order.reason,
+        createdAt: new Date(order.createdAt).toLocaleString("pt-BR"),
+        items: order.items,
+        totalValue: order.totalValue,
+        ...(contractResult.data.inspector_name
+          ? { responsibleName: contractResult.data.inspector_name }
+          : {}),
+      });
+      const docxBytes = await buildDocxFromText(documentText, "Ordem de Fornecimento");
+      const model = await docxToModel(docxBytes);
+      const pdfBytes = await renderPdf(model, {
+        branding,
+        title: "Ordem de Fornecimento " + order.referenceNumber,
+      });
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a geração do PDF.");
+      const blob = new Blob([pdfBytes.slice().buffer as ArrayBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const token =
+        order.referenceNumber
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60) || "OF";
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "Ordem-de-Fornecimento-" + token + ".pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Termo da Ordem de Fornecimento gerado com sucesso!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível reimprimir a OF.");
+    } finally {
+      setReprintingReference(null);
+    }
+  }
 
   async function salvarItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -476,227 +605,348 @@ export function ContractItemsBalance(props: {
               </Button>
             </div>
           )}
-          {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : erro ? (
-            <p className="text-sm text-destructive">
-              Saldo indisponível até que o histórico de movimentações seja carregado com sucesso.
-            </p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum item cadastrado neste instrumento.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {items.map((item) => {
-                const itemMovements = movementsByItem[item.id] ?? [];
-                const used = calcularQuantidadeConsumida(itemMovements);
-                const available = calcularSaldoDisponivel(
-                  Number(item.quantity_total),
-                  itemMovements,
-                );
-                const reversedIds = new Set(
-                  itemMovements
-                    .filter((movement) => movement.movement_type === "reversal")
-                    .map((movement) => movement.reverses_movement_id),
-                );
-                return (
-                  <article key={item.id} className="space-y-3 rounded-md border p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          {item.line_number}. <span>{item.description}</span>
-                        </p>
-                        {item.specification && (
-                          <p className="text-xs text-muted-foreground">{item.specification}</p>
-                        )}
+          <Tabs defaultValue="items" className="space-y-3">
+            <TabsList className="h-auto flex-wrap">
+              <TabsTrigger value="items">Itens e Saldos</TabsTrigger>
+              <TabsTrigger value="orders">Ordens Emitidas (OFs)</TabsTrigger>
+            </TabsList>
+            <TabsContent value="items" className="space-y-3">
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : erro ? (
+                <p className="text-sm text-destructive">
+                  Saldo indisponível até que o histórico de movimentações seja carregado com
+                  sucesso.
+                </p>
+              ) : items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum item cadastrado neste instrumento.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {items.map((item) => {
+                    const itemMovements = movementsByItem[item.id] ?? [];
+                    const used = calcularQuantidadeConsumida(itemMovements);
+                    const available = calcularSaldoDisponivel(
+                      Number(item.quantity_total),
+                      itemMovements,
+                    );
+                    const reversedIds = new Set(
+                      itemMovements
+                        .filter((movement) => movement.movement_type === "reversal")
+                        .map((movement) => movement.reverses_movement_id),
+                    );
+                    return (
+                      <article key={item.id} className="space-y-3 rounded-md border p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {item.line_number}. <span>{item.description}</span>
+                            </p>
+                            {item.specification && (
+                              <p className="text-xs text-muted-foreground">{item.specification}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {quantity.format(Number(item.quantity_total))} {item.unit} ×{" "}
+                              {currency.format(Number(item.unit_value))} · Total{" "}
+                              {currency.format(Number(item.total_value))}
+                            </p>
+                          </div>
+                          <Badge variant={available > 0 ? "secondary" : "destructive"}>
+                            Saldo: {quantity.format(available)} {item.unit}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {quantity.format(Number(item.quantity_total))} {item.unit} ×{" "}
-                          {currency.format(Number(item.unit_value))} · Total{" "}
-                          {currency.format(Number(item.total_value))}
+                          Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
+                          {currency.format(used * Number(item.unit_value))}
                         </p>
-                      </div>
-                      <Badge variant={available > 0 ? "secondary" : "destructive"}>
-                        Saldo: {quantity.format(available)} {item.unit}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
-                      {currency.format(used * Number(item.unit_value))}
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={salvando}
-                      onClick={() => {
-                        setItemEditandoId(item.id);
-                        setItemForm({
-                          description: item.description,
-                          specification: item.specification ?? "",
-                          unit: item.unit,
-                          quantity_total: String(Number(item.quantity_total)),
-                          unit_value: String(Number(item.unit_value)),
-                        });
-                        setFormAberto(true);
-                      }}
-                    >
-                      Editar item
-                    </Button>
-                    {consumptionItemId === item.id ? (
-                      <form
-                        onSubmit={(event) => void registrarConsumo(event, item)}
-                        className="grid gap-2 sm:grid-cols-2"
-                      >
-                        <div>
-                          <Label htmlFor={`consume-qty-${item.id}`}>Quantidade a consumir *</Label>
-                          <Input
-                            id={`consume-qty-${item.id}`}
-                            type="number"
-                            min="0.0001"
-                            max={available}
-                            step="0.0001"
-                            required
-                            value={consumptionForm.quantity}
-                            onChange={(event) =>
-                              setConsumptionForm((current) => ({
-                                ...current,
-                                quantity: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`consume-ref-${item.id}`}>Referência (opcional)</Label>
-                          <Input
-                            id={`consume-ref-${item.id}`}
-                            maxLength={120}
-                            value={consumptionForm.reference_number}
-                            onChange={(event) =>
-                              setConsumptionForm((current) => ({
-                                ...current,
-                                reference_number: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <Label htmlFor={`consume-reason-${item.id}`}>Motivo do consumo *</Label>
-                          <Input
-                            id={`consume-reason-${item.id}`}
-                            required
-                            minLength={10}
-                            maxLength={1000}
-                            value={consumptionForm.reason}
-                            onChange={(event) =>
-                              setConsumptionForm((current) => ({
-                                ...current,
-                                reason: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="flex gap-2 sm:col-span-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={salvando}
+                          onClick={() => {
+                            setItemEditandoId(item.id);
+                            setItemForm({
+                              description: item.description,
+                              specification: item.specification ?? "",
+                              unit: item.unit,
+                              quantity_total: String(Number(item.quantity_total)),
+                              unit_value: String(Number(item.unit_value)),
+                            });
+                            setFormAberto(true);
+                          }}
+                        >
+                          Editar item
+                        </Button>
+                        {consumptionItemId === item.id ? (
+                          <form
+                            onSubmit={(event) => void registrarConsumo(event, item)}
+                            className="grid gap-2 sm:grid-cols-2"
+                          >
+                            <div>
+                              <Label htmlFor={`consume-qty-${item.id}`}>
+                                Quantidade a consumir *
+                              </Label>
+                              <Input
+                                id={`consume-qty-${item.id}`}
+                                type="number"
+                                min="0.0001"
+                                max={available}
+                                step="0.0001"
+                                required
+                                value={consumptionForm.quantity}
+                                onChange={(event) =>
+                                  setConsumptionForm((current) => ({
+                                    ...current,
+                                    quantity: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`consume-ref-${item.id}`}>
+                                Referência (opcional)
+                              </Label>
+                              <Input
+                                id={`consume-ref-${item.id}`}
+                                maxLength={120}
+                                value={consumptionForm.reference_number}
+                                onChange={(event) =>
+                                  setConsumptionForm((current) => ({
+                                    ...current,
+                                    reference_number: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <Label htmlFor={`consume-reason-${item.id}`}>
+                                Motivo do consumo *
+                              </Label>
+                              <Input
+                                id={`consume-reason-${item.id}`}
+                                required
+                                minLength={10}
+                                maxLength={1000}
+                                value={consumptionForm.reason}
+                                onChange={(event) =>
+                                  setConsumptionForm((current) => ({
+                                    ...current,
+                                    reason: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="flex gap-2 sm:col-span-2">
+                              <Button
+                                type="submit"
+                                disabled={salvando || props.contract.status !== "vigente"}
+                              >
+                                <ShoppingCart className="h-4 w-4" /> Registrar consumo
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setConsumptionItemId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </form>
+                        ) : (
                           <Button
-                            type="submit"
-                            disabled={salvando || props.contract.status !== "vigente"}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              salvando ||
+                              available <= 0 ||
+                              props.contract.status !== "vigente" ||
+                              props.contract.end_date < new Date().toISOString().slice(0, 10)
+                            }
+                            onClick={() => setConsumptionItemId(item.id)}
                           >
                             <ShoppingCart className="h-4 w-4" /> Registrar consumo
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setConsumptionItemId(null)}
-                          >
-                            Cancelar
-                          </Button>
+                        )}
+                        {itemMovements.length > 0 && (
+                          <details className="text-sm">
+                            <summary className="cursor-pointer font-medium">
+                              Histórico de movimentações ({itemMovements.length})
+                            </summary>
+                            <ol className="mt-2 space-y-3">
+                              {itemMovements.map((movement) => (
+                                <li key={movement.id} className="border-l-2 border-primary/30 pl-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge
+                                      variant={
+                                        movement.movement_type === "reversal"
+                                          ? "outline"
+                                          : "secondary"
+                                      }
+                                    >
+                                      {movement.movement_type === "reversal"
+                                        ? "Estorno"
+                                        : "Consumo"}
+                                    </Badge>
+                                    <span>
+                                      {quantity.format(Number(movement.quantity))} {item.unit}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {new Date(movement.created_at).toLocaleString("pt-BR")}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {movement.reason}
+                                    {movement.reference_number
+                                      ? ` · Referência: ${movement.reference_number}`
+                                      : ""}
+                                  </p>
+                                  {movement.movement_type === "consumption" &&
+                                    !reversedIds.has(movement.id) && (
+                                      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                        <Input
+                                          aria-label={`Justificativa para estornar consumo de ${quantity.format(Number(movement.quantity))} ${item.unit}`}
+                                          minLength={10}
+                                          maxLength={1000}
+                                          placeholder="Justificativa do estorno (mínimo 10 caracteres)"
+                                          value={reversalReasons[movement.id] ?? ""}
+                                          onChange={(event) =>
+                                            setReversalReasons((current) => ({
+                                              ...current,
+                                              [movement.id]: event.target.value,
+                                            }))
+                                          }
+                                        />
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          disabled={
+                                            salvando ||
+                                            (reversalReasons[movement.id]?.trim().length ?? 0) < 10
+                                          }
+                                          onClick={() => void estornar(movement)}
+                                        >
+                                          <RotateCcw className="h-4 w-4" /> Estornar
+                                        </Button>
+                                      </div>
+                                    )}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="orders" className="space-y-3">
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : erro ? (
+                <p className="text-sm text-destructive">
+                  O extrato está indisponível enquanto o histórico não puder ser carregado.
+                </p>
+              ) : supplyOrders.length === 0 ? (
+                <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  Nenhuma Ordem de Fornecimento registrada até o momento.
+                </p>
+              ) : (
+                supplyOrders.map((order) => (
+                  <article
+                    key={order.referenceNumber}
+                    className="space-y-3 rounded-md border p-3 sm:p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <h4 className="break-words font-medium">{order.referenceNumber}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Emitida em{" "}
+                          {new Date(order.createdAt).toLocaleString("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <Badge variant="secondary">
+                            {order.itemsCount} {order.itemsCount === 1 ? "item" : "itens"}
+                          </Badge>
+                          <span className="font-semibold">{currency.format(order.totalValue)}</span>
                         </div>
-                      </form>
-                    ) : (
+                      </div>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={
-                          salvando ||
-                          available <= 0 ||
-                          props.contract.status !== "vigente" ||
-                          props.contract.end_date < new Date().toISOString().slice(0, 10)
-                        }
-                        onClick={() => setConsumptionItemId(item.id)}
+                        disabled={reprintingReference !== null || loading || Boolean(erro)}
+                        onClick={() => void reimprimirOrdem(order)}
                       >
-                        <ShoppingCart className="h-4 w-4" /> Registrar consumo
+                        {reprintingReference === order.referenceNumber ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Printer className="mr-1 h-4 w-4" />
+                        )}
+                        Reimprimir Termo (PDF)
                       </Button>
-                    )}
-                    {itemMovements.length > 0 && (
-                      <details className="text-sm">
-                        <summary className="cursor-pointer font-medium">
-                          Histórico de movimentações ({itemMovements.length})
-                        </summary>
-                        <ol className="mt-2 space-y-3">
-                          {itemMovements.map((movement) => (
-                            <li key={movement.id} className="border-l-2 border-primary/30 pl-3">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge
-                                  variant={
-                                    movement.movement_type === "reversal" ? "outline" : "secondary"
-                                  }
-                                >
-                                  {movement.movement_type === "reversal" ? "Estorno" : "Consumo"}
-                                </Badge>
-                                <span>
-                                  {quantity.format(Number(movement.quantity))} {item.unit}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {new Date(movement.created_at).toLocaleString("pt-BR")}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {movement.reason}
-                                {movement.reference_number
-                                  ? ` · Referência: ${movement.reference_number}`
-                                  : ""}
-                              </p>
-                              {movement.movement_type === "consumption" &&
-                                !reversedIds.has(movement.id) && (
-                                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                                    <Input
-                                      aria-label={`Justificativa para estornar consumo de ${quantity.format(Number(movement.quantity))} ${item.unit}`}
-                                      minLength={10}
-                                      maxLength={1000}
-                                      placeholder="Justificativa do estorno (mínimo 10 caracteres)"
-                                      value={reversalReasons[movement.id] ?? ""}
-                                      onChange={(event) =>
-                                        setReversalReasons((current) => ({
-                                          ...current,
-                                          [movement.id]: event.target.value,
-                                        }))
-                                      }
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={
-                                        salvando ||
-                                        (reversalReasons[movement.id]?.trim().length ?? 0) < 10
-                                      }
-                                      onClick={() => void estornar(movement)}
-                                    >
-                                      <RotateCcw className="h-4 w-4" /> Estornar
-                                    </Button>
-                                  </div>
-                                )}
-                            </li>
-                          ))}
-                        </ol>
-                      </details>
-                    )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{order.reason}</p>
+                    <details className="text-sm">
+                      <summary className="cursor-pointer font-medium">
+                        Itens da ordem ({order.itemsCount})
+                      </summary>
+                      <div className="mt-2 overflow-x-auto rounded border">
+                        <table className="w-full min-w-[620px] text-left text-xs sm:text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th scope="col" className="p-2">
+                                Item
+                              </th>
+                              <th scope="col" className="p-2">
+                                Descrição
+                              </th>
+                              <th scope="col" className="p-2">
+                                Quantidade
+                              </th>
+                              <th scope="col" className="p-2">
+                                Valor unitário
+                              </th>
+                              <th scope="col" className="p-2">
+                                Subtotal
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {order.items.map((orderedItem) => (
+                              <tr key={orderedItem.itemId} className="border-t">
+                                <td className="p-2">{orderedItem.lineNumber}</td>
+                                <td className="p-2">
+                                  <span className="block font-medium">
+                                    {orderedItem.description}
+                                  </span>
+                                  <span className="text-muted-foreground">{orderedItem.unit}</span>
+                                </td>
+                                <td className="p-2">
+                                  {quantity.format(orderedItem.quantity)} {orderedItem.unit}
+                                </td>
+                                <td className="p-2">{currency.format(orderedItem.unitValue)}</td>
+                                <td className="p-2 font-medium">
+                                  {currency.format(orderedItem.subtotal)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
                   </article>
-                );
-              })}
-            </div>
-          )}
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </section>

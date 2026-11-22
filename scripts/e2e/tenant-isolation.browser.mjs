@@ -1434,9 +1434,31 @@ async function verifyProcurementLifecycle() {
       ofRows.body.reduce((sum, row) => sum + row.quantity * row.unit_value_snapshot, 0),
       25,
     );
+    await itemPanel.getByRole("tab", { name: "Ordens Emitidas (OFs)", exact: true }).click();
+    const orderCard = itemPanel.locator("article").filter({ hasText: "OF nº 001/2026" }).last();
+    await orderCard.waitFor();
+    await orderCard.getByText("2 itens", { exact: true }).waitFor();
+    await orderCard
+      .getByText("Abastecimento sintético da farmácia central", { exact: true })
+      .waitFor();
+    await orderCard.getByText(/25,00/).waitFor();
+    await orderCard.getByText("Itens da ordem (2)", { exact: true }).waitFor();
+    const reprintPromise = page.waitForEvent("download");
+    await orderCard.getByRole("button", { name: "Reimprimir Termo (PDF)", exact: true }).click();
+    const reprintedOrder = await reprintPromise;
+    assert.match(
+      reprintedOrder.suggestedFilename(),
+      /^Ordem-de-Fornecimento-OF-.*001-2026.*\.pdf$/,
+    );
+    const reprintedPath = await reprintedOrder.path();
+    assert.ok(reprintedPath);
+    const reprintedPdf = await PDFDocument.load(await readFile(reprintedPath));
+    assert.ok(reprintedPdf.getPageCount() > 0);
+    assert.equal(reprintedPdf.getTitle(), "Ordem de Fornecimento OF nº 001/2026");
+    await itemPanel.getByRole("tab", { name: "Itens e Saldos", exact: true }).click();
     await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).first().waitFor();
     console.log(
-      "PASS supply order: two consumption movements, shared reference, exact value and overdraw prevention",
+      "PASS supply order: multi-item history, exact total, reprint PDF and overdraw prevention",
     );
 
     // Invalid extension dates must be rejected without creating an amendment.
