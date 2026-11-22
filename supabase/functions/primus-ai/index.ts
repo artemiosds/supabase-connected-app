@@ -40,6 +40,8 @@ const FEATURES: FeatureKey[] = [
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_HISTORY = 10;
 const MAX_MESSAGE_LENGTH = 3_000;
+const MAX_ASSISTANT_HISTORY_LENGTH = 12_000;
+const MAX_TOTAL_HISTORY_LENGTH = 24_000;
 
 function response(payload: JsonObject, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
@@ -68,9 +70,18 @@ function safeMessages(value: unknown): ChatMessage[] | null {
     )
       return null;
     const content = (entry as ChatMessage).content.trim();
-    if (!content || content.length > MAX_MESSAGE_LENGTH) return null;
+    const maxLength =
+      (entry as ChatMessage).role === "assistant"
+        ? MAX_ASSISTANT_HISTORY_LENGTH
+        : MAX_MESSAGE_LENGTH;
+    if (!content || content.length > maxLength) return null;
     messages.push({ role: (entry as ChatMessage).role, content });
   }
+  if (
+    messages.reduce((total, message) => total + message.content.length, 0) >
+    MAX_TOTAL_HISTORY_LENGTH
+  )
+    return null;
   if (messages.at(-1)?.role !== "user") return null;
   return messages;
 }
