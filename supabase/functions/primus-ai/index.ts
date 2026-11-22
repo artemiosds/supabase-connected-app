@@ -177,11 +177,13 @@ async function collectContext(
 
     const selected = Array.isArray(contracts) ? contracts[0] : contracts;
     if (!selected) return { notice: "Nenhum contrato encontrado." };
+    const selectedContractId = typeof selected.id === "string" ? selected.id : "";
+    if (!selectedContractId) throw new Error("Contrato inválido para esta Secretaria.");
     const { data: items, error: itemsError } = await userClient
       .from("contract_items")
       .select("id,line_number,description,specification,unit,quantity_total,unit_value")
       .eq("tenant_id", tenantId)
-      .eq("contract_id", selected.id)
+      .eq("contract_id", selectedContractId)
       .order("line_number")
       .limit(100);
     if (itemsError) throw new Error("Itens do contrato indisponíveis para esta sessão.");
