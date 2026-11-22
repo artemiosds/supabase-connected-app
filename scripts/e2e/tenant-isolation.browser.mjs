@@ -1350,6 +1350,40 @@ async function verifyProcurementLifecycle() {
     assert.equal(crossTenantItems.status, 200);
     assert.equal(crossTenantItems.body.length, 0, "tenant A cannot read tenant B contract items");
 
+    await itemPanel.getByRole("button", { name: "Puxar itens do processo", exact: true }).click();
+    const importDialog = page.getByRole("dialog", {
+      name: "Importar Itens do Processo Homologado",
+      exact: true,
+    });
+    await importDialog.getByText(itemDescription, { exact: false }).waitFor();
+    await importDialog.getByRole("checkbox", { name: /Conferi/ }).check();
+    await importDialog
+      .getByRole("button", { name: "Confirmar Importação de 1 Itens", exact: true })
+      .click();
+    await importDialog.waitFor({ state: "hidden" });
+    await itemPanel.getByText(itemDescription, { exact: true }).waitFor();
+    const imported = await readRows(
+      "contract_items",
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id },
+      "description,line_number,quantity_total,unit_value",
+    );
+    assert.equal(imported.body.length, 2);
+    assert.deepEqual(
+      imported.body.find((i) => i.description === itemDescription),
+      { description: itemDescription, line_number: 2, quantity_total: 2, unit_value: 15 },
+    );
+    await itemPanel.getByRole("button", { name: "Puxar itens do processo", exact: true }).click();
+    await importDialog.getByText(/Itens existentes ou repetidos/).waitFor();
+    assert.ok(
+      await importDialog
+        .getByRole("button", { name: "Confirmar Importação de 0 Itens", exact: true })
+        .isDisabled(),
+    );
+    await importDialog.getByRole("button", { name: "Fechar", exact: true }).click();
+    console.log(
+      "PASS contract item import: linked quote, continuous numbering, existing ledger and duplicate prevention",
+    );
+
     // Invalid extension dates must be rejected without creating an amendment.
     await page
       .getByRole("button", {

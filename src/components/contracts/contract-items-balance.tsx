@@ -1,3 +1,4 @@
+import { ContractItemsImport } from "@/components/contracts/contract-items-import";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2, Plus, RotateCcw, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ type Contract = {
   total_value: number;
   status: string;
   end_date: string;
+  process_id: string | null;
 };
 
 type Item = {
@@ -294,17 +296,29 @@ export function ContractItemsBalance(props: {
                 {currency.format(Number(props.contract.total_value))}
               </p>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                setItemEditandoId(null);
-                setItemForm(EMPTY_ITEM);
-                setFormAberto((value) => !value);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Adicionar item
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {props.contract.process_id && props.contract.status === "vigente" && (
+                <ContractItemsImport
+                  key={props.tenantId + props.contract.id + props.contract.process_id}
+                  contractId={props.contract.id}
+                  processId={props.contract.process_id}
+                  tenantId={props.tenantId}
+                  userId={props.userId}
+                  onSaved={carregar}
+                />
+              )}
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setItemEditandoId(null);
+                  setItemForm(EMPTY_ITEM);
+                  setFormAberto((value) => !value);
+                }}
+              >
+                <Plus className="h-4 w-4" /> Adicionar item
+              </Button>
+            </div>
           </div>
 
           {formAberto && (
