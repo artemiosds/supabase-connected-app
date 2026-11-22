@@ -6,7 +6,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 import JSZip from "jszip";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFName } from "pdf-lib";
 
 const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -1624,12 +1624,37 @@ async function verifyProcurementLifecycle() {
     await mapDialog.getByRole("button", { name: "Registrar aprovação do preço" }).click();
     await page.getByText(/Preço aprovado:/).waitFor();
     await mapDialog.getByText("Preço estimado aprovado", { exact: true }).waitFor();
+    const [directMapDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      mapDialog.getByRole("button", { name: "Gerar mapa PDF", exact: true }).click(),
+    ]);
+    const directMapPdf = await PDFDocument.load(await readFile(await directMapDownload.path()));
+    assert.ok(directMapPdf.getPages().every((p) => p.getWidth() > p.getHeight()));
+    assert.ok(
+      directMapPdf.getPages().some((p) => p.node.Resources()?.has(PDFName.of("XObject"))),
+      "PDF includes the configured logo resource",
+    );
     await mapDialog
       .getByRole("button", { name: "Encaminhar mapa para aprovação e assinatura" })
       .click();
     const mapTitle = `Mapa comparativo — ${processNumber}`;
     const mapRow = page.getByRole("row").filter({ hasText: mapTitle });
     await mapRow.waitFor();
+    const mapSnapshots = await readRows(
+      "generated_documents",
+      { tenant_id: tenantId, title: mapTitle },
+      "content_snapshot",
+    );
+    const snapshot = mapSnapshots.body[0].content_snapshot;
+    assert.ok(snapshot.includes("QUADRO SINTÉTICO COMPARATIVO — PROPOSTAS POR FORNECEDOR"));
+    assert.ok(snapshot.includes("CONSOLIDAÇÃO DOS VALORES DE REFERÊNCIA / HOMOLOGADOS"));
+    assert.ok(snapshot.includes("TOTAL GERAL DO PROCESSO"));
+    assert.ok(snapshot.includes("DECLARAÇÃO DE CONFORMIDADE E ENCERRAMENTO DA PESQUISA"));
+    assert.ok(snapshot.includes("Autoridade Competente / Ordenador de Despesas"));
+    console.log(
+      "PASS synthetic price map: direct landscape PDF with logo, matrix, approved total and signature fields",
+    );
+
     const [draftDownload] = await Promise.all([
       page.waitForEvent("download"),
       mapRow.getByRole("button", { name: "PDF (rascunho)", exact: true }).click(),

@@ -1536,6 +1536,7 @@ function DadosEstruturados(props: {
       const { buildDocxFromText, generateDocx, docxToModel, renderPdf } =
         await import("@/lib/docx-engine");
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
+      const { buildPriceMatrix, isApproved } = await import("@/lib/price-matrix-helper");
       const { data: tenant, error } = await db
         .from("tenants")
         .select("name")
@@ -1614,6 +1615,117 @@ function DadosEstruturados(props: {
         "Critério de análise: as cotações ativas compõem a série de preços; os alertas estatísticos são subsídios de análise e não excluem automaticamente valores.",
         "Fórmula de preço efetivo: (preço unitário × quantidade cotada + frete) ÷ quantidade cotada. Total aprovado: preço unitário aprovado × quantidade prevista do item.",
       ].filter(Boolean);
+      const matrix = buildPriceMatrix(activeItems, quotes);
+      const money = (value: number | null) => (value === null ? "—" : formatarMoeda(value));
+      if (matrix.columns.length) {
+        lines.push(
+          "",
+          "QUADRO SINTÉTICO COMPARATIVO — PROPOSTAS POR FORNECEDOR",
+          "Preços unitários efetivos com frete. O menor valor é indicado por asterisco. Cotações distintas da mesma fonte são preservadas.",
+        );
+        // Keep the matrix readable in A4 landscape, even with many sources.
+        const columnsPerTable = 3;
+        for (let offset = 0; offset < matrix.columns.length; offset += columnsPerTable) {
+          const columns = matrix.columns.slice(offset, offset + columnsPerTable);
+          lines.push(
+            "",
+            `FONTES ${offset + 1} A ${offset + columns.length} DE ${matrix.columns.length}`,
+            [
+              "Item",
+              "Descrição",
+              "Qtd",
+              "Unid",
+              ...columns.map((column) => clean(column.label)),
+              "Menor Cotado",
+              "Situação",
+            ].join("\t"),
+          );
+          for (const row of matrix.rows) {
+            lines.push(
+              [
+                row.item.line_number,
+                row.item.description,
+                row.item.quantity,
+                row.item.unit,
+                ...columns.map(
+                  (column) =>
+                    row.cells[column.id]
+                      ?.map(
+                        (cell) =>
+                          money(cell.price) + (cell.price === row.summary.menor ? " *" : ""),
+                      )
+                      .join(" / ") ?? "—",
+                ),
+                money(row.summary.menor),
+                isApproved(row.item, currentApprovals) ? "APROVADO" : "PENDENTE",
+              ]
+                .map(clean)
+                .join("\t"),
+            );
+          }
+        }
+      }
+      lines.push(
+        "",
+        "INDICADORES ESTATÍSTICOS POR ITEM",
+        ["Item", "Menor", "Mediana", "Média", "CV amostral", "Amostras"].join("\t"),
+      );
+      for (const row of matrix.rows) {
+        const cv = row.summary.coeficienteVariacao;
+        lines.push(
+          [
+            row.item.line_number,
+            money(row.summary.menor),
+            money(row.summary.mediana),
+            money(row.summary.media),
+            cv === null ? "—" : cv.toFixed(2) + "%" + (cv > 25 ? " (alerta)" : ""),
+            row.summary.quantidade,
+          ].join("\t"),
+        );
+      }
+      let approvedCents = 0;
+      lines.push(
+        "",
+        "CONSOLIDAÇÃO DOS VALORES DE REFERÊNCIA / HOMOLOGADOS",
+        ["Item", "Descrição", "Qtd", "Unid", "Método", "Unitário Homologado", "Total do Item"].join(
+          "\t",
+        ),
+      );
+      for (const item of activeItems) {
+        const approval = isApproved(item, currentApprovals)
+          ? currentApprovals.find((entry) => entry.procurement_item_id === item.id)
+          : undefined;
+        if (approval) approvedCents += Math.round(approval.approved_total_price * 100);
+        lines.push(
+          [
+            item.line_number,
+            item.description,
+            item.quantity,
+            item.unit,
+            approval?.method.toUpperCase() ?? "PENDENTE",
+            approval ? formatarMoeda(approval.approved_unit_price) : "Pendente",
+            approval ? formatarMoeda(approval.approved_total_price) : "Pendente",
+          ]
+            .map(clean)
+            .join("\t"),
+        );
+      }
+      lines.push(
+        [
+          allItemsApproved ? "TOTAL GERAL DO PROCESSO" : "TOTAL PARCIAL APROVADO",
+          "",
+          "",
+          "",
+          "",
+          "",
+          formatarMoeda(approvedCents / 100),
+        ].join("\t"),
+      );
+      if (!allItemsApproved)
+        lines.push(
+          "O total homologado integral permanece pendente até a aprovação dos preços de todos os itens ativos.",
+        );
+
       for (const item of activeItems) {
         const rows = quotes
           .filter((quote) => quote.procurement_item_id === item.id && quote.is_active)
@@ -1846,6 +1958,22 @@ function DadosEstruturados(props: {
             : "Dispersão: sem alerta de CV superior a 25% nesta amostra.",
         );
       }
+      lines.push(
+        "",
+        "DECLARAÇÃO DE CONFORMIDADE E ENCERRAMENTO DA PESQUISA",
+        "Referência legal: art. 23 da Lei Federal nº 14.133/2021; IN SEGES/ME nº 65/2021 quando aplicável, ou regulamentação local pertinente.",
+        mapaPronto
+          ? "Os preços dos itens e o enquadramento normativo constam como aprovados no sistema. A metodologia, as justificativas e as fontes estão registradas nas seções anteriores. A declaração de conformidade e o encerramento dependem de conferência e assinatura pelos responsáveis."
+          : "RASCUNHO — pesquisa pendente de aprovação dos preços e/ou validação normativa. A declaração de conformidade e o encerramento não estão formalizados.",
+        "",
+        "___________________________________________________",
+        `Identificação para conferência: ${clean(profile.full_name)} (responsável pela emissão)`,
+        "Responsável pela Pesquisa de Preços",
+        "",
+        "___________________________________________________",
+        "Autoridade Competente / Ordenador de Despesas",
+        "Data: _____/_____/________",
+      );
       if (formato === "workflow") {
         const { data, error } = await db
           .from("generated_documents")
