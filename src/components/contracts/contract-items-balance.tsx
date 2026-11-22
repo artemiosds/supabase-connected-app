@@ -1,14 +1,24 @@
 import { SupplyOrderDialog } from "@/components/contracts/supply-order-dialog";
 import { ContractItemsImport } from "@/components/contracts/contract-items-import";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, Plus, RotateCcw, ShoppingCart } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Plus,
+  RotateCcw,
+  ShoppingCart,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
-import { calcularQuantidadeConsumida, calcularSaldoDisponivel } from "@/lib/contract-item-balance";
+import {
+  calcularQuantidadeConsumida,
+  calcularSaldoDisponivel,
+} from "@/lib/contract-item-balance";
 
 type Contract = {
   id: string;
@@ -88,13 +98,17 @@ export function ContractItemsBalance(props: {
   const [formAberto, setFormAberto] = useState(false);
   const [itemEditandoId, setItemEditandoId] = useState<string | null>(null);
   const [itemForm, setItemForm] = useState<ItemForm>(EMPTY_ITEM);
-  const [consumptionItemId, setConsumptionItemId] = useState<string | null>(null);
+  const [consumptionItemId, setConsumptionItemId] = useState<string | null>(
+    null,
+  );
   const [consumptionForm, setConsumptionForm] = useState<ConsumptionForm>({
     quantity: "",
     reason: "",
     reference_number: "",
   });
-  const [reversalReasons, setReversalReasons] = useState<Record<string, string>>({});
+  const [reversalReasons, setReversalReasons] = useState<
+    Record<string, string>
+  >({});
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -114,7 +128,9 @@ export function ContractItemsBalance(props: {
       );
       const nextItems: Item[] = (itemRows ?? []).map((row) => ({
         ...row,
-        total_value: Number(row.total_value ?? row.quantity_total * row.unit_value),
+        total_value: Number(
+          row.total_value ?? row.quantity_total * row.unit_value,
+        ),
       }));
       setItems(nextItems);
       if (nextItems.length === 0) {
@@ -139,7 +155,11 @@ export function ContractItemsBalance(props: {
       );
       setMovements(movementRows);
     } catch (error) {
-      setErro(error instanceof Error ? error.message : "Não foi possível carregar o saldo.");
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar o saldo.",
+      );
       setItems([]);
       setMovements([]);
     } finally {
@@ -159,7 +179,10 @@ export function ContractItemsBalance(props: {
       }, {}),
     [movements],
   );
-  const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
+  const itemTotal = items.reduce(
+    (total, item) => total + Number(item.total_value),
+    0,
+  );
   const itemEditandoTemMovimentos =
     itemEditandoId !== null &&
     movements.some((movement) => movement.contract_item_id === itemEditandoId);
@@ -172,7 +195,12 @@ export function ContractItemsBalance(props: {
     }
     const total = numero(itemForm.quantity_total);
     const unitValue = numero(itemForm.unit_value);
-    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(unitValue) || unitValue < 0) {
+    if (
+      !Number.isFinite(total) ||
+      total <= 0 ||
+      !Number.isFinite(unitValue) ||
+      unitValue < 0
+    ) {
       toast.error("Informe quantidade e valor unitário válidos.");
       return;
     }
@@ -202,7 +230,8 @@ export function ContractItemsBalance(props: {
       const { error: insertError } = await db.from("contract_items").insert({
         tenant_id: props.tenantId,
         contract_id: props.contract.id,
-        line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
+        line_number:
+          items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
         ...itemData,
         created_by: props.userId,
       });
@@ -217,32 +246,44 @@ export function ContractItemsBalance(props: {
       toast.error("Item não encontrado ou sem permissão para atualização.");
       return;
     }
-    toast.success(itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.");
+    toast.success(
+      itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.",
+    );
     setItemForm(EMPTY_ITEM);
     setItemEditandoId(null);
     setFormAberto(false);
     await carregar();
   }
 
-  async function registrarConsumo(event: React.FormEvent<HTMLFormElement>, item: Item) {
+  async function registrarConsumo(
+    event: React.FormEvent<HTMLFormElement>,
+    item: Item,
+  ) {
     event.preventDefault();
     const amount = numero(consumptionForm.quantity);
-    if (!Number.isFinite(amount) || amount <= 0 || consumptionForm.reason.trim().length < 10) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      consumptionForm.reason.trim().length < 10
+    ) {
       toast.error(
         "Informe uma quantidade válida e uma justificativa com pelo menos 10 caracteres.",
       );
       return;
     }
     setSalvando(true);
-    const { error: rpcError } = await db.rpc("record_contract_item_consumption", {
-      p_tenant_id: props.tenantId,
-      p_contract_item_id: item.id,
-      p_quantity: amount,
-      p_reason: consumptionForm.reason.trim(),
-      ...(consumptionForm.reference_number.trim()
-        ? { p_reference_number: consumptionForm.reference_number.trim() }
-        : {}),
-    });
+    const { error: rpcError } = await db.rpc(
+      "record_contract_item_consumption",
+      {
+        p_tenant_id: props.tenantId,
+        p_contract_item_id: item.id,
+        p_quantity: amount,
+        p_reason: consumptionForm.reason.trim(),
+        ...(consumptionForm.reference_number.trim()
+          ? { p_reference_number: consumptionForm.reference_number.trim() }
+          : {}),
+      },
+    );
     setSalvando(false);
     if (rpcError) {
       toast.error(rpcError.message);
@@ -257,15 +298,20 @@ export function ContractItemsBalance(props: {
   async function estornar(movement: Movement) {
     const reason = reversalReasons[movement.id]?.trim() ?? "";
     if (reason.length < 10) {
-      toast.error("Informe uma justificativa de estorno com pelo menos 10 caracteres.");
+      toast.error(
+        "Informe uma justificativa de estorno com pelo menos 10 caracteres.",
+      );
       return;
     }
     setSalvando(true);
-    const { error: rpcError } = await db.rpc("reverse_contract_item_consumption", {
-      p_tenant_id: props.tenantId,
-      p_movement_id: movement.id,
-      p_reason: reason,
-    });
+    const { error: rpcError } = await db.rpc(
+      "reverse_contract_item_consumption",
+      {
+        p_tenant_id: props.tenantId,
+        p_movement_id: movement.id,
+        p_reason: reason,
+      },
+    );
     setSalvando(false);
     if (rpcError) {
       toast.error(rpcError.message);
@@ -288,7 +334,11 @@ export function ContractItemsBalance(props: {
       >
         <ShoppingCart className="h-4 w-4" />
         Itens e saldo{" "}
-        {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {aberto ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
       </Button>
       {aberto && (
         <div className="mt-4 space-y-4">
@@ -296,7 +346,8 @@ export function ContractItemsBalance(props: {
             <div>
               <h3 className="font-medium">Itens de {props.contract.number}</h3>
               <p className="text-xs text-muted-foreground">
-                Total dos itens: {currency.format(itemTotal)} · Limite do instrumento:{" "}
+                Total dos itens: {currency.format(itemTotal)} · Limite do
+                instrumento:{" "}
                 {currency.format(Number(props.contract.total_value))}
               </p>
             </div>
@@ -311,10 +362,12 @@ export function ContractItemsBalance(props: {
                   !erro &&
                   !salvando &&
                   props.contract.status === "vigente" &&
-                  props.contract.end_date >= new Date().toLocaleDateString("sv-SE")
+                  props.contract.end_date >=
+                    new Date().toLocaleDateString("sv-SE")
                 }
                 items={items.map((item) => ({
                   itemId: item.id,
+                  lineNumber: item.line_number,
                   description: item.description,
                   unit: item.unit,
                   unitValue: Number(item.unit_value),
@@ -325,16 +378,21 @@ export function ContractItemsBalance(props: {
                 }))}
                 onSuccess={carregar}
               />
-              {props.contract.process_id && props.contract.status === "vigente" && (
-                <ContractItemsImport
-                  key={props.tenantId + props.contract.id + props.contract.process_id}
-                  contractId={props.contract.id}
-                  processId={props.contract.process_id}
-                  tenantId={props.tenantId}
-                  userId={props.userId}
-                  onSaved={carregar}
-                />
-              )}
+              {props.contract.process_id &&
+                props.contract.status === "vigente" && (
+                  <ContractItemsImport
+                    key={
+                      props.tenantId +
+                      props.contract.id +
+                      props.contract.process_id
+                    }
+                    contractId={props.contract.id}
+                    processId={props.contract.process_id}
+                    tenantId={props.tenantId}
+                    userId={props.userId}
+                    onSaved={carregar}
+                  />
+                )}
               <Button
                 type="button"
                 size="sm"
@@ -356,7 +414,9 @@ export function ContractItemsBalance(props: {
             >
               <div className="sm:col-span-2">
                 <Label htmlFor={`item-description-${props.contract.id}`}>
-                  {itemEditandoId ? "Editar descrição do item *" : "Descrição do item *"}
+                  {itemEditandoId
+                    ? "Editar descrição do item *"
+                    : "Descrição do item *"}
                 </Label>
                 <Input
                   id={`item-description-${props.contract.id}`}
@@ -373,7 +433,9 @@ export function ContractItemsBalance(props: {
                 />
               </div>
               <div>
-                <Label htmlFor={`item-unit-${props.contract.id}`}>Unidade *</Label>
+                <Label htmlFor={`item-unit-${props.contract.id}`}>
+                  Unidade *
+                </Label>
                 <Input
                   id={`item-unit-${props.contract.id}`}
                   required
@@ -390,7 +452,9 @@ export function ContractItemsBalance(props: {
                 />
               </div>
               <div>
-                <Label htmlFor={`item-spec-${props.contract.id}`}>Especificação</Label>
+                <Label htmlFor={`item-spec-${props.contract.id}`}>
+                  Especificação
+                </Label>
                 <Input
                   id={`item-spec-${props.contract.id}`}
                   maxLength={4000}
@@ -404,7 +468,9 @@ export function ContractItemsBalance(props: {
                 />
               </div>
               <div>
-                <Label htmlFor={`item-qty-${props.contract.id}`}>Quantidade total *</Label>
+                <Label htmlFor={`item-qty-${props.contract.id}`}>
+                  Quantidade total *
+                </Label>
                 <Input
                   id={`item-qty-${props.contract.id}`}
                   type="number"
@@ -421,7 +487,9 @@ export function ContractItemsBalance(props: {
                 />
               </div>
               <div>
-                <Label htmlFor={`item-price-${props.contract.id}`}>Valor unitário (R$) *</Label>
+                <Label htmlFor={`item-price-${props.contract.id}`}>
+                  Valor unitário (R$) *
+                </Label>
                 <Input
                   id={`item-price-${props.contract.id}`}
                   type="number"
@@ -440,8 +508,8 @@ export function ContractItemsBalance(props: {
               </div>
               {itemEditandoTemMovimentos && (
                 <p className="text-xs text-muted-foreground sm:col-span-2">
-                  Unidade e valor unitário ficam bloqueados após a primeira movimentação para
-                  preservar o histórico de consumo e estornos.
+                  Unidade e valor unitário ficam bloqueados após a primeira
+                  movimentação para preservar o histórico de consumo e estornos.
                 </p>
               )}
               <div className="flex gap-2 sm:col-span-2">
@@ -469,8 +537,15 @@ export function ContractItemsBalance(props: {
               role="alert"
               className="flex flex-wrap items-center justify-between gap-2 text-sm text-destructive"
             >
-              <span>Não foi possível carregar itens e movimentações: {erro}</span>
-              <Button type="button" size="sm" variant="outline" onClick={() => void carregar()}>
+              <span>
+                Não foi possível carregar itens e movimentações: {erro}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void carregar()}
+              >
                 Tentar novamente
               </Button>
             </div>
@@ -479,7 +554,8 @@ export function ContractItemsBalance(props: {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : erro ? (
             <p className="text-sm text-destructive">
-              Saldo indisponível até que o histórico de movimentações seja carregado com sucesso.
+              Saldo indisponível até que o histórico de movimentações seja
+              carregado com sucesso.
             </p>
           ) : items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -500,27 +576,36 @@ export function ContractItemsBalance(props: {
                     .map((movement) => movement.reverses_movement_id),
                 );
                 return (
-                  <article key={item.id} className="space-y-3 rounded-md border p-3">
+                  <article
+                    key={item.id}
+                    className="space-y-3 rounded-md border p-3"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium">
                           {item.line_number}. <span>{item.description}</span>
                         </p>
                         {item.specification && (
-                          <p className="text-xs text-muted-foreground">{item.specification}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.specification}
+                          </p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                          {quantity.format(Number(item.quantity_total))} {item.unit} ×{" "}
+                          {quantity.format(Number(item.quantity_total))}{" "}
+                          {item.unit} ×{" "}
                           {currency.format(Number(item.unit_value))} · Total{" "}
                           {currency.format(Number(item.total_value))}
                         </p>
                       </div>
-                      <Badge variant={available > 0 ? "secondary" : "destructive"}>
+                      <Badge
+                        variant={available > 0 ? "secondary" : "destructive"}
+                      >
                         Saldo: {quantity.format(available)} {item.unit}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
+                      Consumido: {quantity.format(used)} {item.unit} · Valor
+                      consumido:{" "}
                       {currency.format(used * Number(item.unit_value))}
                     </p>
                     <Button
@@ -548,7 +633,9 @@ export function ContractItemsBalance(props: {
                         className="grid gap-2 sm:grid-cols-2"
                       >
                         <div>
-                          <Label htmlFor={`consume-qty-${item.id}`}>Quantidade a consumir *</Label>
+                          <Label htmlFor={`consume-qty-${item.id}`}>
+                            Quantidade a consumir *
+                          </Label>
                           <Input
                             id={`consume-qty-${item.id}`}
                             type="number"
@@ -566,7 +653,9 @@ export function ContractItemsBalance(props: {
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`consume-ref-${item.id}`}>Referência (opcional)</Label>
+                          <Label htmlFor={`consume-ref-${item.id}`}>
+                            Referência (opcional)
+                          </Label>
                           <Input
                             id={`consume-ref-${item.id}`}
                             maxLength={120}
@@ -580,7 +669,9 @@ export function ContractItemsBalance(props: {
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <Label htmlFor={`consume-reason-${item.id}`}>Motivo do consumo *</Label>
+                          <Label htmlFor={`consume-reason-${item.id}`}>
+                            Motivo do consumo *
+                          </Label>
                           <Input
                             id={`consume-reason-${item.id}`}
                             required
@@ -598,9 +689,12 @@ export function ContractItemsBalance(props: {
                         <div className="flex gap-2 sm:col-span-2">
                           <Button
                             type="submit"
-                            disabled={salvando || props.contract.status !== "vigente"}
+                            disabled={
+                              salvando || props.contract.status !== "vigente"
+                            }
                           >
-                            <ShoppingCart className="h-4 w-4" /> Registrar consumo
+                            <ShoppingCart className="h-4 w-4" /> Registrar
+                            consumo
                           </Button>
                           <Button
                             type="button"
@@ -620,7 +714,8 @@ export function ContractItemsBalance(props: {
                           salvando ||
                           available <= 0 ||
                           props.contract.status !== "vigente" ||
-                          props.contract.end_date < new Date().toISOString().slice(0, 10)
+                          props.contract.end_date <
+                            new Date().toISOString().slice(0, 10)
                         }
                         onClick={() => setConsumptionItemId(item.id)}
                       >
@@ -634,20 +729,30 @@ export function ContractItemsBalance(props: {
                         </summary>
                         <ol className="mt-2 space-y-3">
                           {itemMovements.map((movement) => (
-                            <li key={movement.id} className="border-l-2 border-primary/30 pl-3">
+                            <li
+                              key={movement.id}
+                              className="border-l-2 border-primary/30 pl-3"
+                            >
                               <div className="flex flex-wrap items-center gap-2">
                                 <Badge
                                   variant={
-                                    movement.movement_type === "reversal" ? "outline" : "secondary"
+                                    movement.movement_type === "reversal"
+                                      ? "outline"
+                                      : "secondary"
                                   }
                                 >
-                                  {movement.movement_type === "reversal" ? "Estorno" : "Consumo"}
+                                  {movement.movement_type === "reversal"
+                                    ? "Estorno"
+                                    : "Consumo"}
                                 </Badge>
                                 <span>
-                                  {quantity.format(Number(movement.quantity))} {item.unit}
+                                  {quantity.format(Number(movement.quantity))}{" "}
+                                  {item.unit}
                                 </span>
                                 <span className="text-muted-foreground">
-                                  {new Date(movement.created_at).toLocaleString("pt-BR")}
+                                  {new Date(movement.created_at).toLocaleString(
+                                    "pt-BR",
+                                  )}
                                 </span>
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
@@ -678,7 +783,8 @@ export function ContractItemsBalance(props: {
                                       variant="outline"
                                       disabled={
                                         salvando ||
-                                        (reversalReasons[movement.id]?.trim().length ?? 0) < 10
+                                        (reversalReasons[movement.id]?.trim()
+                                          .length ?? 0) < 10
                                       }
                                       onClick={() => void estornar(movement)}
                                     >
