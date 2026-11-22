@@ -27,12 +27,11 @@ const quantityFormat = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 4,
 });
 function singleLine(value: unknown, fallback = "Não informado"): string {
-  return (
-    String(value ?? "")
-      .replace(/[\x00-\x1f\x7f]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim() || fallback
-  );
+  const safe = Array.from(String(value ?? ""), (character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || (code >= 127 && code <= 159) ? " " : character;
+  }).join("");
+  return safe.replace(/\s+/g, " ").trim() || fallback;
 }
 function formatCnpj(value: string): string {
   const digits = value.replace(/\D/g, "");
