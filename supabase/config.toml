@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.google-drive-sync]
 verify_jwt = true
+
+[functions.platform-ai-configuration]
+verify_jwt = true
+
+[functions.primus-ai]
+verify_jwt = true
