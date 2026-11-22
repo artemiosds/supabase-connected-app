@@ -12,8 +12,7 @@ const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:4173";
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const password = "GfsE2E!2026-OnlyLocal";
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 async function createSyntheticDocx(text) {
   const zip = new JSZip();
@@ -35,10 +34,7 @@ async function createSyntheticDocx(text) {
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
         "</Relationships>",
     );
-  const escaped = text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  const escaped = text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   zip
     .folder("word")
     ?.file(
@@ -123,8 +119,7 @@ async function readAccessToken(page) {
     for (const key of Object.keys(window.localStorage)) {
       try {
         const value = JSON.parse(window.localStorage.getItem(key) ?? "null");
-        const token =
-          value?.access_token ?? value?.currentSession?.access_token;
+        const token = value?.access_token ?? value?.currentSession?.access_token;
         if (typeof token === "string" && token.length > 20) return token;
       } catch {
         // Other localStorage entries are application preferences, not auth sessions.
@@ -168,21 +163,12 @@ async function verifyAuthenticatedTenant(scenario) {
     ]);
 
     await page
-      .getByRole("heading", {
-        name: "Seu trabalho, com mais clareza.",
-        exact: true,
-      })
+      .getByRole("heading", { name: "Seu trabalho, com mais clareza.", exact: true })
       .waitFor();
-    await page.goto(`${appUrl}/fornecedores`, {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(`${appUrl}/fornecedores`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
     await page
-      .getByRole("heading", { name: "Fornecedores", exact: true })
-      .waitFor();
-    await page
-      .getByRole("button", {
-        name: `Abrir ficha 360º de ${scenario.ownSupplier}`,
-      })
+      .getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` })
       .waitFor();
 
     // The monitoring panel must classify only the active document of the current tenant.
@@ -199,26 +185,14 @@ async function verifyAuthenticatedTenant(scenario) {
     );
 
     // The 360º panel must open for the authenticated tenant's supplier only.
-    await page
-      .getByRole("button", {
-        name: `Abrir ficha 360º de ${scenario.ownSupplier}`,
-      })
-      .click();
-    const profileDialog = page.getByRole("dialog", {
-      name: "Ficha 360º do fornecedor",
-    });
+    await page.getByRole("button", { name: `Abrir ficha 360º de ${scenario.ownSupplier}` }).click();
+    const profileDialog = page.getByRole("dialog", { name: "Ficha 360º do fornecedor" });
     await profileDialog.waitFor();
-    await profileDialog
-      .getByText(scenario.ownSupplier, { exact: true })
-      .waitFor();
+    await profileDialog.getByText(scenario.ownSupplier, { exact: true }).waitFor();
     await profileDialog.getByRole("tab", { name: "Cotações" }).waitFor();
-    await profileDialog
-      .getByRole("tab", { name: "Contratos e atas" })
-      .waitFor();
+    await profileDialog.getByRole("tab", { name: "Contratos e atas" }).waitFor();
     assert.equal(
-      await profileDialog
-        .getByText(scenario.otherSupplier, { exact: true })
-        .count(),
+      await profileDialog.getByText(scenario.otherSupplier, { exact: true }).count(),
       0,
       "the supplier 360 profile must not expose another tenant's supplier",
     );
@@ -292,8 +266,7 @@ async function verifyAuthenticatedTenant(scenario) {
 
         const docxHeaders = {
           ...headers,
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         };
         const encodeStoragePath = (path) =>
           path
@@ -306,17 +279,13 @@ async function verifyAuthenticatedTenant(scenario) {
           `${apiUrl}/storage/v1/object/authenticated/gfs-private-documents/${encodeStoragePath(path)}`;
         const decodeBase64 = (value) => {
           const binary = atob(value);
-          return Uint8Array.from(binary, (character) =>
-            character.charCodeAt(0),
-          );
+          return Uint8Array.from(binary, (character) => character.charCodeAt(0));
         };
         const storageUpload = async (path, base64) =>
           fetch(objectUrl(path), {
             method: "POST",
             headers: { ...docxHeaders, "x-upsert": "false" },
-            body: new Blob([decodeBase64(base64)], {
-              type: docxHeaders["Content-Type"],
-            }),
+            body: new Blob([decodeBase64(base64)], { type: docxHeaders["Content-Type"] }),
           });
         const sourceInsert = async (version, path, fileName, fileSize) =>
           fetch(`${apiUrl}/rest/v1/document_template_sources`, {
@@ -352,11 +321,7 @@ async function verifyAuthenticatedTenant(scenario) {
             },
           );
           const rows = await response.json();
-          if (
-            !response.ok ||
-            rows.length !== 1 ||
-            rows[0].version !== expectedVersion
-          ) {
+          if (!response.ok || rows.length !== 1 || rows[0].version !== expectedVersion) {
             throw new Error(
               `Template version transition failed: HTTP ${response.status} ${JSON.stringify(rows)}`,
             );
@@ -369,21 +334,12 @@ async function verifyAuthenticatedTenant(scenario) {
           const uploaded = await storageUpload(path, base64);
           const uploadBody = await uploaded.text();
           if (!uploaded.ok) {
-            throw new Error(
-              `DOCX Storage upload failed: HTTP ${uploaded.status} ${uploadBody}`,
-            );
+            throw new Error(`DOCX Storage upload failed: HTTP ${uploaded.status} ${uploadBody}`);
           }
-          const linked = await sourceInsert(
-            version,
-            path,
-            fileName,
-            bytes.byteLength,
-          );
+          const linked = await sourceInsert(version, path, fileName, bytes.byteLength);
           const linkedBody = await linked.text();
           if (!linked.ok) {
-            throw new Error(
-              `DOCX metadata insert failed: HTTP ${linked.status} ${linkedBody}`,
-            );
+            throw new Error(`DOCX metadata insert failed: HTTP ${linked.status} ${linkedBody}`);
           }
           return { path, size: bytes.byteLength };
         };
@@ -421,15 +377,9 @@ async function verifyAuthenticatedTenant(scenario) {
           { headers },
         );
         const archivedVersions = await archivedVersionsResponse.json();
-        const originalDownload = await fetch(authenticatedObjectUrl(v1.path), {
-          headers,
-        });
-        const editedDownload = await fetch(authenticatedObjectUrl(v2.path), {
-          headers,
-        });
-        const restoredDownload = await fetch(authenticatedObjectUrl(v3.path), {
-          headers,
-        });
+        const originalDownload = await fetch(authenticatedObjectUrl(v1.path), { headers });
+        const editedDownload = await fetch(authenticatedObjectUrl(v2.path), { headers });
+        const restoredDownload = await fetch(authenticatedObjectUrl(v3.path), { headers });
         const sha256 = async (bytes) => {
           const digest = await crypto.subtle.digest("SHA-256", bytes);
           return Array.from(new Uint8Array(digest))
@@ -442,22 +392,16 @@ async function verifyAuthenticatedTenant(scenario) {
         const originalUploadedBytes = decodeBase64(docxOriginal);
         const editedUploadedBytes = decodeBase64(docxEdited);
         const restoredUploadedBytes = decodeBase64(docxRestored);
-        const crossTenantObjectRead = await fetch(
-          authenticatedObjectUrl(otherInitialSourcePath),
-          {
-            headers,
-          },
-        );
+        const crossTenantObjectRead = await fetch(authenticatedObjectUrl(otherInitialSourcePath), {
+          headers,
+        });
         const crossTenantMetadataRead = await fetch(
           `${apiUrl}/rest/v1/document_template_sources?select=template_id&tenant_id=eq.${otherTenantId}`,
           { headers },
         );
         const crossTenantMetadataRows = await crossTenantMetadataRead.json();
         const crossWritePath = `${otherTenantId}/template-sources/${otherTemplateId}/v1/${crossWriteFileId}.docx`;
-        const crossTenantObjectWrite = await storageUpload(
-          crossWritePath,
-          docxOriginal,
-        );
+        const crossTenantObjectWrite = await storageUpload(crossWritePath, docxOriginal);
         const immutableMetadataUpdate = await fetch(
           `${apiUrl}/rest/v1/document_template_sources?tenant_id=eq.${ownTenantId}&template_id=eq.${templateId}&version=eq.1`,
           {
@@ -473,24 +417,13 @@ async function verifyAuthenticatedTenant(scenario) {
 
         const orphanPath = `${ownTenantId}/template-sources/${templateId}/v3/${orphanFileId}.docx`;
         const orphanUpload = await storageUpload(orphanPath, docxOrphan);
-        const orphanMetadata = await sourceInsert(
-          3,
-          orphanPath,
-          "orphan.docx",
-          0,
-        );
-        const orphanCleanup = await fetch(
-          `${apiUrl}/storage/v1/object/gfs-private-documents`,
-          {
-            method: deleteHttpMethod,
-            headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ prefixes: [orphanPath] }),
-          },
-        );
-        const orphanAfterCleanup = await fetch(
-          authenticatedObjectUrl(orphanPath),
-          { headers },
-        );
+        const orphanMetadata = await sourceInsert(3, orphanPath, "orphan.docx", 0);
+        const orphanCleanup = await fetch(`${apiUrl}/storage/v1/object/gfs-private-documents`, {
+          method: deleteHttpMethod,
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ prefixes: [orphanPath] }),
+        });
+        const orphanAfterCleanup = await fetch(authenticatedObjectUrl(orphanPath), { headers });
 
         return {
           ownStatus: ownResponse.status,
@@ -511,14 +444,11 @@ async function verifyAuthenticatedTenant(scenario) {
             restoredDownloadStatus: restoredDownload.status,
             restoredDownloadSize: restoredDownloadedBytes.byteLength,
             originalDigestMatches:
-              (await sha256(originalDownloadedBytes)) ===
-              (await sha256(originalUploadedBytes)),
+              (await sha256(originalDownloadedBytes)) === (await sha256(originalUploadedBytes)),
             editedDigestMatches:
-              (await sha256(editedDownloadedBytes)) ===
-              (await sha256(editedUploadedBytes)),
+              (await sha256(editedDownloadedBytes)) === (await sha256(editedUploadedBytes)),
             restoredDigestMatches:
-              (await sha256(restoredDownloadedBytes)) ===
-              (await sha256(restoredUploadedBytes)),
+              (await sha256(restoredDownloadedBytes)) === (await sha256(restoredUploadedBytes)),
             crossTenantObjectReadStatus: crossTenantObjectRead.status,
             crossTenantMetadataStatus: crossTenantMetadataRead.status,
             crossTenantMetadataRows,
@@ -553,16 +483,8 @@ async function verifyAuthenticatedTenant(scenario) {
       },
     );
 
-    assert.equal(
-      apiChecks.ownStatus,
-      200,
-      "the authenticated user must read its own tenant",
-    );
-    assert.equal(
-      apiChecks.ownRows.length,
-      1,
-      "the own-tenant query must return its fixture",
-    );
+    assert.equal(apiChecks.ownStatus, 200, "the authenticated user must read its own tenant");
+    assert.equal(apiChecks.ownRows.length, 1, "the own-tenant query must return its fixture");
     assert.equal(
       apiChecks.ownRows[0].legal_name,
       scenario.ownSupplier,
@@ -612,14 +534,10 @@ async function verifyAuthenticatedTenant(scenario) {
     // Exercise the actual authenticated Documentos screen restore action,
     // not only the equivalent REST/database sequence above.
     await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
-    await page
-      .getByRole("heading", { name: "Documentos e vencimentos", exact: true })
-      .waitFor();
+    await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
     await page.getByRole("tab", { name: /Modelos/ }).click();
     await page.getByRole("button", { name: "Histórico", exact: true }).click();
-    await page
-      .getByRole("heading", { name: "Histórico de versões", exact: true })
-      .waitFor();
+    await page.getByRole("heading", { name: "Histórico de versões", exact: true }).waitFor();
 
     const uiRestoreButtons = page.getByRole("button", {
       name: "Restaurar esta versão",
@@ -633,40 +551,22 @@ async function verifyAuthenticatedTenant(scenario) {
         ).length === 2,
       { timeout: 30_000 },
     );
-    assert.equal(
-      await uiRestoreButtons.count(),
-      2,
-      "versions 1 and 2 must be restorable",
-    );
+    assert.equal(await uiRestoreButtons.count(), 2, "versions 1 and 2 must be restorable");
     page.once("dialog", async (dialog) => {
       assert.match(dialog.message(), /Restaurar a versão 2/);
       await dialog.accept();
     });
     await uiRestoreButtons.first().click();
     await page
-      .getByText("Versão restaurada com o Word original preservado.", {
-        exact: true,
-      })
+      .getByText("Versão restaurada com o Word original preservado.", { exact: true })
       .waitFor({ timeout: 30_000 });
 
     await page.getByRole("button", { name: "Histórico", exact: true }).click();
-    await page
-      .getByRole("heading", { name: "Histórico de versões", exact: true })
-      .waitFor();
-    await page
-      .getByRole("dialog")
-      .getByText("Versão 4", { exact: true })
-      .waitFor();
+    await page.getByRole("heading", { name: "Histórico de versões", exact: true }).waitFor();
+    await page.getByRole("dialog").getByText("Versão 4", { exact: true }).waitFor();
 
     const uiRestoreChecks = await page.evaluate(
-      async ({
-        apiUrl,
-        publicKey,
-        token,
-        tenantId,
-        templateId,
-        expectedBase64,
-      }) => {
+      async ({ apiUrl, publicKey, token, tenantId, templateId, expectedBase64 }) => {
         const headers = { apikey: publicKey, Authorization: `Bearer ${token}` };
         const [templateResponse, sourceResponse] = await Promise.all([
           fetch(
@@ -699,14 +599,11 @@ async function verifyAuthenticatedTenant(scenario) {
           { headers },
         );
         const downloaded = await download.arrayBuffer();
-        const expectedBinary = Uint8Array.from(
-          atob(expectedBase64),
-          (character) => character.charCodeAt(0),
+        const expectedBinary = Uint8Array.from(atob(expectedBase64), (character) =>
+          character.charCodeAt(0),
         );
         const digest = async (bytes) =>
-          Array.from(
-            new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-          )
+          Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
             .map((byte) => byte.toString(16).padStart(2, "0"))
             .join("");
         return {
@@ -735,23 +632,13 @@ async function verifyAuthenticatedTenant(scenario) {
     assert.equal(uiRestoreChecks.sourceFileName, "modelo-editado.docx");
     assert.ok(uiRestoreChecks.sourceFileSize > 100);
     assert.equal(uiRestoreChecks.downloadStatus, 200);
-    assert.equal(
-      uiRestoreChecks.restoredDocxMatchesOriginalHistoricalBytes,
-      true,
-    );
+    assert.equal(uiRestoreChecks.restoredDocxMatchesOriginalHistoricalBytes, true);
 
     // Exercise the real Secretaria settings screen, including private logo upload.
-    await page.goto(appUrl + "/configuracoes", {
-      waitUntil: "domcontentloaded",
-    });
-    await page
-      .getByRole("heading", { name: "Minha conta", exact: true })
-      .waitFor();
+    await page.goto(appUrl + "/configuracoes", { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: "Minha conta", exact: true }).waitFor();
     await page.getByText("E-mail de acesso", { exact: true }).waitFor();
-    await page
-      .getByRole("main")
-      .getByText(scenario.email, { exact: true })
-      .waitFor();
+    await page.getByRole("main").getByText(scenario.email, { exact: true }).waitFor();
     await page.getByText("Organização selecionada", { exact: true }).waitFor();
     await page
       .getByRole("main")
@@ -762,44 +649,28 @@ async function verifyAuthenticatedTenant(scenario) {
     // The settings route opens on "Minha conta"; select the documents category before
     // asserting or exercising the tenant-specific letterhead form.
     await page.getByRole("button", { name: /Documentos oficiais/ }).click();
-    await page
-      .getByText("Timbrado dos documentos oficiais", { exact: true })
-      .waitFor();
+    await page.getByText("Timbrado dos documentos oficiais", { exact: true }).waitFor();
     const brandingHeader = "Cabeçalho E2E " + scenario.tenantName;
     await page.getByLabel("Nome no cabeçalho").fill(brandingHeader);
-    await page
-      .getByLabel("Subtítulo institucional")
-      .fill("Homologação sintética de timbrado");
-    await page
-      .getByLabel("Rodapé")
-      .fill("Arquivo fictício; não utilizar em documentos reais.");
+    await page.getByLabel("Subtítulo institucional").fill("Homologação sintética de timbrado");
+    await page.getByLabel("Rodapé").fill("Arquivo fictício; não utilizar em documentos reais.");
     await page.locator("#timbrado-brasao").setInputFiles({
       name: "brasao-sintetico-e2e.png",
       mimeType: "image/png",
       buffer: Buffer.from(syntheticBrandingLogo, "base64"),
     });
-    await page
-      .getByRole("button", { name: "Salvar timbrado", exact: true })
-      .click();
-    await page
-      .getByText("Timbrado da Secretaria atualizado.", { exact: true })
-      .waitFor({
-        timeout: 30_000,
-      });
+    await page.getByRole("button", { name: "Salvar timbrado", exact: true }).click();
+    await page.getByText("Timbrado da Secretaria atualizado.", { exact: true }).waitFor({
+      timeout: 30_000,
+    });
 
-    const otherBrandingPath =
-      brandingPathsByTenant.get(scenario.otherTenantId) ?? null;
+    const otherBrandingPath = brandingPathsByTenant.get(scenario.otherTenantId) ?? null;
     const brandingChecks = await page.evaluate(
       async (input) => {
-        const headers = {
-          apikey: input.publicKey,
-          Authorization: "Bearer " + input.token,
-        };
+        const headers = { apikey: input.publicKey, Authorization: "Bearer " + input.token };
         const decodeBase64 = (value) => {
           const binary = atob(value);
-          return Uint8Array.from(binary, (character) =>
-            character.charCodeAt(0),
-          );
+          return Uint8Array.from(binary, (character) => character.charCodeAt(0));
         };
         const encodeStoragePath = (path) =>
           path
@@ -815,9 +686,7 @@ async function verifyAuthenticatedTenant(scenario) {
           "/storage/v1/object/public/gfs-private-documents/" +
           encodeStoragePath(path);
         const objectUrl = (path) =>
-          input.apiUrl +
-          "/storage/v1/object/gfs-private-documents/" +
-          encodeStoragePath(path);
+          input.apiUrl + "/storage/v1/object/gfs-private-documents/" + encodeStoragePath(path);
         const logoBytes = decodeBase64(input.logoBase64);
         const brandingResponse = await fetch(
           input.apiUrl +
@@ -836,27 +705,18 @@ async function verifyAuthenticatedTenant(scenario) {
         }
         const row = brandingRows[0];
         const logoPath = row.logo_storage_path;
-        const ownDownload = await fetch(authenticatedObjectUrl(logoPath), {
-          headers,
-        });
+        const ownDownload = await fetch(authenticatedObjectUrl(logoPath), { headers });
         const ownBytes = await ownDownload.arrayBuffer();
         const digest = async (bytes) =>
-          Array.from(
-            new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-          )
+          Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
             .map((byte) => byte.toString(16).padStart(2, "0"))
             .join("");
         const publicRead = await fetch(publicObjectUrl(logoPath));
         const crossTenantRead = input.otherLogoPath
-          ? await fetch(authenticatedObjectUrl(input.otherLogoPath), {
-              headers,
-            })
+          ? await fetch(authenticatedObjectUrl(input.otherLogoPath), { headers })
           : null;
         const crossWritePath =
-          input.otherTenantId +
-          "/document-branding/" +
-          input.crossWriteFileId +
-          ".png";
+          input.otherTenantId + "/document-branding/" + input.crossWriteFileId + ".png";
         const crossTenantWrite = await fetch(objectUrl(crossWritePath), {
           method: "POST",
           headers: {
@@ -866,8 +726,7 @@ async function verifyAuthenticatedTenant(scenario) {
           },
           body: new Blob([logoBytes], { type: "image/png" }),
         });
-        const orphanPath =
-          input.tenantId + "/document-branding/" + input.orphanFileId + ".png";
+        const orphanPath = input.tenantId + "/document-branding/" + input.orphanFileId + ".png";
         const orphanUpload = await fetch(objectUrl(orphanPath), {
           method: "POST",
           headers: {
@@ -885,10 +744,7 @@ async function verifyAuthenticatedTenant(scenario) {
             body: JSON.stringify({ prefixes: [orphanPath] }),
           },
         );
-        const orphanAfterCleanup = await fetch(
-          authenticatedObjectUrl(orphanPath),
-          { headers },
-        );
+        const orphanAfterCleanup = await fetch(authenticatedObjectUrl(orphanPath), { headers });
 
         return {
           brandingStatus: brandingResponse.status,
@@ -900,12 +756,9 @@ async function verifyAuthenticatedTenant(scenario) {
           logoFileName: row.logo_file_name,
           logoFileSize: row.logo_file_size,
           ownDownloadStatus: ownDownload.status,
-          ownLogoDigestMatches:
-            (await digest(ownBytes)) === (await digest(logoBytes)),
+          ownLogoDigestMatches: (await digest(ownBytes)) === (await digest(logoBytes)),
           publicReadStatus: publicRead.status,
-          crossTenantReadStatus: crossTenantRead
-            ? crossTenantRead.status
-            : null,
+          crossTenantReadStatus: crossTenantRead ? crossTenantRead.status : null,
           crossTenantWriteStatus: crossTenantWrite.status,
           orphanUploadStatus: orphanUpload.status,
           orphanCleanupStatus: orphanCleanup.status,
@@ -926,14 +779,8 @@ async function verifyAuthenticatedTenant(scenario) {
     );
     assert.equal(brandingChecks.brandingStatus, 200);
     assert.equal(brandingChecks.headerTitle, brandingHeader);
-    assert.equal(
-      brandingChecks.headerSubtitle,
-      "Homologação sintética de timbrado",
-    );
-    assert.equal(
-      brandingChecks.footerText,
-      "Arquivo fictício; não utilizar em documentos reais.",
-    );
+    assert.equal(brandingChecks.headerSubtitle, "Homologação sintética de timbrado");
+    assert.equal(brandingChecks.footerText, "Arquivo fictício; não utilizar em documentos reais.");
     assert.match(
       brandingChecks.logoPath,
       new RegExp("^" + scenario.tenantId + "/document-branding/.+\\.png$"),
@@ -1001,16 +848,11 @@ async function verifyProcurementLifecycle() {
   const contractNumber = "E2E-CONTRATO-2026-001";
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.addInitScript(
-    (id) => localStorage.setItem("gfs:organizacao-id", id),
-    tenantId,
-  );
+  await page.addInitScript((id) => localStorage.setItem("gfs:organizacao-id", id), tenantId);
   page.setDefaultTimeout(30_000);
 
   try {
-    await page.goto(`${appUrl}/entrar?portal=secretaria`, {
-      waitUntil: "networkidle",
-    });
+    await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
     await page.getByLabel("E-mail").fill("e2e.secretaria.a@example.invalid");
     await page.locator("#senha").fill(password);
     await Promise.all([
@@ -1019,10 +861,7 @@ async function verifyProcurementLifecycle() {
     ]);
 
     const token = await readAccessToken(page);
-    assert.ok(
-      token,
-      "the procurement workflow must use an authenticated session",
-    );
+    assert.ok(token, "the procurement workflow must use an authenticated session");
     const readRows = async (table, filters, select = "*") =>
       page.evaluate(
         async ({ apiUrl, publicKey, token, table, filters, select }) => {
@@ -1036,35 +875,22 @@ async function verifyProcurementLifecycle() {
           });
           return { status: response.status, body: await response.json() };
         },
-        {
-          apiUrl: supabaseUrl,
-          publicKey: anonKey,
-          token,
-          table,
-          filters,
-          select,
-        },
+        { apiUrl: supabaseUrl, publicKey: anonKey, token, table, filters, select },
       );
 
     const callRpc = async (functionName, args) =>
       page.evaluate(
         async ({ apiUrl, publicKey, token, functionName, args }) => {
-          const response = await fetch(
-            `${apiUrl}/rest/v1/rpc/${functionName}`,
-            {
-              method: "POST",
-              headers: {
-                apikey: publicKey,
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(args),
+          const response = await fetch(`${apiUrl}/rest/v1/rpc/${functionName}`, {
+            method: "POST",
+            headers: {
+              apikey: publicKey,
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
-          );
-          return {
-            status: response.status,
-            body: await response.json().catch(() => null),
-          };
+            body: JSON.stringify(args),
+          });
+          return { status: response.status, body: await response.json().catch(() => null) };
         },
         { apiUrl: supabaseUrl, publicKey: anonKey, token, functionName, args },
       );
@@ -1086,28 +912,14 @@ async function verifyProcurementLifecycle() {
             },
             body: JSON.stringify(values),
           });
-          return {
-            status: response.status,
-            body: await response.json().catch(() => null),
-          };
+          return { status: response.status, body: await response.json().catch(() => null) };
         },
-        {
-          apiUrl: supabaseUrl,
-          publicKey: anonKey,
-          token,
-          table,
-          filters,
-          values,
-        },
+        { apiUrl: supabaseUrl, publicKey: anonKey, token, table, filters, values },
       );
 
     await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
-    await page
-      .getByRole("heading", { name: "Processos de contratação", exact: true })
-      .waitFor();
-    await page
-      .getByRole("button", { name: "Novo processo", exact: false })
-      .click();
+    await page.getByRole("heading", { name: "Processos de contratação", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Novo processo", exact: false }).click();
     const createDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Novo processo de contratação" });
@@ -1118,9 +930,7 @@ async function verifyProcurementLifecycle() {
     await processInputs.nth(2).fill("Farmácia E2E");
     await processInputs.nth(3).fill("Equipe sintética");
     await processInputs.nth(4).fill("140");
-    await createDialog
-      .getByRole("button", { name: "Criar processo", exact: true })
-      .click();
+    await createDialog.getByRole("button", { name: "Criar processo", exact: true }).click();
     await createDialog.waitFor({ state: "hidden" });
 
     const processCard = page
@@ -1129,14 +939,10 @@ async function verifyProcurementLifecycle() {
       .filter({ hasText: processTitle });
     await processCard.waitFor();
     await processCard.click();
-    const detailDialog = page
-      .getByRole("dialog")
-      .filter({ hasText: processNumber });
+    const detailDialog = page.getByRole("dialog").filter({ hasText: processNumber });
     await detailDialog.getByText("Etapa atual:", { exact: false }).waitFor();
 
-    await detailDialog
-      .getByRole("button", { name: "Avançar etapa", exact: false })
-      .click();
+    await detailDialog.getByRole("button", { name: "Avançar etapa", exact: false }).click();
     await page.getByText(/Conclua os 2 item\(ns\) pendente\(s\)/).waitFor();
     const beforeAdvance = await readRows(
       "procurement_processes",
@@ -1151,16 +957,10 @@ async function verifyProcurementLifecycle() {
     assert.equal(beforeAdvance.body[0].stage, "planejamento");
 
     await detailDialog
-      .getByRole("checkbox", {
-        name: "Concluir: DFD — Documento de Formalização da Demanda",
-      })
+      .getByRole("checkbox", { name: "Concluir: DFD — Documento de Formalização da Demanda" })
       .click();
-    await detailDialog
-      .getByRole("checkbox", { name: "Concluir: Previsão no PCA" })
-      .click();
-    await detailDialog
-      .getByRole("button", { name: "Avançar etapa", exact: false })
-      .click();
+    await detailDialog.getByRole("checkbox", { name: "Concluir: Previsão no PCA" }).click();
+    await detailDialog.getByRole("button", { name: "Avançar etapa", exact: false }).click();
 
     let transitioned = false;
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -1203,15 +1003,9 @@ async function verifyProcurementLifecycle() {
       "stage,title,is_done",
     );
     assert.equal(checklist.status, 200);
+    assert.equal(checklist.body.length, 17, "the standard checklist must be created atomically");
     assert.equal(
-      checklist.body.length,
-      17,
-      "the standard checklist must be created atomically",
-    );
-    assert.equal(
-      checklist.body.filter(
-        (item) => item.stage === "planejamento" && item.is_done,
-      ).length,
+      checklist.body.filter((item) => item.stage === "planejamento" && item.is_done).length,
       2,
     );
 
@@ -1236,56 +1030,31 @@ async function verifyProcurementLifecycle() {
     });
     await composition.waitFor();
 
-    await composition
-      .getByRole("button", { name: "Adicionar item", exact: true })
-      .click();
-    const itemForm = composition
-      .locator("form")
-      .filter({ hasText: "Descrição do item *" });
+    await composition.getByRole("button", { name: "Adicionar item", exact: true }).click();
+    const itemForm = composition.locator("form").filter({ hasText: "Descrição do item *" });
     const itemInputs = itemForm.locator("input");
     await itemInputs.nth(0).fill(itemDescription);
     await itemInputs.nth(1).fill("unidade");
     await itemInputs.nth(2).fill("2");
     await itemInputs.nth(3).fill("70");
     await itemInputs.nth(4).fill("Almoxarifado sintético");
-    await itemForm
-      .getByRole("button", { name: "Salvar item", exact: true })
-      .click();
+    await itemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
     await composition.getByText(itemDescription, { exact: false }).waitFor();
 
-    async function addQuote(
-      source,
-      unitPrice,
-      deliveryCost,
-      referenceUrl,
-      supplierName = null,
-    ) {
-      await composition
-        .getByRole("button", { name: "Nova cotação", exact: true })
-        .click();
+    async function addQuote(source, unitPrice, deliveryCost, referenceUrl, supplierName = null) {
+      await composition.getByRole("button", { name: "Nova cotação", exact: true }).click();
       const quoteForm = composition.locator("form").filter({
         hasText: "Fonte da cotação / fornecedor *",
       });
-      const field = (label) =>
-        quoteForm.getByText(label, { exact: true }).locator("..");
+      const field = (label) => quoteForm.getByText(label, { exact: true }).locator("..");
       if (supplierName) {
-        await field("Fornecedor cadastrado (opcional)")
-          .getByRole("combobox")
-          .click();
-        await page
-          .getByPlaceholder("Nome, CNPJ ou município")
-          .fill("12.345.678/0001-95");
-        await page
-          .getByRole("option", { name: supplierName, exact: true })
-          .click();
+        await field("Fornecedor cadastrado (opcional)").getByRole("combobox").click();
+        await page.getByPlaceholder("Nome, CNPJ ou município").fill("12.345.678/0001-95");
+        await page.getByRole("option", { name: supplierName, exact: true }).click();
       }
 
-      await field("Fonte da cotação / fornecedor *")
-        .locator("input")
-        .fill(source);
-      await field("Data e hora de acesso à fonte")
-        .locator("input")
-        .fill("2026-11-16T10:00");
+      await field("Fonte da cotação / fornecedor *").locator("input").fill(source);
+      await field("Data e hora de acesso à fonte").locator("input").fill("2026-11-16T10:00");
       await field("Data da cotação *").locator("input").fill("2026-11-16");
       await field("Quantidade cotada *").locator("input").fill("2");
       await field("Preço unitário (R$) *").locator("input").fill(unitPrice);
@@ -1293,29 +1062,19 @@ async function verifyProcurementLifecycle() {
       await field("Referência HTTPS").locator("input").fill(referenceUrl);
 
       if (supplierName) {
-        await field("Data do envio da solicitação formal *")
-          .locator("input")
-          .fill("2026-11-16");
-        await field("Prazo concedido para resposta *")
-          .locator("input")
-          .fill("2026-11-20");
+        await field("Data do envio da solicitação formal *").locator("input").fill("2026-11-16");
+        await field("Prazo concedido para resposta *").locator("input").fill("2026-11-20");
         await field("Justificativa da escolha deste fornecedor *")
           .locator("textarea")
-          .fill(
-            "Fornecedor consultado por compatibilidade técnica e disponibilidade regional.",
-          );
-        await field("CPF/CNPJ do fornecedor *")
-          .locator("input")
-          .fill("12345678000195");
+          .fill("Fornecedor consultado por compatibilidade técnica e disponibilidade regional.");
+        await field("CPF/CNPJ do fornecedor *").locator("input").fill("12345678000195");
         await field("Responsável pela proposta *")
           .locator("input")
           .fill("Representante Sintético E2E");
         await field("E-mail de contato *")
           .locator("input")
           .fill("propostas@fornecedor-e2e.invalid");
-        await field("Telefone de contato *")
-          .locator("input")
-          .fill("92999990000");
+        await field("Telefone de contato *").locator("input").fill("92999990000");
         await field("Endereço do fornecedor *")
           .locator("input")
           .fill("Rua E2E, 100, Centro, Oriximiná/PA, CEP 68270-000");
@@ -1328,13 +1087,9 @@ async function verifyProcurementLifecycle() {
         });
       }
 
-      await quoteForm
-        .getByRole("button", { name: "Salvar cotação", exact: true })
-        .click();
+      await quoteForm.getByRole("button", { name: "Salvar cotação", exact: true }).click();
       await page
-        .getByText("Cotação registrada com rastreabilidade da fonte.", {
-          exact: true,
-        })
+        .getByText("Cotação registrada com rastreabilidade da fonte.", { exact: true })
         .waitFor();
     }
 
@@ -1352,12 +1107,8 @@ async function verifyProcurementLifecycle() {
       "https://example.invalid/e2e-cotacao-b",
     );
 
-    await composition
-      .getByRole("tab", { name: "Orçamento", exact: true })
-      .click();
-    await composition
-      .getByRole("button", { name: "Adicionar dotação", exact: true })
-      .click();
+    await composition.getByRole("tab", { name: "Orçamento", exact: true }).click();
+    await composition.getByRole("button", { name: "Adicionar dotação", exact: true }).click();
     const budgetForm = composition.locator("form");
     const budgetInputs = budgetForm.locator("input");
     await budgetInputs.nth(0).fill("2026");
@@ -1367,42 +1118,26 @@ async function verifyProcurementLifecycle() {
     await budgetInputs.nth(4).fill("3.3.90.30");
     await budgetInputs.nth(5).fill("15000000");
     await budgetInputs.nth(6).fill("140");
-    await budgetForm
-      .getByRole("button", { name: "Salvar dotação", exact: true })
-      .click();
+    await budgetForm.getByRole("button", { name: "Salvar dotação", exact: true }).click();
     // Reloading the structured data remounts Tabs with its default "items" tab.
     // Reopen the budget tab before asserting the persisted allocation.
-    await composition
-      .getByRole("tab", { name: "Orçamento", exact: true })
-      .click();
+    await composition.getByRole("tab", { name: "Orçamento", exact: true }).click();
     await composition.getByText(/Fundo Municipal de Saúde E2E/).waitFor();
 
-    await composition
-      .getByRole("tab", { name: "Itens e preços", exact: true })
-      .click();
-    await composition
-      .getByRole("button", { name: "Mapa comparativo (2)", exact: true })
-      .click();
+    await composition.getByRole("tab", { name: "Itens e preços", exact: true }).click();
+    await composition.getByRole("button", { name: "Mapa comparativo (2)", exact: true }).click();
     const mapDialog = page.getByRole("dialog").filter({
       hasText: `Mapa comparativo de preços — ${processNumber}`,
     });
-    await mapDialog
-      .getByText("2 cotação(ões) válidas", { exact: true })
-      .waitFor();
+    await mapDialog.getByText("2 cotação(ões) válidas", { exact: true }).waitFor();
     await mapDialog.getByText(/15,00/).first().waitFor();
     await mapDialog.getByText(/Frete rateado pela quantidade cotada/).waitFor();
-    await mapDialog
-      .getByRole("button", { name: "Fechar mapa", exact: true })
-      .click();
+    await mapDialog.getByRole("button", { name: "Fechar mapa", exact: true }).click();
     const supplierQuote = composition
       .getByText("Fornecedor Sintético Exclusivo A", { exact: true })
       .locator("xpath=../..");
-    await supplierQuote
-      .getByRole("button", { name: "Usar como referência", exact: true })
-      .click();
-    await composition
-      .getByText("Referência escolhida", { exact: true })
-      .waitFor();
+    await supplierQuote.getByRole("button", { name: "Usar como referência", exact: true }).click();
+    await composition.getByText("Referência escolhida", { exact: true }).waitFor();
 
     const items = await readRows(
       "procurement_items",
@@ -1429,79 +1164,42 @@ async function verifyProcurementLifecycle() {
         });
         return { status: response.status, body: await response.json() };
       },
-      {
-        apiUrl: supabaseUrl,
-        publicKey: anonKey,
-        token,
-        tenantId,
-        itemId: items.body[0].id,
-      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token, tenantId, itemId: items.body[0].id },
     );
     assert.equal(quotes.status, 200);
     assert.equal(quotes.body.length, 2);
-    const selectedQuote = quotes.body.find(
-      (quote) => quote.selected_for_estimate,
-    );
+    const selectedQuote = quotes.body.find((quote) => quote.selected_for_estimate);
     assert.ok(selectedQuote);
     assert.equal(selectedQuote.supplier_id, supplierId);
     assert.equal(selectedQuote.total_price, 30);
 
     await page.goto(`${appUrl}/contratos`, { waitUntil: "domcontentloaded" });
-    await page
-      .getByRole("heading", { name: "Contratos e vencimentos", exact: true })
-      .waitFor();
-    await page
-      .getByRole("button", { name: "Central de renovações", exact: true })
-      .click();
-    await page
-      .getByRole("heading", { name: "Central de renovações", exact: true })
-      .waitFor();
-    await page
-      .getByRole("textbox", { name: "Pesquisar contratos" })
-      .fill("E2E-2026-A");
-    await page
-      .getByRole("button", { name: "Iniciar acompanhamento", exact: true })
-      .click();
+    await page.getByRole("heading", { name: "Contratos e vencimentos", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Central de renovações", exact: true }).click();
+    await page.getByRole("heading", { name: "Central de renovações", exact: true }).waitFor();
+    await page.getByRole("textbox", { name: "Pesquisar contratos" }).fill("E2E-2026-A");
+    await page.getByRole("button", { name: "Iniciar acompanhamento", exact: true }).click();
     await page.getByText(/Acompanhamento registrado em/).waitFor();
-    await page
-      .getByRole("button", {
-        name: "Registrar aditivo formalizado",
-        exact: true,
-      })
-      .click();
+    await page.getByRole("button", { name: "Registrar aditivo formalizado", exact: true }).click();
     const renewalDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato E2E-2026-A" });
-    await renewalDialog
-      .getByRole("button", { name: "Cancelar", exact: true })
-      .click();
+    await renewalDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
     await page.getByRole("button", { name: /Contratos e atas/ }).click();
     console.log(
       "PASS renewal workspace: upcoming contract, persisted follow-up and amendment shortcut",
     );
-    await page
-      .getByRole("button", { name: "Novo contrato", exact: false })
-      .click();
-    const contractDialog = page
-      .getByRole("dialog")
-      .filter({ hasText: "Novo contrato" });
+    await page.getByRole("button", { name: "Novo contrato", exact: false }).click();
+    const contractDialog = page.getByRole("dialog").filter({ hasText: "Novo contrato" });
     await contractDialog.getByPlaceholder("042/2026").fill(contractNumber);
-    await contractDialog
-      .locator("textarea")
-      .first()
-      .fill("Fornecimento sintético de seringas E2E");
+    await contractDialog.locator("textarea").first().fill("Fornecimento sintético de seringas E2E");
     const contractComboboxes = contractDialog.getByRole("combobox");
     await contractComboboxes.nth(2).click();
     await page.getByRole("option", { name: new RegExp(processNumber) }).click();
     await contractComboboxes.nth(3).click();
+    await page.getByPlaceholder("Nome, CNPJ ou município").fill("sintetico exclusivo");
     await page
-      .getByPlaceholder("Nome, CNPJ ou município")
-      .fill("sintetico exclusivo");
-    await page
-      .getByRole("option", {
-        name: "Fornecedor Sintético Exclusivo A",
-        exact: true,
-      })
+      .getByRole("option", { name: "Fornecedor Sintético Exclusivo A", exact: true })
       .click();
     const contractInputs = contractDialog.locator("input");
     await contractInputs.nth(1).fill("140");
@@ -1509,9 +1207,7 @@ async function verifyProcurementLifecycle() {
     await contractInputs.nth(3).fill("2027-11-15");
     await contractInputs.nth(4).fill("Gestor sintético");
     await contractInputs.nth(5).fill("Fiscal sintético");
-    await contractDialog
-      .getByRole("button", { name: "Salvar contrato", exact: true })
-      .click();
+    await contractDialog.getByRole("button", { name: "Salvar contrato", exact: true }).click();
     await page.getByText(/Contrato cadastrado e 1 cotaç.*vinculada/).waitFor();
     await page.getByText(new RegExp(contractNumber)).waitFor();
 
@@ -1529,10 +1225,7 @@ async function verifyProcurementLifecycle() {
     const linkedQuotes = await page.evaluate(
       async ({ apiUrl, publicKey, token, tenantId, itemId }) => {
         const url = new URL("/rest/v1/procurement_price_quotes", apiUrl);
-        url.searchParams.set(
-          "select",
-          "contract_id,selected_for_estimate,supplier_id",
-        );
+        url.searchParams.set("select", "contract_id,selected_for_estimate,supplier_id");
         url.searchParams.set("tenant_id", `eq.${tenantId}`);
         url.searchParams.set("procurement_item_id", `eq.${itemId}`);
         const response = await fetch(url, {
@@ -1540,13 +1233,7 @@ async function verifyProcurementLifecycle() {
         });
         return { status: response.status, body: await response.json() };
       },
-      {
-        apiUrl: supabaseUrl,
-        publicKey: anonKey,
-        token,
-        tenantId,
-        itemId: items.body[0].id,
-      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token, tenantId, itemId: items.body[0].id },
     );
     assert.equal(linkedQuotes.status, 200);
     assert.ok(
@@ -1561,37 +1248,24 @@ async function verifyProcurementLifecycle() {
 
     // Contract/ARP item ledger: create, consume, inspect balance, reverse, and preserve history.
     await page
-      .getByRole("button", {
-        name: `Itens e saldo do contrato ${contractNumber}`,
-        exact: true,
-      })
+      .getByRole("button", { name: `Itens e saldo do contrato ${contractNumber}`, exact: true })
       .click();
     const itemPanel = page
       .locator("section")
       .filter({ hasText: "Itens de " + contractNumber })
       .first();
-    await itemPanel
-      .getByRole("button", { name: "Adicionar item", exact: true })
-      .click();
+    await itemPanel.getByRole("button", { name: "Adicionar item", exact: true }).click();
     let contractItemDescription = "Item contratual E2E " + tenantId.slice(-1);
-    const contractItemForm = itemPanel
-      .locator("form")
-      .filter({ hasText: "Descrição do item" });
+    const contractItemForm = itemPanel.locator("form").filter({ hasText: "Descrição do item" });
     const itemFields = contractItemForm.locator("input");
     await itemFields.nth(0).fill(contractItemDescription);
     await itemFields.nth(1).fill("unidade");
     await itemFields.nth(2).fill("Item de teste");
     await itemFields.nth(3).fill("2");
     await itemFields.nth(4).fill("10");
-    await contractItemForm
-      .getByRole("button", { name: "Salvar item", exact: true })
-      .click();
-    await itemPanel
-      .getByText(contractItemDescription, { exact: true })
-      .waitFor();
-    await itemPanel
-      .getByRole("button", { name: "Editar item", exact: true })
-      .click();
+    await contractItemForm.getByRole("button", { name: "Salvar item", exact: true }).click();
+    await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
+    await itemPanel.getByRole("button", { name: "Editar item", exact: true }).click();
     contractItemDescription += " editado";
     await itemPanel
       .locator("form")
@@ -1599,23 +1273,12 @@ async function verifyProcurementLifecycle() {
       .locator("input")
       .nth(0)
       .fill(contractItemDescription);
-    await itemPanel
-      .getByRole("button", { name: "Salvar alterações", exact: true })
-      .click();
-    await itemPanel
-      .getByText(contractItemDescription, { exact: true })
-      .waitFor();
-    await itemPanel
-      .getByRole("button", { name: "Registrar consumo", exact: true })
-      .click();
+    await itemPanel.getByRole("button", { name: "Salvar alterações", exact: true }).click();
+    await itemPanel.getByText(contractItemDescription, { exact: true }).waitFor();
+    await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).click();
     await itemPanel.getByLabel("Quantidade a consumir *").fill("1");
-    await itemPanel
-      .getByLabel("Motivo do consumo *")
-      .fill("Consumo de homologação E2E");
-    await itemPanel
-      .getByRole("button", { name: "Registrar consumo", exact: true })
-      .last()
-      .click();
+    await itemPanel.getByLabel("Motivo do consumo *").fill("Consumo de homologação E2E");
+    await itemPanel.getByRole("button", { name: "Registrar consumo", exact: true }).last().click();
     await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).waitFor();
     const contractItemRows = await readRows(
       "contract_items",
@@ -1629,10 +1292,7 @@ async function verifyProcurementLifecycle() {
       { tenant_id: tenantId, id: contractItemId },
       { unit: "caixa" },
     );
-    assert.ok(
-      unitChangeAttempt.status >= 400,
-      "unit changes after a movement must be rejected",
-    );
+    assert.ok(unitChangeAttempt.status >= 400, "unit changes after a movement must be rejected");
     const unitPriceChangeAttempt = await updateRows(
       "contract_items",
       { tenant_id: tenantId, id: contractItemId },
@@ -1651,31 +1311,21 @@ async function verifyProcurementLifecycle() {
       quantityReductionAttempt.status >= 400,
       "item quantity cannot be reduced below net consumption",
     );
-    const excessConsumption = await callRpc(
-      "record_contract_item_consumption",
-      {
-        p_tenant_id: tenantId,
-        p_contract_item_id: contractItemId,
-        p_quantity: 2,
-        p_reason: "Tentativa de consumo acima do saldo",
-        p_reference_number: null,
-      },
-    );
-    assert.ok(
-      excessConsumption.status >= 400,
-      "consumption above the available balance must fail",
-    );
-    await itemPanel
-      .getByText("Histórico de movimentações (1)", { exact: true })
-      .click();
+    const excessConsumption = await callRpc("record_contract_item_consumption", {
+      p_tenant_id: tenantId,
+      p_contract_item_id: contractItemId,
+      p_quantity: 2,
+      p_reason: "Tentativa de consumo acima do saldo",
+      p_reference_number: null,
+    });
+    assert.ok(excessConsumption.status >= 400, "consumption above the available balance must fail");
+    await itemPanel.getByText("Histórico de movimentações (1)", { exact: true }).click();
     await itemPanel
       .getByPlaceholder("Justificativa do estorno (mínimo 10 caracteres)")
       .fill("Estorno de homologação E2E");
     await itemPanel.getByRole("button", { name: /Estornar/ }).click();
     await itemPanel.getByText("Saldo: 2 unidade", { exact: true }).waitFor();
-    await itemPanel
-      .getByText("Histórico de movimentações (2)", { exact: true })
-      .waitFor();
+    await itemPanel.getByText("Histórico de movimentações (2)", { exact: true }).waitFor();
     const movementRows = await readRows(
       "contract_item_movements",
       { tenant_id: tenantId },
@@ -1683,40 +1333,24 @@ async function verifyProcurementLifecycle() {
     );
     const originalConsumption = movementRows.body.find(
       (movement) =>
-        movement.movement_type === "consumption" &&
-        movement.contract_item_id === contractItemId,
+        movement.movement_type === "consumption" && movement.contract_item_id === contractItemId,
     );
-    assert.ok(
-      originalConsumption,
-      "the original consumption must remain in the ledger",
-    );
-    const duplicateReversal = await callRpc(
-      "reverse_contract_item_consumption",
-      {
-        p_tenant_id: tenantId,
-        p_movement_id: originalConsumption.id,
-        p_reason: "Tentativa de estorno duplicado",
-      },
-    );
-    assert.ok(
-      duplicateReversal.status >= 400,
-      "a consumption cannot be reversed twice",
-    );
+    assert.ok(originalConsumption, "the original consumption must remain in the ledger");
+    const duplicateReversal = await callRpc("reverse_contract_item_consumption", {
+      p_tenant_id: tenantId,
+      p_movement_id: originalConsumption.id,
+      p_reason: "Tentativa de estorno duplicado",
+    });
+    assert.ok(duplicateReversal.status >= 400, "a consumption cannot be reversed twice");
     const crossTenantItems = await readRows(
       "contract_items",
       { tenant_id: "91000000-0000-4000-8000-000000000002" },
       "id",
     );
     assert.equal(crossTenantItems.status, 200);
-    assert.equal(
-      crossTenantItems.body.length,
-      0,
-      "tenant A cannot read tenant B contract items",
-    );
+    assert.equal(crossTenantItems.body.length, 0, "tenant A cannot read tenant B contract items");
 
-    await itemPanel
-      .getByRole("button", { name: "Puxar itens do processo", exact: true })
-      .click();
+    await itemPanel.getByRole("button", { name: "Puxar itens do processo", exact: true }).click();
     const importDialog = page.getByRole("dialog", {
       name: "Importar Itens do Processo Homologado",
       exact: true,
@@ -1724,10 +1358,7 @@ async function verifyProcurementLifecycle() {
     await importDialog.getByText(itemDescription, { exact: false }).waitFor();
     await importDialog.getByRole("checkbox", { name: /Conferi/ }).check();
     await importDialog
-      .getByRole("button", {
-        name: "Confirmar Importação de 1 Itens",
-        exact: true,
-      })
+      .getByRole("button", { name: "Confirmar Importação de 1 Itens", exact: true })
       .click();
     await importDialog.waitFor({ state: "hidden" });
     await itemPanel.getByText(itemDescription, { exact: true }).waitFor();
@@ -1739,70 +1370,42 @@ async function verifyProcurementLifecycle() {
     assert.equal(imported.body.length, 2);
     assert.deepEqual(
       imported.body.find((i) => i.description === itemDescription),
-      {
-        description: itemDescription,
-        line_number: 2,
-        quantity_total: 2,
-        unit_value: 15,
-      },
+      { description: itemDescription, line_number: 2, quantity_total: 2, unit_value: 15 },
     );
-    await itemPanel
-      .getByRole("button", { name: "Puxar itens do processo", exact: true })
-      .click();
+    await itemPanel.getByRole("button", { name: "Puxar itens do processo", exact: true }).click();
     await importDialog.getByText(/Itens existentes ou repetidos/).waitFor();
     assert.ok(
       await importDialog
-        .getByRole("button", {
-          name: "Confirmar Importação de 0 Itens",
-          exact: true,
-        })
+        .getByRole("button", { name: "Confirmar Importação de 0 Itens", exact: true })
         .isDisabled(),
     );
-    await importDialog
-      .getByRole("button", { name: "Fechar", exact: true })
-      .click();
+    await importDialog.getByRole("button", { name: "Fechar", exact: true }).click();
     console.log(
       "PASS contract item import: linked quote, continuous numbering, existing ledger and duplicate prevention",
     );
 
     await itemPanel
-      .getByRole("button", {
-        name: "Emitir Ordem de Fornecimento",
-        exact: true,
-      })
+      .getByRole("button", { name: "Emitir Ordem de Fornecimento", exact: true })
       .click();
-    const supply = page.getByRole("dialog", {
-      name: "Emitir Ordem de Fornecimento",
-      exact: true,
-    });
+    const supply = page.getByRole("dialog", { name: "Emitir Ordem de Fornecimento", exact: true });
     await supply.getByLabel("Nº da OF / Empenho").fill("OF nº 001/2026");
     await supply
       .getByLabel("Destino / Motivo do Fornecimento")
       .fill("Abastecimento sintético da farmácia central");
     await supply
-      .getByLabel("Quantidade a solicitar — " + contractItemDescription, {
-        exact: true,
-      })
+      .getByLabel("Quantidade a solicitar — " + contractItemDescription, { exact: true })
       .fill("3");
     assert.ok(
-      await supply
-        .getByRole("button", { name: "Confirmar Ordem de Fornecimento" })
-        .isDisabled(),
+      await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).isDisabled(),
     );
     await supply
-      .getByLabel("Quantidade a solicitar — " + contractItemDescription, {
-        exact: true,
-      })
+      .getByLabel("Quantidade a solicitar — " + contractItemDescription, { exact: true })
       .fill("1");
     await supply
-      .getByLabel("Quantidade a solicitar — " + itemDescription, {
-        exact: true,
-      })
+      .getByLabel("Quantidade a solicitar — " + itemDescription, { exact: true })
       .fill("1");
     await supply.getByText(/Valor Total da Ordem:.*25,00/).waitFor();
-    await supply
-      .getByRole("button", { name: "Confirmar Ordem de Fornecimento" })
-      .click();
+    await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).click();
     const downloadPromise = page.waitForEvent("download");
     await supply
       .getByRole("button", { name: "Baixar Termo da OF (PDF)", exact: true })
@@ -1832,16 +1435,10 @@ async function verifyProcurementLifecycle() {
       ),
     );
     assert.equal(
-      ofRows.body.reduce(
-        (sum, row) => sum + row.quantity * row.unit_value_snapshot,
-        0,
-      ),
+      ofRows.body.reduce((sum, row) => sum + row.quantity * row.unit_value_snapshot, 0),
       25,
     );
-    await itemPanel
-      .getByText("Saldo: 1 unidade", { exact: true })
-      .first()
-      .waitFor();
+    await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).first().waitFor();
     console.log(
       "PASS supply order: two consumption movements, shared reference, exact value and overdraw prevention",
     );
@@ -1857,17 +1454,10 @@ async function verifyProcurementLifecycle() {
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
     await amendmentDialog.locator("input").nth(0).fill("Aditivo inválido E2E");
-    await amendmentDialog
-      .locator("input[type=date]")
-      .nth(0)
-      .fill(contractRows.body[0].end_date);
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.locator("input[type=date]").nth(0).fill(contractRows.body[0].end_date);
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await page
-      .getByText(
-        "A nova data final deve ser posterior à vigência atual do contrato.",
-      )
+      .getByText("A nova data final deve ser posterior à vigência atual do contrato.")
       .waitFor();
     const rejectedAmendments = await readRows(
       "contract_amendments",
@@ -1875,9 +1465,7 @@ async function verifyProcurementLifecycle() {
       "id",
     );
     assert.equal(rejectedAmendments.body.length, 0);
-    await amendmentDialog
-      .getByRole("button", { name: "Cancelar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
 
     // Amendment behavior: each type updates only its intended contract field.
     await page
@@ -1892,9 +1480,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input").nth(0).fill("1º Aditivo E2E");
     await amendmentDialog.locator("input[type=date]").nth(0).fill("2028-11-15");
     await amendmentDialog.locator("input[type=date]").nth(1).fill("2026-11-16");
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
       .getByText("Aditivo registrado e contrato atualizado.", { exact: true })
@@ -1918,14 +1504,10 @@ async function verifyProcurementLifecycle() {
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
     await amendmentDialog.locator("input").nth(0).fill("2º Aditivo E2E");
     await amendmentDialog.getByRole("combobox").click();
-    await page
-      .getByRole("option", { name: "Acréscimo de valor", exact: true })
-      .click();
+    await page.getByRole("option", { name: "Acréscimo de valor", exact: true }).click();
     await amendmentDialog.locator("input").nth(1).fill("5");
     await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
       .getByText("Aditivo registrado e contrato atualizado.", { exact: true })
@@ -1938,11 +1520,7 @@ async function verifyProcurementLifecycle() {
     );
     const secondAmendmentRows = await readRows(
       "contract_amendments",
-      {
-        tenant_id: tenantId,
-        contract_id: contractRows.body[0].id,
-        number: "2º Aditivo E2E",
-      },
+      { tenant_id: tenantId, contract_id: contractRows.body[0].id, number: "2º Aditivo E2E" },
       "kind,value_change",
     );
     assert.equal(secondAmendmentRows.body.length, 1);
@@ -1959,18 +1537,11 @@ async function verifyProcurementLifecycle() {
     amendmentDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Termo aditivo — Contrato " + contractNumber });
-    await amendmentDialog
-      .locator("input")
-      .nth(0)
-      .fill("3º Aditivo inválido E2E");
+    await amendmentDialog.locator("input").nth(0).fill("3º Aditivo inválido E2E");
     await amendmentDialog.getByRole("combobox").click();
-    await page
-      .getByRole("option", { name: "Supressão de valor", exact: true })
-      .click();
+    await page.getByRole("option", { name: "Supressão de valor", exact: true }).click();
     await amendmentDialog.locator("input").nth(1).fill("130");
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await page
       .getByText(
         /A supressao nao pode reduzir o valor do contrato abaixo da soma dos itens cadastrados/,
@@ -1992,9 +1563,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.locator("input").nth(0).fill("3º Aditivo E2E");
     await amendmentDialog.locator("input").nth(1).fill("3");
     await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
       .getByText("Aditivo registrado e contrato atualizado.", { exact: true })
@@ -2020,9 +1589,7 @@ async function verifyProcurementLifecycle() {
     await amendmentDialog.getByRole("combobox").click();
     await page.getByRole("option", { name: "Outro", exact: true }).click();
     await amendmentDialog.locator("input[type=date]").nth(0).fill("2026-11-16");
-    await amendmentDialog
-      .getByRole("button", { name: "Registrar", exact: true })
-      .click();
+    await amendmentDialog.getByRole("button", { name: "Registrar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     await page
       .getByText("Aditivo registrado e contrato atualizado.", { exact: true })
@@ -2035,9 +1602,7 @@ async function verifyProcurementLifecycle() {
     );
     assert.equal(amendmentRows.status, 200);
     assert.equal(amendmentRows.body.length, 4);
-    assert.ok(
-      amendmentRows.body.every((row) => row.signed_at === "2026-11-16"),
-    );
+    assert.ok(amendmentRows.body.every((row) => row.signed_at === "2026-11-16"));
     assert.deepEqual(amendmentRows.body.map((row) => row.kind).sort(), [
       "acrescimo",
       "outro",
@@ -2046,34 +1611,20 @@ async function verifyProcurementLifecycle() {
     ]);
 
     await page.getByRole("button", { name: /Central de aditivos/ }).click();
-    await page
-      .getByRole("heading", { name: "Histórico consolidado de aditivos" })
-      .waitFor();
-    await page
-      .getByRole("textbox", { name: "Pesquisar aditivos" })
-      .fill("4º Aditivo E2E");
+    await page.getByRole("heading", { name: "Histórico consolidado de aditivos" }).waitFor();
+    await page.getByRole("textbox", { name: "Pesquisar aditivos" }).fill("4º Aditivo E2E");
     await page.getByText("4º Aditivo E2E", { exact: true }).waitFor();
-    await page
-      .getByRole("button", { name: "Ver contrato e histórico", exact: true })
-      .click();
-    await page
-      .getByText("Histórico de aditivos do contrato", { exact: true })
-      .waitFor();
-    await page
-      .getByRole("button", { name: "Novo aditivo", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Ver contrato e histórico", exact: true }).click();
+    await page.getByText("Histórico de aditivos do contrato", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Novo aditivo", exact: true }).click();
     const contractPicker = page
       .getByRole("dialog")
       .filter({ hasText: "Selecionar contrato para novo aditivo" });
     await contractPicker
       .getByRole("textbox", { name: "Buscar contrato para aditivo" })
       .fill(contractNumber);
-    await contractPicker
-      .getByRole("button", { name: new RegExp(contractNumber) })
-      .click();
-    await amendmentDialog
-      .getByRole("button", { name: "Cancelar", exact: true })
-      .click();
+    await contractPicker.getByRole("button", { name: new RegExp(contractNumber) }).click();
+    await amendmentDialog.getByRole("button", { name: "Cancelar", exact: true }).click();
     await amendmentDialog.waitFor({ state: "hidden" });
     console.log(
       "PASS amendment workspace: search, consolidated history and quick contract selection",
@@ -2091,105 +1642,59 @@ async function verifyProcurementLifecycle() {
     // Complete the official map only after the contract lifecycle has finished.
     await page.goto(`${appUrl}/processos`, { waitUntil: "domcontentloaded" });
     await processCard.click();
-    await detailDialog
-      .getByRole("button", { name: "Itens, preços e orçamento" })
-      .click();
-    await composition
-      .getByRole("button", { name: "Mapa comparativo (2)" })
-      .click();
-    const mapField = (label) =>
-      mapDialog.getByText(label, { exact: true }).locator("..");
+    await detailDialog.getByRole("button", { name: "Itens, preços e orçamento" }).click();
+    await composition.getByRole("button", { name: "Mapa comparativo (2)" }).click();
+    const mapField = (label) => mapDialog.getByText(label, { exact: true }).locator("..");
     async function chooseMapOption(label, option) {
       await mapField(label).getByRole("combobox").click();
       await page.getByRole("option", { name: option, exact: true }).click();
     }
-    await chooseMapOption(
-      "Origem dos recursos do processo *",
-      "Recursos próprios do ente",
-    );
-    await chooseMapOption(
-      "Base normativa declarada",
-      "Outro fundamento normativo",
-    );
-    await chooseMapOption(
-      "Aplicabilidade da IN 65/2021",
-      "Não aplicável (exige justificativa)",
-    );
+    await chooseMapOption("Origem dos recursos do processo *", "Recursos próprios do ente");
+    await chooseMapOption("Base normativa declarada", "Outro fundamento normativo");
+    await chooseMapOption("Aplicabilidade da IN 65/2021", "Não aplicável (exige justificativa)");
     await mapDialog
       .getByPlaceholder(
         "Liste fornecedor, data da consulta, canal e prazo de resposta; se nenhum deixou de responder, declare expressamente.",
       )
-      .fill(
-        "Cenário sintético de CI: nenhum fornecedor consultado deixou de responder.",
-      );
+      .fill("Cenário sintético de CI: nenhum fornecedor consultado deixou de responder.");
     await mapDialog
       .getByPlaceholder(
         "Registre a origem dos recursos, a norma local aplicável ou a justificativa de não aplicabilidade.",
       )
-      .fill(
-        "Enquadramento exclusivamente sintético para validar o fluxo em banco descartável.",
-      );
-    await mapDialog
-      .getByRole("button", { name: "Registrar validação normativa" })
-      .click();
-    await page
-      .getByText("Enquadramento normativo registrado para este processo.")
-      .waitFor();
+      .fill("Enquadramento exclusivamente sintético para validar o fluxo em banco descartável.");
+    await mapDialog.getByRole("button", { name: "Registrar validação normativa" }).click();
+    await page.getByText("Enquadramento normativo registrado para este processo.").waitFor();
     await mapDialog.getByText("Validado", { exact: true }).waitFor();
     const complianceAudit = await readRows(
       "audit_events",
-      {
-        tenant_id: tenantId,
-        entity: "procurement_process_compliance",
-        entity_id: processId,
-      },
+      { tenant_id: tenantId, entity: "procurement_process_compliance", entity_id: processId },
       "action,actor_id,details",
     );
     assert.equal(complianceAudit.status, 200);
     assert.ok(complianceAudit.body.some((event) => event.action === "INSERT"));
     await mapDialog
-      .getByPlaceholder(
-        "Explique por que o método é adequado à série de preços e ao objeto.",
-      )
-      .fill(
-        "Mediana da série sintética de preços efetivos para comprovar o cálculo.",
-      );
+      .getByPlaceholder("Explique por que o método é adequado à série de preços e ao objeto.")
+      .fill("Mediana da série sintética de preços efetivos para comprovar o cálculo.");
     await mapDialog
       .getByPlaceholder(
         "Registre a impossibilidade de obter três preços e a fundamentação para prosseguir.",
       )
-      .fill(
-        "Duas fontes sintéticas disponíveis exclusivamente neste cenário de CI.",
-      );
-    await mapDialog
-      .getByRole("button", { name: "Registrar aprovação do preço" })
-      .click();
+      .fill("Duas fontes sintéticas disponíveis exclusivamente neste cenário de CI.");
+    await mapDialog.getByRole("button", { name: "Registrar aprovação do preço" }).click();
     await page.getByText(/Preço aprovado:/).waitFor();
-    await mapDialog
-      .getByText("Preço estimado aprovado", { exact: true })
-      .waitFor();
+    await mapDialog.getByText("Preço estimado aprovado", { exact: true }).waitFor();
     const [directMapDownload] = await Promise.all([
       page.waitForEvent("download"),
-      mapDialog
-        .getByRole("button", { name: "Gerar mapa PDF", exact: true })
-        .click(),
+      mapDialog.getByRole("button", { name: "Gerar mapa PDF", exact: true }).click(),
     ]);
-    const directMapPdf = await PDFDocument.load(
-      await readFile(await directMapDownload.path()),
-    );
+    const directMapPdf = await PDFDocument.load(await readFile(await directMapDownload.path()));
+    assert.ok(directMapPdf.getPages().every((p) => p.getWidth() > p.getHeight()));
     assert.ok(
-      directMapPdf.getPages().every((p) => p.getWidth() > p.getHeight()),
-    );
-    assert.ok(
-      directMapPdf
-        .getPages()
-        .some((p) => p.node.Resources()?.has(PDFName.of("XObject"))),
+      directMapPdf.getPages().some((p) => p.node.Resources()?.has(PDFName.of("XObject"))),
       "PDF includes the configured logo resource",
     );
     await mapDialog
-      .getByRole("button", {
-        name: "Encaminhar mapa para aprovação e assinatura",
-      })
+      .getByRole("button", { name: "Encaminhar mapa para aprovação e assinatura" })
       .click();
     const mapTitle = `Mapa comparativo — ${processNumber}`;
     const mapRow = page.getByRole("row").filter({ hasText: mapTitle });
@@ -2200,40 +1705,22 @@ async function verifyProcurementLifecycle() {
       "content_snapshot",
     );
     const snapshot = mapSnapshots.body[0].content_snapshot;
-    assert.ok(
-      snapshot.includes(
-        "QUADRO SINTÉTICO COMPARATIVO — PROPOSTAS POR FORNECEDOR",
-      ),
-    );
-    assert.ok(
-      snapshot.includes("CONSOLIDAÇÃO DOS VALORES DE REFERÊNCIA / HOMOLOGADOS"),
-    );
+    assert.ok(snapshot.includes("QUADRO SINTÉTICO COMPARATIVO — PROPOSTAS POR FORNECEDOR"));
+    assert.ok(snapshot.includes("CONSOLIDAÇÃO DOS VALORES DE REFERÊNCIA / HOMOLOGADOS"));
     assert.ok(snapshot.includes("TOTAL GERAL DO PROCESSO"));
-    assert.ok(
-      snapshot.includes(
-        "DECLARAÇÃO DE CONFORMIDADE E ENCERRAMENTO DA PESQUISA",
-      ),
-    );
-    assert.ok(
-      snapshot.includes("Autoridade Competente / Ordenador de Despesas"),
-    );
+    assert.ok(snapshot.includes("DECLARAÇÃO DE CONFORMIDADE E ENCERRAMENTO DA PESQUISA"));
+    assert.ok(snapshot.includes("Autoridade Competente / Ordenador de Despesas"));
     console.log(
       "PASS synthetic price map: direct landscape PDF with logo, matrix, approved total and signature fields",
     );
 
     const [draftDownload] = await Promise.all([
       page.waitForEvent("download"),
-      mapRow
-        .getByRole("button", { name: "PDF (rascunho)", exact: true })
-        .click(),
+      mapRow.getByRole("button", { name: "PDF (rascunho)", exact: true }).click(),
     ]);
-    const draftPdf = await PDFDocument.load(
-      await readFile(await draftDownload.path()),
-    );
+    const draftPdf = await PDFDocument.load(await readFile(await draftDownload.path()));
     assert.ok(draftPdf.getPages().every((p) => p.getWidth() > p.getHeight()));
-    await mapRow
-      .getByRole("button", { name: "Enviar para aprovação", exact: true })
-      .click();
+    await mapRow.getByRole("button", { name: "Enviar para aprovação", exact: true }).click();
     await mapRow.getByText("Aguardando aprovação", { exact: true }).waitFor();
 
     const reviewerContext = await browser.newContext();
@@ -2243,36 +1730,19 @@ async function verifyProcurementLifecycle() {
         (id) => localStorage.setItem("gfs:organizacao-id", id),
         tenantId,
       );
-      await reviewer.goto(`${appUrl}/entrar?portal=secretaria`, {
-        waitUntil: "networkidle",
-      });
-      await reviewer
-        .getByLabel("E-mail")
-        .fill("reviewer.secretaria.a@example.invalid");
+      await reviewer.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
+      await reviewer.getByLabel("E-mail").fill("reviewer.secretaria.a@example.invalid");
       await reviewer.locator("#senha").fill(password);
       await Promise.all([
         reviewer.waitForURL(/\/painel(?:[/?#]|$)/),
         reviewer.getByRole("button", { name: "Entrar", exact: true }).click(),
       ]);
-      await reviewer.goto(`${appUrl}/documentos`, {
-        waitUntil: "domcontentloaded",
-      });
+      await reviewer.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
       await reviewer.getByRole("tab", { name: /Gerados/ }).click();
-      const reviewerRow = reviewer
-        .getByRole("row")
-        .filter({ hasText: mapTitle });
-      await reviewerRow
-        .getByRole("button", { name: "Aprovar", exact: true })
-        .click();
+      const reviewerRow = reviewer.getByRole("row").filter({ hasText: mapTitle });
+      await reviewerRow.getByRole("button", { name: "Aprovar", exact: true }).click();
       await reviewerRow.getByText("Aprovado", { exact: true }).waitFor();
-      await verifyAnnualDemand({
-        page,
-        reviewer,
-        appUrl,
-        tenantId,
-        readRows,
-        callRpc,
-      });
+      await verifyAnnualDemand({ page, reviewer, appUrl, tenantId, readRows, callRpc });
     } finally {
       await reviewerContext.close();
     }
@@ -2280,9 +1750,7 @@ async function verifyProcurementLifecycle() {
     await page.getByRole("tab", { name: /Gerados/ }).click();
     page.once("dialog", (dialog) => dialog.accept());
     await mapRow.getByRole("button", { name: "Assinar", exact: true }).click();
-    const signedDownloadButton = mapRow.getByRole("button", {
-      name: /PDF assinado/,
-    });
+    const signedDownloadButton = mapRow.getByRole("button", { name: /PDF assinado/ });
     await signedDownloadButton.waitFor();
     const [signedDownload] = await Promise.all([
       page.waitForEvent("download"),
@@ -2315,18 +1783,11 @@ async function verifyProcurementLifecycle() {
     );
     await page.goto(appUrl + "/fornecedores");
     await page
-      .getByRole("button", {
-        name: "Fornecedor Sintético Exclusivo A",
-        exact: true,
-      })
+      .getByRole("button", { name: "Fornecedor Sintético Exclusivo A", exact: true })
       .click();
-    const profile = page.getByRole("dialog", {
-      name: "Fornecedor Sintético Exclusivo A",
-    });
+    const profile = page.getByRole("dialog", { name: "Fornecedor Sintético Exclusivo A" });
     await profile.getByRole("tab", { name: "Contratos e atas" }).click();
-    await profile
-      .getByText("Contrato " + contractNumber, { exact: true })
-      .waitFor();
+    await profile.getByText("Contrato " + contractNumber, { exact: true }).waitFor();
     await profile.getByRole("tab", { name: "Cotações" }).click();
     await profile.getByRole("listitem").first().waitFor();
     assert.equal(
@@ -2339,18 +1800,9 @@ async function verifyProcurementLifecycle() {
       ).searchParams.get("processo"),
       processId,
     );
-    await profile
-      .getByRole("link", { name: "Abrir processo", exact: true })
-      .first()
-      .click();
-    await page
-      .getByRole("dialog")
-      .getByText(processNumber, { exact: false })
-      .first()
-      .waitFor();
-    console.log(
-      "PASS supplier profile: linked contract and quotations visible to the tenant",
-    );
+    await profile.getByRole("link", { name: "Abrir processo", exact: true }).first().click();
+    await page.getByRole("dialog").getByText(processNumber, { exact: false }).first().waitFor();
+    console.log("PASS supplier profile: linked contract and quotations visible to the tenant");
     await page.keyboard.press("Escape");
     await verifySupplierCompletion(page, appUrl);
     await verifyBatchItems({ page, appUrl, tenantId, callRpc, readRows });
@@ -2360,10 +1812,7 @@ async function verifyProcurementLifecycle() {
   } catch (error) {
     await mkdir("artifacts", { recursive: true });
     await page
-      .screenshot({
-        path: "artifacts/procurement-e2e-failure.png",
-        fullPage: true,
-      })
+      .screenshot({ path: "artifacts/procurement-e2e-failure.png", fullPage: true })
       .catch(() => {});
     throw error;
   } finally {
@@ -2381,14 +1830,9 @@ async function verifyDocumentApprovalWorkflow() {
   async function signInAndOpenGeneratedDocuments(email) {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.addInitScript(
-      (id) => localStorage.setItem("gfs:organizacao-id", id),
-      tenantId,
-    );
+    await page.addInitScript((id) => localStorage.setItem("gfs:organizacao-id", id), tenantId);
     page.setDefaultTimeout(30_000);
-    await page.goto(`${appUrl}/entrar?portal=secretaria`, {
-      waitUntil: "networkidle",
-    });
+    await page.goto(`${appUrl}/entrar?portal=secretaria`, { waitUntil: "networkidle" });
     await page.getByLabel("E-mail").fill(email);
     await page.locator("#senha").fill(password);
     await Promise.all([
@@ -2397,13 +1841,9 @@ async function verifyDocumentApprovalWorkflow() {
     ]);
     await page.goto(`${appUrl}/documentos`, { waitUntil: "domcontentloaded" });
     try {
-      await page
-        .getByRole("heading", { name: "Documentos e vencimentos", exact: true })
-        .waitFor();
+      await page.getByRole("heading", { name: "Documentos e vencimentos", exact: true }).waitFor();
     } catch (error) {
-      console.error(
-        `Document approval page debug (${email}): URL=${page.url()}`,
-      );
+      console.error(`Document approval page debug (${email}): URL=${page.url()}`);
       console.error((await page.locator("body").innerText()).slice(0, 3000));
       throw error;
     }
@@ -2411,15 +1851,11 @@ async function verifyDocumentApprovalWorkflow() {
     return { context, page };
   }
 
-  const author = await signInAndOpenGeneratedDocuments(
-    "e2e.secretaria.a@example.invalid",
-  );
+  const author = await signInAndOpenGeneratedDocuments("e2e.secretaria.a@example.invalid");
   try {
     const row = author.page.getByRole("row").filter({ hasText: documentTitle });
     await row.waitFor();
-    await row
-      .getByRole("button", { name: "Enviar para aprovação", exact: true })
-      .click();
+    await row.getByRole("button", { name: "Enviar para aprovação", exact: true }).click();
     await row.getByText("Aguardando aprovação", { exact: true }).waitFor();
 
     const authorToken = await readAccessToken(author.page);
@@ -2431,13 +1867,7 @@ async function verifyDocumentApprovalWorkflow() {
         );
         return { status: response.status, events: await response.json() };
       },
-      {
-        apiUrl: supabaseUrl,
-        publicKey: anonKey,
-        token: authorToken,
-        tenantId,
-        documentId,
-      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token: authorToken, tenantId, documentId },
     );
     assert.equal(submittedEvents.status, 200);
     assert.ok(
@@ -2453,21 +1883,15 @@ async function verifyDocumentApprovalWorkflow() {
     await author.context.close();
   }
 
-  const reviewer = await signInAndOpenGeneratedDocuments(
-    "reviewer.secretaria.a@example.invalid",
-  );
+  const reviewer = await signInAndOpenGeneratedDocuments("reviewer.secretaria.a@example.invalid");
   try {
     assert.equal(
-      await reviewer.page
-        .getByRole("button", { name: "Gerar documento", exact: true })
-        .count(),
+      await reviewer.page.getByRole("button", { name: "Gerar documento", exact: true }).count(),
       0,
       "the reviewer without documents:create must not see the document creation action",
     );
     assert.equal(
-      await reviewer.page
-        .getByRole("button", { name: "Registrar documento", exact: true })
-        .count(),
+      await reviewer.page.getByRole("button", { name: "Registrar documento", exact: true }).count(),
       0,
       "the reviewer without documents:create must not see the supplier-document creation action",
     );
@@ -2507,9 +1931,7 @@ async function verifyDocumentApprovalWorkflow() {
       `the reviewer must not create a document through the Data API (HTTP ${attemptedInsert.status})`,
     );
 
-    const row = reviewer.page
-      .getByRole("row")
-      .filter({ hasText: documentTitle });
+    const row = reviewer.page.getByRole("row").filter({ hasText: documentTitle });
     await row.getByText("Aguardando aprovação", { exact: true }).waitFor();
     await row.getByRole("button", { name: "Aprovar", exact: true }).click();
     await row.getByText("Aprovado", { exact: true }).waitFor();
@@ -2523,13 +1945,7 @@ async function verifyDocumentApprovalWorkflow() {
         );
         return { status: response.status, events: await response.json() };
       },
-      {
-        apiUrl: supabaseUrl,
-        publicKey: anonKey,
-        token: reviewerToken,
-        tenantId,
-        documentId,
-      },
+      { apiUrl: supabaseUrl, publicKey: anonKey, token: reviewerToken, tenantId, documentId },
     );
     assert.equal(finalEvents.status, 200);
     assert.ok(
@@ -2603,36 +2019,21 @@ async function verifyDocumentApprovalWorkflow() {
     console.log(
       "PASS document workflow: separate approval, create permission denial, synchronized cancellation, and actor history",
     );
-    await reviewer.page.goto(appUrl + "/fornecedores", {
-      waitUntil: "networkidle",
-    });
+    await reviewer.page.goto(appUrl + "/fornecedores", { waitUntil: "networkidle" });
+    await reviewer.page.getByRole("heading", { name: "Fornecedores", exact: true }).waitFor();
     await reviewer.page
-      .getByRole("heading", { name: "Fornecedores", exact: true })
-      .waitFor();
-    await reviewer.page
-      .getByRole("button", {
-        name: "Abrir ficha 360º de Fornecedor Sintético Exclusivo A",
-      })
+      .getByRole("button", { name: "Abrir ficha 360º de Fornecedor Sintético Exclusivo A" })
       .waitFor();
     assert.equal(
-      await reviewer.page
-        .getByRole("button", { name: "Novo fornecedor", exact: true })
-        .count(),
+      await reviewer.page.getByRole("button", { name: "Novo fornecedor", exact: true }).count(),
       0,
     );
+    assert.equal(await reviewer.page.getByRole("button", { name: /^Editar / }).count(), 0);
     assert.equal(
-      await reviewer.page.getByRole("button", { name: /^Editar / }).count(),
+      await reviewer.page.getByRole("button", { name: /^(Inativar|Reativar)$/ }).count(),
       0,
     );
-    assert.equal(
-      await reviewer.page
-        .getByRole("button", { name: /^(Inativar|Reativar)$/ })
-        .count(),
-      0,
-    );
-    console.log(
-      "PASS supplier read-only role: create, update and deactivate actions hidden",
-    );
+    console.log("PASS supplier read-only role: create, update and deactivate actions hidden");
   } finally {
     await reviewer.context.close();
   }
@@ -2653,3 +2054,4 @@ try {
     console.error(`Failed scenarios: ${failedPages.join(", ")}`);
   }
 }
+
