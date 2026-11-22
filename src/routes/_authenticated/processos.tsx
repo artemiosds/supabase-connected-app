@@ -1,3 +1,4 @@
+import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
 import {
   calculateItemTotal,
@@ -2275,6 +2276,15 @@ function DadosEstruturados(props: {
                   tenantId={props.tenantId}
                   processId={props.processId}
                   userId={props.userId}
+                  onSaved={carregarDados}
+                />
+                <BatchQuoteDialog
+                  key={props.tenantId + props.processId}
+                  tenantId={props.tenantId}
+                  processId={props.processId}
+                  userId={props.userId}
+                  items={items}
+                  suppliers={suppliers}
                   onSaved={carregarDados}
                 />
                 <Button

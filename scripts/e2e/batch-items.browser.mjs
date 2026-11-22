@@ -9,7 +9,9 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
   });
   assert.equal(result.status, 200);
   const processId = result.body;
-  await page.goto(appUrl + "/processos?processo=" + processId, { waitUntil: "networkidle" });
+  await page.goto(appUrl + "/processos?processo=" + processId, {
+    waitUntil: "networkidle",
+  });
   const details = page.getByRole("dialog").filter({ hasText: number });
   await details.getByRole("button", { name: "Itens, preços e orçamento", exact: false }).click();
   const composition = page
@@ -26,7 +28,10 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
   await individual.getByRole("button", { name: "Salvar item", exact: true }).click();
   await individual.waitFor({ state: "hidden" });
   await composition.getByRole("button", { name: "Importar Planilha", exact: true }).click();
-  const batch = page.getByRole("dialog", { name: "Colar da Planilha (Lote)", exact: true });
+  const batch = page.getByRole("dialog", {
+    name: "Colar da Planilha (Lote)",
+    exact: true,
+  });
   await batch.getByLabel("Local de entrega padrão").fill("Almoxarifado CI");
   const pasted =
     "Descrição\tUnidade\tQtd\tPreço\nAmoxicilina 500mg\tcp\t5000\t0,45\nDipirona 500mg\tamp\t10\t1,50\nSoro fisiológico\tfr\t3\t5,20\nGaze estéril\tpct\t5\t2\nLuva cirúrgica\tpar\t2\t3";
@@ -47,7 +52,10 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
     }
     if (request.method() === "GET" && !dropResponse && staleCheck && url.searchParams.has("id")) {
       staleCheck = false;
-      await route.fulfill({ headers: { "Access-Control-Allow-Origin": "*" }, json: [] });
+      await route.fulfill({
+        headers: { "Access-Control-Allow-Origin": "*" },
+        json: [],
+      });
       return;
     }
     await route.continue();
@@ -75,4 +83,52 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
   console.log(
     "PASS batch items: individual unit and total, five pasted rows, exact estimate, atomic insert, lost-response recovery without duplicates and continuous numbering",
   );
+  await composition.getByRole("button", { name: "Lançar Proposta Comercial", exact: true }).click();
+  const proposal = page.getByRole("dialog", {
+    name: "Lançar Proposta Comercial",
+    exact: true,
+  });
+  await proposal.getByRole("combobox").click();
+  await page
+    .getByRole("option", {
+      name: "Fornecedor Sintético Exclusivo A",
+      exact: true,
+    })
+    .click();
+  await proposal.getByLabel("Número da proposta").fill("E2E-PROPOSTA-001");
+  await proposal.getByLabel("Responsável").fill("Contato sintético");
+  await proposal.getByLabel("E-mail").fill("proposta@example.invalid");
+  await proposal.getByLabel("Telefone").fill("11912345678");
+  await proposal.getByLabel("Endereço").fill("Rua sintética 1");
+  await proposal
+    .getByLabel("Justificativa da escolha")
+    .fill("Fornecedor consultado para teste descartável");
+  await proposal.getByLabel("Prazo de resposta").fill("2027-01-01");
+  await proposal.getByLabel("Proposta formal").setInputFiles({
+    name: "proposta.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n% synthetic fixture\n%%EOF"),
+  });
+  await proposal.getByRole("button", { name: "Preencher valores em lote (Colar coluna)" }).click();
+  await proposal
+    .getByPlaceholder("Uma linha por item na ordem exibida")
+    .fill("1,50\n0,45\n\n5,00\n0\n");
+  await proposal.getByRole("button", { name: "Aplicar coluna" }).click();
+  await proposal.getByText("3 itens cotados de 6", { exact: true }).waitFor();
+  await proposal.getByText(/Valor Total da Proposta Comercial:.*2\.268,00/).waitFor();
+  await proposal.getByRole("button", { name: "Salvar Cotações (3 itens)", exact: true }).click();
+  await proposal.waitFor({ state: "hidden" });
+  for (const [index, item] of ordered.entries()) {
+    const quotes = await readRows(
+      "procurement_price_quotes",
+      { tenant_id: tenantId, procurement_item_id: item.id },
+      "supplier_id,unit_price,evidence_storage_path",
+    );
+    assert.equal(quotes.body.length, [0, 1, 3].includes(index) ? 1 : 0);
+    if (quotes.body.length) {
+      assert.equal(quotes.body[0].supplier_id, "94000000-0000-4000-8000-000000000001");
+      assert.ok(quotes.body[0].evidence_storage_path);
+    }
+  }
+  console.log("PASS batch proposal: three quoted items, shared supplier and formal evidence");
 }
