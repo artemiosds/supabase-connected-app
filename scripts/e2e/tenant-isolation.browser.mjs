@@ -1384,6 +1384,52 @@ async function verifyProcurementLifecycle() {
       "PASS contract item import: linked quote, continuous numbering, existing ledger and duplicate prevention",
     );
 
+    await itemPanel
+      .getByRole("button", { name: "Emitir Ordem de Fornecimento", exact: true })
+      .click();
+    const supply = page.getByRole("dialog", { name: "Emitir Ordem de Fornecimento", exact: true });
+    await supply.getByLabel("Nº da OF / Empenho").fill("OF nº 001/2026");
+    await supply
+      .getByLabel("Destino / Motivo do Fornecimento")
+      .fill("Abastecimento sintético da farmácia central");
+    await supply
+      .getByLabel("Quantidade a solicitar — " + contractItemDescription, { exact: true })
+      .fill("3");
+    assert.ok(
+      await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).isDisabled(),
+    );
+    await supply
+      .getByLabel("Quantidade a solicitar — " + contractItemDescription, { exact: true })
+      .fill("1");
+    await supply
+      .getByLabel("Quantidade a solicitar — " + itemDescription, { exact: true })
+      .fill("1");
+    await supply.getByText(/Valor Total da Ordem:.*25,00/).waitFor();
+    await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).click();
+    await supply.waitFor({ state: "hidden" });
+    const ofRows = await readRows(
+      "contract_item_movements",
+      { tenant_id: tenantId, reference_number: "OF nº 001/2026" },
+      "contract_item_id,movement_type,quantity,reason,unit_value_snapshot",
+    );
+    assert.equal(ofRows.body.length, 2);
+    assert.ok(
+      ofRows.body.every(
+        (row) =>
+          row.movement_type === "consumption" &&
+          row.quantity === 1 &&
+          row.reason === "Abastecimento sintético da farmácia central",
+      ),
+    );
+    assert.equal(
+      ofRows.body.reduce((sum, row) => sum + row.quantity * row.unit_value_snapshot, 0),
+      25,
+    );
+    await itemPanel.getByText("Saldo: 1 unidade", { exact: true }).first().waitFor();
+    console.log(
+      "PASS supply order: two consumption movements, shared reference, exact value and overdraw prevention",
+    );
+
     // Invalid extension dates must be rejected without creating an amendment.
     await page
       .getByRole("button", {

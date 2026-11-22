@@ -1,3 +1,4 @@
+import { SupplyOrderDialog } from "@/components/contracts/supply-order-dialog";
 import { ContractItemsImport } from "@/components/contracts/contract-items-import";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2, Plus, RotateCcw, ShoppingCart } from "lucide-react";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { db } from "@/lib/db";
+import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { calcularQuantidadeConsumida, calcularSaldoDisponivel } from "@/lib/contract-item-balance";
 
 type Contract = {
@@ -98,49 +99,52 @@ export function ContractItemsBalance(props: {
   const carregar = useCallback(async () => {
     setLoading(true);
     setErro(null);
-    const { data: itemRows, error: itemError } = await db
-      .from("contract_items")
-      .select("id,line_number,description,specification,unit,quantity_total,unit_value,total_value")
-      .eq("tenant_id", props.tenantId)
-      .eq("contract_id", props.contract.id)
-      .order("line_number")
-      .order("id");
-    if (itemError) {
-      setErro(itemError.message);
+    try {
+      const itemRows = await carregarTodasAsPaginas((inicio, fim) =>
+        db
+          .from("contract_items")
+          .select(
+            "id,line_number,description,specification,unit,quantity_total,unit_value,total_value",
+          )
+          .eq("tenant_id", props.tenantId)
+          .eq("contract_id", props.contract.id)
+          .order("line_number")
+          .order("id")
+          .range(inicio, fim),
+      );
+      const nextItems: Item[] = (itemRows ?? []).map((row) => ({
+        ...row,
+        total_value: Number(row.total_value ?? row.quantity_total * row.unit_value),
+      }));
+      setItems(nextItems);
+      if (nextItems.length === 0) {
+        setMovements([]);
+        setLoading(false);
+        return;
+      }
+      const movementRows = await carregarTodasAsPaginas((inicio, fim) =>
+        db
+          .from("contract_item_movements")
+          .select(
+            "id,contract_item_id,movement_type,quantity,unit_value_snapshot,reason,reference_number,reverses_movement_id,created_at",
+          )
+          .eq("tenant_id", props.tenantId)
+          .in(
+            "contract_item_id",
+            nextItems.map((item) => item.id),
+          )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(inicio, fim),
+      );
+      setMovements(movementRows);
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Não foi possível carregar o saldo.");
       setItems([]);
       setMovements([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    const nextItems: Item[] = (itemRows ?? []).map((row) => ({
-      ...row,
-      total_value: Number(row.total_value ?? row.quantity_total * row.unit_value),
-    }));
-    setItems(nextItems);
-    if (nextItems.length === 0) {
-      setMovements([]);
-      setLoading(false);
-      return;
-    }
-    const { data: movementRows, error: movementError } = await db
-      .from("contract_item_movements")
-      .select(
-        "id,contract_item_id,movement_type,quantity,unit_value_snapshot,reason,reference_number,reverses_movement_id,created_at",
-      )
-      .eq("tenant_id", props.tenantId)
-      .in(
-        "contract_item_id",
-        nextItems.map((item) => item.id),
-      )
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false });
-    if (movementError) {
-      setErro(movementError.message);
-      setMovements([]);
-    } else {
-      setMovements(movementRows ?? []);
-    }
-    setLoading(false);
   }, [props.contract.id, props.tenantId]);
 
   useEffect(() => {
@@ -297,6 +301,30 @@ export function ContractItemsBalance(props: {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <SupplyOrderDialog
+                key={props.tenantId + props.contract.id}
+                tenantId={props.tenantId}
+                contractId={props.contract.id}
+                userId={props.userId}
+                enabled={
+                  !loading &&
+                  !erro &&
+                  !salvando &&
+                  props.contract.status === "vigente" &&
+                  props.contract.end_date >= new Date().toLocaleDateString("sv-SE")
+                }
+                items={items.map((item) => ({
+                  itemId: item.id,
+                  description: item.description,
+                  unit: item.unit,
+                  unitValue: Number(item.unit_value),
+                  availableQuantity: calcularSaldoDisponivel(
+                    Number(item.quantity_total),
+                    movementsByItem[item.id] ?? [],
+                  ),
+                }))}
+                onSuccess={carregar}
+              />
               {props.contract.process_id && props.contract.status === "vigente" && (
                 <ContractItemsImport
                   key={props.tenantId + props.contract.id + props.contract.process_id}
