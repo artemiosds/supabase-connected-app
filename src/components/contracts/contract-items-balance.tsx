@@ -274,7 +274,7 @@ export function ContractItemsBalance(props: {
       const token =
         order.referenceNumber
           .normalize("NFKD")
-          .replace(/[\\u0300-\\u036f]/g, "")
+          .replace(/[\u0300-\u036f]/g, "")
           .replace(/[^a-zA-Z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
           .slice(0, 60) || "OF";
