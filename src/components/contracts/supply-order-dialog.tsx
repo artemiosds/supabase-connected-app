@@ -278,7 +278,7 @@ export function SupplyOrderDialog({
         tenantName: tenantResult.data.name,
         contractNumber: contractResult.data.number,
         contractObject: contractResult.data.object,
-        processNumber: processResult.data?.number,
+        ...(processResult.data?.number ? { processNumber: processResult.data.number } : {}),
         supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
         supplierCnpj: supplierResult.data.cnpj,
         referenceNumber: completedOrder.referenceNumber,
@@ -286,7 +286,9 @@ export function SupplyOrderDialog({
         createdAt: new Date(completedOrder.createdAt).toLocaleDateString("pt-BR"),
         items: completedOrder.items,
         totalValue: completedOrder.totalValue,
-        responsibleName: contractResult.data.inspector_name ?? undefined,
+        ...(contractResult.data.inspector_name
+          ? { responsibleName: contractResult.data.inspector_name }
+          : {}),
       });
       const docxBytes = await buildDocxFromText(text, "Ordem de Fornecimento");
       const model = await docxToModel(docxBytes);
