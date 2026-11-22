@@ -2,11 +2,12 @@
 
 ## Preparação do Assistente de IA por Secretaria — 22/11/2026
 
-- Implementada em branch de trabalho a configuração do provedor pelo Administrador Master ativo e a habilitação independente de oito capacidades por Secretaria. A migration é nova e incremental; RLS forçada e acesso a configurações/segredos restrito ao servidor. A chave usa Supabase Vault.
-- O assistente opera somente após o usuário escolher a capacidade e, quando aplicável, o registro. Consultas usam sessão do usuário e RLS no tenant; há limite transacional por usuário/Secretaria. As respostas são rascunhos; documentos podem ser baixados DOCX/PDF timbrados, sem salvar, assinar, aprovar, publicar ou enviar automaticamente.
-- **Pendente de rollout:** CI deve aplicar a migration em Supabase local descartável e aprovar os testes pgTAP; depois, homologar a migration e publicar as duas Edge Functions via fluxo manual antes de inserir qualquer chave. Nada desta etapa foi aplicado ao SMS2.
-- **Pendente de ação humana:** o dono da plataforma informa a chave/modelo aprovados no Painel Master; testa a conexão real; valida contrato, privacidade e retenção do provedor; liga a IA global e libera capacidades para cada Secretaria após aceite do responsável institucional.
-- Limites explícitos da primeira entrega: sem OCR/leitura de arquivos privados, sem busca automática no PNCP/Compras.gov.br, sem alterações operacionais automáticas e sem envio de e-mail. Ver [procedimento de IA](IA-OPERACAO-E-SEGURANCA.md).
+- Implementação integrada à `main` no commit `b50245ff96e94b035e66bf175524d0290f6a2a36`. O Administrador Master ativo (`platform_admins`) é o único perfil autorizado a configurar o provedor global e habilitar capacidades por Secretaria.
+- Migration `20261122190000_platform_ai_configuration` aplicada ao SMS2 e reconciliada com o timestamp versionado. Tabelas `platform_ai_configuration` e `tenant_ai_settings` estão com RLS habilitada e forçada; sem privilégios de leitura para `anon`/`authenticated`, acesso operacional somente por `service_role`. Chave de API armazenada exclusivamente no Supabase Vault.
+- Edge Functions `platform-ai-configuration` e `primus-ai` estão ativas com JWT obrigatório. Validação pós-aplicação confirmou as RPCs de segredo sem execução por `anon`/`authenticated` e executáveis por `service_role`.
+- CI pós-merge aprovada no commit: [validação completa](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113361), [E2E multi-tenant](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113417) e [formatação](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113372).
+- **Pendente de ação humana:** nenhuma chave/modelo foi configurada. O Administrador Master deve acessar **Admin Master > IA**, cadastrar a credencial aprovada pelo órgão, testar a conexão, validar privacidade/retencão com o provedor, então ativar globalmente e liberar capacidades por Secretaria mediante aceite institucional. Nenhum dado fictício foi inserido no SMS2.
+- Capacidades iniciais: assistente administrativo, rascunhos DFD/ETP/TR/mapa de riscos, análise das cotações existentes, leitura de metadados de certidões, acompanhamento contratual, apoio ao recebimento, organização de tarefas e rascunhos de e-mail. Sem OCR de arquivos privados, pesquisa automática no PNCP/Compras.gov.br, gravações operacionais, aprovações, assinaturas ou envio automático de e-mail. Ver [procedimento de IA](IA-OPERACAO-E-SEGURANCA.md).
 
 ## Homologação técnica do mapa — 19/11/2026 (CI aprovada)
 
