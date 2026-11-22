@@ -131,4 +131,36 @@ export async function verifyBatchItems({ page, appUrl, tenantId, callRpc, readRo
     }
   }
   console.log("PASS batch proposal: three quoted items, shared supplier and formal evidence");
+  await composition.getByRole("button", { name: /Mapa comparativo/ }).click();
+  const map = page
+    .getByRole("dialog")
+    .filter({ hasText: "Mapa comparativo de preços — " + number });
+  await map.getByRole("tab", { name: "Quadro Sintético (Matriz)" }).click();
+  await map.getByRole("columnheader", { name: "Fornecedor Sintético Exclusivo A" }).waitFor();
+  assert.equal(await map.locator('[title="Menor preço do item"]').count(), 3);
+  await map.getByRole("button", { name: "Aprovação em Lote", exact: true }).click();
+  const approval = page.getByRole("dialog", { name: "Aprovação em Lote", exact: true });
+  await approval
+    .getByLabel("Justificativa excepcional para menos de três cotações", { exact: false })
+    .fill("Exceção fundamentada para o ensaio descartável.");
+  await approval.getByRole("checkbox").check();
+  await approval.getByRole("button", { name: "Aprovar 3 Itens Elegíveis", exact: true }).click();
+  await approval
+    .getByRole("status")
+    .filter({ hasText: "3 aprovado(s); 0 com pendência." })
+    .waitFor();
+  for (const [index, item] of ordered.entries()) {
+    const result = await readRows(
+      "procurement_price_approvals",
+      { tenant_id: tenantId, procurement_item_id: item.id },
+      "status,method",
+    );
+    assert.equal(
+      result.body.filter((row) => row.status === "approved" && row.method === "mediana").length,
+      [0, 1, 3].includes(index) ? 1 : 0,
+    );
+  }
+  console.log(
+    "PASS price matrix and batch approval: three eligible items approved by median, three without quotes excluded",
+  );
 }
