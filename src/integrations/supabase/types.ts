@@ -1315,6 +1315,42 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_ai_configuration: {
+        Row: {
+          enabled: boolean
+          id: number
+          last_test_at: string | null
+          model: string | null
+          provider: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vault_secret_id: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: number
+          last_test_at?: string | null
+          model?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: number
+          last_test_at?: string | null
+          model?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
+        Relationships: []
+      }
       platform_payment_integrations: {
         Row: {
           account_email: string | null
@@ -2765,6 +2801,38 @@ export type Database = {
           },
         ]
       }
+      tenant_ai_settings: {
+        Row: {
+          enabled: boolean
+          features: Json
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          features?: Json
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          features?: Json
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_ai_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_invitations: {
         Row: {
           accepted_at: string | null
@@ -3646,6 +3714,32 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      platform_ai_save_configuration: {
+        Args: { p_actor_id: string; p_model: string; p_api_key: string | null }
+        Returns: Json
+      }
+      platform_ai_get_api_key: { Args: never; Returns: string }
+      platform_ai_set_connection_status: {
+        Args: { p_actor_id: string; p_status: string }
+        Returns: Json
+      }
+      platform_ai_set_global_enabled: {
+        Args: { p_actor_id: string; p_enabled: boolean }
+        Returns: Json
+      }
+      platform_ai_set_tenant_settings: {
+        Args: {
+          p_actor_id: string
+          p_tenant_id: string
+          p_enabled: boolean
+          p_features: Json
+        }
+        Returns: Json
+      }
+      platform_ai_claim_usage: {
+        Args: { p_tenant_id: string; p_actor_id: string; p_feature: string }
+        Returns: boolean
       }
     }
     Enums: {

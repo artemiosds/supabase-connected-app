@@ -1,5 +1,13 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
+## Preparação do Assistente de IA por Secretaria — 22/11/2026
+
+- Implementada em branch de trabalho a configuração do provedor pelo Administrador Master ativo e a habilitação independente de oito capacidades por Secretaria. A migration é nova e incremental; RLS forçada e acesso a configurações/segredos restrito ao servidor. A chave usa Supabase Vault.
+- O assistente opera somente após o usuário escolher a capacidade e, quando aplicável, o registro. Consultas usam sessão do usuário e RLS no tenant; há limite transacional por usuário/Secretaria. As respostas são rascunhos; documentos podem ser baixados DOCX/PDF timbrados, sem salvar, assinar, aprovar, publicar ou enviar automaticamente.
+- **Pendente de rollout:** CI deve aplicar a migration em Supabase local descartável e aprovar os testes pgTAP; depois, homologar a migration e publicar as duas Edge Functions via fluxo manual antes de inserir qualquer chave. Nada desta etapa foi aplicado ao SMS2.
+- **Pendente de ação humana:** o dono da plataforma informa a chave/modelo aprovados no Painel Master; testa a conexão real; valida contrato, privacidade e retenção do provedor; liga a IA global e libera capacidades para cada Secretaria após aceite do responsável institucional.
+- Limites explícitos da primeira entrega: sem OCR/leitura de arquivos privados, sem busca automática no PNCP/Compras.gov.br, sem alterações operacionais automáticas e sem envio de e-mail. Ver [procedimento de IA](IA-OPERACAO-E-SEGURANCA.md).
+
 ## Homologação técnica do mapa — 19/11/2026 (CI aprovada)
 
 - Código validado em `3887007bf64d2754df43d86b64fce253324880b6`. [E2E 44527588758](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588758) concluiu a gravação normativa com auditoria, aprovação do preço, criação do mapa pelo motor nativo, revisão por usuário distinto, assinatura simples, A4 paisagem e SHA-256 do PDF arquivado. O job de aplicação e o de segurança do banco também passaram: [44527588706](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588706).
