@@ -1415,6 +1415,7 @@ async function verifyProcurementLifecycle() {
     const orderPdf = await PDFDocument.load(await readFile(downloadedPath));
     assert.ok(orderPdf.getPageCount() > 0);
     assert.equal(orderPdf.getTitle(), "Ordem de Fornecimento OF nº 001/2026");
+    await supply.getByRole("button", { name: "Fechar", exact: true }).click();
     const ofRows = await readRows(
       "contract_item_movements",
       { tenant_id: tenantId, reference_number: "OF nº 001/2026" },
