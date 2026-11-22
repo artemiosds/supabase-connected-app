@@ -2,6 +2,21 @@ import { getAllowedOrigins } from "../_shared/origins.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type JsonObject = Record<string, unknown>;
+type DynamicTable = {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: [];
+};
+type DynamicView = { Row: Record<string, unknown>; Relationships: [] };
+type DynamicDatabase = {
+  public: {
+    Tables: Record<string, DynamicTable>;
+    Views: Record<string, DynamicView>;
+    Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>;
+  };
+};
+type SupabaseUserClient = ReturnType<typeof createClient<DynamicDatabase>>;
 type FeatureKey =
   | "assistant"
   | "documents"
@@ -92,7 +107,7 @@ function featureInstructions(feature: FeatureKey) {
 }
 
 async function collectContext(
-  userClient: ReturnType<typeof createClient>,
+  userClient: SupabaseUserClient,
   tenantId: string,
   feature: FeatureKey,
   recordId: string | null,
@@ -285,7 +300,7 @@ Deno.serve(async (request: Request) => {
     .trim();
   if (!bearer) return response({ error: "Sessão autenticada obrigatória." }, 401, origin);
 
-  const userClient = createClient(supabaseUrl, anonKey, {
+  const userClient = createClient<DynamicDatabase>(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     global: { headers: { Authorization: `Bearer ${bearer}` } },
   });
@@ -297,7 +312,7 @@ Deno.serve(async (request: Request) => {
     !authData.user.email_confirmed_at
   )
     return response({ error: "Sessão confirmada obrigatória." }, 401, origin);
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+  const adminClient = createClient<DynamicDatabase>(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 
