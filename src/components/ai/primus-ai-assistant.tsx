@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Download, FileText, Loader2, Send, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,10 @@ export function PrimusAiAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [sending, setSending] = useState(false);
+  const requestGeneration = useRef(0);
+  const contextKey = `${selecionado?.id ?? ""}|${feature}|${recordId}|${open}`;
+  const currentContextKey = useRef(contextKey);
+  currentContextKey.current = contextKey;
 
   const availableFeatures = useMemo(
     () => AI_FEATURES.filter((item) => capabilities?.features.includes(item.key)),
@@ -185,18 +189,24 @@ export function PrimusAiAssistant() {
     event.preventDefault();
     const text = prompt.trim();
     if (!text || !feature || !selecionado?.id || sending) return;
-    if (messages.length >= 9) {
-      toast.error("Esta conversa atingiu o limite. Limpe-a para começar outra.");
-      return;
-    }
     if (NEEDS_RECORD.has(feature) && !recordId) {
       toast.error("Selecione o registro que deseja analisar.");
       return;
     }
-    const nextMessages = [...messages, { role: "user" as const, content: text }];
+    const recentHistory = messages.slice(-8);
+    while (
+      recentHistory.reduce((total, message) => total + message.content.length, text.length) >
+        24_000 &&
+      recentHistory.length
+    ) {
+      recentHistory.shift();
+    }
+    const nextMessages = [...recentHistory, { role: "user" as const, content: text }];
     setMessages(nextMessages);
     setPrompt("");
     setSending(true);
+    const requestContextKey = currentContextKey.current;
+    const requestId = ++requestGeneration.current;
     try {
       const { data, error } = await db.functions.invoke<{ text?: string }>("primus-ai", {
         body: {
@@ -207,13 +217,23 @@ export function PrimusAiAssistant() {
           messages: nextMessages,
         },
       });
+      if (
+        requestId !== requestGeneration.current ||
+        requestContextKey !== currentContextKey.current
+      )
+        return;
       if (error) throw new Error(await readFunctionError(error));
       if (!data?.text) throw new Error("A IA não retornou uma resposta válida.");
       setMessages((current) => [...current, { role: "assistant", content: data.text! }]);
     } catch (cause) {
+      if (
+        requestId !== requestGeneration.current ||
+        requestContextKey !== currentContextKey.current
+      )
+        return;
       toast.error(cause instanceof Error ? cause.message : "Não foi possível gerar a resposta.");
     } finally {
-      setSending(false);
+      if (requestId === requestGeneration.current) setSending(false);
     }
   }
 
@@ -260,6 +280,8 @@ export function PrimusAiAssistant() {
   }
 
   function changeFeature(value: AiFeatureKey) {
+    requestGeneration.current += 1;
+    setSending(false);
     setFeature(value);
     setRecordId("");
     setChoices([]);
@@ -268,6 +290,8 @@ export function PrimusAiAssistant() {
   }
 
   function changeRecord(value: string) {
+    requestGeneration.current += 1;
+    setSending(false);
     setRecordId(value);
     setMessages([]);
     setPrompt("");
@@ -276,7 +300,14 @@ export function PrimusAiAssistant() {
   if (tenantLoading || !selecionado || !session || isUnavailableDuringSupport) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        requestGeneration.current += 1;
+        setSending(false);
+        setOpen(nextOpen);
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
