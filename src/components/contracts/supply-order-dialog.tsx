@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { ClipboardList, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
@@ -7,6 +7,12 @@ import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { calcularSaldoDisponivel } from "@/lib/contract-item-balance";
 import { validateSupplyOrder, type SupplyOrderItemCandidate } from "@/lib/supply-order-helper";
 import { formatarMoeda } from "@/lib/contratacao";
+import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
+import { carregarTimbradoSecretaria } from "@/lib/document-branding";
+import {
+  buildSupplyOrderDocumentText,
+  type SupplyOrderPdfPayload,
+} from "@/lib/supply-order-pdf-helper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,15 +26,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+type CompletedOrder = Pick<
+  SupplyOrderPdfPayload,
+  "referenceNumber" | "reason" | "createdAt" | "items" | "totalValue"
+>;
 type Props = {
   tenantId: string;
   contractId: string;
   userId: string;
   enabled: boolean;
-  items: Omit<SupplyOrderItemCandidate, "requestedQuantity">[];
+  items: Array<Omit<SupplyOrderItemCandidate, "requestedQuantity"> & { lineNumber: number }>;
   onSuccess: () => Promise<void>;
 };
-const quantityFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
+const quantityFormat = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 4,
+});
 type Outcome = {
   description: string;
   status: "Registrado" | "Não enviado" | "Conferir histórico";
@@ -57,6 +69,8 @@ export function SupplyOrderDialog({
   const lock = useRef(false);
   const [outcomes, setOutcomes] = useState<Outcome[]>([]);
   const [attempted, setAttempted] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [error, setError] = useState("");
   const candidates = items.map((item) => ({
     ...item,
@@ -72,6 +86,8 @@ export function SupplyOrderDialog({
     setValues({});
     setOutcomes([]);
     setAttempted(false);
+    setCompletedOrder(null);
+    setGeneratingPdf(false);
     setError("");
     setOpen(true);
   }
@@ -89,7 +105,9 @@ export function SupplyOrderDialog({
     }));
     let submitted = false;
     try {
-      const permission = await db.rpc("get_document_capabilities", { p_tenant_id: tenantId });
+      const permission = await db.rpc("get_document_capabilities", {
+        p_tenant_id: tenantId,
+      });
       if (permission.error || !permission.data?.[0]?.can_update)
         throw new Error("Seu perfil não permite registrar consumo.");
       const contract = await db
@@ -160,7 +178,10 @@ export function SupplyOrderDialog({
           });
           if (response.error || !response.data)
             throw new Error(response.error?.message ?? "Resposta sem confirmação.");
-          results[index] = { description: results[index]!.description, status: "Registrado" };
+          results[index] = {
+            description: results[index]!.description,
+            status: "Registrado",
+          };
           setOutcomes([...results]);
         } catch (e) {
           results[index] = {
@@ -171,8 +192,26 @@ export function SupplyOrderDialog({
           throw e;
         }
       }
+      const completedAt = new Date().toISOString();
+      setOutcomes([...results]);
+      setCompletedOrder({
+        referenceNumber: reference,
+        reason: motive,
+        createdAt: completedAt,
+        totalValue: result.totalValue,
+        items: order.map((item, index) => {
+          const source = items.find((row) => row.itemId === item.itemId);
+          return {
+            lineNumber: source?.lineNumber ?? index + 1,
+            description: source?.description ?? item.itemId,
+            unit: source?.unit ?? "",
+            quantity: item.quantity,
+            unitValue: item.unitValue,
+            subtotal: item.subtotal,
+          };
+        }),
+      });
       toast.success("Ordem de fornecimento " + reference + " registrada com sucesso!");
-      setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível concluir a ordem.");
       if (submitted) {
@@ -195,6 +234,97 @@ export function SupplyOrderDialog({
       setBusy(false);
     }
   }
+  async function downloadPdf() {
+    if (!completedOrder || generatingPdf || !inScope()) return;
+    setGeneratingPdf(true);
+    try {
+      const [tenantResult, contractResult] = await Promise.all([
+        db.from("tenants").select("name").eq("id", tenantId).single(),
+        db
+          .from("contracts")
+          .select("number,object,process_id,supplier_id,inspector_name")
+          .eq("tenant_id", tenantId)
+          .eq("id", contractId)
+          .single(),
+      ]);
+      if (tenantResult.error || !tenantResult.data?.name)
+        throw new Error("Não foi possível confirmar a Secretaria ativa.");
+      if (contractResult.error || !contractResult.data)
+        throw new Error("Não foi possível carregar o contrato para o termo.");
+      if (!contractResult.data.supplier_id)
+        throw new Error("Vincule um fornecedor ao contrato antes de gerar o termo.");
+      const [supplierResult, processResult] = await Promise.all([
+        db
+          .from("suppliers")
+          .select("legal_name,trade_name,cnpj")
+          .eq("tenant_id", tenantId)
+          .eq("id", contractResult.data.supplier_id)
+          .single(),
+        contractResult.data.process_id
+          ? db
+              .from("procurement_processes")
+              .select("number")
+              .eq("tenant_id", tenantId)
+              .eq("id", contractResult.data.process_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (supplierResult.error || !supplierResult.data)
+        throw new Error("Não foi possível confirmar o fornecedor vinculado ao contrato.");
+      if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a emissão do termo.");
+      const branding = await carregarTimbradoSecretaria(tenantId, tenantResult.data.name);
+      const text = buildSupplyOrderDocumentText({
+        tenantName: tenantResult.data.name,
+        contractNumber: contractResult.data.number,
+        contractObject: contractResult.data.object,
+        ...(processResult.data?.number ? { processNumber: processResult.data.number } : {}),
+        supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
+        supplierCnpj: supplierResult.data.cnpj,
+        referenceNumber: completedOrder.referenceNumber,
+        reason: completedOrder.reason,
+        createdAt: new Date(completedOrder.createdAt).toLocaleDateString("pt-BR"),
+        items: completedOrder.items,
+        totalValue: completedOrder.totalValue,
+        ...(contractResult.data.inspector_name
+          ? { responsibleName: contractResult.data.inspector_name }
+          : {}),
+      });
+      const docxBytes = await buildDocxFromText(text, "Ordem de Fornecimento");
+      const model = await docxToModel(docxBytes);
+      const pdfBytes = await renderPdf(model, {
+        branding,
+        title: "Ordem de Fornecimento " + completedOrder.referenceNumber,
+      });
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a emissão do termo.");
+      const pdfBlob = new Blob([pdfBytes.slice().buffer as ArrayBuffer], {
+        type: "application/pdf",
+      });
+      const url = URL.createObjectURL(pdfBlob);
+      const token =
+        completedOrder.referenceNumber
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60) || "OF";
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "Ordem-de-Fornecimento-" + token + ".pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Termo da Ordem de Fornecimento gerado com sucesso!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível gerar o termo da ordem.",
+      );
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -282,7 +412,10 @@ export function SupplyOrderDialog({
                       value={values[item.itemId] ?? ""}
                       disabled={frozen || item.availableQuantity <= 0}
                       onChange={(e) =>
-                        setValues((old) => ({ ...old, [item.itemId]: e.target.value }))
+                        setValues((old) => ({
+                          ...old,
+                          [item.itemId]: e.target.value,
+                        }))
                       }
                     />
                   </td>
@@ -348,6 +481,23 @@ export function SupplyOrderDialog({
           </p>
         )}
         <DialogFooter>
+          {attempted &&
+            outcomes.length > 0 &&
+            outcomes.every((outcome) => outcome.status === "Registrado") &&
+            completedOrder && (
+              <Button
+                type="button"
+                disabled={generatingPdf || !inScope()}
+                onClick={() => void downloadPdf()}
+              >
+                {generatingPdf ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4" />
+                )}
+                Baixar Termo da OF (PDF)
+              </Button>
+            )}
           <Button type="button" variant="outline" disabled={busy} onClick={() => setOpen(false)}>
             Fechar
           </Button>

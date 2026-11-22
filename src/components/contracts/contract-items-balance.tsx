@@ -315,6 +315,7 @@ export function ContractItemsBalance(props: {
                 }
                 items={items.map((item) => ({
                   itemId: item.id,
+                  lineNumber: item.line_number,
                   description: item.description,
                   unit: item.unit,
                   unitValue: Number(item.unit_value),

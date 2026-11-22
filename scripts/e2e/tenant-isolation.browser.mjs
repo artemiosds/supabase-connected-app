@@ -1406,7 +1406,16 @@ async function verifyProcurementLifecycle() {
       .fill("1");
     await supply.getByText(/Valor Total da Ordem:.*25,00/).waitFor();
     await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).click();
-    await supply.waitFor({ state: "hidden" });
+    const downloadPromise = page.waitForEvent("download");
+    await supply.getByRole("button", { name: "Baixar Termo da OF (PDF)", exact: true }).click();
+    const orderDownload = await downloadPromise;
+    assert.match(orderDownload.suggestedFilename(), /^Ordem-de-Fornecimento-OF-.*001-2026.*\.pdf$/);
+    const downloadedPath = await orderDownload.path();
+    assert.ok(downloadedPath);
+    const orderPdf = await PDFDocument.load(await readFile(downloadedPath));
+    assert.ok(orderPdf.getPageCount() > 0);
+    assert.equal(orderPdf.getTitle(), "Ordem de Fornecimento OF nº 001/2026");
+    await supply.getByRole("button", { name: "Fechar", exact: true }).click();
     const ofRows = await readRows(
       "contract_item_movements",
       { tenant_id: tenantId, reference_number: "OF nº 001/2026" },
