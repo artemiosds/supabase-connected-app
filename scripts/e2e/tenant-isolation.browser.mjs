@@ -1407,14 +1407,9 @@ async function verifyProcurementLifecycle() {
     await supply.getByText(/Valor Total da Ordem:.*25,00/).waitFor();
     await supply.getByRole("button", { name: "Confirmar Ordem de Fornecimento" }).click();
     const downloadPromise = page.waitForEvent("download");
-    await supply
-      .getByRole("button", { name: "Baixar Termo da OF (PDF)", exact: true })
-      .click();
+    await supply.getByRole("button", { name: "Baixar Termo da OF (PDF)", exact: true }).click();
     const orderDownload = await downloadPromise;
-    assert.match(
-      orderDownload.suggestedFilename(),
-      /^Ordem-de-Fornecimento-OF-.*001-2026.*\.pdf$/,
-    );
+    assert.match(orderDownload.suggestedFilename(), /^Ordem-de-Fornecimento-OF-.*001-2026.*\.pdf$/);
     const downloadedPath = await orderDownload.path();
     assert.ok(downloadedPath);
     const orderPdf = await PDFDocument.load(await readFile(downloadedPath));
@@ -2054,4 +2049,3 @@ try {
     console.error(`Failed scenarios: ${failedPages.join(", ")}`);
   }
 }
-

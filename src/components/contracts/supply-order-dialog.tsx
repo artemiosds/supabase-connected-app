@@ -5,10 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { calcularSaldoDisponivel } from "@/lib/contract-item-balance";
-import {
-  validateSupplyOrder,
-  type SupplyOrderItemCandidate,
-} from "@/lib/supply-order-helper";
+import { validateSupplyOrder, type SupplyOrderItemCandidate } from "@/lib/supply-order-helper";
 import { formatarMoeda } from "@/lib/contratacao";
 import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
 import { carregarTimbradoSecretaria } from "@/lib/document-branding";
@@ -38,9 +35,7 @@ type Props = {
   contractId: string;
   userId: string;
   enabled: boolean;
-  items: Array<
-    Omit<SupplyOrderItemCandidate, "requestedQuantity"> & { lineNumber: number }
-  >;
+  items: Array<Omit<SupplyOrderItemCandidate, "requestedQuantity"> & { lineNumber: number }>;
   onSuccess: () => Promise<void>;
 };
 const quantityFormat = new Intl.NumberFormat("pt-BR", {
@@ -65,9 +60,7 @@ export function SupplyOrderDialog({
   const scope = useRef({ tenant: selecionado?.id, user: session?.user.id });
   scope.current = { tenant: selecionado?.id, user: session?.user.id };
   const inScope = () =>
-    Boolean(userId) &&
-    scope.current.tenant === tenantId &&
-    scope.current.user === userId;
+    Boolean(userId) && scope.current.tenant === tenantId && scope.current.user === userId;
   const [open, setOpen] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [reason, setReason] = useState("");
@@ -76,9 +69,7 @@ export function SupplyOrderDialog({
   const lock = useRef(false);
   const [outcomes, setOutcomes] = useState<Outcome[]>([]);
   const [attempted, setAttempted] = useState(false);
-  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(
-    null,
-  );
+  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [error, setError] = useState("");
   const candidates = items.map((item) => ({
@@ -101,8 +92,7 @@ export function SupplyOrderDialog({
     setOpen(true);
   }
   async function submit() {
-    if (lock.current || attempted || !enabled || !result.isValid || !inScope())
-      return;
+    if (lock.current || attempted || !enabled || !result.isValid || !inScope()) return;
     lock.current = true;
     setBusy(true);
     setError("");
@@ -110,9 +100,7 @@ export function SupplyOrderDialog({
     const reference = referenceNumber.trim();
     const motive = reason.trim();
     const results: Outcome[] = order.map((item) => ({
-      description:
-        items.find((row) => row.itemId === item.itemId)?.description ??
-        item.itemId,
+      description: items.find((row) => row.itemId === item.itemId)?.description ?? item.itemId,
       status: "Não enviado",
     }));
     let submitted = false;
@@ -169,20 +157,15 @@ export function SupplyOrderDialog({
           throw new Error(
             "A referência já consta no histórico de um item solicitado. Confira a OF antes de reenviar.",
           );
-        if (
-          calcularSaldoDisponivel(current.quantity_total, history) <
-          item.quantity
-        )
+        if (calcularSaldoDisponivel(current.quantity_total, history) < item.quantity)
           throw new Error(
             "O saldo de " +
-              (items.find((row) => row.itemId === item.itemId)?.description ??
-                "um item") +
+              (items.find((row) => row.itemId === item.itemId)?.description ?? "um item") +
               " mudou. Atualize a consulta.",
           );
       }
       for (const [index, item] of order.entries()) {
-        if (!inScope())
-          throw new Error("A Secretaria ou a sessão mudou durante a operação.");
+        if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a operação.");
         submitted = true;
         setAttempted(true);
         try {
@@ -194,9 +177,7 @@ export function SupplyOrderDialog({
             p_reference_number: reference,
           });
           if (response.error || !response.data)
-            throw new Error(
-              response.error?.message ?? "Resposta sem confirmação.",
-            );
+            throw new Error(response.error?.message ?? "Resposta sem confirmação.");
           results[index] = {
             description: results[index]!.description,
             status: "Registrado",
@@ -230,13 +211,9 @@ export function SupplyOrderDialog({
           };
         }),
       });
-      toast.success(
-        "Ordem de fornecimento " + reference + " registrada com sucesso!",
-      );
+      toast.success("Ordem de fornecimento " + reference + " registrada com sucesso!");
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Não foi possível concluir a ordem.",
-      );
+      setError(e instanceof Error ? e.message : "Não foi possível concluir a ordem.");
       if (submitted) {
         setOutcomes([...results]);
         toast.warning(
@@ -275,9 +252,7 @@ export function SupplyOrderDialog({
       if (contractResult.error || !contractResult.data)
         throw new Error("Não foi possível carregar o contrato para o termo.");
       if (!contractResult.data.supplier_id)
-        throw new Error(
-          "Vincule um fornecedor ao contrato antes de gerar o termo.",
-        );
+        throw new Error("Vincule um fornecedor ao contrato antes de gerar o termo.");
       const [supplierResult, processResult] = await Promise.all([
         db
           .from("suppliers")
@@ -295,32 +270,20 @@ export function SupplyOrderDialog({
           : Promise.resolve({ data: null, error: null }),
       ]);
       if (supplierResult.error || !supplierResult.data)
-        throw new Error(
-          "Não foi possível confirmar o fornecedor vinculado ao contrato.",
-        );
-      if (processResult.error)
-        throw new Error("Não foi possível confirmar o processo de origem.");
-      if (!inScope())
-        throw new Error(
-          "A Secretaria ou a sessão mudou durante a emissão do termo.",
-        );
-      const branding = await carregarTimbradoSecretaria(
-        tenantId,
-        tenantResult.data.name,
-      );
+        throw new Error("Não foi possível confirmar o fornecedor vinculado ao contrato.");
+      if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a emissão do termo.");
+      const branding = await carregarTimbradoSecretaria(tenantId, tenantResult.data.name);
       const text = buildSupplyOrderDocumentText({
         tenantName: tenantResult.data.name,
         contractNumber: contractResult.data.number,
         contractObject: contractResult.data.object,
         processNumber: processResult.data?.number,
-        supplierName:
-          supplierResult.data.trade_name || supplierResult.data.legal_name,
+        supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
         supplierCnpj: supplierResult.data.cnpj,
         referenceNumber: completedOrder.referenceNumber,
         reason: completedOrder.reason,
-        createdAt: new Date(completedOrder.createdAt).toLocaleDateString(
-          "pt-BR",
-        ),
+        createdAt: new Date(completedOrder.createdAt).toLocaleDateString("pt-BR"),
         items: completedOrder.items,
         totalValue: completedOrder.totalValue,
         responsibleName: contractResult.data.inspector_name ?? undefined,
@@ -331,10 +294,7 @@ export function SupplyOrderDialog({
         branding,
         title: "Ordem de Fornecimento " + completedOrder.referenceNumber,
       });
-      if (!inScope())
-        throw new Error(
-          "A Secretaria ou a sessão mudou durante a emissão do termo.",
-        );
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a emissão do termo.");
       const pdfBlob = new Blob([pdfBytes.slice().buffer as ArrayBuffer], {
         type: "application/pdf",
       });
@@ -356,9 +316,7 @@ export function SupplyOrderDialog({
       toast.success("Termo da Ordem de Fornecimento gerado com sucesso!");
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível gerar o termo da ordem.",
+        error instanceof Error ? error.message : "Não foi possível gerar o termo da ordem.",
       );
     } finally {
       setGeneratingPdf(false);
@@ -376,11 +334,7 @@ export function SupplyOrderDialog({
         variant="outline"
         type="button"
         size="sm"
-        disabled={
-          !enabled ||
-          !items.some((item) => item.availableQuantity > 0) ||
-          !userId
-        }
+        disabled={!enabled || !items.some((item) => item.availableQuantity > 0) || !userId}
         onClick={start}
       >
         <ClipboardList className="h-4 w-4" />
@@ -390,8 +344,8 @@ export function SupplyOrderDialog({
         <DialogHeader>
           <DialogTitle>Emitir Ordem de Fornecimento</DialogTitle>
           <DialogDescription>
-            Registre os consumos da ordem com a mesma referência e motivo. Cada
-            baixa é validada individualmente no banco.
+            Registre os consumos da ordem com a mesma referência e motivo. Cada baixa é validada
+            individualmente no banco.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -443,12 +397,8 @@ export function SupplyOrderDialog({
                     {item.description}
                   </th>
                   <td className="p-2">{item.unit}</td>
-                  <td className="p-2">
-                    {quantityFormat.format(item.availableQuantity)}
-                  </td>
-                  <td className="p-2 whitespace-nowrap">
-                    {formatarMoeda(item.unitValue)}
-                  </td>
+                  <td className="p-2">{quantityFormat.format(item.availableQuantity)}</td>
+                  <td className="p-2 whitespace-nowrap">{formatarMoeda(item.unitValue)}</td>
                   <td className="p-2">
                     <Input
                       type="number"
@@ -456,9 +406,7 @@ export function SupplyOrderDialog({
                       max={item.availableQuantity}
                       step="0.0001"
                       className="min-w-24"
-                      aria-label={
-                        "Quantidade a solicitar — " + item.description
-                      }
+                      aria-label={"Quantidade a solicitar — " + item.description}
                       value={values[item.itemId] ?? ""}
                       disabled={frozen || item.availableQuantity <= 0}
                       onChange={(e) =>
@@ -471,9 +419,8 @@ export function SupplyOrderDialog({
                   </td>
                   <td className="p-2 whitespace-nowrap">
                     {formatarMoeda(
-                      result.itemsToConsume.find(
-                        (row) => row.itemId === item.itemId,
-                      )?.subtotal ?? 0,
+                      result.itemsToConsume.find((row) => row.itemId === item.itemId)?.subtotal ??
+                        0,
                     )}
                   </td>
                   <td className="p-2">
@@ -516,10 +463,7 @@ export function SupplyOrderDialog({
           </p>
         )}
         {outcomes.length > 0 && (
-          <section
-            aria-label="Resultado da ordem"
-            className="space-y-1 rounded border p-3"
-          >
+          <section aria-label="Resultado da ordem" className="space-y-1 rounded border p-3">
             {outcomes.map((item, index) => (
               <p key={index}>
                 {item.description}: {item.status}
@@ -530,8 +474,8 @@ export function SupplyOrderDialog({
         )}
         {attempted && (
           <p role="status">
-            Confira o histórico de todos os itens antes de emitir outra ordem.
-            Os consumos confirmados permanecem registrados.
+            Confira o histórico de todos os itens antes de emitir outra ordem. Os consumos
+            confirmados permanecem registrados.
           </p>
         )}
         <DialogFooter>
@@ -552,12 +496,7 @@ export function SupplyOrderDialog({
                 Baixar Termo da OF (PDF)
               </Button>
             )}
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={() => setOpen(false)}
-          >
+          <Button type="button" variant="outline" disabled={busy} onClick={() => setOpen(false)}>
             Fechar
           </Button>
           <Button
@@ -565,8 +504,7 @@ export function SupplyOrderDialog({
             disabled={frozen || !enabled || !result.isValid}
             onClick={() => void submit()}
           >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}Confirmar
-            Ordem de Fornecimento
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}Confirmar Ordem de Fornecimento
           </Button>
         </DialogFooter>
       </DialogContent>

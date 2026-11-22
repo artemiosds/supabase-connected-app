@@ -41,18 +41,7 @@ function formatCnpj(value: string): string {
     : singleLine(value);
 }
 function triplet(value: number): string {
-  const units = [
-    "",
-    "um",
-    "dois",
-    "três",
-    "quatro",
-    "cinco",
-    "seis",
-    "sete",
-    "oito",
-    "nove",
-  ];
+  const units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
   const teens = [
     "dez",
     "onze",
@@ -121,25 +110,20 @@ function integerInWords(value: number): string {
       ? upper +
           (thousands ? " " : " e ") +
           lower.join(
-            remainder && thousands && (remainder < 100 || remainder % 100 === 0)
-              ? " e "
-              : " ",
+            remainder && thousands && (remainder < 100 || remainder % 100 === 0) ? " e " : " ",
           )
       : upper;
   }
   if (thousands) {
     const upper = thousands === 1 ? "mil" : triplet(thousands) + " mil";
     return remainder
-      ? upper +
-          (remainder < 100 || remainder % 100 === 0 ? " e " : " ") +
-          triplet(remainder)
+      ? upper + (remainder < 100 || remainder % 100 === 0 ? " e " : " ") + triplet(remainder)
       : upper;
   }
   return triplet(remainder);
 }
 function amountInWords(value: number): string {
-  const centsTotal =
-    Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : 0;
+  const centsTotal = Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : 0;
   const reais = Math.floor(centsTotal / 100),
     cents = centsTotal % 100;
   const realText =
@@ -150,16 +134,11 @@ function amountInWords(value: number): string {
         ? " de reais"
         : " reais");
   return cents
-    ? realText +
-        " e " +
-        integerInWords(cents) +
-        (cents === 1 ? " centavo" : " centavos")
+    ? realText + " e " + integerInWords(cents) + (cents === 1 ? " centavo" : " centavos")
     : realText;
 }
 /** Produz texto tabular higienizado para o motor documental nativo. */
-export function buildSupplyOrderDocumentText(
-  payload: SupplyOrderPdfPayload,
-): string {
+export function buildSupplyOrderDocumentText(payload: SupplyOrderPdfPayload): string {
   const rows = payload.items.map((item) =>
     [
       String(Number.isFinite(item.lineNumber) ? item.lineNumber : ""),
@@ -171,9 +150,7 @@ export function buildSupplyOrderDocumentText(
     ].join("\t"),
   );
   const total =
-    Number.isFinite(payload.totalValue) && payload.totalValue >= 0
-      ? payload.totalValue
-      : 0;
+    Number.isFinite(payload.totalValue) && payload.totalValue >= 0 ? payload.totalValue : 0;
   const reference = singleLine(payload.referenceNumber);
   return [
     "ORDEM DE FORNECIMENTO / AUTORIZAÇÃO DE COMPRA Nº " + reference,
@@ -193,22 +170,13 @@ export function buildSupplyOrderDocumentText(
     singleLine(payload.reason),
     "",
     "ITENS SOLICITADOS",
-    [
-      "Item",
-      "Descrição",
-      "Unidade",
-      "Qtd. Solicitada",
-      "Preço Unit. (R$)",
-      "Total (R$)",
-    ].join("\t"),
+    ["Item", "Descrição", "Unidade", "Qtd. Solicitada", "Preço Unit. (R$)", "Total (R$)"].join(
+      "\t",
+    ),
     ...rows,
     "",
     "Itens solicitados: " + payload.items.length,
-    "VALOR TOTAL DA ORDEM: " +
-      currency.format(total) +
-      " (" +
-      amountInWords(total) +
-      ")",
+    "VALOR TOTAL DA ORDEM: " + currency.format(total) + " (" + amountInWords(total) + ")",
     "",
     "PRAZO, ENTREGA E FISCALIZAÇÃO",
     "O prazo e as condições de entrega seguem as cláusulas do contrato ou da ata vigente.",

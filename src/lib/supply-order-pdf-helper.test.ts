@@ -37,9 +37,7 @@ const payload: SupplyOrderPdfPayload = {
 describe("buildSupplyOrderDocumentText", () => {
   it("includes title, order reference, supplier, formatted CNPJ and process", () => {
     const text = buildSupplyOrderDocumentText(payload);
-    expect(text).toContain(
-      "ORDEM DE FORNECIMENTO / AUTORIZAÇÃO DE COMPRA Nº OF nº 004/2026",
-    );
+    expect(text).toContain("ORDEM DE FORNECIMENTO / AUTORIZAÇÃO DE COMPRA Nº OF nº 004/2026");
     expect(text).toContain("Distribuidora Saúde Ltda.");
     expect(text).toContain("CNPJ: 12.345.678/0001-90");
     expect(text).toContain("Processo Administrativo de Origem: PE 032/2026");
@@ -66,9 +64,7 @@ describe("buildSupplyOrderDocumentText", () => {
     const text = buildSupplyOrderDocumentText({
       ...payload,
       reason: "Entrega para o posto\ncentral\tprioridade",
-      items: [
-        { ...payload.items[0]!, description: "Amoxicilina\n\tHACK\u0000" },
-      ],
+      items: [{ ...payload.items[0]!, description: "Amoxicilina\n\tHACK\u0000" }],
     });
     const lines = text.split("\n");
     const header = lines.indexOf(
