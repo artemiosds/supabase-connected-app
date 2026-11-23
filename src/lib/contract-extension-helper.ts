@@ -124,7 +124,7 @@ export function identificarMesesVigencia(
  */
 export function gerarJustificativaProrrogacao(params: {
   contractNumber: string;
-  supplierName?: string;
+  supplierName?: string | undefined;
   meses: number;
   novaData: string;
 }): string {
