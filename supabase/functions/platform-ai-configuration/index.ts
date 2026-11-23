@@ -49,7 +49,7 @@ function validBaseUrl(value: unknown): value is string {
   if (typeof value !== "string" || !value.trim()) return false;
   try {
     const url = new URL(value.trim());
-    const hostname = url.hostname.toLowerCase();
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
     const isIpAddress = /^[0-9.]+$/.test(hostname) || hostname.startsWith("[");
     const isLocalHost =
       hostname === "localhost" ||
