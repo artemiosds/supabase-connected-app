@@ -35,18 +35,23 @@ function isHeading(line: string): boolean {
   return letters.length >= 3 && letters === letters.toUpperCase();
 }
 
-function table(rows: string[][]): string {
+function table(rows: string[][], tableWidth = 9000): string {
   const cols = Math.max(...rows.map((r) => r.length));
-  const width = Math.floor(9000 / cols);
+  const baseWidth = Math.floor(tableWidth / cols);
+  const remainder = tableWidth - baseWidth * cols;
+  const columnWidths = Array.from(
+    { length: cols },
+    (_, index) => baseWidth + (index < remainder ? 1 : 0),
+  );
   const border = (s: string) => `<w:${s} w:val="single" w:sz="4" w:color="808080"/>`;
-  const grid = Array.from({ length: cols }, () => `<w:gridCol w:w="${width}"/>`).join("");
+  const grid = columnWidths.map((width) => `<w:gridCol w:w="${width}"/>`).join("");
   const body = rows
     .map(
       (r, ri) =>
-        `<w:tr>${ri === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${Array.from({ length: cols }, (_, ci) => `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr><w:p>${runs(r[ci] ?? "", ri === 0)}</w:p></w:tc>`).join("")}</w:tr>`,
+        `<w:tr>${ri === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : ""}${Array.from({ length: cols }, (_, ci) => `<w:tc><w:tcPr><w:tcW w:w="${columnWidths[ci]}" w:type="dxa"/></w:tcPr><w:p>${runs(r[ci] ?? "", ri === 0)}</w:p></w:tc>`).join("")}</w:tr>`,
     )
     .join("");
-  return `<w:tbl><w:tblPr><w:tblW w:w="${width * cols}" w:type="dxa"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(border).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${body}</w:tbl><w:p/>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${tableWidth}" w:type="dxa"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(border).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${body}</w:tbl><w:p/>`;
 }
 
 /**
@@ -54,9 +59,14 @@ function table(rows: string[][]): string {
  * Consecutive tab-separated lines become a bordered table; short uppercase lines
  * become headings. Placeholders are kept so the regular generator can fill them.
  */
-export async function buildDocxFromText(text: string, title?: string): Promise<Uint8Array> {
+export async function buildDocxFromText(
+  text: string,
+  title?: string,
+  orientation: "portrait" | "landscape" = "portrait",
+): Promise<Uint8Array> {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const parts: string[] = [];
+  const tableWidth = orientation === "landscape" ? 14500 : 9000;
   if (title?.trim()) parts.push(paragraph(title.trim(), "Title"));
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!;
@@ -67,7 +77,7 @@ export async function buildDocxFromText(text: string, title?: string): Promise<U
         i += 1;
       }
       i -= 1;
-      parts.push(table(rows));
+      parts.push(table(rows, tableWidth));
       continue;
     }
     parts.push(
@@ -76,8 +86,16 @@ export async function buildDocxFromText(text: string, title?: string): Promise<U
         : paragraph(line, undefined, line.trim() ? "both" : undefined),
     );
   }
+  const pageSize =
+    orientation === "landscape"
+      ? '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>'
+      : '<w:pgSz w:w="11906" w:h="16838"/>';
+  const pageMargins =
+    orientation === "landscape"
+      ? '<w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="709" w:footer="567" w:gutter="0"/>'
+      : '<w:pgMar w:top="1701" w:right="1134" w:bottom="1134" w:left="1701" w:header="709" w:footer="567" w:gutter="0"/>';
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1701" w:right="1134" w:bottom="1134" w:left="1701" w:header="709" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+<w:document xmlns:w="${W_NS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${parts.join("")}<w:sectPr>${pageSize}${pageMargins}</w:sectPr></w:body></w:document>`;
   const zip = new JSZip();
   zip.file("[Content_Types].xml", CONTENT_TYPES);
   zip.file("_rels/.rels", ROOT_RELS);

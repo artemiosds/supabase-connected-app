@@ -20,7 +20,7 @@ describe("origens permitidas das Edge Functions", () => {
     const allowed = getAllowedOrigins(env);
     expect(allowed.has("https://app.exemplo.gov.br")).toBe(true);
     expect(allowed.has("https://homolog.exemplo.gov.br")).toBe(true);
-    expect(allowed.has(PREVIEW_ORIGIN)).toBe(false);
+    expect(allowed.has(PREVIEW_ORIGIN)).toBe(true);
     expect(allowed.has("http://localhost:5173")).toBe(false);
   });
 

@@ -1,14 +1,13 @@
-# Roadmap — Gestão de Fornecedores da Saúde
-
-> **Estado atualizado em 12/11/2026.** A fotografia atual e o diagnóstico por fases estão em [docs/DIAGNOSTICO-FASES-2026-11-12.md](docs/DIAGNOSTICO-FASES-2026-11-12.md). Use esse documento como referência; os blocos históricos abaixo são registro de evolução, não estado atual.
-
-- SMS2: 74 migrations, 38 tabelas públicas com RLS, 27 com FORCE RLS e 133 políticas.
-- 1 Secretaria, 1 vínculo municipal, 1 Master ativo, 2 identidades Auth; zero fornecedores, arquivos GED, processos, contratos, sanções, funcionários internos ou técnicos de suporte.
-- Cinco Edge Functions ativas (convites municipais, cobrança, suporte, equipe interna e alertas de vencimento).
-- Código no `main`: motor documental com aprovação, preservação de DOCX original por versão, exportação Word, PDF por renderizador próprio, timbrado por Secretaria, lista/bloqueio de campos pendentes, processo de dez etapas, pesquisa de preços, contratos/aditivos, saldo de contrato/ARP, sanções, relatórios e alertas.
-- Pendências principais: editor visual rico, E2E com duas Secretarias, GED autenticado, homologação DOCX/PDF real, SMTP/alertas reais, Google Drive OAuth, restore de backup, gateway/webhooks, domínio, LGPD e piloto.
-- SMS2 permanece com 74 migrations; oito migrations futuras estão no `main` e não foram aplicadas: fonte DOCX, timbrado, bloqueio de campos pendentes, guardas de workflow, FORCE RLS de DOCX, índices FK e remoção de políticas SELECT redundantes.
-- **NO-GO comercial** até conclusão dos gates descritos no diagnóstico.
+> **Estado consolidado em 16/11/2026.** O diagnóstico operacional detalhado está em [docs/GO-LIVE-CHECKLIST.md](docs/GO-LIVE-CHECKLIST.md).
+>
+> - Repositório: `artemiosds/supabase-connected-app`, branch `main`. HEAD de aplicação: `44578d5aba8b58737c6705001b9cb6f880e5498e`; commit documental mais recente: `617cda12a97dcb17ef541a7e15f5eee4c9ba0c0e`.
+> - SMS2: 91 migrations aplicadas; repositório: 91 arquivos SQL, todos reconciliados por prefixo. Não reaplicar nem executar `db push` sem reconciliação.
+> - CI no mesmo HEAD de aplicação: formatação [run 43923011042](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923011042), validação [run 43923010880](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010880) e E2E [run 43923010973](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010973) — todos aprovados.
+> - O E2E autenticado cobre duas Secretarias sintéticas, isolamento de fornecedores, DOCX privado/versionado, timbrado, aprovação/cancelamento documental e ciclo de compras/contratos até vinculação. Nenhum dado sintético foi gravado no SMS2.
+> - **Lacuna funcional identificada:** a tela `contratos.tsx` não integra as tabelas/RPCs de itens e movimentações de contrato/ARP; portanto cadastro de itens, saldo, consumo e estorno ainda não estão disponíveis pela interface, apesar da camada SQL e do teste unitário de cálculo. É o próximo trabalho de implementação e homologação.
+> - Aditivos já possuem formulário e trigger de validação para prorrogação, acréscimo, supressão e outro; faltam testes comportamentais completos e aprovação da regra normativa antes de automatizar limites percentuais.
+> - Backup real/restauração, envio real de e-mail, Google Drive OAuth, gateway, GED completo, documentos oficiais e aceite municipal continuam pendentes.
+> - **NO-GO para produção/comercialização** até fechar os gates do checklist.
 
 ## Registro histórico — fotografia anterior a 11/11/2026
 
@@ -42,17 +41,17 @@ O bloco abaixo registra o estado anterior e não deve orientar alterações no S
 
 | Fase | Situação | Próximo marco |
 | --- | --- | --- |
-| 0 — Base técnica | Estrutura pronta | Proteção de branch e publicação final |
-| 1 — Multitenant/RLS | Estrutura implantada | E2E com duas Secretarias |
-| 2 — Fornecedores/GED/Documentos | Módulos implementados | GED real, Drive, PDF e assinatura definidos |
-| 3 — Compras/Contratos | Núcleo implementado | Homologação completa no navegador |
-| 4 — Usuários/Equipe/Suporte | Estrutura implantada | SMTP e ciclo completo de convites |
-| 5 — Alertas/Integrações | Parcial | Alertas agendados, OAuth Drive, gateway |
-| 6 — Backup/Continuidade | Código preparado | Backup e restore comprovados |
-| 7 — Comercial/Produção | Não concluída | Cobrança, jurídico, domínio, SLA e piloto |
+| 0 — Base técnica | CI de código aprovada | Proteção de branch, publicação e operação |
+| 1 — Multitenant/RLS | E2E sintético de duas Secretarias aprovado | Homologar com usuários e perfis municipais |
+| 2 — Fornecedores/GED/Documentos | Fornecedores, DOCX e timbrado cobertos parcialmente no E2E | GED de fornecedor e documentos oficiais |
+| 3 — Compras/Contratos | Schema, telas e testes SQL presentes; E2E amplo pendente | Percorrer processo, cotações, orçamento, contrato e aditivos |
+| 4 — Usuários/Equipe/Suporte | Estrutura e Edge Functions ativas | Testar ciclo de convites e entrega de e-mail |
+| 5 — Alertas/Integrações | Dry-run disponível; integrações externas não homologadas | Agenda/email, Drive OAuth e gateway em sandbox |
+| 6 — Backup/Continuidade | Restauração sintética aprovada | Backup e restore reais em projeto isolado |
+| 7 — Comercial/Produção | Bloqueada | Domínio, jurídico, SLA, aceite e piloto |
 
 ## Decisão
-**NO-GO para produção comercial.** Não reconstruir Fases 1 e 2. DOCX já importa parágrafos e tabelas simples como texto editável; alertas visuais cobrem contratos e documentos. Priorizar fluxo de convites, provar isolamento com duas Secretarias, testar GED e recuperar backup antes de inserir dados reais.
+**NO-GO para produção comercial.** Não reconstruir os módulos já implementados. Priorizar E2E de compras/contratos e GED de documentos de fornecedores no banco descartável; depois seguir para homologação municipal, restore real e integrações controladas. Alertas visuais não significam envio automático de e-mail.
 
 ## Atualização de implantação — 10/11/2026, conferência direta
 

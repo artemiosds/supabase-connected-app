@@ -137,11 +137,7 @@ export function missingNotificationConfiguration(
   ];
 
   if (!configuration.dryRun) {
-    required.push(
-      ["RESEND_API_KEY", configuration.resendApiKey],
-      ["EXPIRY_ALERTS_FROM", configuration.from],
-      ["APP_URL", configuration.appUrl],
-    );
+    required.push(["APP_URL", configuration.appUrl]);
   }
 
   return required.filter(([, value]) => !value?.trim()).map(([name]) => name);

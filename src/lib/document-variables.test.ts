@@ -92,6 +92,42 @@ describe("preenchimento de modelos documentais", () => {
     expect(result.unknownKeys).toEqual([]);
   });
 
+  it("reconhece os campos manuais da minuta de prorrogação sem marcá-los como desconhecidos", () => {
+    const template =
+      "{{natureza_continuada}} | {{previsao_edital_contrato}} | {{nova_vigencia_fim}}";
+    const values = buildDocumentVariableValues(context);
+    const result = renderDocumentTemplate(template, values);
+
+    expect(result.unknownKeys).toEqual([]);
+    expect(result.missingKeys).toEqual([
+      "natureza_continuada",
+      "previsao_edital_contrato",
+      "nova_vigencia_fim",
+    ]);
+    expect(result.content).toContain("[PREENCHER: Natureza contínua do objeto]");
+
+    expect(buildDocumentTemplateSchema(template, [])).toEqual([
+      {
+        key: "natureza_continuada",
+        label: "Natureza contínua do objeto",
+        required: true,
+        source: "manual",
+      },
+      {
+        key: "previsao_edital_contrato",
+        label: "Previsão no edital e no contrato",
+        required: true,
+        source: "manual",
+      },
+      {
+        key: "nova_vigencia_fim",
+        label: "Nova data final da vigência",
+        required: true,
+        source: "manual",
+      },
+    ]);
+  });
+
   it("lista todos os marcadores pendentes e remove duplicidades", () => {
     expect(
       extractPendingDocumentFields(

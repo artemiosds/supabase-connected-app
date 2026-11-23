@@ -120,14 +120,14 @@ describe("notification runtime configuration", () => {
     ).toEqual([]);
   });
 
-  it("requires delivery-provider settings before real sends", () => {
+  it("requires the app URL but resolves provider credentials per tenant", () => {
     expect(
       missingNotificationConfiguration({
         supabaseUrl: "https://project.supabase.co",
         serviceRoleKey: "local-test-service-role-key",
         dryRun: false,
       }),
-    ).toEqual(["RESEND_API_KEY", "EXPIRY_ALERTS_FROM", "APP_URL"]);
+    ).toEqual(["APP_URL"]);
   });
 
   it("still requires the database endpoint and service role for dry-runs", () => {

@@ -1,8 +1,7 @@
-import {
-  createClient,
-  type SupabaseClient,
-} from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
-import { sendResendEmail } from "../_shared/expiry-notification-provider.ts";
+import { smtpSender } from "../_shared/tenant-smtp.ts";
+import { renderInstitutionalEmail } from "../_shared/institutional-email.ts";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
+import { sendResendEmail, type ResendEmailInput } from "../_shared/expiry-notification-provider.ts";
 import {
   alertLevelForDays,
   daysUntilDate,
@@ -96,29 +95,43 @@ function alertLabel(level: ExpiryAlertLevel, days: number): string {
 }
 
 function makeEmail(task: ExpiryTask, appUrl: string) {
-  const supplier = task.supplierName
-    ? `<p><strong>Fornecedor:</strong> ${escapeHtml(task.supplierName)}</p>`
-    : "";
   const kind = task.entityType === "contract" ? "Contrato" : "Documento do fornecedor";
   const safeSubjectTitle = sanitizeEmailSubject(task.title);
-  const subject = `[Gestão de Fornecedores] ${kind} — ${safeSubjectTitle}`;
+  const subject = `[Primus Gestão] ${kind} — ${safeSubjectTitle}`;
   const destination = new URL(
     task.entityType === "contract" ? "/contratos" : "/documentos",
     appUrl,
   ).toString();
-  const html = [
-    "<!doctype html>",
-    '<html lang="pt-BR"><body style="font-family:Arial,sans-serif;color:#172033;line-height:1.5">',
-    `<h2>Alerta de vencimento — ${escapeHtml(task.tenantName)}</h2>`,
-    `<p><strong>${escapeHtml(kind)}:</strong> ${escapeHtml(task.title)}</p>`,
-    supplier,
-    `<p><strong>Vencimento:</strong> ${dateLabel(task.dueOn)}</p>`,
-    `<p><strong>Situação:</strong> ${escapeHtml(alertLabel(task.alertLevel, task.daysUntil))}</p>`,
-    "<p>Verifique a documentação e adote as providências administrativas necessárias.</p>",
-    `<p><a href="${escapeHtml(destination)}">Abrir Gestão de Fornecedores</a></p>`,
-    '<hr><p style="font-size:12px;color:#64748b">Mensagem automática da plataforma. Não responda a este e-mail.</p>',
-    "</body></html>",
-  ].join("");
+  const status = alertLabel(task.alertLevel, task.daysUntil);
+  const overdue = task.alertLevel === "overdue";
+  const today = task.alertLevel === "due";
+  const html = renderInstitutionalEmail({
+    issuer: task.tenantName,
+    category: "Comunicado de acompanhamento de vencimentos",
+    heading: overdue
+      ? "Prazo vencido: atenção necessária"
+      : today
+        ? "Vencimento previsto para hoje"
+        : "Aviso preventivo de vencimento",
+    preheader: `${kind}: ${task.title}. ${status}. Consulte os registros no Primus Gestão.`,
+    greeting: task.recipientName ? `Prezado(a) ${task.recipientName},` : undefined,
+    message: overdue
+      ? "Identificamos um registro com prazo já vencido. Solicitamos a verificação da situação e o encaminhamento das providências administrativas cabíveis."
+      : today
+        ? "Informamos que um registro alcança sua data prevista de vencimento hoje. Solicitamos atenção à documentação e às providências pertinentes."
+        : "Comunicamos preventivamente a proximidade do vencimento de um registro sob acompanhamento da Secretaria. Recomendamos a conferência antecipada para evitar pendências.",
+    fields: [
+      { label: "Tipo de registro", value: kind },
+      { label: "Identificação", value: task.title },
+      ...(task.supplierName ? [{ label: "Fornecedor", value: task.supplierName }] : []),
+      { label: "Data de vencimento", value: dateLabel(task.dueOn) },
+      { label: "Situação", value: status },
+    ],
+    action: { label: "Consultar registro no Primus Gestão", url: destination },
+    guidance:
+      "Este aviso é informativo. Confirme o estado atualizado do documento ou contrato no sistema antes de qualquer providência.",
+    tone: overdue ? "critical" : today ? "attention" : "standard",
+  });
   return { subject, html };
 }
 
@@ -276,6 +289,113 @@ function addCandidateTasks(
   }
 }
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function decryptTenantEmailSecret(ciphertext: string): Promise<string> {
+  const encodedKey = Deno.env.get("INTEGRATION_SECRETS_KEY") ?? "";
+  const keyBytes = decodeBase64(encodedKey);
+  if (keyBytes.length !== 32) throw new Error("INTEGRATION_SECRETS_KEY_INVALID");
+  const key = await crypto.subtle.importKey("raw", asArrayBuffer(keyBytes), "AES-GCM", false, [
+    "decrypt",
+  ]);
+  const [version, iv, encrypted] = ciphertext.split(".");
+  if (version !== "v1" || !iv || !encrypted) throw new Error("EMAIL_SECRET_INVALID");
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: asArrayBuffer(decodeBase64(iv)) },
+    key,
+    asArrayBuffer(decodeBase64(encrypted)),
+  );
+  return new TextDecoder().decode(plain);
+}
+
+async function tenantLogo(admin: AdminClient, tenantId: string) {
+  const { data } = await admin
+    .from("tenant_document_branding")
+    .select("logo_storage_path,logo_file_size,logo_mime")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!data) return undefined;
+  const path = data.logo_storage_path;
+  if (
+    typeof path !== "string" ||
+    !path.startsWith(tenantId + "/document-branding/") ||
+    path.includes("..") ||
+    !(data?.logo_file_size > 0 && data.logo_file_size <= 307200) ||
+    !["image/png", "image/jpeg"].includes(data.logo_mime)
+  )
+    return undefined;
+  const { data: file } = await admin.storage.from("gfs-private-documents").download(path);
+  if (!file || file.size !== data.logo_file_size) return undefined;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return [
+    {
+      filename: data.logo_mime === "image/png" ? "brasao.png" : "brasao.jpg",
+      content: btoa(binary),
+      content_id: "brasao",
+    },
+  ];
+}
+const logoHtml =
+  '<img src="cid:brasao" alt="Brasão da Secretaria" style="max-width:96px;max-height:80px">';
+
+type NotificationMessage = Omit<ResendEmailInput, "apiKey" | "from" | "replyTo">;
+
+async function emailProvider(admin: AdminClient, tenantId: string, apiKey: string, from: string) {
+  let effectiveApiKey = apiKey;
+  let effectiveFrom = from;
+  let effectiveReplyTo: string | undefined;
+  const { data: tenantEmail, error: tenantEmailError } = await admin
+    .from("tenant_integration_settings")
+    .select(
+      "email_provider,email_from_name,email_from_address,email_reply_to,email_api_secret_ciphertext,email_smtp_host,email_smtp_port,email_smtp_security,email_smtp_username,email_smtp_secret_ciphertext",
+    )
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (tenantEmailError) throw new Error("EMAIL_PROVIDER_CONFIGURATION");
+  if (tenantEmail?.email_provider === "smtp_gateway") {
+    return smtpSender(tenantEmail, decryptTenantEmailSecret);
+  }
+  if (tenantEmail?.email_provider === "resend") {
+    if (!tenantEmail.email_api_secret_ciphertext || !tenantEmail.email_from_address) {
+      throw new Error("EMAIL_PROVIDER_CONFIGURATION");
+    }
+    try {
+      effectiveApiKey = await decryptTenantEmailSecret(tenantEmail.email_api_secret_ciphertext);
+      effectiveFrom = tenantEmail.email_from_name
+        ? `${String(tenantEmail.email_from_name).replace(/[<>\r\n]/g, "")} <${tenantEmail.email_from_address}>`
+        : tenantEmail.email_from_address;
+      effectiveReplyTo =
+        typeof tenantEmail.email_reply_to === "string" ? tenantEmail.email_reply_to : undefined;
+    } catch {
+      console.error("Não foi possível abrir a credencial Resend da Secretaria", tenantId);
+      throw new Error("EMAIL_PROVIDER_CONFIGURATION");
+    }
+  }
+
+  if (!effectiveApiKey.trim() || !effectiveFrom.trim())
+    throw new Error("EMAIL_PROVIDER_CONFIGURATION");
+
+  return (message: NotificationMessage) =>
+    sendResendEmail({
+      ...message,
+      apiKey: effectiveApiKey,
+      from: effectiveFrom,
+      replyTo: effectiveReplyTo,
+    });
+}
+
 async function deliverTask(
   admin: AdminClient,
   task: ExpiryTask,
@@ -322,6 +442,22 @@ async function deliverTask(
   const claimed = Array.isArray(claimData) ? claimData[0] : claimData;
   if (claimError || !claimed) return "skipped";
 
+  async function failConfiguration(): Promise<"failed" | "uncertain"> {
+    const { data, error } = await admin.rpc("finish_expiry_notification_delivery", {
+      p_delivery_id: deliveryId,
+      p_status: "failed",
+      p_error_code: "EMAIL_PROVIDER_CONFIGURATION",
+    });
+    return error || data !== true ? "uncertain" : "failed";
+  }
+
+  let provider;
+  try {
+    provider = await emailProvider(admin, task.tenantId, apiKey, from);
+  } catch {
+    return failConfiguration();
+  }
+
   const email = makeEmail(task, appUrl);
   const idempotencyKey = expiryAlertIdempotencyKey({
     tenantId: task.tenantId,
@@ -332,12 +468,14 @@ async function deliverTask(
     dueOn: task.dueOn,
   });
 
-  const providerResult = await sendResendEmail({
-    apiKey,
-    from,
+  const attachments = await tenantLogo(admin, task.tenantId);
+  const providerResult = await provider({
     to: task.recipientEmail,
     subject: email.subject,
-    html: email.html,
+    attachments,
+    html: attachments
+      ? email.html.replace("<!--primus-institutional-logo-->", logoHtml)
+      : email.html,
     idempotencyKey,
   });
 
@@ -382,12 +520,14 @@ Deno.serve(async (request: Request) => {
   let batchSize = DEFAULT_BATCH_SIZE;
   let offset = 0;
   let dryRun = true;
+  let operational = false;
   try {
     const body = await request.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return jsonResponse({ error: "Corpo da solicitação inválido." }, 400);
     }
     dryRun = notificationDryRun(body.dry_run);
+    operational = body.channel === "operational";
     if (body?.batch_size !== undefined) {
       const value = Number(body.batch_size);
       if (!Number.isInteger(value) || value < 1 || value > MAX_BATCH_SIZE) {
@@ -439,6 +579,17 @@ Deno.serve(async (request: Request) => {
   const admin: AdminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
+
+  if (operational) {
+    try {
+      return jsonResponse(
+        await processOperational(admin, dryRun, appOrigin, resendApiKey, from),
+        200,
+      );
+    } catch {
+      return jsonResponse({ error: "Falha ao processar fila operacional." }, 500);
+    }
+  }
 
   const today = utcDateOnly(new Date());
   const horizon = new Date(`${today}T00:00:00.000Z`);
@@ -556,3 +707,193 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Falha ao processar notificações de vencimento." }, 500);
   }
 });
+
+async function processOperational(
+  admin: AdminClient,
+  dryRun: boolean,
+  origin: string,
+  key: string,
+  from: string,
+) {
+  const stats = { sent: 0, failed: 0, skipped: 0, uncertain: 0 };
+  if (!dryRun) {
+    const { data: interrupted, error } = await admin
+      .from("operational_email_events")
+      .update({ status: "uncertain", reason: "INTERRUPTED_DELIVERY" })
+      .eq("status", "sending")
+      .lt("claimed_at", new Date(Date.now() - 1800000).toISOString())
+      .select("id");
+    if (error) throw error;
+    stats.uncertain += interrupted.length;
+  }
+  if (
+    !dryRun &&
+    new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "America/Sao_Paulo" }).format(
+      new Date(),
+    ) === "Mon"
+  ) {
+    const { error } = await admin.rpc("queue_idle_process_emails");
+    if (error) throw error;
+  }
+  const { data: rows, error } = await admin
+    .from("operational_email_events")
+    .select("id,tenant_id,kind,entity_id,stage,recipient")
+    .eq("status", "pending")
+    .order("created_at")
+    .order("id")
+    .limit(25);
+  if (error) throw error;
+  if (dryRun) return { status: "dry_run", candidates: rows.length, ...stats };
+  for (const row of rows) {
+    const queue = () => admin.from("operational_email_events");
+    const { data: claim, error: claimError } = await queue()
+      .update({ status: "sending", claimed_at: new Date().toISOString() })
+      .eq("id", row.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (claimError) throw claimError;
+    if (!claim) continue;
+    let status: keyof typeof stats = "failed";
+    let reason: string | null = "LOOKUP_OR_CONFIGURATION";
+    try {
+      const contract = row.kind === "manager" || row.kind === "inspector";
+      const { data: tenant, error: te } = await admin
+        .from("tenants")
+        .select("name,enabled_modules")
+        .eq("id", row.tenant_id)
+        .eq("status", "active")
+        .in("commercial_status", ["active", "trial"])
+        .maybeSingle();
+      const { data: member, error: me } = await admin
+        .from("tenant_memberships")
+        .select("id")
+        .eq("tenant_id", row.tenant_id)
+        .eq("user_id", row.recipient)
+        .eq("status", "active")
+        .maybeSingle();
+      let query = admin
+        .from(contract ? "contracts" : "procurement_processes")
+        .select("number")
+        .eq("id", row.entity_id)
+        .eq("tenant_id", row.tenant_id);
+      if (contract) query = query.eq(row.kind + "_user_id", row.recipient);
+      else if (row.kind === "stage")
+        query = query.eq("stage", row.stage).eq("status", "em_andamento");
+      else
+        query = query
+          .eq("responsible_user_id", row.recipient)
+          .eq("status", "em_andamento")
+          .lte("updated_at", new Date(Date.now() - 8 * 86400000).toISOString());
+      const { data: entity, error: ee } = await query.maybeSingle();
+      if (te || me || ee) throw new Error("LOOKUP");
+      let eligible = !!(
+        tenant?.enabled_modules?.[contract ? "contratos" : "processos"] &&
+        member &&
+        entity
+      );
+      let taskId = "";
+      if (eligible && !contract) {
+        let items = admin
+          .from("process_items")
+          .select("id")
+          .eq("tenant_id", row.tenant_id)
+          .eq("process_id", row.entity_id);
+        items =
+          row.kind === "stage"
+            ? items
+                .eq("stage", row.stage)
+                .eq("responsible_user_id", row.recipient)
+                .eq("is_done", false)
+            : items.gt("updated_at", new Date(Date.now() - 8 * 86400000).toISOString());
+        const { data: list, error } = await items.order("id").limit(1);
+        if (error) throw error;
+        eligible = row.kind === "stage" ? !!list?.length : !list?.length;
+        taskId = list?.[0]?.id ?? "";
+      }
+      if (!eligible) {
+        status = "skipped";
+        reason = "NO_LONGER_ELIGIBLE";
+      } else {
+        const { data, error } = await admin.auth.admin.getUserById(row.recipient);
+        if (error) throw error;
+        if (!data.user.email_confirmed_at || !data.user.email) {
+          status = "skipped";
+          reason = "NO_VERIFIED_EMAIL";
+        } else {
+          const provider = await emailProvider(admin, row.tenant_id, key, from);
+          const title = contract
+            ? `Você foi designado ${row.kind === "manager" ? "Gestor" : "Fiscal"} do Contrato nº ${entity!.number}`
+            : row.kind === "stage"
+              ? `Nova tarefa no processo nº ${entity!.number}`
+              : `Processo nº ${entity!.number} sem movimentação há pelo menos 8 dias`;
+          const url = new URL(contract ? "/contratos" : "/processos", origin);
+          if (!contract) {
+            url.searchParams.set("processo", row.entity_id);
+            if (taskId) url.hash = "tarefa-" + taskId;
+          }
+          const subject = sanitizeEmailSubject(title + " — " + tenant!.name);
+          const attachments = await tenantLogo(admin, row.tenant_id);
+          const operationalMessage = contract
+            ? "Informamos sua designação para uma função de acompanhamento contratual. Consulte o contrato e suas atribuições no sistema."
+            : row.kind === "stage"
+              ? "Uma nova atividade requer seu acompanhamento no processo administrativo indicado. Consulte os registros e verifique as próximas providências."
+              : "O processo indicado permanece sem movimentação registrada há pelo menos oito dias. Recomendamos revisar a situação e avaliar as providências necessárias.";
+          const operationalHtml = renderInstitutionalEmail({
+            issuer: tenant!.name,
+            category: contract
+              ? "Designação para acompanhamento contratual"
+              : row.kind === "stage"
+                ? "Nova atividade administrativa"
+                : "Acompanhamento de processo",
+            heading: contract
+              ? "Nova designação de responsabilidade"
+              : row.kind === "stage"
+                ? "Uma atividade requer sua atenção"
+                : "Processo sem movimentação recente",
+            preheader: title,
+            message: operationalMessage,
+            fields: [
+              { label: contract ? "Contrato" : "Processo", value: `Nº ${entity!.number}` },
+              { label: "Ocorrência", value: title },
+            ],
+            action: { label: "Consultar no Primus Gestão", url: url.href },
+            guidance:
+              "Acompanhe o registro oficial no sistema. Este comunicado não substitui os atos e procedimentos administrativos aplicáveis.",
+            tone: row.kind === "idle" ? "attention" : "standard",
+          });
+          const result = await provider({
+            attachments,
+            to: data.user.email,
+            subject,
+            html: attachments
+              ? operationalHtml.replace("<!--primus-institutional-logo-->", logoHtml)
+              : operationalHtml,
+            idempotencyKey: "operational-" + row.id,
+          });
+          status =
+            result.status === "accepted"
+              ? "sent"
+              : result.status === "uncertain"
+                ? "uncertain"
+                : "failed";
+          reason =
+            result.status === "rejected"
+              ? result.errorCode
+              : result.status === "uncertain"
+                ? "PROVIDER_UNCERTAIN"
+                : null;
+        }
+      }
+    } catch {
+      /* Persist only the stable diagnostic code. */
+    }
+    const { error: finish } = await queue()
+      .update({ status, reason })
+      .eq("id", row.id)
+      .eq("status", "sending");
+    if (finish) throw finish;
+    stats[status]++;
+  }
+  return { status: "processed", ...stats, has_more: rows.length === 25 };
+}

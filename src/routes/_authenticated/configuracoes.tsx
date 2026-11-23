@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Building2, FileText, Loader2, Plug, Save, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,9 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { detectLogoMime, imageSize, MAX_LOGO_BYTES } from "@/lib/docx-engine";
 import { isMissingDocumentBrandingTable } from "@/lib/document-branding";
+import { TenantIntegrationsSettings } from "@/components/settings/tenant-integrations-settings";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -75,7 +84,37 @@ function timbradoVazio(nome: string): DadosTimbrado {
   };
 }
 
+type CategoriaConfig = "conta" | "organizacao" | "documentos" | "integracoes";
+
+const CATEGORIAS: {
+  id: CategoriaConfig;
+  titulo: string;
+  descricao: string;
+  icone: typeof UserRound;
+}[] = [
+  { id: "conta", titulo: "Minha conta", descricao: "Perfil e acesso", icone: UserRound },
+  {
+    id: "organizacao",
+    titulo: "Organização",
+    descricao: "Dados cadastrais da Secretaria",
+    icone: Building2,
+  },
+  {
+    id: "documentos",
+    titulo: "Documentos oficiais",
+    descricao: "Timbrado, margens e paginação",
+    icone: FileText,
+  },
+  {
+    id: "integracoes",
+    titulo: "Integrações e LGPD",
+    descricao: "E-mail, Google Drive e privacidade",
+    icone: Plug,
+  },
+];
+
 function Configuracoes() {
+  const [categoria, setCategoria] = useState<CategoriaConfig>("conta");
   const { session } = useAuth();
   const { selecionado } = useTenant();
   const [nome, setNome] = useState("");
@@ -424,12 +463,20 @@ function Configuracoes() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Configurações</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Sua conta e os dados cadastrais da Secretaria selecionada.
-        </p>
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Configurações</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Sua conta, os dados da Secretaria, o timbrado e as integrações em um só lugar.
+          </p>
+        </div>
+        <div className="min-w-0 rounded-md border bg-card px-3 py-2 text-sm sm:max-w-xs">
+          <p className="text-xs text-muted-foreground">Secretaria selecionada</p>
+          <p className="truncate font-medium text-foreground">
+            {selecionado?.nome ?? "Nenhuma selecionada"}
+          </p>
+        </div>
       </div>
 
       {aviso && (
@@ -439,352 +486,428 @@ function Configuracoes() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Perfil pessoal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={aoSalvarPerfil} className="max-w-sm space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nome-perfil">Nome de exibição</Label>
-              <Input
-                id="nome-perfil"
-                required
-                minLength={1}
-                maxLength={160}
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Como seu nome aparece na plataforma"
-              />
-            </div>
-            <Button type="submit" disabled={salvandoPerfil}>
-              {salvandoPerfil ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}{" "}
-              Salvar perfil
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="sm:hidden">
+        <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaConfig)}>
+          <SelectTrigger aria-label="Categoria de configurações">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIAS.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.titulo}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Dados cadastrais da Secretaria</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {selecionado?.nome ?? "Nenhuma Secretaria selecionada"}
-          </p>
-        </CardHeader>
-        <CardContent>
-          {!selecionado ? (
-            <Alert>
-              <AlertTitle>Selecione uma Secretaria</AlertTitle>
-              <AlertDescription>
-                Os dados institucionais são configurados separadamente para cada organização.
-              </AlertDescription>
-            </Alert>
-          ) : loadingSecretaria ? (
-            <div className="flex h-28 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </div>
-          ) : (
-            <form onSubmit={aoSalvarSecretaria} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="tenant-cnpj">CNPJ</Label>
-                  <Input
-                    id="tenant-cnpj"
-                    maxLength={20}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.cnpj}
-                    onChange={(e) => atualizarSecretaria("cnpj", formatarCnpj(e.target.value))}
-                    placeholder="00.000.000/0000-00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tenant-email">E-mail institucional</Label>
-                  <Input
-                    id="tenant-email"
-                    type="email"
-                    maxLength={254}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.contact_email}
-                    onChange={(e) => atualizarSecretaria("contact_email", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tenant-phone">Telefone</Label>
-                  <Input
-                    id="tenant-phone"
-                    maxLength={40}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.contact_phone}
-                    onChange={(e) => atualizarSecretaria("contact_phone", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tenant-state">UF</Label>
-                  <Input
-                    id="tenant-state"
-                    maxLength={2}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.state}
-                    onChange={(e) => atualizarSecretaria("state", e.target.value.toUpperCase())}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="tenant-municipality">Município</Label>
-                  <Input
-                    id="tenant-municipality"
-                    maxLength={120}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.municipality}
-                    onChange={(e) => atualizarSecretaria("municipality", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="tenant-street">Endereço</Label>
-                  <Input
-                    id="tenant-street"
-                    maxLength={200}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosSecretaria.street}
-                    onChange={(e) => atualizarSecretaria("street", e.target.value)}
-                  />
-                </div>
-              </div>
-              {podeEditarSecretaria ? (
-                <Button type="submit" disabled={salvandoSecretaria}>
-                  {salvandoSecretaria ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}{" "}
-                  Salvar dados da Secretaria
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Seu papel permite consultar, mas não editar os dados institucionais desta
-                  Secretaria.
-                </p>
-              )}
-            </form>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 sm:grid-cols-[200px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
+        <nav aria-label="Categorias de configurações" className="hidden sm:block">
+          <ul className="sticky top-4 space-y-1">
+            {CATEGORIAS.map((c) => {
+              const Icone = c.icone;
+              const ativo = categoria === c.id;
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => setCategoria(c.id)}
+                    aria-current={ativo ? "page" : undefined}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors",
+                      ativo
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icone className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{c.titulo}</span>
+                      <span className="block text-xs text-muted-foreground">{c.descricao}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Timbrado dos documentos oficiais</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Brasão, cabeçalho, rodapé, margens e paginação usados na geração de Word e PDF desta
-            Secretaria.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {!selecionado ? (
-            <Alert>
-              <AlertTitle>Selecione uma Secretaria</AlertTitle>
-              <AlertDescription>
-                O timbrado é configurado separadamente para cada organização.
-              </AlertDescription>
-            </Alert>
-          ) : loadingTimbrado ? (
-            <div className="flex h-28 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </div>
-          ) : erroTimbrado ? (
-            <Alert>
-              <AlertTitle>Configuração pendente ou indisponível</AlertTitle>
-              <AlertDescription>{erroTimbrado}</AlertDescription>
-            </Alert>
-          ) : (
-            <form onSubmit={aoSalvarTimbrado} className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="timbrado-titulo">Nome no cabeçalho</Label>
-                  <Input
-                    id="timbrado-titulo"
-                    maxLength={180}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosTimbrado.header_title}
-                    onChange={(event) =>
-                      setDadosTimbrado((current) => ({
-                        ...current,
-                        header_title: event.target.value,
-                      }))
-                    }
-                    placeholder={selecionado.nome}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="timbrado-subtitulo">Subtítulo institucional</Label>
-                  <Input
-                    id="timbrado-subtitulo"
-                    maxLength={240}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosTimbrado.header_subtitle}
-                    onChange={(event) =>
-                      setDadosTimbrado((current) => ({
-                        ...current,
-                        header_subtitle: event.target.value,
-                      }))
-                    }
-                    placeholder="Prefeitura Municipal, secretaria ou departamento"
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="timbrado-rodape">Rodapé</Label>
-                  <Input
-                    id="timbrado-rodape"
-                    maxLength={500}
-                    disabled={!podeEditarSecretaria}
-                    value={dadosTimbrado.footer_text}
-                    onChange={(event) =>
-                      setDadosTimbrado((current) => ({
-                        ...current,
-                        footer_text: event.target.value,
-                      }))
-                    }
-                    placeholder="Endereço institucional, telefone ou informação oficial"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="timbrado-brasao">
-                  Brasão ou logotipo institucional (PNG/JPEG, até 300 KB)
-                </Label>
-                <Input
-                  id="timbrado-brasao"
-                  type="file"
-                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                  disabled={!podeEditarSecretaria}
-                  onChange={(event) => {
-                    void aoSelecionarBrasao(event.target.files?.[0]);
-                    event.currentTarget.value = "";
-                  }}
-                />
-                <div className="flex flex-wrap items-center gap-4">
-                  {logoPreviewUrl && (
-                    <img
-                      src={logoPreviewUrl}
-                      alt="Prévia do brasão institucional"
-                      className="h-20 max-w-40 rounded-md border bg-white p-2 object-contain"
+        <div className="min-w-0">
+          <div className="mb-4 border-b pb-4" aria-live="polite">
+            <h2 className="text-lg font-semibold text-foreground">
+              {CATEGORIAS.find((item) => item.id === categoria)?.titulo}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {CATEGORIAS.find((item) => item.id === categoria)?.descricao}
+            </p>
+          </div>
+          <section hidden={categoria !== "conta"} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Perfil pessoal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={aoSalvarPerfil} className="max-w-sm space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome-perfil">Nome de exibição</Label>
+                    <Input
+                      id="nome-perfil"
+                      required
+                      minLength={1}
+                      maxLength={160}
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Como seu nome aparece na plataforma"
                     />
-                  )}
-                  <div className="min-w-0 flex-1 text-sm text-muted-foreground">
-                    {arquivoBrasao?.name ??
-                      dadosTimbrado.logo_file_name ??
-                      "Nenhum brasão cadastrado"}
                   </div>
-                  {(dadosTimbrado.logo_storage_path || arquivoBrasao) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!podeEditarSecretaria}
-                      onClick={() => {
-                        setArquivoBrasao(null);
-                        setRemoverBrasao(true);
-                        setLogoPreviewUrl(null);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" /> Remover brasão
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  O arquivo fica em armazenamento privado, separado por Secretaria. Ele não recebe
-                  link público.
+                  <Button type="submit" disabled={salvandoPerfil}>
+                    {salvandoPerfil ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}{" "}
+                    Salvar perfil
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados da conta</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Informações da sessão atualmente autenticada.
                 </p>
-              </div>
+              </CardHeader>
+              <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-foreground">E-mail de acesso</p>
+                  <p className="break-words text-muted-foreground">
+                    {session?.user.email ?? "Não disponível"}
+                  </p>
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-foreground">Organização selecionada</p>
+                  <p className="break-words text-muted-foreground">
+                    {selecionado?.nome ?? "Nenhuma"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
 
-              <div className="space-y-2">
-                <Label>Margens de impressão (mm)</Label>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {(
-                    [
-                      ["Superior", "margin_top_mm"],
-                      ["Inferior", "margin_bottom_mm"],
-                      ["Esquerda", "margin_left_mm"],
-                      ["Direita", "margin_right_mm"],
-                    ] as const
-                  ).map(([label, key]) => (
-                    <div key={key} className="space-y-1">
-                      <Label htmlFor={`timbrado-${key}`}>{label}</Label>
+          <section hidden={categoria !== "organizacao"} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados cadastrais da Secretaria</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {selecionado?.nome ?? "Nenhuma Secretaria selecionada"}
+                </p>
+              </CardHeader>
+              <CardContent>
+                {!selecionado ? (
+                  <Alert>
+                    <AlertTitle>Selecione uma Secretaria</AlertTitle>
+                    <AlertDescription>
+                      Os dados institucionais são configurados separadamente para cada organização.
+                    </AlertDescription>
+                  </Alert>
+                ) : loadingSecretaria ? (
+                  <div className="flex h-28 items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : (
+                  <form onSubmit={aoSalvarSecretaria} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="tenant-cnpj">CNPJ</Label>
+                        <Input
+                          id="tenant-cnpj"
+                          maxLength={20}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.cnpj}
+                          onChange={(e) =>
+                            atualizarSecretaria("cnpj", formatarCnpj(e.target.value))
+                          }
+                          placeholder="00.000.000/0000-00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tenant-email">E-mail institucional</Label>
+                        <Input
+                          id="tenant-email"
+                          type="email"
+                          maxLength={254}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.contact_email}
+                          onChange={(e) => atualizarSecretaria("contact_email", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tenant-phone">Telefone</Label>
+                        <Input
+                          id="tenant-phone"
+                          maxLength={40}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.contact_phone}
+                          onChange={(e) => atualizarSecretaria("contact_phone", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tenant-state">UF</Label>
+                        <Input
+                          id="tenant-state"
+                          maxLength={2}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.state}
+                          onChange={(e) =>
+                            atualizarSecretaria("state", e.target.value.toUpperCase())
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="tenant-municipality">Município</Label>
+                        <Input
+                          id="tenant-municipality"
+                          maxLength={120}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.municipality}
+                          onChange={(e) => atualizarSecretaria("municipality", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="tenant-street">Endereço</Label>
+                        <Input
+                          id="tenant-street"
+                          maxLength={200}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosSecretaria.street}
+                          onChange={(e) => atualizarSecretaria("street", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {podeEditarSecretaria ? (
+                      <Button type="submit" disabled={salvandoSecretaria}>
+                        {salvandoSecretaria ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}{" "}
+                        Salvar dados da Secretaria
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Seu papel permite consultar, mas não editar os dados institucionais desta
+                        Secretaria.
+                      </p>
+                    )}
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section hidden={categoria !== "documentos"} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Timbrado dos documentos oficiais</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Brasão, cabeçalho, rodapé, margens e paginação usados na geração de Word e PDF
+                  desta Secretaria.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {!selecionado ? (
+                  <Alert>
+                    <AlertTitle>Selecione uma Secretaria</AlertTitle>
+                    <AlertDescription>
+                      O timbrado é configurado separadamente para cada organização.
+                    </AlertDescription>
+                  </Alert>
+                ) : loadingTimbrado ? (
+                  <div className="flex h-28 items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : erroTimbrado ? (
+                  <Alert>
+                    <AlertTitle>Configuração pendente ou indisponível</AlertTitle>
+                    <AlertDescription>{erroTimbrado}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <form onSubmit={aoSalvarTimbrado} className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="timbrado-titulo">Nome no cabeçalho</Label>
+                        <Input
+                          id="timbrado-titulo"
+                          maxLength={180}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosTimbrado.header_title}
+                          onChange={(event) =>
+                            setDadosTimbrado((current) => ({
+                              ...current,
+                              header_title: event.target.value,
+                            }))
+                          }
+                          placeholder={selecionado.nome}
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="timbrado-subtitulo">Subtítulo institucional</Label>
+                        <Input
+                          id="timbrado-subtitulo"
+                          maxLength={240}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosTimbrado.header_subtitle}
+                          onChange={(event) =>
+                            setDadosTimbrado((current) => ({
+                              ...current,
+                              header_subtitle: event.target.value,
+                            }))
+                          }
+                          placeholder="Prefeitura Municipal, secretaria ou departamento"
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="timbrado-rodape">Rodapé</Label>
+                        <Input
+                          id="timbrado-rodape"
+                          maxLength={500}
+                          disabled={!podeEditarSecretaria}
+                          value={dadosTimbrado.footer_text}
+                          onChange={(event) =>
+                            setDadosTimbrado((current) => ({
+                              ...current,
+                              footer_text: event.target.value,
+                            }))
+                          }
+                          placeholder="Endereço institucional, telefone ou informação oficial"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="timbrado-brasao">
+                        Brasão ou logotipo institucional (PNG/JPEG, até 300 KB)
+                      </Label>
                       <Input
-                        id={`timbrado-${key}`}
-                        type="number"
-                        min={10}
-                        max={50}
-                        step={1}
+                        id="timbrado-brasao"
+                        type="file"
+                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                         disabled={!podeEditarSecretaria}
-                        value={dadosTimbrado[key]}
+                        onChange={(event) => {
+                          void aoSelecionarBrasao(event.target.files?.[0]);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                      <div className="flex flex-wrap items-center gap-4">
+                        {logoPreviewUrl && (
+                          <img
+                            src={logoPreviewUrl}
+                            alt="Prévia do brasão institucional"
+                            className="h-20 max-w-40 rounded-md border bg-white p-2 object-contain"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1 text-sm text-muted-foreground">
+                          {arquivoBrasao?.name ??
+                            dadosTimbrado.logo_file_name ??
+                            "Nenhum brasão cadastrado"}
+                        </div>
+                        {(dadosTimbrado.logo_storage_path || arquivoBrasao) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!podeEditarSecretaria}
+                            onClick={() => {
+                              setArquivoBrasao(null);
+                              setRemoverBrasao(true);
+                              setLogoPreviewUrl(null);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" /> Remover brasão
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        O arquivo fica em armazenamento privado, separado por Secretaria. Ele não
+                        recebe link público.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Margens de impressão (mm)</Label>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {(
+                          [
+                            ["Superior", "margin_top_mm"],
+                            ["Inferior", "margin_bottom_mm"],
+                            ["Esquerda", "margin_left_mm"],
+                            ["Direita", "margin_right_mm"],
+                          ] as const
+                        ).map(([label, key]) => (
+                          <div key={key} className="space-y-1">
+                            <Label htmlFor={`timbrado-${key}`}>{label}</Label>
+                            <Input
+                              id={`timbrado-${key}`}
+                              type="number"
+                              min={10}
+                              max={50}
+                              step={1}
+                              disabled={!podeEditarSecretaria}
+                              value={dadosTimbrado[key]}
+                              onChange={(event) =>
+                                setDadosTimbrado((current) => ({
+                                  ...current,
+                                  [key]: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={dadosTimbrado.show_page_numbers}
+                        disabled={!podeEditarSecretaria}
                         onChange={(event) =>
                           setDadosTimbrado((current) => ({
                             ...current,
-                            [key]: Number(event.target.value),
+                            show_page_numbers: event.target.checked,
                           }))
                         }
                       />
-                    </div>
-                  ))}
-                </div>
-              </div>
+                      Mostrar número e total de páginas
+                    </label>
 
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={dadosTimbrado.show_page_numbers}
-                  disabled={!podeEditarSecretaria}
-                  onChange={(event) =>
-                    setDadosTimbrado((current) => ({
-                      ...current,
-                      show_page_numbers: event.target.checked,
-                    }))
-                  }
-                />
-                Mostrar número e total de páginas
-              </label>
+                    {podeEditarSecretaria ? (
+                      <Button type="submit" disabled={salvandoTimbrado}>
+                        {salvandoTimbrado ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}{" "}
+                        Salvar timbrado
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Seu papel permite consultar, mas não editar o timbrado desta Secretaria.
+                      </p>
+                    )}
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </section>
 
-              {podeEditarSecretaria ? (
-                <Button type="submit" disabled={salvandoTimbrado}>
-                  {salvandoTimbrado ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}{" "}
-                  Salvar timbrado
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Seu papel permite consultar, mas não editar o timbrado desta Secretaria.
-                </p>
-              )}
-            </form>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Conta</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div>
-            <p className="font-medium text-foreground">E-mail de acesso</p>
-            <p className="text-muted-foreground">{session?.user.email}</p>
-          </div>
-          <Separator />
-          <div>
-            <p className="font-medium text-foreground">Organização selecionada</p>
-            <p className="text-muted-foreground">{selecionado?.nome ?? "Nenhuma"}</p>
-          </div>
-        </CardContent>
-      </Card>
+          <section hidden={categoria !== "integracoes"} className="space-y-6">
+            <TenantIntegrationsSettings />
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

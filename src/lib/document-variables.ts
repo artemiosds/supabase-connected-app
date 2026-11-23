@@ -102,6 +102,62 @@ export const DOCUMENT_TEMPLATE_VARIABLES: readonly DocumentVariableDefinition[] 
   { key: "fiscal_contrato", label: "Fiscal do contrato", source: "contract" },
   { key: "portaria_fiscal", label: "Portaria de designação do fiscal", source: "contract" },
   {
+    key: "fundamento_prorrogacao",
+    label: "Fundamento legal e cláusula contratual",
+    source: "manual",
+  },
+  { key: "natureza_continuada", label: "Natureza contínua do objeto", source: "manual" },
+  {
+    key: "previsao_edital_contrato",
+    label: "Previsão no edital e no contrato",
+    source: "manual",
+  },
+  { key: "relatorio_execucao", label: "Relatório de execução e fiscalização", source: "manual" },
+  {
+    key: "justificativa_interesse_publico",
+    label: "Justificativa do interesse público",
+    source: "manual",
+  },
+  { key: "analise_vantajosidade", label: "Análise de vantajosidade e preços", source: "manual" },
+  {
+    key: "manifestacao_contratada",
+    label: "Manifestação expressa da contratada",
+    source: "manual",
+  },
+  {
+    key: "habilitacao_atualizada",
+    label: "Comprovação de habilitação atualizada",
+    source: "manual",
+  },
+  {
+    key: "autorizacao_autoridade",
+    label: "Autorização prévia da autoridade competente",
+    source: "manual",
+  },
+  {
+    key: "dotacao_orcamentaria_prorrogacao",
+    label: "Disponibilidade orçamentária",
+    source: "manual",
+  },
+  { key: "prazo_prorrogacao", label: "Prazo da prorrogação", source: "manual" },
+  { key: "nova_vigencia_fim", label: "Nova data final da vigência", source: "manual" },
+  {
+    key: "valor_periodo_prorrogado",
+    label: "Valor para o período prorrogado",
+    source: "manual",
+  },
+  {
+    key: "parecer_juridico",
+    label: "Parecer jurídico ou referencial, conforme regra local",
+    source: "manual",
+  },
+  {
+    key: "representantes_partes",
+    label: "Representantes e qualificação das partes",
+    source: "manual",
+  },
+  { key: "local_data_assinatura", label: "Local e data da assinatura", source: "manual" },
+  {
     key: "quantitativos",
     label: "Itens, quantidades e memória de cálculo",
     source: "process.items",

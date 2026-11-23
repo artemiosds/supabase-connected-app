@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import "./primus-specular.css";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -34,13 +35,63 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Desative somente quando o componente estiver dentro de uma animação própria. */
+  specular?: boolean;
 }
 
+/** Movimento baseado no SpecularButton do React Bits, mantendo o elemento e o evento nativos. */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      specular = true,
+      onPointerMove,
+      onPointerLeave,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
+    const actualVariant = variant ?? "default";
+    // Todos os botões visuais recebem o efeito; links textuais podem optar por sair.
+    const specularEnabled = specular && actualVariant !== "link";
+
+    function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+      if (specularEnabled && (event.pointerType === "mouse" || event.pointerType === "pen")) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+          const y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+          event.currentTarget.style.setProperty("--primus-specular-x", `${x}%`);
+          event.currentTarget.style.setProperty("--primus-specular-y", `${y}%`);
+        }
+      }
+      onPointerMove?.(event);
+    }
+
+    function handlePointerLeave(event: React.PointerEvent<HTMLButtonElement>) {
+      if (specularEnabled) {
+        event.currentTarget.style.removeProperty("--primus-specular-x");
+        event.currentTarget.style.removeProperty("--primus-specular-y");
+      }
+      onPointerLeave?.(event);
+    }
+
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          specularEnabled && "primus-specular-button",
+        )}
+        ref={ref}
+        data-specular-variant={specularEnabled ? actualVariant : undefined}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        {...props}
+      />
     );
   },
 );

@@ -6,9 +6,11 @@ export type ResendDeliveryResult =
 export type ResendEmailInput = {
   apiKey: string;
   from: string;
+  replyTo?: string;
   to: string;
   subject: string;
   html: string;
+  attachments?: { filename: string; content: string; content_id: string }[];
   idempotencyKey: string;
 };
 
@@ -37,9 +39,11 @@ export async function sendResendEmail(
       },
       body: JSON.stringify({
         from: input.from,
+        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         to: [input.to],
         subject: input.subject,
         html: input.html,
+        attachments: input.attachments,
       }),
     });
   } catch {

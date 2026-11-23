@@ -1,25 +1,108 @@
 # Checklist GO / NO-GO — Gestão de Fornecedores da Saúde
 
-## Estado consolidado mais recente — 16/11/2026
+## Preparação do Assistente de IA por Secretaria — 22/11/2026
 
-**Decisão: NO-GO para produção e comercialização.** As evidências automatizadas registradas anteriormente passaram em ambiente descartável. O `main` atual ainda precisa de CI no novo commit. Ainda não há backup real recuperável do SMS2, envio real de e-mail, homologação visual com documentos oficiais nem aceite formal da Secretaria.
+- Implementação integrada à `main` no commit `b50245ff96e94b035e66bf175524d0290f6a2a36`. O Administrador Master ativo (`platform_admins`) é o único perfil autorizado a configurar o provedor global e habilitar capacidades por Secretaria.
+- Migration `20261122190000_platform_ai_configuration` aplicada ao SMS2 e reconciliada com o timestamp versionado. Tabelas `platform_ai_configuration` e `tenant_ai_settings` estão com RLS habilitada e forçada; sem privilégios de leitura para `anon`/`authenticated`, acesso operacional somente por `service_role`. Chave de API armazenada exclusivamente no Supabase Vault.
+- Edge Functions `platform-ai-configuration` e `primus-ai` estão ativas com JWT obrigatório. Validação pós-aplicação confirmou as RPCs de segredo sem execução por `anon`/`authenticated` e executáveis por `service_role`.
+- CI pós-merge aprovada no commit: [validação completa](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113361), [E2E multi-tenant](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113417) e [formatação](https://github.com/artemiosds/supabase-connected-app/actions/runs/45080113372).
+- **Pendente de ação humana:** nenhuma chave/modelo foi configurada. O Administrador Master deve acessar **Admin Master > IA**, cadastrar a credencial aprovada pelo órgão, testar a conexão, validar privacidade/retenção com o provedor, então ativar globalmente e liberar capacidades por Secretaria mediante aceite institucional. Nenhum dado fictício foi inserido no SMS2.
+- Capacidades iniciais: assistente administrativo, rascunhos DFD/ETP/TR/mapa de riscos, análise das cotações existentes, leitura de metadados de certidões, acompanhamento contratual, apoio ao recebimento, organização de tarefas e rascunhos de e-mail. Sem OCR de arquivos privados, pesquisa automática no PNCP/Compras.gov.br, gravações operacionais, aprovações, assinaturas ou envio automático de e-mail. Ver [procedimento de IA](IA-OPERACAO-E-SEGURANCA.md).
 
-### Repositório, banco e segurança
+## Homologação técnica do mapa — 19/11/2026 (CI aprovada)
 
-- Repositório: `artemiosds/supabase-connected-app`, branch `main`; commit atual conferido em 16/11/2026: `4f3a5fc6b0a78c5d60badbbff5648238b4de1dae`.
-- Última reconciliação remota registrada: **89 migrations no SMS2** até `20261113194249`, sem diferenças naquele momento. O `main` atual contém **90 arquivos de migration**, incluindo `20261116120000_lock_generated_document_content_during_review.sql`. A aplicação dessa 90ª migration ao SMS2 ainda não foi confirmada; a paridade atual está pendente.
-- Schema `public`: **40 tabelas, 40/40 com RLS, 29 com FORCE RLS**, 0 views públicas e 0 tabelas com SELECT direto para `anon`.
-- As 35 funções públicas `SECURITY DEFINER` executáveis por `authenticated` têm `search_path=''`; 0 executáveis por `anon` e 0 com EXECUTE herdado de `PUBLIC`. O Security Advisor continua exibindo 35 avisos porque são RPCs expostas intencionalmente a usuários autenticados; não fazer revogação em massa, pois as funções verificam autorização internamente.
-- Advisor de saúde: sem findings. Advisor de performance: 81 índices sem uso observado (INFO); não removê-los sem histórico de carga e benchmark.
-- Security Advisor também mantém 1 aviso de proteção contra senhas vazadas. Essa proteção foi dispensada pelo responsável do projeto; manter o plano Free, sem upgrade nem tentativa de contorno.
+- Código validado em `3887007bf64d2754df43d86b64fce253324880b6`. [E2E 44527588758](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588758) concluiu a gravação normativa com auditoria, aprovação do preço, criação do mapa pelo motor nativo, revisão por usuário distinto, assinatura simples, A4 paisagem e SHA-256 do PDF arquivado. O job de aplicação e o de segurança do banco também passaram: [44527588706](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588706).
+- Foram corrigidos três bloqueios encontrados pelo E2E: identidade da auditoria do processo, conflito da geração nativa com o validador de modelos e leitura restrita do status de aprovação pela função de assinatura.
+- **Rollout pendente:** 118 migrations no repositório e 115 no SMS2. Aplicar exclusivamente as versões `20261119120941`, `20261119124309` e `20261119124921`, nesta ordem, após a prova de restauração e a janela de implantação. Não executar `db push` indiscriminado. A consulta somente leitura confirmou que as três correções ainda não estão presentes no SMS2.
+- **Aceite institucional pendente:** responsável autorizado deve registrar enquadramento normativo e aprovação de preços de processo real, conferir a identidade visual e valores do mapa, submeter à revisão independente, assinar se autorizado e verificar o SHA-256 do PDF arquivado. Registrar processo, versão, data, responsável, evidência de integridade e decisão; não publicar dados pessoais ou segredos. Nenhum dado sintético foi gravado no SMS2.
 
-### Últimas evidências automatizadas registradas — commit `44029d506284f56becb54085fdc396f360ae2f28`
+O teste automatizado está aprovado; a liberação operacional permanece pendente dos gates de recuperação e aceite real.
 
-- **Validação, build, TypeScript, Deno, lint, migrations em Supabase local descartável e restauração sintética:** [run 43857620006](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857620006) — jobs `validate` e `database-security` concluídos com sucesso.
+## Complemento de homologação do mapa — 19/11/2026
+
+- Corrigida a abertura do mapa na aba de documentos gerados e preservada a orientação A4 paisagem no GED. O cenário de navegador agora percorre validação normativa, aprovação do preço, aprovação documental por outro usuário, assinatura simples e conferência do SHA-256 do PDF final.
+- O primeiro ensaio identificou um erro do gatilho de auditoria na gravação do enquadramento normativo. A migration incremental `20261119120941_fix_procurement_compliance_audit_identity.sql` corrige o identificador do evento para usar o processo. Validar na CI e programar a aplicação controlada no SMS2; não reaplicar a história existente.
+- A homologação com documento oficial, norma aplicável e responsáveis reais do órgão continua pendente de aceite humano. A execução automatizada usa exclusivamente dados sintéticos em ambiente descartável.
+
+## Atualização técnica — 19/11/2026
+
+**Decisão operacional: PENDENTE DE HOMOLOGAÇÃO.** O mapa comparativo tem cotação com rastreabilidade da fonte, frete rateado, seleção de referência, aprovação do preço por item, justificativa excepcional quando há menos de três preços e validação normativa por processo. A exportação é identificada como rascunho enquanto essas validações estiverem pendentes. O fluxo documental exige aprovação independente antes da assinatura eletrônica simples; o PDF final é armazenado no bucket privado e o download confere seu SHA-256. Isso não substitui o aceite jurídico e visual da Secretaria nem equivale a uma assinatura qualificada ICP-Brasil.
+
+- Repositório `artemiosds/supabase-connected-app`, branch `main`: a correção do seletor de cotação no E2E está em `795a9f9862e4ac8c3d9cc8060d2abbb7cd86953d`.
+- Migrations: **115 arquivos SQL locais e 115 versões registradas no SMS2**, com os mesmos identificadores na conferência somente-leitura. As quatro divergências históricas de nomes já estão reconciliadas. Nenhuma migration foi reaplicada e nenhum dado sintético foi inserido no SMS2.
+- E2E autenticado com duas Secretarias, cotações, mapa e contrato: [run 44516988969](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988969) — aprovado em banco descartável. Formatação: [run 44516988924](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988924) — aprovada. Validação de aplicação (`tsgo --noEmit`, testes e build) e segurança do banco local: [run 44516988948](https://github.com/artemiosds/supabase-connected-app/actions/runs/44516988948) — ambos os jobs aprovados.
+- A prova automatizada não cobre a aprovação do preço e a assinatura do mapa pela interface na mesma sessão; o banco contém regressões pgTAP para guardas de aprovação, contexto normativo, fingerprint da pesquisa e finalização de assinatura. A assinatura do arquivo oficial ainda depende de homologação com documento e atores reais.
+- Pendente de ação do órgão: validar fontes e enquadramento legal do processo, aprovar os valores, conferir o PDF/DOCX com timbrado e colher assinatura/aceite por responsáveis autorizados. As demais frentes de e-mail, Drive opcional e restore continuam com os bloqueios operacionais descritos abaixo.
+
+As seções anteriores são registros históricos; seus números de migrations, SHAs e status de CI não representam o estado de 19/11.
+
+## Decisão operacional — 18/11/2026
+
+**Pendente de homologação.** Base de código `e2d2725`. E2E de isolamento aprovado (run 44307307586); formatação aprovada (44307307564). Registrar o resultado do workflow 44307307620 separadamente.
+
+- [ ] Documentos: validar modelo oficial com brasão, margens e rodapé. Conferir tags fragmentadas, campos ausentes e valores de 31+ itens no DOCX e PDF. O teste automatizado com 90 itens verifica multipaginação e dimensões da primeira página; a repetição visual do cabeçalho em cada continuação exige evidência adicional.
+- [ ] E-mail: validar DNS e STARTTLS, enviar exatamente um convite em homologação e registrar pasta de entrega e perfil. Convite Supabase Auth e alertas da Edge Function usam transportes distintos.
+- [ ] Drive opcional: obter consentimento drive.file, limitar o tenant de homologação a 1–3 elegíveis e comparar SHA-256 antes/Drive/depois. Alternativa: dispensa assinada pela Secretaria.
+- [ ] Recuperação: ZIP do artefato 44107141257 e checksum interno verificados. Restaurar em destino local isolado, com fonte Auth que preserve UUIDs, validar vínculos, objetos privados e login. A chave age permanece sob custódia do órgão.
+
+Registrar responsável, data, versão, evidência restrita e conclusão por frente. Não registrar segredos ou links temporários.
+
+
+## Estado consolidado — 16/11/2026
+
+**Decisão: NO-GO para produção e comercialização.** O projeto segue em homologação técnica. Não anunciar integrações, backup real ou envio de e-mail como operacionais sem evidência verificável.
+
+### Repositório, banco e migrations
+
+- Repositório: `artemiosds/supabase-connected-app`, branch `main`.
+- HEAD atual: `44578d5aba8b58737c6705001b9cb6f880e5498e`.
+- Supabase SMS2: projeto `rwbbznqtocunzrpcvjvk`.
+- Reconciliação somente-leitura: **91 migrations aplicadas no SMS2 e 91 arquivos SQL locais**, com correspondência exata de todos os prefixos. As duas migrations de 16/11 foram alinhadas aos identificadores reais do banco (`20261116172306` e `20261116172323`), preservando o conteúdo SQL. Não reaplicar nem executar `db push` sem nova reconciliação.
+- Nenhuma fixture sintética foi gravada no SMS2.
+
+### CI — os três workflows passaram no mesmo HEAD
+
+- Formatação: [run 43923011042](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923011042) — sucesso.
+- Validação completa: [run 43923010880](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010880) — sucesso.
+- E2E autenticado de isolamento: [run 43923010973](https://github.com/artemiosds/supabase-connected-app/actions/runs/43923010973) — sucesso.
+- Todos os três executados no mesmo SHA `44578d5aba8b58737c6705001b9cb6f880e5498e`. A correção do seletor do título de contrato foi validada sem remover cenários.
+
+### Auditoria funcional de contratos e saldos
+
+- A rota `src/routes/_authenticated/contratos.tsx` contém cadastro/edição de contratos e registro/histórico de aditivos.
+- A migration `20261112123300_contract_arp_item_balances.sql` cria itens de contrato/ARP, ledger imutável de consumo/estorno, limites de saldo, validações, trilha de auditoria e RPCs protegidas.
+- **Lacuna confirmada:** a rota de contratos não consulta `contract_items` nem `contract_item_movements`, não apresenta saldo por item e não oferece a interface de cadastro de itens, consumo ou estorno. Existe teste unitário de cálculo de saldo, mas isso não comprova operação pela interface. Portanto o gate de contratos/ARP ainda não está fechado.
+- O formulário de aditivo oferece prorrogação, acréscimo, supressão e outro; os limites percentuais legais não estão codificados, deliberadamente, sem uma matriz normativa aprovada. Requer homologação jurídica/administrativa da Secretaria antes de automatizar limites.
+
+### Segurança e operação
+
+- Auditoria SQL registrada: 73 funções públicas `SECURITY DEFINER`, todas com `search_path` fixado; nenhuma executável por `anon`; 36 executáveis por `authenticated` exigem revisão individual da autorização interna. Não revogar permissões em massa.
+- RLS habilitado nas tabelas públicas consultadas, mas requer testes completos de autorização por papel e operação.
+- Proteção contra senhas vazadas continua desabilitada e precisa ser reavaliada antes da produção.
+- Backup sintético em banco descartável não equivale a backup/restauração real do SMS2.
+- Não foram comprovados envio real de e-mail, OAuth Google Drive nem cobrança por gateway.
+
+### Bloqueios para encerramento
+
+1. **Contratos e ARP:** implementar e testar interface de itens, saldos, consumos e estornos usando as RPCs existentes; validar limites financeiros, bloqueios e trilha de auditoria.
+2. **Aditivos:** testar todos os tipos, concorrência, datas, histórico e efeitos sobre o valor; aprovar regra normativa aplicável a limites percentuais antes de automatizá-los.
+3. **GED de fornecedores:** validar upload/download, URLs assinadas, MIME/tamanho, substituição, arquivamento, expiração e isolamento entre Secretarias.
+4. **Convites e RBAC:** testar cadastro, convite, aceite, expiração, revogação, reenvio, suspensão/reativação e papéis com duas Secretarias.
+5. **Backup/continuidade:** configurar credenciais e chave age fora do chat/repositório; executar backup criptografado real e restaurar em projeto isolado; verificar banco, Storage e recuperação complementar de Auth/configurações/segredos.
+6. **E-mail:** verificar domínio, SPF/DKIM/DMARC, remetente, SMTP/Resend, segredos e URL; executar dry-run remoto e envio controlado autorizado; manter agendamento desabilitado até comprovar idempotência e entrega.
+7. **Documentos oficiais:** homologar modelos DOCX anonimizados/autorizados, timbrado, brasão, Word/PDF, paginação e tabelas; obter aceite da Secretaria.
+8. **Integrações:** homologar Google Drive OAuth por Secretaria e gateway/webhooks somente com provedores e credenciais definidos.
+9. **LGPD e produção:** retenção, exportação/exclusão, incidentes, termos, privacidade, contrato, domínio/TLS, monitoramento, SLA, suporte, custos e plano de rollback.
+
+**Resultado:** os testes automatizados estão aprovados no mesmo commit, mas o sistema permanece **NO-GO para produção/venda** até fechar os gates acima.
+
+### Evidências automatizadas — aprovação e cancelamento visuais em `8ee4e17274e518c292d178f4d8e87a6b8ebfdbbb`
+
+- **Validação, build, TypeScript, Deno, lint e segurança do banco descartável:** [run 43878865833](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865833) — jobs `validate` e `database-security` concluídos com sucesso no commit documental `f46258b`.
 - **pgTAP:** 23 arquivos SQL, 423 verificações, resultado PASS. Inclui segurança multitenant, Storage privado, timbrado, workflow documental, outbox/idempotência de notificações e regras de contratação.
 - **Vitest:** 22 arquivos, 136 testes aprovados. Inclui DOCX, importação, preenchimento de variáveis, timbrado e transporte simulado do Resend.
-- **Formatação:** [run 43857619964](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857619964) — sucesso.
-- **E2E autenticado:** [run 43857619955](https://github.com/artemiosds/supabase-connected-app/actions/runs/43857619955) — sucesso, com duas Secretarias fictícias e contas `.invalid`. O teste comprovou login, isolamento, bloqueio de leitura/escrita cruzada, Storage DOCX privado, três versões imutáveis com SHA-256, limpeza de órfão e restauração pela interface da versão 2 como versão 4, reanexando os bytes originais.
+- **Formatação:** [run 43878865720](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865720) — sucesso no commit documental `f46258b`.
+- **E2E autenticado:** [run 43878866355](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878866355) — sucesso no commit documental `f46258b`, com duas Secretarias fictícias e contas `.invalid`. Valida isolamento de fornecedores, fontes DOCX privadas, timbrado e aprovação/cancelamento pela interface. Confirma a negação de criação pelo aprovador, estados sincronizados de cancelamento e ator no histórico. O ciclo de compras/contratos e o GED de documentos de fornecedores ainda não estão neste E2E.
 - **Timbrado/brasão pela interface:** o mesmo E2E salvou para cada Secretaria uma configuração e um PNG sintético no bucket privado; verificou metadados, SHA-256 do download privado, bloqueio de leitura pública, acesso cruzado e limpeza de objeto órfão.
 - **Notificações — dry-run:** 4 candidatos, 4 processados, 0 enviados, 0 falhas, 0 incertos. Nenhum e-mail real foi enviado.
 - **Backup sintético:** pacote criptografado, checksum verificado, descriptografado e restaurado em PostgreSQL descartável. Isso **não é** backup real do SMS2 nem restauração de dados reais em outro projeto.
@@ -29,7 +112,7 @@
 - Na última verificação registrada, as cinco Edge Functions estavam ACTIVE e o código publicado coincidia com o `main` daquele commit: `invite-tenant-user` v18, `platform-billing-config` v16, `invite-platform-support-agent` v9, `invite-platform-staff` v7 e `send-expiry-notifications` v9. A última usa `verify_jwt=false` e valida seu próprio segredo de cron.
 - Contagem somente-leitura no SMS2: 1 Secretaria, 2 perfis; 0 fornecedores, contratos, documentos de fornecedor, processos, modelos instalados, fontes DOCX, registros de timbrado, documentos gerados, fluxos/eventos de aprovação e objetos no bucket privado.
 - Bucket `gfs-private-documents`: privado, limite de 20 MiB. Nenhuma fixture usada pela CI foi gravada no SMS2.
-- O seed de testes agora inclui um terceiro usuário fictício com papel de aprovador separado. Entretanto, a execução atual do navegador ainda não usa esse terceiro usuário para aprovar pela interface. A segregação de funções está coberta por pgTAP (autor não aprova a si próprio; usuário distinto aprova), mas **não declarar E2E visual de aprovação concluído**.
+- O terceiro usuário fictício recebe `org:view`, `documents:view`, `documents:approve` e `documents:update`, sem `documents:create`; a CI verifica aprovação e cancelamento sem permitir criação. O E2E autenticado concluiu a aprovação visual por outro usuário; isso cobre o fluxo sintético, não substitui homologação por usuários reais da Secretaria.
 - Os workflows [backup real](https://github.com/artemiosds/supabase-connected-app/actions/runs/43717347094) e [envio agendado](https://github.com/artemiosds/supabase-connected-app/actions/runs/43744597699) foram `skipped` pelos controles de ativação. Nenhum backup real ou e-mail real foi produzido.
 
 ### Pendências que realmente bloqueiam o encerramento
@@ -37,10 +120,10 @@
 1. **Backup real e recuperação:** configurar no GitHub Actions os segredos `SUPABASE_DB_URL` e `SUPABASE_SERVICE_ROLE_KEY`, além da variável `AGE_RECIPIENT`; manter a identidade privada age offline, fora do GitHub. Executar o backup criptografado do SMS2 e restaurar em banco/projeto isolado, verificando dados e objetos do GED. O pacote não cobre Auth gerenciado, configurações Supabase nem segredos de Edge Functions; documentar a recuperação complementar.
 2. **E-mail real:** configurar Resend/SMTP, domínio e remetente verificados, SPF/DKIM/DMARC, `APP_URL` e o segredo de cron no Supabase e GitHub. Fazer primeiro dry-run remoto sem envio; depois teste controlado para endereço autorizado. Manter `EXPIRY_ALERTS_ENABLED` desligado até validar esse envio. Não ativar o agendamento diário antes disso.
 3. **Homologação oficial de documentos:** receber modelos DOCX reais anonimizados, brasão/timbrado autorizado e exemplos aprovados pela Secretaria; comparar Word/PDF, margens, cabeçalho, rodapé, paginação, tabelas e recursos não suportados. Fixtures sintéticas não substituem esse aceite.
-4. **Aprovação visual ponta a ponta:** ampliar o navegador para autenticar o terceiro papel de aprovador, comprovar que ele não pode criar documento, aprovar o documento enviado por outro usuário e verificar o histórico dos dois atores. A regra de negócio já passa nos testes SQL.
+4. **Aprovação visual ponta a ponta:** coberta por E2E sintético na CI. Continua pendente homologar o fluxo com usuários e documentos reais da Secretaria.
 5. **Aceite e integrações:** obter aceite formal da Secretaria; concluir a homologação de Google Drive OAuth e dos webhooks/gateway de cobrança antes de anunciar essas integrações como prontas.
 
-**Resultado:** as verificações documentadas anteriormente cobrem o commit `44029d5` e o estado remoto consultado até `20261113194249`. Para o `main` atual (`4f3a5fc`), CI e paridade de migrations ainda não foram confirmadas. **A Fase 1 permanece em homologação e NO-GO para produção/venda** até concluir essa reconciliação e os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, E2E visual de aprovação e aceite formal.
+**Resultado verificado em 16/11/2026:** `main` está no commit documental `f46258b`; o código de aplicação está no pai `8ee4e17`. Validação/segurança ([run 43878865833](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865833)), formatação ([run 43878865720](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865720)) e E2E autenticado ([run 43878866355](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878866355)) passaram nesse head. A reconciliação somente leitura confirmou 89 migrations no SMS2 contra 91 no `main`; as duas pendentes estão identificadas no início deste checklist e não foram aplicadas. **O sistema permanece NO-GO para produção/venda** até concluir os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, cobertura navegador de compras/contratos e aceite formal.
 
 
 ---
@@ -336,3 +419,21 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] E2E autenticado, recuperação de upload DOCX, homologação visual e backup/restore em projeto isolado continuam pendentes.
 
 Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 nesta etapa. Os avisos do Advisor não foram tratados como vulnerabilidades automáticas nem removidos em massa. Estado comercial permanece **NO-GO**.
+
+
+## Homologação — teste individual de e-mail institucional (18/11/2026)
+
+- [ ] Fazer **deploy controlado** da Edge Function `tenant-integration-settings` (e do módulo `_shared/test-email.ts`) após revisão. Antes do deploy, produção continua com a versão antiga (envio só ao e-mail do usuário logado).
+- [ ] Em Configurações > Integrações e LGPD > E-mail institucional, salvar SMTP (endpoint em `SMTP_ALLOWED_ENDPOINTS`) ou Resend, informar um único destinatário autorizado e clicar em **Enviar 1 e-mail de teste**.
+- [ ] Registrar o resultado exibido: **aceito pelo servidor**, **rejeitado** ou **incerto**. O servidor aplica intervalo mínimo de 60 s entre testes (`email_last_test_at`).
+- [ ] Conferir manualmente a caixa de entrada/spam do destinatário e anotar pasta e cabeçalhos (SPF/DKIM/DMARC).
+
+**Aceito ≠ entregue:** "aceito pelo servidor SMTP/provedor" só significa que o servidor recebeu a mensagem para encaminhar. A entrega na caixa depende de DNS, reputação e filtros do destinatário e só é comprovada pela conferência manual. "Incerto" (timeout/conexão interrompida) é persistido como `failed`, mas não deve ser repetido antes de conferir a caixa. O teste não aciona `send-expiry-notifications`, filas nem alertas; a auditoria grava apenas ação, resultado, provedor e destinatário mascarado.
+
+## PCA por Secretaria — homologação do vínculo com o DFD
+
+- [ ] Em base descartável, validar a migration `20261119190000_plan_annual_procurement_demands.sql` e os testes de processo.
+- [ ] Em Processos > Plano de Contratações Anual, enviar demanda com dois itens de unidades diferentes. Conferir o exercício, o objeto, a justificativa e as quantidades antes da aprovação.
+- [ ] Verificar com perfis distintos a visibilidade por Secretaria e as permissões para cadastrar, aprovar e abrir o processo.
+- [ ] Após aprovação, criar o processo, conferir seus itens e abrir o DFD vinculado. Repetir a conversão e verificar que o processo é o mesmo.
+- [ ] Registrar aceite e reconciliar o histórico antes de uma implantação controlada no SMS2. Consolidação entre Secretarias, classificação de catálogo e publicação externa pertencem a etapas posteriores.

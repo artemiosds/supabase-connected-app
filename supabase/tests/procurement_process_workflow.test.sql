@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(33);
+SELECT extensions.plan(43);
 
 SELECT extensions.ok(
   pg_catalog.to_regprocedure('public.fn_guard_procurement_process_transition()') IS NOT NULL,
@@ -271,14 +271,59 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.tenants (id, name, slug, created_by, status)
+INSERT INTO public.tenants (
+  id, name, slug, created_by, status, commercial_status, enabled_modules
+)
 VALUES (
   '10000000-0000-4000-8000-000000000002',
   'Secretaria Fixture',
   'secretaria-fixture-workflow',
   '10000000-0000-4000-8000-000000000001',
-  'active'
+  'active',
+  'active',
+  '{"processos":true}'::jsonb
 );
+
+INSERT INTO public.profiles(id,full_name)
+VALUES ('10000000-0000-4000-8000-000000000001','Fixture de Teste')
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.permissions(code,name,description,module)
+VALUES
+ ('documents:view','View documents','Synthetic procurement test','documents'),
+ ('documents:update','Update documents','Synthetic procurement test','documents')
+ON CONFLICT(code) DO NOTHING;
+
+INSERT INTO public.tenant_roles(id,tenant_id,name,slug,description,is_system)
+VALUES (
+ '10000000-0000-4000-8000-000000000005',
+ '10000000-0000-4000-8000-000000000002',
+ 'Procurement Test',
+ 'procurement-test',
+ 'Synthetic price estimate security fixture',
+ false
+);
+
+INSERT INTO public.tenant_memberships(id,tenant_id,user_id,status)
+VALUES (
+ '10000000-0000-4000-8000-000000000006',
+ '10000000-0000-4000-8000-000000000002',
+ '10000000-0000-4000-8000-000000000001',
+ 'active'
+);
+
+INSERT INTO public.membership_roles(membership_id,role_id,tenant_id)
+VALUES (
+ '10000000-0000-4000-8000-000000000006',
+ '10000000-0000-4000-8000-000000000005',
+ '10000000-0000-4000-8000-000000000002'
+);
+
+INSERT INTO public.tenant_role_permissions(role_id,permission_id)
+SELECT '10000000-0000-4000-8000-000000000005',p.id
+FROM public.permissions p
+WHERE p.code IN ('documents:view','documents:update')
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.procurement_processes (
   id, tenant_id, number, title, stage, status, created_by, updated_by
@@ -306,6 +351,72 @@ VALUES (
   '10000000-0000-4000-8000-000000000001',
   '10000000-0000-4000-8000-000000000001'
 );
+
+INSERT INTO public.procurement_items(
+ id,tenant_id,process_id,line_number,description,unit,quantity,estimated_unit_price,created_by,updated_by
+)
+VALUES(
+ '10000000-0000-4000-8000-000000000007',
+ '10000000-0000-4000-8000-000000000002',
+ '10000000-0000-4000-8000-000000000003',
+ 1,'Item sintético de teste','un',2,5,
+ '10000000-0000-4000-8000-000000000001',
+ '10000000-0000-4000-8000-000000000001'
+);
+
+INSERT INTO public.procurement_price_quotes(
+ id,tenant_id,procurement_item_id,source_name,source_type,reference_identifier,
+ quantity,unit_price,delivery_cost,created_by,updated_by
+)
+VALUES(
+ '10000000-0000-4000-8000-000000000008',
+ '10000000-0000-4000-8000-000000000002',
+ '10000000-0000-4000-8000-000000000007',
+ 'Fonte de teste','outro','REF-TESTE-001',
+ 1,10,5,
+ '10000000-0000-4000-8000-000000000001',
+ '10000000-0000-4000-8000-000000000001'
+);
+
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+SELECT pg_catalog.set_config('request.jwt.claim.role','authenticated',true);
+SELECT pg_catalog.set_config('app_auth.price_estimate_write','on',true);
+
+SELECT extensions.throws_ok(
+ $test$UPDATE public.procurement_items
+   SET estimated_unit_price=99,estimated_price_source='approved',updated_by='10000000-0000-4000-8000-000000000001'
+   WHERE id='10000000-0000-4000-8000-000000000007'$test$,
+ '42501',NULL,'an authenticated user cannot forge the internal price-estimate write context for an item'
+);
+
+SELECT extensions.throws_ok(
+ $test$UPDATE public.procurement_processes
+   SET estimated_value=999,estimated_value_source='items',updated_by='10000000-0000-4000-8000-000000000001'
+   WHERE id='10000000-0000-4000-8000-000000000003'$test$,
+ '42501',NULL,'an authenticated user cannot forge the internal price-estimate write context for a process'
+);
+
+SELECT pg_catalog.set_config('app_auth.price_estimate_write','',true);
+SELECT extensions.lives_ok(
+ $test$SELECT public.select_procurement_price_quote(
+   '10000000-0000-4000-8000-000000000002',
+   '10000000-0000-4000-8000-000000000007',
+   '10000000-0000-4000-8000-000000000008'
+ )$test$,
+ 'an authorized quote-selection RPC can update protected estimates through its trusted definer context'
+);
+
+SELECT extensions.ok(
+ (SELECT estimated_unit_price=15 AND estimated_price_source='quote_reference'
+  FROM public.procurement_items WHERE id='10000000-0000-4000-8000-000000000007')
+ AND (SELECT estimated_value=30 AND estimated_value_source='items'
+  FROM public.procurement_processes WHERE id='10000000-0000-4000-8000-000000000003'),
+ 'authorized quote selection recalculates the item and process estimates'
+);
+
+RESET ROLE;
 
 SELECT extensions.throws_ok(
   $test$UPDATE public.procurement_processes
@@ -426,6 +537,21 @@ SELECT extensions.throws_ok(
   'Não é permitido alterar itens de um processo concluído.',
   'checklist items of a completed process are immutable'
 );
+
+
+RESET ROLE;
+INSERT INTO public.tenant_role_permissions(role_id,permission_id)
+SELECT '10000000-0000-4000-8000-000000000005',id FROM public.permissions
+WHERE code IN ('documents:create','documents:approve') ON CONFLICT DO NOTHING;
+SET LOCAL ROLE authenticated;
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','submit','{"year":2027,"title":"Material anual","justification":"Demanda anual","items":[{"description":"Material de consumo","unit":"caixa","quantity":3.5}]}'),'10000000-0000-4000-8000-000000000080'::uuid,'PCA submission persists');
+SELECT extensions.throws_ok($q$SELECT public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}')$q$,'P0001','Aprove a demanda antes de criar o processo.','pending demands cannot start a process');
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','approve','{}'),'10000000-0000-4000-8000-000000000080'::uuid,'authorized reviewer approves');
+SELECT extensions.ok(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}') IS NOT NULL,'conversion creates the process and checklist');
+SELECT extensions.is(public.manage_annual_demand('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000080','convert','{"number":"PCA-01","modality":"pregao"}'),(SELECT process_id FROM public.annual_procurement_demands WHERE id='10000000-0000-4000-8000-000000000080'),'retry reuses the same process');
+SELECT extensions.ok(EXISTS (SELECT 1 FROM public.procurement_items i
+JOIN public.annual_procurement_demands d ON d.process_id=i.process_id AND d.tenant_id=i.tenant_id
+WHERE d.id='10000000-0000-4000-8000-000000000080' AND i.quantity=3.5 AND i.unit='caixa' AND i.description='Material de consumo'),'conversion preserves demand items');
 
 SELECT * FROM extensions.finish();
 ROLLBACK;

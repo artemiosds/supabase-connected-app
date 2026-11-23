@@ -46,11 +46,20 @@ jobs:
       - name: Run unit tests
         run: bun run test
 
+      - name: Run native Bun unit tests
+        run: bun test
+
       - name: Build production bundle
         run: bun run build
 
       - name: Type check
         run: bunx tsc --noEmit
+
+      - name: Native TypeScript type check
+        run: bunx --package @typescript/native-preview tsgo --noEmit
+
+      - name: Lint
+        run: bun run lint
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
@@ -60,18 +69,18 @@ jobs:
       - name: Type check Supabase Edge Functions
         run: |
           for function in supabase/functions/*/index.ts; do
-            deno check "$function"
+            deno check --config supabase/functions/deno.json "$function"
           done
-
-      - name: Lint
-        run: bun run lint
 
   database-security:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    concurrency:
+      group: supabase-disposable-${{ github.ref }}
+      cancel-in-progress: false
     env:
       # Avoid collisions with the runner's default local Postgres port.
-      SUPABASE_DB_PORT: 55432
+      SUPABASE_DB_PORT: 55433
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,7 +91,21 @@ jobs:
           version: v2.stable
 
       - name: Start local Supabase
-        run: supabase start -x inbucket
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if supabase start -x inbucket; then
+              exit 0
+            fi
+            supabase stop --no-backup || true
+            if [ "$attempt" -lt 3 ]; then
+              echo "Supabase image/network startup failed; retrying in 20 seconds (attempt $((attempt + 1))/3)."
+              sleep 20
+            fi
+          done
+          echo "::error::Supabase could not start after three isolated attempts."
+          exit 1
 
       - name: Apply migrations to disposable local database
         run: supabase db reset --local

@@ -1,3 +1,5 @@
+import { SupplierSelect } from "@/components/supplier-select";
+import { AnnualDemandSource } from "@/components/annual-demand-source";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -69,7 +71,7 @@ export const Route = createFileRoute("/_authenticated/documentos")({
   component: Documentos,
 });
 
-type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj">;
+type Fornecedor = Pick<Tables<"suppliers">, "id" | "legal_name" | "trade_name" | "cnpj" | "city">;
 type DocumentoFornecedor = Tables<"supplier_documents">;
 type Modelo = Tables<"document_templates">;
 type ModeloCatalogo = Tables<"document_template_catalog">;
@@ -97,6 +99,7 @@ type ContratoGeracao = Pick<
   | "process_id"
   | "supplier_id"
   | "status"
+  | "instrument_type"
   | "modality"
   | "total_value"
   | "start_date"
@@ -201,6 +204,16 @@ const TIPOS = [
   ["outros", "Outros"],
 ] as const;
 
+const ROTULOS_CATEGORIA_MODELO: Record<string, string> = {
+  dfd: "DFD",
+  etp: "ETP",
+  risk_analysis: "Análise de riscos",
+  risk_matrix: "Matriz contratual de riscos",
+  tr: "Termo de Referência",
+  term_addendum_renewal: "Termo aditivo de prorrogação",
+  custom: "Outro documento",
+};
+
 function dataLocal(data: string | null): string {
   if (!data) return "Sem vencimento";
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
@@ -273,6 +286,7 @@ function Documentos() {
   const [dialogDocumento, setDialogDocumento] = useState(false);
   const [salvandoDocumento, setSalvandoDocumento] = useState(false);
   const [documentoEditando, setDocumentoEditando] = useState<DocumentoFornecedor | null>(null);
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [fornecedorId, setFornecedorId] = useState("");
   const [tituloDocumento, setTituloDocumento] = useState("");
   const [tipoDocumento, setTipoDocumento] = useState<string>("outros");
@@ -418,7 +432,7 @@ function Documentos() {
         carregarTodasAsPaginas<Fornecedor>((inicio, fim) =>
           db
             .from("suppliers")
-            .select("id,legal_name,trade_name,cnpj")
+            .select("id,legal_name,trade_name,cnpj,city")
             .eq("tenant_id", selecionado.id)
             .order("legal_name")
             .order("id")
@@ -486,7 +500,7 @@ function Documentos() {
               db
                 .from("contracts")
                 .select(
-                  "id,number,object,process_id,supplier_id,status,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
+                  "id,number,object,process_id,supplier_id,status,instrument_type,modality,total_value,start_date,end_date,manager_name,inspector_name,ordinance",
                 )
                 .eq("tenant_id", selecionado.id)
                 .order("number")
@@ -562,6 +576,28 @@ function Documentos() {
     };
   }, [carregar]);
 
+  useEffect(() => {
+    if (loading || tenantCarregadoId !== selecionado?.id) return;
+    const url = new URL(window.location.href);
+    const supplier = url.searchParams.get("fornecedor");
+    if (!supplier) return;
+    url.searchParams.delete("fornecedor");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    if (!fornecedores.some((row) => row.id === supplier)) {
+      toast.error("Fornecedor indisponível nesta Secretaria.");
+      return;
+    }
+    setSupplierFilter(supplier);
+    setFornecedorId(supplier);
+    setAba("vencimentos");
+  }, [loading, tenantCarregadoId, selecionado?.id, fornecedores]);
+  useEffect(() => {
+    setSupplierFilter("");
+  }, [selecionado?.id]);
+  const visibleDocuments = documentos.filter(
+    (row) => !supplierFilter || row.supplier_id === supplierFilter,
+  );
+
   const fornecedorPorId = useMemo(
     () => new Map(fornecedores.map((f) => [f.id, f])),
     [fornecedores],
@@ -579,7 +615,7 @@ function Documentos() {
 
   function abrirNovoDocumento() {
     setDocumentoEditando(null);
-    setFornecedorId("");
+    setFornecedorId(supplierFilter);
     setTituloDocumento("");
     setTipoDocumento("outros");
     setEmissao("");
@@ -1241,25 +1277,88 @@ function Documentos() {
     if (loading || !selecionado?.id || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const processoId = params.get("processo");
+    const contratoId = params.get("contrato");
     const tipoSolicitado = params.get("tipo");
-    if (!processoId || !tipoSolicitado) return;
+    const codigoModelo = params.get("modelo");
+    if ((!processoId && !contratoId) || (!tipoSolicitado && !codigoModelo)) return;
 
-    const processoExiste = processos.some((processo) => processo.id === processoId);
-    if (!processoExiste) {
-      toast.error("O processo solicitado não está disponível nesta Secretaria.");
+    const limparParametros = () => {
       params.delete("processo");
+      params.delete("contrato");
       params.delete("tipo");
+      params.delete("modelo");
       const query = params.toString();
       window.history.replaceState(
         window.history.state,
         "",
         `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
       );
+    };
+
+    if (!capacidades.can_create) {
+      toast.error("Seu perfil não possui permissão para gerar documentos.");
+      limparParametros();
       return;
     }
 
-    iniciarGeracao(processoId);
-    const modelo = modelos.find((item) => item.is_active && item.template_type === tipoSolicitado);
+    const processo = processoId ? processos.find((item) => item.id === processoId) : null;
+    if (processoId && !processo) {
+      toast.error("O processo solicitado não está disponível nesta Secretaria.");
+      limparParametros();
+      return;
+    }
+
+    const contrato = contratoId ? contratos.find((item) => item.id === contratoId) : null;
+    if (
+      contratoId &&
+      (!contrato || contrato.instrument_type !== "contrato" || contrato.status !== "vigente")
+    ) {
+      toast.error("O contrato solicitado não está disponível para preparar esta minuta.");
+      limparParametros();
+      return;
+    }
+    if (contrato && contrato.end_date < new Date().toLocaleDateString("sv-SE")) {
+      toast.error(
+        "A vigência deste contrato já terminou. Encaminhe a situação para análise jurídica.",
+      );
+      limparParametros();
+      return;
+    }
+    if (processoId && contrato && contrato.process_id !== processoId) {
+      toast.error("O contrato selecionado não pertence ao processo informado.");
+      limparParametros();
+      return;
+    }
+
+    const modelo = modelos.find(
+      (item) =>
+        item.is_active &&
+        (codigoModelo
+          ? item.template_code === codigoModelo
+          : item.template_type === tipoSolicitado),
+    );
+    if (contratoId && codigoModelo && !modelo) {
+      if (moduloModelosAtivo && capacidades.can_manage_templates) {
+        setAba("biblioteca");
+        toast.info("Instale o modelo-base de prorrogação na Biblioteca-base para continuar.");
+        return;
+      }
+      toast.info(
+        "O modelo-base ainda não está instalado nesta Secretaria. Solicite a instalação a um administrador.",
+      );
+      limparParametros();
+      return;
+    }
+
+    const processoVinculado =
+      contrato?.process_id && processos.some((item) => item.id === contrato.process_id)
+        ? contrato.process_id
+        : "";
+    iniciarGeracao(processoId || processoVinculado);
+    if (contrato) {
+      setContratoGeracao(contrato.id);
+      setFornecedorGeracao(contrato.supplier_id ?? "nenhum");
+    }
     if (modelo) {
       setModeloSelecionado(modelo.id);
       setTituloGerado(modelo.title);
@@ -1268,15 +1367,17 @@ function Documentos() {
       toast.info("Instale o modelo correspondente na Biblioteca-base para gerar este documento.");
     }
 
-    params.delete("processo");
-    params.delete("tipo");
-    const query = params.toString();
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-    );
-  }, [loading, selecionado?.id, processos, modelos]);
+    limparParametros();
+  }, [
+    loading,
+    selecionado?.id,
+    processos,
+    modelos,
+    contratos,
+    capacidades.can_create,
+    capacidades.can_manage_templates,
+    moduloModelosAtivo,
+  ]);
 
   function selecionarModelo(id: string) {
     setModeloSelecionado(id);
@@ -1290,8 +1391,19 @@ function Documentos() {
   async function gerarDocumento(e: FormEvent) {
     e.preventDefault();
     if (!selecionado) return;
+    if (
+      modeloSelecionado &&
+      camposDoModelo.some((campo) => campo.required && !camposComplementares[campo.key]?.trim())
+    ) {
+      toast.error("Preencha todos os campos obrigatórios do modelo antes de gerar a minuta.");
+      return;
+    }
+    if (modeloDoGerador?.template_type === "term_addendum_renewal" && !contratoGeracao) {
+      toast.error("A minuta de prorrogação exige um contrato vinculado.");
+      return;
+    }
     setSalvandoGerado(true);
-    if (processoGeracao) {
+    if (processoGeracao && modeloDoGerador?.template_type !== "term_addendum_renewal") {
       if (!modeloSelecionado) {
         setSalvandoGerado(false);
         toast.error("Selecione um modelo instalado nesta Secretaria.");
@@ -1341,6 +1453,9 @@ function Documentos() {
         title: tituloGerado.trim(),
         content_snapshot: snapshot,
         status: "draft",
+        document_type: modeloDoGerador?.template_type ?? "custom",
+        template_version: modeloDoGerador?.version ?? null,
+        variables_snapshot: valoresCompletosGeracao as unknown as Json,
       });
       setSalvandoGerado(false);
       if (insertError) {
@@ -1429,14 +1544,25 @@ function Documentos() {
       : null,
   };
   const valoresAutomaticosGeracao = buildDocumentVariableValues(contextoVariaveisGeracao);
-  const previaGeracao = renderDocumentTemplate(conteudoGerado, valoresAutomaticosGeracao);
   const modeloDoGerador = modelos.find((m) => m.id === modeloSelecionado);
-  const camposDoModelo = (
-    (modeloDoGerador?.variables_schema as unknown as CampoComplementar[]) ?? []
-  ).filter(
+  const schemaCamposGeracao =
+    (modeloDoGerador?.variables_schema as unknown as CampoComplementar[] | undefined) ?? [];
+  const camposDoModelo = schemaCamposGeracao.filter(
     (campo) =>
-      !campo.source?.startsWith("process.") && !valoresAutomaticosGeracao[campo.key]?.trim(),
+      (!processoGeracao || !campo.source?.startsWith("process.")) &&
+      !valoresAutomaticosGeracao[campo.key]?.trim(),
   );
+  const chavesDeclaradasGeracao = new Set(schemaCamposGeracao.map((campo) => campo.key));
+  const overridesGeracao = Object.fromEntries(
+    Object.entries(camposComplementares).filter(
+      ([key]) => chavesDeclaradasGeracao.has(key) && !valoresAutomaticosGeracao[key]?.trim(),
+    ),
+  );
+  const valoresCompletosGeracao = {
+    ...valoresAutomaticosGeracao,
+    ...overridesGeracao,
+  };
+  const previaGeracao = renderDocumentTemplate(conteudoGerado, valoresCompletosGeracao);
   const modelosInstalados = new Set(
     modelos
       .filter((m) => m.catalog_template_id && m.is_active)
@@ -1449,20 +1575,85 @@ function Documentos() {
     setConteudoEdicaoGerado(documento.content_snapshot);
   }
 
-  async function baixarRascunho(documento: DocumentoGerado, formato: "docx" | "pdf") {
-    if (!selecionado || documento.status !== "draft" || baixandoRascunhoId) return;
+  async function baixarRascunho(
+    documento: DocumentoGerado,
+    formato: "docx" | "pdf",
+    retornarBytes = false,
+  ): Promise<Uint8Array | null> {
+    if (!selecionado || !["draft", "signed"].includes(documento.status) || baixandoRascunhoId)
+      return null;
     setBaixandoRascunhoId(documento.id);
     try {
+      if (documento.status === "signed") {
+        if (
+          formato !== "pdf" ||
+          !documento.signed_pdf_storage_path ||
+          !documento.signed_pdf_sha256
+        ) {
+          toast.error(
+            "Este documento não possui PDF final imutável associado à assinatura. Não é possível apresentar uma cópia regenerada como arquivo assinado.",
+          );
+          return null;
+        }
+        const { data: signedPdf, error: downloadError } = await db.storage
+          .from("gfs-private-documents")
+          .download(documento.signed_pdf_storage_path);
+        if (downloadError || !signedPdf)
+          throw downloadError ?? new Error("PDF assinado indisponível.");
+        const bytes = new Uint8Array(await signedPdf.arrayBuffer());
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        const actualHash = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+        if (actualHash !== documento.signed_pdf_sha256) {
+          toast.error(
+            "Falha na verificação de integridade: o SHA-256 do PDF não corresponde ao registro de assinatura. O download foi bloqueado.",
+          );
+          return null;
+        }
+        const url = URL.createObjectURL(signedPdf);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${documento.title.replace(/[^a-zA-Z0-9._-]+/gu, "-")}-assinado.pdf`;
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        toast.success("Integridade do PDF assinado confirmada por SHA-256.");
+        return null;
+      }
       const { assertPdfCompatible, buildDocxFromText, docxToModel, generateDocx, renderPdf } =
         await import("@/lib/docx-engine");
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
       const branding = await carregarTimbradoSecretaria(selecionado.id, selecionado.nome);
       if (!branding.footerText.trim()) {
-        branding.footerText = "Rascunho para revisão";
+        branding.footerText =
+          documento.status === "signed"
+            ? "Documento assinado eletronicamente"
+            : "Rascunho para revisão";
       }
       let template: ArrayBuffer | Uint8Array = await buildDocxFromText(
-        documento.content_snapshot,
+        documento.status === "signed"
+          ? documento.content_snapshot +
+              "\n\nASSINATURA ELETRÔNICA SIMPLES\n" +
+              [
+                documento.signed_name,
+                documento.signed_email,
+                documento.signed_at,
+                documento.signature_statement,
+                "Documento: " + documento.id,
+              ]
+                .filter(Boolean)
+                .join("\n")
+          : documento.content_snapshot,
         documento.title,
+        documento.process_snapshot &&
+          typeof documento.process_snapshot === "object" &&
+          !Array.isArray(documento.process_snapshot) &&
+          documento.process_snapshot["document_kind"] === "price_map"
+          ? "landscape"
+          : "portrait",
       );
       let values: Record<string, string> = {};
       let originalUsado = false;
@@ -1535,6 +1726,7 @@ function Documentos() {
                 useTemplatePageSize: true,
               });
             })();
+      if (retornarBytes) return new Uint8Array(bytes);
       const mimeType =
         formato === "docx"
           ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1549,7 +1741,7 @@ function Documentos() {
       const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${fileName}-rascunho.${formato}`;
+      link.download = `${fileName}-${documento.status === "signed" ? "assinado" : "rascunho"}.${formato}`;
       link.hidden = true;
       document.body.append(link);
       link.click();
@@ -1564,8 +1756,12 @@ function Documentos() {
             " criado a partir do texto revisado; a formatação do DOCX original não está vinculada a este rascunho.",
         );
       }
+      return null;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível exportar o rascunho.");
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível exportar o documento.",
+      );
+      return null;
     } finally {
       setBaixandoRascunhoId(null);
     }
@@ -1610,7 +1806,7 @@ function Documentos() {
       p_tenant_id: selecionado.id,
       p_document_id: d.id,
       p_action: action,
-      p_comment: comment?.trim() ?? null,
+      ...(comment?.trim() ? { p_comment: comment.trim() } : {}),
     });
     if (error) {
       toast.error(error.message);
@@ -1626,39 +1822,200 @@ function Documentos() {
   }
 
   async function assinarDocumento(d: DocumentoGerado) {
-    if (!selecionado || !capacidades.can_sign || fluxoPorDocumento.get(d.id)?.status !== "approved")
+    if (
+      !selecionado ||
+      !session?.user?.id ||
+      !capacidades.can_sign ||
+      fluxoPorDocumento.get(d.id)?.status !== "approved" ||
+      d.status !== "draft" ||
+      baixandoRascunhoId
+    )
       return;
     const confirmou = window.confirm(
-      "Confirma a assinatura eletrônica simples deste documento? A assinatura ficará registrada com sua conta, nome e data, e o conteúdo será bloqueado.",
+      "Confirma a assinatura eletrônica simples? O Primus vai gerar o PDF final com uma folha de identificação do assinante, arquivá-lo sem sobrescrita, conferir o arquivo no servidor e registrar o SHA-256 vinculado à sua conta. Esta assinatura não é qualificada ICP-Brasil.",
     );
     if (!confirmou) return;
-    const { error: updateError } = await db
-      .from("generated_documents")
-      .update({ status: "signed" })
-      .eq("id", d.id)
-      .eq("tenant_id", selecionado.id);
-    if (updateError) {
-      toast.error(updateError.message);
+
+    let storagePath: string | null = null;
+    let uploaded = false;
+    try {
+      const pdfBytes = await baixarRascunho(d, "pdf", true);
+      if (!pdfBytes) return;
+
+      const [{ data: signerProfile }, { PDFDocument, StandardFonts, rgb }] = await Promise.all([
+        db.from("profiles").select("full_name").eq("id", session.user.id).maybeSingle(),
+        import("pdf-lib"),
+      ]);
+      const signerName = signerProfile?.full_name?.trim() || "Usuário autenticado";
+      const signerEmail = session.user.email ?? "Não informado";
+
+      // Append an audit page without changing the source document's original
+      // pages or template layout. The server hashes this complete final PDF.
+      const finalPdf = await PDFDocument.load(pdfBytes);
+      finalPdf.setTitle(d.title);
+      finalPdf.setAuthor(signerName);
+      finalPdf.setSubject("Registro de assinatura eletrônica simples");
+      finalPdf.setCreator("Primus — Gestão de Documentos");
+      const page = finalPdf.addPage([595.28, 841.89]);
+      const regular = await finalPdf.embedFont(StandardFonts.Helvetica);
+      const bold = await finalPdf.embedFont(StandardFonts.HelveticaBold);
+      const ink = rgb(0.12, 0.17, 0.25);
+      const muted = rgb(0.32, 0.38, 0.46);
+      const left = 48;
+      const contentWidth = 499;
+      let y = 770;
+
+      page.drawText("REGISTRO DE ASSINATURA ELETRÔNICA SIMPLES", {
+        x: left,
+        y,
+        size: 13,
+        font: bold,
+        color: ink,
+      });
+      y -= 26;
+      page.drawLine({
+        start: { x: left, y },
+        end: { x: left + contentWidth, y },
+        thickness: 1,
+        color: muted,
+      });
+      y -= 32;
+
+      const paragraphs = [
+        `Documento: ${d.title}`,
+        `Identificador do documento: ${d.id}`,
+        `Secretaria: ${selecionado.nome}`,
+        `Assinante: ${signerName}`,
+        `Conta autenticada: ${signerEmail}`,
+        "Declaração: o usuário identificado acima confirmou a assinatura eletrônica simples deste documento no sistema.",
+        "Integridade: o arquivo PDF completo, incluindo esta folha, é identificado por um hash SHA-256 calculado no servidor e vinculado ao registro imutável de assinatura.",
+        "Data e hora oficiais, identificação da conta, hash do arquivo e histórico de aprovação ficam registrados na trilha de auditoria do sistema.",
+        "Natureza da assinatura: modalidade eletrônica simples. Este registro não equivale a uma assinatura eletrônica qualificada ICP-Brasil nem representa, por si só, certificação digital.",
+      ];
+
+      for (const paragraph of paragraphs) {
+        const words = paragraph.split(/\s+/);
+        let line = "";
+        for (const word of words) {
+          const candidate = line ? `${line} ${word}` : word;
+          if (regular.widthOfTextAtSize(candidate, 10) > contentWidth && line) {
+            page.drawText(line, { x: left, y, size: 10, font: regular, color: ink });
+            y -= 16;
+            line = word;
+          } else {
+            line = candidate;
+          }
+        }
+        if (line) {
+          page.drawText(line, { x: left, y, size: 10, font: regular, color: ink });
+          y -= 16;
+        }
+        y -= 12;
+      }
+
+      page.drawLine({
+        start: { x: left, y: 84 },
+        end: { x: left + contentWidth, y: 84 },
+        thickness: 0.5,
+        color: muted,
+      });
+      page.drawText("Primus · Registro eletrônico e trilha de auditoria", {
+        x: left,
+        y: 64,
+        size: 8,
+        font: regular,
+        color: muted,
+      });
+
+      const finalPdfBytes = await finalPdf.save();
+      storagePath = `${selecionado.id}/generated-documents/${d.id}/${crypto.randomUUID()}.pdf`;
+      const pdfBuffer = new ArrayBuffer(finalPdfBytes.byteLength);
+      new Uint8Array(pdfBuffer).set(finalPdfBytes);
+      const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: false });
+      if (uploadError) throw uploadError;
+      uploaded = true;
+
+      const { data, error } = await db.functions.invoke("sign-generated-document", {
+        body: {
+          tenantId: selecionado.id,
+          documentId: d.id,
+          storagePath,
+        },
+      });
+      if (error || !data?.success) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+        uploaded = false;
+        throw new Error(
+          error?.message ?? data?.error ?? "Não foi possível validar e registrar a assinatura.",
+        );
+      }
+
+      uploaded = false;
+      toast.success(`Assinatura registrada. SHA-256 do PDF: ${String(data.sha256).slice(0, 16)}…`);
+      await carregar();
+    } catch (error) {
+      if (uploaded && storagePath) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+      }
+      const { data: latestDocument } = await db
+        .from("generated_documents")
+        .select("status,signed_pdf_sha256")
+        .eq("id", d.id)
+        .eq("tenant_id", selecionado.id)
+        .maybeSingle();
+      if (latestDocument?.status === "signed" && latestDocument.signed_pdf_sha256) {
+        toast.success("A assinatura foi concluída e o PDF final está arquivado.");
+        await carregar();
+        return;
+      }
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível concluir a assinatura.",
+      );
+    }
+  }
+  async function cancelarGerado(d: DocumentoGerado) {
+    if (!selecionado || d.status === "signed" || d.status === "cancelled") return;
+    const confirmou = window.confirm(
+      "Confirma o cancelamento deste documento? O conteúdo e o histórico de aprovação serão preservados.",
+    );
+    if (!confirmou) return;
+    const { error } = await db.rpc("cancel_generated_document_workflow", {
+      p_tenant_id: selecionado.id,
+      p_document_id: d.id,
+    });
+    if (error) {
+      toast.error(error.message);
       return;
     }
-    toast.success("Assinatura registrada.");
+    toast.success("Documento cancelado e fluxo encerrado.");
     await carregar();
   }
 
-  async function cancelarGerado(d: DocumentoGerado) {
-    if (!selecionado || d.status === "signed") return;
-    const { error: updateError } = await db
-      .from("generated_documents")
-      .update({ status: "cancelled" })
-      .eq("id", d.id)
-      .eq("tenant_id", selecionado.id);
-    if (updateError) {
-      toast.error(updateError.message);
-      return;
+  useEffect(() => {
+    if (loading || !selecionado?.id || tenantCarregadoId !== selecionado.id) return;
+    const url = new URL(window.location.href);
+    const documentoId = url.searchParams.get("documento");
+    if (!documentoId) return;
+    const gerado = gerados.some((item) => item.id === documentoId);
+    if (!gerado && !documentos.some((item) => item.id === documentoId)) {
+      toast.error("O documento solicitado não está disponível nesta Secretaria.");
+    } else {
+      setAba(gerado ? "gerados" : "vencimentos");
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById(`${gerado ? "gerado" : "documento"}-${documentoId}`)
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+      });
     }
-    toast.success("Documento cancelado.");
-    await carregar();
-  }
+    url.searchParams.delete("documento");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [loading, selecionado?.id, tenantCarregadoId, documentos, gerados]);
 
   if (!selecionado)
     return (
@@ -1771,6 +2128,14 @@ function Documentos() {
               )}
             </TabsList>
             <TabsContent value="vencimentos" className="mt-4">
+              {supplierFilter && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <p>Documentos de {fornecedorPorId.get(supplierFilter)?.legal_name}</p>
+                  <Button variant="outline" onClick={() => setSupplierFilter("")}>
+                    Ver todos os fornecedores
+                  </Button>
+                </div>
+              )}
               <div className="overflow-hidden rounded-lg border bg-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -1785,21 +2150,21 @@ function Documentos() {
                       </tr>
                     </thead>
                     <tbody>
-                      {documentos.length === 0 ? (
+                      {visibleDocuments.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="p-10 text-center text-muted-foreground">
                             Nenhum documento de fornecedor registrado.
                           </td>
                         </tr>
                       ) : (
-                        documentos.map((d) => {
+                        visibleDocuments.map((d) => {
                           const f = fornecedorPorId.get(d.supplier_id);
                           const status = situacaoVencimento(d.expires_at);
                           const safeExternalUrl = d.external_url
                             ? normalizeExternalDocumentUrl(d.external_url)
                             : null;
                           return (
-                            <tr key={d.id} className="border-t">
+                            <tr key={d.id} id={`documento-${d.id}`} className="border-t">
                               <td className="p-3">
                                 <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">
@@ -1895,7 +2260,9 @@ function Documentos() {
                         </p>
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant="outline">Versão {m.version}</Badge>
-                          <Badge variant="outline">{m.template_type.toUpperCase()}</Badge>
+                          <Badge variant="outline">
+                            {ROTULOS_CATEGORIA_MODELO[m.template_type] ?? m.template_type}
+                          </Badge>
                           {m.legal_basis && <span>{m.legal_basis}</span>}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
@@ -2016,7 +2383,7 @@ function Documentos() {
                         gerados.map((d) => {
                           const camposPendentes = extractPendingDocumentFields(d.content_snapshot);
                           return (
-                            <tr key={d.id} className="border-t">
+                            <tr key={d.id} id={`gerado-${d.id}`} className="border-t">
                               <td className="p-3">
                                 <p className="font-medium">{d.title}</p>
                                 <p className="text-xs text-muted-foreground">
@@ -2052,21 +2419,28 @@ function Documentos() {
                                 {new Intl.DateTimeFormat("pt-BR").format(new Date(d.created_at))}
                               </td>
                               <td className="p-3">
-                                <Badge
-                                  variant={
-                                    d.status === "signed"
-                                      ? "secondary"
+                                <div className="space-y-1">
+                                  <Badge
+                                    variant={
+                                      d.status === "signed"
+                                        ? "secondary"
+                                        : d.status === "cancelled"
+                                          ? "outline"
+                                          : "default"
+                                    }
+                                  >
+                                    {d.status === "signed"
+                                      ? "Assinado"
                                       : d.status === "cancelled"
-                                        ? "outline"
-                                        : "default"
-                                  }
-                                >
-                                  {d.status === "signed"
-                                    ? "Assinado"
-                                    : d.status === "cancelled"
-                                      ? "Cancelado"
-                                      : "Rascunho"}
-                                </Badge>
+                                        ? "Cancelado"
+                                        : "Rascunho"}
+                                  </Badge>
+                                  {d.status === "signed" && d.signed_pdf_sha256 && (
+                                    <p className="max-w-52 break-all text-[10px] text-muted-foreground">
+                                      SHA-256: {d.signed_pdf_sha256}
+                                    </p>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-3">
                                 <div className="flex flex-wrap justify-end gap-1">
@@ -2086,11 +2460,7 @@ function Documentos() {
                                         disabled={baixandoRascunhoId !== null}
                                         onClick={() => void baixarRascunho(d, "docx")}
                                       >
-                                        {baixandoRascunhoId === d.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                                        ) : (
-                                          <Download className="h-4 w-4" aria-hidden />
-                                        )}
+                                        <Download className="h-4 w-4" aria-hidden />
                                         Word (rascunho)
                                       </Button>
                                       <Button
@@ -2102,6 +2472,22 @@ function Documentos() {
                                         PDF (rascunho)
                                       </Button>
                                     </>
+                                  )}
+                                  {d.status === "signed" && d.signed_pdf_storage_path && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={baixandoRascunhoId !== null}
+                                      onClick={() => void baixarRascunho(d, "pdf")}
+                                    >
+                                      <ShieldCheck className="h-4 w-4" aria-hidden />
+                                      PDF assinado · verificar SHA-256
+                                    </Button>
+                                  )}
+                                  {d.status === "signed" && !d.signed_pdf_storage_path && (
+                                    <Badge variant="destructive">
+                                      Assinatura legada sem PDF imutável
+                                    </Badge>
                                   )}
                                   {(() => {
                                     const workflow = fluxoPorDocumento.get(d.id);
@@ -2223,22 +2609,12 @@ function Documentos() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label>Fornecedor *</Label>
-                <Select
+                <SupplierSelect
+                  suppliers={fornecedores}
                   value={fornecedorId}
                   onValueChange={setFornecedorId}
                   disabled={!!documentoEditando}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o fornecedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fornecedores.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.legal_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Título *</Label>
@@ -2391,6 +2767,9 @@ function Documentos() {
                   <SelectItem value="risk_analysis">Análise de riscos</SelectItem>
                   <SelectItem value="risk_matrix">Matriz contratual de riscos</SelectItem>
                   <SelectItem value="tr">Termo de Referência</SelectItem>
+                  <SelectItem value="term_addendum_renewal">
+                    Termo aditivo de prorrogação
+                  </SelectItem>
                   <SelectItem value="custom">Outro documento</SelectItem>
                 </SelectContent>
               </Select>
@@ -2628,6 +3007,9 @@ function Documentos() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={gerarDocumento} className="space-y-4">
+            {dialogGerar && selecionado && processoGeracao && (
+              <AnnualDemandSource tenantId={selecionado.id} processId={processoGeracao} />
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {selecionado.enabled_modules["processos"] === true &&
                 selecionado.enabled_modules["documentos"] === true &&
@@ -2714,23 +3096,13 @@ function Documentos() {
               {!processoGeracao && (
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
-                  <Select
+                  <SupplierSelect
+                    suppliers={fornecedores}
+                    emptyOption={{ value: "nenhum", label: "Sem fornecedor" }}
                     value={fornecedorGeracao}
                     onValueChange={setFornecedorGeracao}
                     disabled={!!contratoGeracao}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Vincular fornecedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nenhum">Sem fornecedor</SelectItem>
-                      {fornecedores.map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.legal_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               )}
               {!processoGeracao && (
@@ -2745,7 +3117,7 @@ function Documentos() {
                   />
                 </div>
               )}
-              {processoGeracao && (
+              {(processoGeracao || contratoGeracao) && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Dados complementares do documento</Label>
                   <p className="text-xs text-muted-foreground">
@@ -2754,11 +3126,9 @@ function Documentos() {
                     cadastro ficam identificados no rascunho para conferência.
                   </p>
                   {camposDoModelo.length === 0 ? (
-                    <Alert>
-                      <AlertDescription>
-                        Selecione um modelo-base instalado que contenha os campos de preenchimento.
-                      </AlertDescription>
-                    </Alert>
+                    <p className="text-sm text-muted-foreground">
+                      Não há campos complementares pendentes para este modelo.
+                    </p>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {camposDoModelo.map((campo) => (
@@ -2804,30 +3174,28 @@ function Documentos() {
                     calculados no servidor. Revise o rascunho gerado; campos ainda pendentes
                     aparecem na lista e impedem o envio para aprovação.
                   </p>
+                  {(previaGeracao.missingKeys.length > 0 ||
+                    previaGeracao.unknownKeys.length > 0) && (
+                    <Alert className="border-amber-400 bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Campos que precisam de conferência</AlertTitle>
+                      <AlertDescription>
+                        {previaGeracao.missingKeys.length > 0 && (
+                          <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
+                        )}
+                        {previaGeracao.unknownKeys.length > 0 && (
+                          <p>Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.</p>
+                        )}
+                        O rascunho manterá marcadores visíveis para impedir que dados ausentes
+                        pareçam preenchidos.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <details className="rounded-md border p-3">
                     <summary className="cursor-pointer text-sm font-medium">
                       Pré-visualizar o conteúdo preenchido
                     </summary>
                     <div className="mt-3 space-y-3">
-                      {(previaGeracao.missingKeys.length > 0 ||
-                        previaGeracao.unknownKeys.length > 0) && (
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Campos que precisam de conferência</AlertTitle>
-                          <AlertDescription>
-                            {previaGeracao.missingKeys.length > 0 && (
-                              <p>Dados não encontrados: {previaGeracao.missingKeys.join(", ")}.</p>
-                            )}
-                            {previaGeracao.unknownKeys.length > 0 && (
-                              <p>
-                                Campos sem configuração: {previaGeracao.unknownKeys.join(", ")}.
-                              </p>
-                            )}
-                            O rascunho manterá marcadores visíveis para impedir que dados ausentes
-                            pareçam preenchidos.
-                          </AlertDescription>
-                        </Alert>
-                      )}
                       <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-5">
                         {previaGeracao.content}
                       </pre>
@@ -2849,7 +3217,7 @@ function Documentos() {
                 type="submit"
                 disabled={
                   salvandoGerado ||
-                  (processoGeracao
+                  (processoGeracao || contratoGeracao
                     ? !modeloSelecionado ||
                       camposDoModelo.some(
                         (campo) => campo.required && !camposComplementares[campo.key]?.trim(),
@@ -2951,6 +3319,17 @@ function Documentos() {
                   {documentoImpressao.signed_at
                     ? new Date(documentoImpressao.signed_at).toLocaleString("pt-BR")
                     : ""}
+                </p>
+                {documentoImpressao.signed_pdf_sha256 && (
+                  <>
+                    <p>Arquivo final arquivado e conferível por SHA-256.</p>
+                    <p className="break-all text-xs">
+                      SHA-256: {documentoImpressao.signed_pdf_sha256}
+                    </p>
+                  </>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Assinatura eletrônica simples. Não equivale à assinatura qualificada ICP-Brasil.
                 </p>
               </div>
             )}

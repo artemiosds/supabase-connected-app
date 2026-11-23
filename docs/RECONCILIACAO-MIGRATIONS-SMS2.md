@@ -1,5 +1,31 @@
 # Reconciliação de migrations — SMS2
 
+## Complemento de conferência — 19/11/2026
+
+- `main`: **118 migrations**, SMS2: **115 registradas**. Três incrementos estão validados na CI `3887007` ([E2E](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588758), [aplicação e segurança](https://github.com/artemiosds/supabase-connected-app/actions/runs/44527588706)) e aguardam rollout controlado.
+- `20261119120941_fix_procurement_compliance_audit_identity.sql`: usa o identificador do processo na trilha de auditoria.
+- `20261119124309_allow_native_price_map_draft.sql`: permite o rascunho do mapa nativo, preservando a validação dos documentos baseados em modelo e as guardas de tramitação.
+- `20261119124921_grant_signature_service_workflow_status_read.sql`: leitura de status e chaves do workflow somente para o serviço de assinatura.
+- Aplicar em ordem, após os gates de recuperação e janela de implantação, e reconciliar os identificadores efetivamente registrados. Os demais registros permanecem históricos. Nenhuma alteração no SMS2 foi executada nessa conferência.
+
+## Conferência somente leitura — 19/11/2026
+
+- `main`: **115 arquivos SQL** em `supabase/migrations/`.
+- SMS2 (`rwbbznqtocunzrpcvjvk`): **115 versões registradas**. A comparação dos prefixos locais com os identificadores registrados não encontrou versão ausente ou extra.
+- Os quatro pares de 18/11 descritos no fim deste documento foram alinhados na `main` aos identificadores `20261116200420`, `20261116201722`, `20261117121954` e `20261117125315`. Não há renomeação adicional pendente para esses pares.
+- Esta conferência atesta o histórico de versões, não a equivalência contínua dos objetos efetivos nem uma prova de restore. Nenhum SQL foi executado no SMS2 nesta revisão. Não reaplicar migrations registradas, não editar a baseline `20261106194000` e não usar `db push` indiscriminado.
+
+As contagens e pendências datadas nas seções abaixo são registros históricos.
+
+## Rechecagem somente leitura — 16/11/2026
+
+- SMS2 (projeto `rwbbznqtocunzrpcvjvk`) registra **89 migrations**, com última versão `20261113194249_fix_branding_storage_upload_preflight_size`.
+- `main` contém **91 migrations**. As duas não registradas no SMS2 são `20261116120000_lock_generated_document_content_during_review.sql` e `20261116131036_cancel_generated_document_workflow.sql`.
+- A segunda migration adiciona cancelamento transacional do workflow documental e bloqueia cancelamento direto/edição posterior ao cancelamento; foi validada apenas em Supabase descartável na CI.
+- Esta verificação foi somente leitura. Nenhuma migration foi aplicada ao SMS2; backup/restore isolado e janela de implantação continuam obrigatórios antes de qualquer rollout.
+
+---
+
 **Auditoria de leitura somente em 12/11/2026.** Projeto Supabase SMS2: `rwbbznqtocunzrpcvjvk`. A fonte de código é `artemiosds/supabase-connected-app`, branch `main` (mais a branch de alinhamento referida abaixo).
 
 ## Estado remoto confirmado
@@ -102,3 +128,20 @@ A consulta somente-leitura mais recente confirma que o `main` e o SMS2 estão si
 As oito migrations antes descritas como futuras foram aplicadas e registradas no SMS2 na rodada anterior, incluindo fonte DOCX/timbrado, guardas de workflow, RLS e privilégios da rotina de notificações. Portanto, as seções anteriores que indicam 74 versões, oito migrations pendentes ou ausência de `document_template_sources`/`tenant_document_branding` são fotografias históricas, não o estado atual.
 
 Esta confirmação não executou migrations, não alterou histórico e não modificou dados do SMS2. Não reaplicar migrations já registradas. A sincronização do histórico também não substitui o backup/restore real, que permanece pendente.
+
+## Verificação de 18/11/2026
+
+A main e o SMS2 apresentam 95 versões cada. Há 91 identificadores coincidentes e quatro migrations com nomes correspondentes e versões diferentes. Esta consulta compara o histórico, sem atestar equivalência do SQL executado.
+
+| Migration | main | SMS2 |
+|---|---|---|
+| preserve_contract_item_unit_history | 20261116193000 | 20261116200420 |
+| guard_contract_suppression_against_items | 20261116203000 | 20261116201722 |
+| tenant_integrations_and_privacy_foundation | 20261116220000 | 20261117121954 |
+| allow_platform_admin_tenant_integration_settings | 20261117095000 | 20261117125315 |
+
+Antes do próximo deploy de schema, comparar o SQL registrado e os objetos efetivos. Evitar reaplicar estas migrations com base apenas na diferença dos identificadores.
+
+### Comparação do SQL registrado (18/11/2026)
+
+Cada registro contém um único elemento em `statements`. A comparação linha a linha com os arquivos do commit `2929786` confirmou: histórico de unidade difere por comentário e linha vazia; supressão contratual coincide; fundação de integrações difere por uma linha vazia; permissões administrativas diferem por comentários e linhas vazias. Nenhuma diferença de instrução SQL foi observada. O histórico não detecta alterações posteriores nos objetos. Para alinhar identificadores, preservar integralmente o conteúdo dos quatro arquivos, alterar somente o prefixo conforme a tabela acima e validar o conjunto em banco descartável antes de qualquer deploy.

@@ -3,7 +3,7 @@
 -- All checks run against a disposable local Supabase database in CI.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(41);
+SELECT extensions.plan(55);
 
 SELECT extensions.is(
  (SELECT count(*)::integer
@@ -11,8 +11,8 @@ SELECT extensions.is(
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='public' AND p.prosecdef
     AND pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')),
- 35,
- 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 35 functions'
+ 43,
+ 'the individually reviewed authenticated SECURITY DEFINER API surface remains exactly 43 functions'
 );
 
 SELECT extensions.is(
@@ -46,6 +46,9 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.can_manage_platform_support_team()','can_manage_platform_support_team delegates to the scoped support authorization helper',ARRAY['%app_auth.can_manage_platform_support_team()%']::text[]),
  ('public.end_platform_support_session(uuid)','end_platform_support_session can close only the current actor own session',ARRAY['%actor_id=(SELECT auth.uid())%']::text[]),
  ('public.get_document_workflow_capabilities(uuid)','get_document_workflow_capabilities checks tenant permission, standing and module access',ARRAY['%has_tenant_data_permission%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
+ ('public.get_procurement_price_capabilities(uuid)','get_procurement_price_capabilities checks procurement approval permission, standing and module access',ARRAY['%procurement:approve_price%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%']::text[]),
+ ('public.approve_procurement_item_price(uuid,uuid,text,text,text,numeric)','approve_procurement_item_price binds the authenticated actor and records auditable pricing calculations',ARRAY['%auth.uid()%','%procurement:approve_price%','%procurement_price_approvals%','%audit_events%']::text[]),
+ ('public.select_procurement_price_quote(uuid,uuid,uuid)','select_procurement_price_quote binds the authenticated actor and checks tenant permission, standing and module access',ARRAY['%auth.uid()%','%has_tenant_data_permission%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%app_auth.price_estimate_write%']::text[]),
  ('public.get_my_platform_staff_access()','get_my_platform_staff_access reads only the current user staff record',ARRAY['%user_id=(SELECT auth.uid())%']::text[]),
  ('public.get_my_platform_support_status()','get_my_platform_support_status scopes returned support status to the current user',ARRAY['%auth.uid()%']::text[]),
  ('public.get_platform_staff_metrics()','get_platform_staff_metrics requires an explicit internal metrics or billing permission',ARRAY['%has_platform_staff_permission%']::text[]),
@@ -67,12 +70,16 @@ WITH reviewed(signature, test_name, required_fragments) AS (
  ('public.revoke_platform_staff_invitation(uuid)','revoke_platform_staff_invitation requires Master authorization',ARRAY['%app_auth.is_platform_admin()%']::text[]),
  ('public.revoke_platform_support_invitation(uuid)','revoke_platform_support_invitation requires scoped support-management permission',ARRAY['%app_auth.can_manage_platform_support_team()%']::text[]),
  ('public.save_platform_staff_role(uuid,text,text,text,text[])','save_platform_staff_role requires Master authorization and retains the base dashboard permission',ARRAY['%app_auth.is_platform_admin()%','%dashboard.view%']::text[]),
+ ('public.save_contract_renewal_assessment(uuid,uuid,jsonb)','save_contract_renewal_assessment requires tenant update permission, standing and the contracts module',ARRAY['%has_tenant_data_permission%','%documents:update%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%ON CONFLICT (tenant_id, contract_id)%']::text[]),
+ ('public.save_contract_renewal_checklist_item(uuid,uuid,text,uuid,date,text,text,text)','save_contract_renewal_checklist_item requires tenant update permission and validates active assignees and evidence',ARRAY['%has_tenant_data_permission%','%documents:update%','%tenant_memberships%','%status = ''active''%','%evidence_reference%']::text[]),
+ ('public.validate_contract_renewal_addendum(uuid,uuid)','validate_contract_renewal_addendum checks legal prerequisites, the ten-year limit and required checklist completion',ARRAY['%has_tenant_data_permission%','%documents:view%','%documents:create%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%contract_renewal_checklist_items%','%proposed_end_date%','%accumulated_months%']::text[]),
  ('public.save_tenant_role_with_permissions(uuid,uuid,text,text,text,uuid[])','save_tenant_role_with_permissions checks the tenant role-management permission and tenant-scoped role lookup',ARRAY['%has_tenant_permission%','%r.tenant_id=p_tenant_id%']::text[]),
  ('public.set_platform_staff_roles(uuid,uuid[])','set_platform_staff_roles requires Master authorization',ARRAY['%app_auth.is_platform_admin()%']::text[]),
  ('public.set_platform_staff_status(uuid,text)','set_platform_staff_status requires Master authorization and confirmed Auth identity before reactivation',ARRAY['%app_auth.is_platform_admin()%','%email_confirmed_at%']::text[]),
  ('public.set_platform_support_agent_status(uuid,text)','set_platform_support_agent_status requires scoped support-management permission and confirmed Auth identity before reactivation',ARRAY['%app_auth.can_manage_platform_support_team()%','%email_confirmed_at%']::text[]),
  ('public.set_platform_support_assignment(uuid,uuid,boolean,boolean,boolean,boolean)','set_platform_support_assignment requires support management and an active target agent',ARRAY['%app_auth.can_manage_platform_support_team()%','%a.user_id=p_agent_user_id%','%a.status=''active''%']::text[]),
  ('public.start_platform_support_session(uuid,text)','start_platform_support_session binds the actor, active assignment and time-limited session',ARRAY['%auth.uid()%','%platform_support_assignments%','%expires_at%']::text[]),
+ ('public.cancel_generated_document_workflow(uuid,uuid,text)','cancel_generated_document_workflow binds the current actor and requires tenant update permission, standing and the document module',ARRAY['%auth.uid()%','%has_tenant_data_permission%','%documents:update%','%is_tenant_in_good_standing%','%is_tenant_module_enabled%','%generated_document_workflow_events%','%audit_events%']::text[]),
  ('public.transition_generated_document_workflow(uuid,uuid,text,text)','transition_generated_document_workflow binds the actor and requires approval permission for decisions',ARRAY['%auth.uid()%','%documents:approve%','%generated_document_workflow_events%']::text[])
 )
 SELECT extensions.ok(
@@ -113,6 +120,65 @@ SELECT extensions.ok(
     AND acl.privilege_type='EXECUTE'
  ),
  'generated document write guard has no EXECUTE grant inherited from PUBLIC'
+);
+
+SELECT extensions.ok(
+ (SELECT p.prosecdef
+    AND COALESCE(p.proconfig,ARRAY[]::text[]) @> ARRAY['search_path=""']
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.fn_require_generated_document_workflow_cancellation()'::regprocedure),
+ 'document cancellation trigger uses SECURITY DEFINER with an empty search_path'
+);
+
+SELECT extensions.ok(
+ NOT pg_catalog.has_function_privilege('authenticated','public.fn_require_generated_document_workflow_cancellation()','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('anon','public.fn_require_generated_document_workflow_cancellation()','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('service_role','public.fn_require_generated_document_workflow_cancellation()','EXECUTE'),
+ 'document cancellation trigger is not executable by API or service roles'
+);
+
+SELECT extensions.ok(
+ NOT EXISTS (
+  SELECT 1
+  FROM pg_catalog.pg_proc p
+  CROSS JOIN LATERAL pg_catalog.aclexplode(
+    COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+  ) AS acl
+  WHERE p.oid='public.fn_require_generated_document_workflow_cancellation()'::regprocedure
+    AND acl.grantee=0
+    AND acl.privilege_type='EXECUTE'
+ ),
+ 'document cancellation trigger has no EXECUTE grant inherited from PUBLIC'
+);
+
+SELECT extensions.ok(
+ (SELECT p.prosecdef
+    AND COALESCE(p.proconfig,ARRAY[]::text[]) @> ARRAY['search_path=""']
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid='public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)'::regprocedure),
+ 'verified signature finalizer uses SECURITY DEFINER with an empty search_path'
+);
+
+SELECT extensions.ok(
+ pg_catalog.has_function_privilege('service_role','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('authenticated','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE')
+ AND NOT pg_catalog.has_function_privilege('anon','public.finalize_generated_document_signature(uuid,uuid,uuid,text,text,bigint,text)','EXECUTE'),
+ 'verified signature finalizer is callable only by the trusted service role'
+);
+
+SELECT extensions.ok(
+ pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','status','SELECT')
+ AND pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','tenant_id','SELECT')
+ AND pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','document_id','SELECT')
+ AND NOT pg_catalog.has_column_privilege('service_role','public.generated_document_workflows','decision_comment','SELECT')
+ AND NOT pg_catalog.has_table_privilege('service_role','public.generated_document_workflows','UPDATE'),
+ 'signature service can read only the workflow status and keys, without direct workflow changes'
+);
+
+SELECT extensions.ok(
+ pg_catalog.pg_get_functiondef('public.fn_guard_procurement_item_estimate()'::regprocedure) LIKE '%current_user=''postgres''%'
+ AND pg_catalog.pg_get_functiondef('public.fn_guard_procurement_process_estimate()'::regprocedure) LIKE '%current_user=''postgres''%',
+ 'procurement estimate guards accept the internal GUC only from the trusted function owner'
 );
 
 SELECT * FROM extensions.finish();

@@ -64,3 +64,28 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy send-expiry-notifications --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy tenant integration settings function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy tenant-integration-settings --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy Google Drive OAuth callback
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy google-drive-oauth-callback --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy Google Drive synchronization function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy google-drive-sync --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy platform AI configuration function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy platform-ai-configuration --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy tenant AI assistant function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy primus-ai --project-ref rwbbznqtocunzrpcvjvk

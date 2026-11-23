@@ -24,7 +24,7 @@ Plataforma web SaaS multitenant para Secretarias de Saúde, com cadastro e acomp
 
 ## Limites conhecidos
 
-O sistema ainda exige homologação com duas Secretarias. O GED ainda precisa de testes autenticados de upload/download e isolamento. Google Drive OAuth/sincronização, PDF server-side, assinatura qualificada ICP-Brasil, alertas recorrentes de e-mail/WhatsApp e gateway de pagamento não estão ativos. SMTP/domínio, backup restaurável, jurídico/LGPD, SLA e publicação comercial também permanecem como gates.
+O E2E automatizado já valida duas Secretarias fictícias, fornecedores, fontes DOCX privadas, timbrado e aprovação/cancelamento de documentos. Ainda faltam homologação com usuários municipais, ciclo completo de compras/contratos no navegador, validação do GED de documentos de fornecedores e conferência visual de documentos oficiais. Google Drive OAuth/sincronização, envio recorrente de e-mail/WhatsApp, gateway de pagamento e webhooks não estão ativos. O PDF usa renderizador client-side com `pdf-lib` e não é conversor Word completo; assinatura qualificada ICP-Brasil não está implementada. SMTP/domínio, backup restaurável, jurídico/LGPD, SLA e publicação comercial também permanecem como gates.
 
 ## Desenvolvimento
 

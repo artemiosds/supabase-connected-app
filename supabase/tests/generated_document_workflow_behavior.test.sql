@@ -2,7 +2,7 @@
 -- The transaction rolls back all fixtures and must run on disposable local Supabase.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(20);
+SELECT extensions.plan(29);
 
 INSERT INTO auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
  raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -63,6 +63,7 @@ ON CONFLICT DO NOTHING;
 
 SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000001',true);
 SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+ SELECT pg_catalog.set_config('request.jwt.claim.role','authenticated',true);
 INSERT INTO public.generated_documents(id,tenant_id,title,content_snapshot,status,created_by,updated_by)
 VALUES
  ('65000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','Workflow approval fixture','Conteúdo completo para aprovação.','draft','61000000-0000-4000-8000-000000000001','61000000-0000-4000-8000-000000000001'),
@@ -118,10 +119,54 @@ SELECT extensions.throws_ok(
  $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000002' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
  'P0001',NULL,'an approver cannot sign a document that has not been approved'
 );
-SELECT extensions.lives_ok(
- $test$UPDATE public.generated_documents SET status='signed' WHERE id='65000000-0000-4000-8000-000000000001' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
- 'authorized approver can sign an approved document'
-);
+SELECT pg_catalog.set_config('app_auth.verified_signer_id','61000000-0000-4000-8000-000000000002',true);
+ SELECT pg_catalog.set_config('app_auth.verified_file_sha256',pg_catalog.repeat('a',64),true);
+ SELECT pg_catalog.set_config('app_auth.verified_content_sha256',pg_catalog.repeat('b',64),true);
+ SELECT extensions.throws_ok(
+  $test$UPDATE public.generated_documents
+    SET status='signed',
+        signed_pdf_storage_path='62000000-0000-4000-8000-000000000001/generated-documents/65000000-0000-4000-8000-000000000001/65000000-0000-4000-8000-000000000099.pdf',
+        signed_pdf_sha256=pg_catalog.repeat('a',64),
+        signed_pdf_size=1024,
+        signed_pdf_mime_type='application/pdf',
+        signed_content_sha256=pg_catalog.repeat('b',64)
+    WHERE id='65000000-0000-4000-8000-000000000001'
+      AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+  '42501',NULL,'an authenticated signer cannot forge the trusted service verification context'
+ );
+ SELECT pg_catalog.set_config('app_auth.verified_signer_id','',true);
+ SELECT pg_catalog.set_config('app_auth.verified_file_sha256','',true);
+ SELECT pg_catalog.set_config('app_auth.verified_content_sha256','',true);
+
+ RESET ROLE;
+ SET LOCAL ROLE service_role;
+ SELECT pg_catalog.set_config('request.jwt.claim.role','service_role',true);
+ SELECT pg_catalog.set_config('request.jwt.claims','{"role":"service_role"}',true);
+ INSERT INTO storage.objects(bucket_id,name,owner,owner_id,metadata)
+ VALUES (
+  'gfs-private-documents',
+  '62000000-0000-4000-8000-000000000001/generated-documents/65000000-0000-4000-8000-000000000001/65000000-0000-4000-8000-000000000099.pdf',
+  '61000000-0000-4000-8000-000000000002',
+  '61000000-0000-4000-8000-000000000002',
+  '{"mimetype":"application/pdf","size":1024}'::jsonb
+ );
+ SELECT extensions.lives_ok(
+  $test$SELECT public.finalize_generated_document_signature(
+    '61000000-0000-4000-8000-000000000002',
+    '62000000-0000-4000-8000-000000000001',
+    '65000000-0000-4000-8000-000000000001',
+    '62000000-0000-4000-8000-000000000001/generated-documents/65000000-0000-4000-8000-000000000001/65000000-0000-4000-8000-000000000099.pdf',
+    pg_catalog.repeat('a',64),
+    1024,
+    pg_catalog.repeat('b',64)
+  )$test$,
+  'the trusted service finalizes an approved document after confirming its uploader'
+ );
+ RESET ROLE;
+ SET LOCAL ROLE authenticated;
+ SELECT pg_catalog.set_config('request.jwt.claim.role','authenticated',true);
+ SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000002',true);
+ SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000002","role":"authenticated","email":"workflow-approver@example.invalid"}',true);
 SELECT extensions.ok(
  EXISTS (
   SELECT 1 FROM public.generated_documents
@@ -192,6 +237,52 @@ SELECT extensions.is(
   WHERE tenant_id='62000000-0000-4000-8000-000000000001'
     AND document_id IN ('65000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002')),
  7,'submission, approval, signature and rejection produce a complete immutable event trail'
+);
+
+SELECT pg_catalog.set_config('request.jwt.claim.sub','61000000-0000-4000-8000-000000000001',true);
+SELECT pg_catalog.set_config('request.jwt.claims','{"sub":"61000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+
+SELECT extensions.throws_ok(
+ $test$SELECT public.cancel_generated_document_workflow('62000000-0000-4000-8000-000000000002','65000000-0000-4000-8000-000000000004',NULL)$test$,
+ '42501',NULL,'a tenant user cannot cancel a document belonging to another tenant'
+);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET status='cancelled' WHERE id='65000000-0000-4000-8000-000000000003' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ '42501',NULL,'direct status updates cannot bypass the workflow cancellation RPC'
+);
+SELECT extensions.is(
+ public.cancel_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000002','Cancelamento solicitado pela Secretaria.'),
+ 'cancelled','an authorized updater can cancel a returned document'
+);
+SELECT extensions.ok(
+ EXISTS (SELECT 1 FROM public.generated_documents
+  WHERE tenant_id='62000000-0000-4000-8000-000000000001'
+    AND id='65000000-0000-4000-8000-000000000002' AND status='cancelled'),
+ 'workflow cancellation updates the document record atomically'
+);
+SELECT extensions.ok(
+ EXISTS (SELECT 1 FROM public.generated_document_workflows
+  WHERE tenant_id='62000000-0000-4000-8000-000000000001'
+    AND document_id='65000000-0000-4000-8000-000000000002'
+    AND status='cancelled' AND decided_by='61000000-0000-4000-8000-000000000001'
+    AND decision_comment='Cancelamento solicitado pela Secretaria.'),
+ 'workflow cancellation records the responsible actor and optional reason'
+);
+SELECT extensions.ok(
+ EXISTS (SELECT 1 FROM public.generated_document_workflow_events
+  WHERE tenant_id='62000000-0000-4000-8000-000000000001'
+    AND document_id='65000000-0000-4000-8000-000000000002'
+    AND actor_id='61000000-0000-4000-8000-000000000001'
+    AND action='cancelled' AND from_status='rejected' AND to_status='cancelled'),
+ 'cancellation history records its previous state and actor'
+);
+SELECT extensions.throws_ok(
+ $test$UPDATE public.generated_documents SET title='Tampered after cancellation' WHERE id='65000000-0000-4000-8000-000000000002' AND tenant_id='62000000-0000-4000-8000-000000000001'$test$,
+ '42501',NULL,'a cancelled document is immutable'
+);
+SELECT extensions.throws_ok(
+ $test$SELECT public.cancel_generated_document_workflow('62000000-0000-4000-8000-000000000001','65000000-0000-4000-8000-000000000001',NULL)$test$,
+ 'P0001',NULL,'a signed document cannot be cancelled'
 );
 
 SELECT * FROM extensions.finish();

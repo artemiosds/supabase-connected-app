@@ -1,0 +1,227 @@
+/*
+ * AnimatedList e FlowingMenu adaptados dos exemplos fornecidos pelo projeto.
+ * Cores semânticas Primus; animação decorativa que respeita reduced-motion.
+ */
+.primus-animated-list {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+}
+
+.primus-animated-list__viewport {
+  max-height: var(--primus-list-max-height, 540px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+.primus-animated-list__fade {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  left: 0;
+  height: 22px;
+  pointer-events: none;
+}
+
+.primus-animated-list__fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--card), transparent);
+}
+
+.primus-animated-list__fade--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--card), transparent);
+}
+
+.primus-animated-list__row {
+  transform-origin: center;
+  animation: primus-list-entrance 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--primus-row-delay, 0ms);
+}
+
+.primus-animated-list__row:focus-within {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes primus-list-entrance {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.primus-flowing-menu {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.primus-flowing-menu__list {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.primus-flowing-menu__band {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: block;
+  border: 1px solid color-mix(in oklch, var(--primary) 35%, var(--border));
+  border-radius: 0.75rem;
+  background: color-mix(in oklch, var(--primary) 7%, var(--card));
+  box-shadow: inset 3px 0 0 var(--primary);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 470ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    height 470ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    opacity 160ms ease;
+}
+
+.primus-flowing-menu__band[data-visible="true"] {
+  opacity: 1;
+}
+
+.primus-flowing-menu__row {
+  position: relative;
+  z-index: 1;
+  padding: 3px 0;
+}
+
+.primus-flowing-menu__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  color: var(--foreground);
+  text-decoration: none;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 180ms ease;
+}
+
+.primus-flowing-menu__link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.primus-flowing-menu__link:hover {
+  color: var(--foreground);
+}
+
+.primus-flowing-menu__icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--secondary);
+  color: var(--foreground);
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease;
+}
+
+.primus-flowing-menu__icon--featured {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.primus-flowing-menu__row[data-active="true"] .primus-flowing-menu__icon {
+  transform: scale(1.06);
+  border-color: var(--primary);
+}
+
+.primus-flowing-menu__text {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.primus-flowing-menu__arrow {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  color: var(--muted-foreground);
+  transition:
+    transform 220ms ease,
+    color 220ms ease;
+}
+
+.primus-flowing-menu__row[data-active="true"] .primus-flowing-menu__arrow {
+  color: var(--primary);
+  transform: translate(2px, -2px);
+}
+
+.primus-flowing-menu__marquee {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: -35%;
+  max-width: 100%;
+  overflow: hidden;
+  transform: translateY(-50%);
+  color: var(--primary);
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 220ms ease;
+}
+
+.primus-flowing-menu__marquee > span {
+  display: inline-block;
+}
+
+.primus-flowing-menu__row[data-active="true"] .primus-flowing-menu__marquee {
+  opacity: 0.055;
+}
+
+.primus-flowing-menu__row[data-active="true"] .primus-flowing-menu__marquee > span {
+  animation: primus-flowing-text 18s linear infinite;
+}
+
+@keyframes primus-flowing-text {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-32%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primus-animated-list__row {
+    animation: none !important;
+  }
+  .primus-flowing-menu *,
+  .primus-flowing-menu *::before,
+  .primus-flowing-menu *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

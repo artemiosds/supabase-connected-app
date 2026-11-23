@@ -1,5 +1,6 @@
 -- Disposable authenticated E2E fixtures. This file is executed only against
 -- the local Supabase database started by the GitHub Actions E2E workflow.
+-- Includes procurement access only for synthetic UI tests; no SMS2 data is used.
 -- The email domain is reserved (.invalid); no real users or emails are used.
 BEGIN;
 
@@ -122,7 +123,7 @@ VALUES
 ON CONFLICT (provider_id, provider) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     identity_data = EXCLUDED.identity_data,
-    updated_at = pg_catalog.now();
+    updated_at = EXCLUDED.updated_at;
 
 INSERT INTO public.profiles(id, full_name)
 VALUES
@@ -143,7 +144,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000001',
     'active',
-    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true,"processos":true,"auditoria":true}'::jsonb
   ),
   (
     '91000000-0000-4000-8000-000000000002',
@@ -152,7 +153,7 @@ VALUES
     'active',
     '90000000-0000-4000-8000-000000000002',
     'active',
-    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true}'::jsonb
+    '{"fornecedores":true,"contratos":true,"documentos":true,"modelos":true,"processos":true}'::jsonb
   )
 ON CONFLICT (id) DO NOTHING;
 
@@ -165,6 +166,7 @@ VALUES
   ('suppliers:update', 'Editar fornecedores', 'Permissão E2E sintética', 'suppliers'),
   ('documents:view', 'Visualizar modelos', 'Permissão E2E sintética', 'documents'),
   ('documents:create', 'Criar documentos', 'Permissão E2E sintética', 'documents'),
+  ('documents:update', 'Editar documentos e restaurar versões', 'Permissão E2E sintética', 'documents'),
   ('documents:approve', 'Aprovar documentos', 'Permissão E2E sintética', 'documents'),
   ('documents:manage_templates', 'Gerenciar modelos', 'Permissão E2E sintética', 'documents')
 ON CONFLICT (code) DO NOTHING;
@@ -199,7 +201,7 @@ WHERE roles.id IN (
   )
   AND permissions.code IN (
     'org:view', 'org:edit', 'suppliers:view', 'suppliers:create', 'suppliers:update',
-    'documents:view', 'documents:create', 'documents:approve', 'documents:manage_templates'
+    'documents:view', 'documents:create', 'documents:update', 'documents:approve', 'documents:manage_templates', 'documents:sign', 'audit:view'
   )
 ON CONFLICT DO NOTHING;
 
@@ -232,7 +234,8 @@ VALUES
     '91000000-0000-4000-8000-000000000002'
   )
 ON CONFLICT DO NOTHING;
--- Separate synthetic reviewer: documents:view + documents:approve, never documents:create.
+
+-- Separate synthetic reviewer: documents:view + documents:approve + documents:update, never documents:create.
 INSERT INTO public.tenant_roles(id, tenant_id, name, slug, description, is_system)
 VALUES (
   '92000000-0000-4000-8000-000000000003',
@@ -247,7 +250,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tenant_role_permissions(role_id, permission_id)
 SELECT '92000000-0000-4000-8000-000000000003', id
 FROM public.permissions
-WHERE code IN ('documents:view', 'documents:approve')
+WHERE code IN ('org:view', 'suppliers:view', 'documents:view', 'documents:approve', 'documents:update')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.tenant_memberships(id, tenant_id, user_id, status)
@@ -340,7 +343,7 @@ VALUES(
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.supplier_documents(
-  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,external_url,storage_provider,status
 )
 VALUES(
   '96000000-0000-4000-8000-000000000001',
@@ -350,6 +353,7 @@ VALUES(
   'certidao_federal',
   CURRENT_DATE-30,
   CURRENT_DATE+10,
+  'https://files.example.invalid/certificate.txt',
   'external_link',
   'active'
 )
@@ -365,6 +369,19 @@ SELECT pg_catalog.set_config(
   '{"sub":"90000000-0000-4000-8000-000000000002","role":"authenticated"}',
   true
 );
+SELECT public.create_procurement_process_with_checklist(
+  '91000000-0000-4000-8000-000000000002',
+  'E2E-PROC-2026-001',
+  'Processo reservado da Secretaria E2E B',
+  'Fixture para verificar isolamento de processos entre Secretarias.',
+  'pregao',
+  'normal',
+  'Compras B',
+  'Equipe sintética B',
+  140,
+  CURRENT_DATE + 30
+);
+
 INSERT INTO public.suppliers(id, tenant_id, cnpj, legal_name, category, status)
 VALUES (
   '94000000-0000-4000-8000-000000000002',
@@ -408,7 +425,7 @@ VALUES(
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.supplier_documents(
-  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,storage_provider,status
+  id,tenant_id,supplier_id,title,document_type,issue_date,expires_at,external_url,storage_provider,status
 )
 VALUES(
   '96000000-0000-4000-8000-000000000002',
@@ -418,6 +435,7 @@ VALUES(
   'certidao_federal',
   CURRENT_DATE-30,
   CURRENT_DATE+10,
+  'https://files.example.invalid/certificate.txt',
   'external_link',
   'active'
 )
