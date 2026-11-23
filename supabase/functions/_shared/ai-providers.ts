@@ -262,7 +262,7 @@ function requestForProvider(
       const isOpenRouterNemotron =
         (new URL(provider.api_base_url).hostname === "openrouter.ai" ||
           new URL(provider.api_base_url).hostname === "www.openrouter.ai") &&
-        /^nvidia\\/nemotron-3-ultra-550b-a55b(?::free)?$/i.test(provider.model);
+        /^nvidia\/nemotron-3-ultra-550b-a55b(?::free)?$/i.test(provider.model);
       body = {
         model: provider.model,
         messages: [
