@@ -204,11 +204,6 @@ export function AdminMasterAi() {
     [tenants, selectedTenantId],
   );
   const selectedTenantOperational = selectedTenant?.operational === true;
-  const configuredProviders = useMemo(
-    () => providers.filter((provider) => provider.status === "connected" && provider.is_enabled),
-    [providers],
-  );
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
