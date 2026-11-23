@@ -49,13 +49,24 @@ function validBaseUrl(value: unknown): value is string {
   if (typeof value !== "string" || !value.trim()) return false;
   try {
     const url = new URL(value.trim());
+    const hostname = url.hostname.toLowerCase();
+    const isIpAddress = /^[0-9.]+$/.test(hostname) || hostname.startsWith("[");
+    const isLocalHost =
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      hostname.endsWith(".test");
     return (
       url.protocol === "https:" &&
       !url.username &&
       !url.password &&
       !url.search &&
       !url.hash &&
-      /^[A-Za-z0-9.-]+$/.test(url.hostname)
+      hostname.includes(".") &&
+      !isIpAddress &&
+      !isLocalHost &&
+      /^[A-Za-z0-9.-]+$/.test(hostname)
     );
   } catch {
     return false;
