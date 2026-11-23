@@ -49,7 +49,7 @@ export function montarSugestaoProcessoReposicao(params: {
       params.contractNumber + ". Itens prioritários: " +
       params.itensCriticos.slice(0, 3).map((item) => item.description).join(", ") +
       (totalItens > 3 ? " e outros " + (totalItens - 3) + " item(ns)." : "."),
-    modality: "pregao" as const,
+    modality: "pregao" as "pregao" | "dispensa",
     priority: temEsgotado ? ("urgente" as const) : ("alta" as const),
     requesting_unit: "",
   };
