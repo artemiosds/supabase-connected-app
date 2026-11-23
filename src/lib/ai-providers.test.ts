@@ -120,7 +120,8 @@ describe("adaptadores multiprovedor de IA", () => {
     const request = mock.getRequest();
 
     expect(request.url).toBe(
-      "https://primus.openai.azure.com/openai/deployments/deployment-prod/chat/completions?api-version=2024-10-21",
+      "https://primus.openai.azure.com/openai/deployments/deployment-prod/chat/completions?" +
+        "api-version=2024-10-21",
     );
     expect(new Headers(request.init?.headers).get("api-key")).toBe("azure-test-key");
     expect(result).toEqual({ text: "Resposta Azure", inputTokens: 40, outputTokens: 11 });
