@@ -62,6 +62,8 @@ describe("saldo de itens de contrato e ARP", () => {
       normais: 1,
       temRiscoDesabastecimento: true,
     });
-    expect(resumirAlertasSaldo([{ percentualDisponivel: 80 }]).temRiscoDesabastecimento).toBe(false);
+    expect(
+      resumirAlertasSaldo([{ percentualDisponivel: 80 }]).temRiscoDesabastecimento,
+    ).toBe(false);
   });
 });
