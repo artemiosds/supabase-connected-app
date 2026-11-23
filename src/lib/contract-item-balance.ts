@@ -36,3 +36,56 @@ export function calcularSaldoDisponivel(
   const consumed = Math.max(0, Math.round(calcularQuantidadeConsumida(movements) * QUANTITY_SCALE));
   return Math.max(0, total - consumed) / QUANTITY_SCALE;
 }
+export type NivelSaldoItem = "esgotado" | "critico" | "atencao" | "normal";
+
+export function calcularPercentualDisponivel(
+  quantityTotal: number,
+  movements: readonly ContractItemMovement[],
+): number {
+  if (!Number.isFinite(quantityTotal) || quantityTotal <= 0) return 0;
+  const saldo = calcularSaldoDisponivel(quantityTotal, movements);
+  const percentual = (saldo / quantityTotal) * 100;
+  return Math.max(0, Math.min(100, Math.round(percentual * 10) / 10));
+}
+
+export function classificarNivelSaldo(percentualDisponivel: number): NivelSaldoItem {
+  if (!Number.isFinite(percentualDisponivel) || percentualDisponivel <= 0) return "esgotado";
+  if (percentualDisponivel <= 20) return "critico";
+  if (percentualDisponivel <= 50) return "atencao";
+  return "normal";
+}
+
+export type ResumoAlertasSaldo = {
+  totalItens: number;
+  esgotados: number;
+  criticos: number;
+  emAtencao: number;
+  normais: number;
+  temRiscoDesabastecimento: boolean;
+};
+
+export function resumirAlertasSaldo(
+  itensComPercentual: Array<{ percentualDisponivel: number }>,
+): ResumoAlertasSaldo {
+  let esgotados = 0;
+  let criticos = 0;
+  let emAtencao = 0;
+  let normais = 0;
+
+  for (const item of itensComPercentual) {
+    const nivel = classificarNivelSaldo(item.percentualDisponivel);
+    if (nivel === "esgotado") esgotados++;
+    else if (nivel === "critico") criticos++;
+    else if (nivel === "atencao") emAtencao++;
+    else normais++;
+  }
+
+  return {
+    totalItens: itensComPercentual.length,
+    esgotados,
+    criticos,
+    emAtencao,
+    normais,
+    temRiscoDesabastecimento: esgotados > 0 || criticos > 0,
+  };
+}
