@@ -156,7 +156,14 @@ describe("contract-dossier-pdf-helper", () => {
         contractTotalValue: 100,
         items: [],
         movements: [],
-        amendments: [{ number: "Aditivo", kind: "acrescimo", signedAt: "2026-01-01", valueChange: Number.NaN }],
+        amendments: [
+          {
+            number: "Aditivo",
+            kind: "acrescimo",
+            signedAt: "2026-01-01",
+            valueChange: Number.NaN,
+          },
+        ],
         ordersCount: 0,
       }),
     ).toThrow(RangeError);
@@ -254,7 +261,9 @@ describe("contract-dossier-pdf-helper", () => {
     expect(docText).toContain("40,0%");
     expect(docText).toContain("9,90%");
     expect(docText).toContain("OF-2026/001");
-    expect(docText.indexOf("2º Termo Aditivo")).toBeGreaterThan(docText.indexOf("1º Termo Aditivo"));
+    expect(docText.indexOf("2º Termo Aditivo")).toBeGreaterThan(
+      docText.indexOf("1º Termo Aditivo"),
+    );
     expect(docText.indexOf("OF-2026/001")).toBeLessThan(docText.indexOf("OF-2026/002"));
     expect(docText).toContain("Lei Federal nº 14.133/2021");
     expect(docText).toContain("Fiscal Designado");
@@ -323,7 +332,8 @@ describe("contract-dossier-pdf-helper", () => {
       branding: {
         ...DEFAULT_BRANDING,
         headerTitle: "Secretaria Municipal de Saúde",
-        logoBase64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==",
+        logoBase64:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==",
         logoMime: "image/png",
       },
       title: "Dossiê TCE - Contrato CT-2026/001",
