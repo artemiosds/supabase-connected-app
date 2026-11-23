@@ -780,6 +780,107 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.platform_ai_claim_usage(
+  p_tenant_id uuid,
+  p_actor_id uuid,
+  p_feature text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_usage_count bigint;
+BEGIN
+  IF p_feature IS NULL OR p_feature NOT IN (
+    'assistant', 'documents', 'price_research', 'supplier_documents',
+    'contract_monitoring', 'delivery_receiving', 'tasks', 'email_alerts'
+  ) THEN
+    RAISE EXCEPTION 'Recurso de IA inválido.' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.tenant_memberships tm
+    JOIN public.tenants t ON t.id = tm.tenant_id
+    WHERE tm.tenant_id = p_tenant_id
+      AND tm.user_id = p_actor_id
+      AND tm.status = 'active'
+      AND t.status = 'active'
+      AND (
+        t.commercial_status = 'active'
+        OR (
+          t.commercial_status = 'trial'
+          AND t.trial_starts_at IS NOT NULL
+          AND t.trial_starts_at <= pg_catalog.now()
+          AND t.trial_ends_at IS NOT NULL
+          AND t.trial_ends_at > pg_catalog.now()
+        )
+      )
+  ) THEN
+    RAISE EXCEPTION 'Vínculo operacional com a Secretaria não encontrado.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.platform_ai_configuration c
+    JOIN public.tenant_ai_settings s ON s.tenant_id = p_tenant_id
+    WHERE c.id = 1
+      AND c.enabled = true
+      AND c.status = 'connected'
+      AND s.enabled = true
+      AND s.features->p_feature = 'true'::jsonb
+      AND EXISTS (
+        SELECT 1
+        FROM public.platform_ai_tenant_provider_access a
+        JOIN public.platform_ai_providers p ON p.id = a.provider_id
+        WHERE a.tenant_id = p_tenant_id
+          AND a.is_allowed = true
+          AND p.is_enabled = true
+          AND p.status = 'connected'
+      )
+  ) THEN
+    RAISE EXCEPTION 'Este recurso de IA não está habilitado para sua Secretaria.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_tenant_id::text || ':' || p_actor_id::text, 0)
+  );
+
+  SELECT count(*) INTO v_usage_count
+  FROM public.audit_events
+  WHERE tenant_id = p_tenant_id
+    AND actor_id = p_actor_id
+    AND action = 'AI_ASSISTANT_REQUESTED'
+    AND created_at >= pg_catalog.now() - interval '1 hour';
+
+  IF v_usage_count >= 40 THEN
+    INSERT INTO public.audit_events (
+      tenant_id, actor_id, action, entity, entity_id, details, created_at
+    ) VALUES (
+      p_tenant_id, p_actor_id, 'AI_ASSISTANT_RATE_LIMITED', 'ai_assistant', p_feature,
+      pg_catalog.jsonb_build_object('feature', p_feature), pg_catalog.now()
+    );
+    RETURN false;
+  END IF;
+
+  INSERT INTO public.audit_events (
+    tenant_id, actor_id, action, entity, entity_id, details, created_at
+  ) VALUES (
+    p_tenant_id, p_actor_id, 'AI_ASSISTANT_REQUESTED', 'ai_assistant', p_feature,
+    pg_catalog.jsonb_build_object('feature', p_feature), pg_catalog.now()
+  );
+  RETURN true;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.platform_ai_claim_usage(uuid, uuid, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.platform_ai_claim_usage(uuid, uuid, text) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.platform_ai_set_global_enabled(
   p_actor_id uuid,
   p_enabled boolean
