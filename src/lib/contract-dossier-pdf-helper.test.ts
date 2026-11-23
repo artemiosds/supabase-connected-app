@@ -130,6 +130,66 @@ describe("contract-dossier-pdf-helper", () => {
     expect(result.summary.balanceValue).toBe(100);
   });
 
+  it("consolida supressões e limita a execução ao valor atualizado do instrumento", () => {
+    const result = calcularResumoDossieContratual({
+      contractTotalValue: 300,
+      items: [
+        {
+          id: "item-1",
+          lineNumber: 1,
+          description: "Soro",
+          unit: "frasco",
+          quantityTotal: 10,
+          unitValue: 20,
+        },
+      ],
+      movements: [
+        { contract_item_id: "item-1", movement_type: "consumption", quantity: 10 },
+      ],
+      amendments: [
+        {
+          number: "1º Termo Aditivo",
+          kind: "supressao",
+          signedAt: "2026-11-01",
+          valueChange: -100,
+        },
+      ],
+      ordersCount: 1,
+    });
+
+    expect(result.summary).toMatchObject({
+      originalValue: 300,
+      amendmentsValueChange: -100,
+      updatedValue: 200,
+      executedValue: 200,
+      balanceValue: 0,
+      executionPercentage: 100,
+    });
+  });
+
+  it("propaga a validação de quantidades inválidas do motor de saldo", () => {
+    expect(() =>
+      calcularResumoDossieContratual({
+        contractTotalValue: 100,
+        items: [
+          {
+            id: "item-1",
+            lineNumber: 1,
+            description: "Soro",
+            unit: "frasco",
+            quantityTotal: 10,
+            unitValue: 10,
+          },
+        ],
+        movements: [
+          { contract_item_id: "item-1", movement_type: "consumption", quantity: -1 },
+        ],
+        amendments: [],
+        ordersCount: 0,
+      }),
+    ).toThrow(RangeError);
+  });
+
   it("rejeita valores financeiros e quantidades de ordens inválidos", () => {
     expect(() =>
       calcularResumoDossieContratual({
