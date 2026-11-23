@@ -54,7 +54,7 @@ export function StockReplenishmentDialog(props: Props) {
   const [form, setForm] = useState<Form>(() =>
     montarSugestaoProcessoReposicao({
       contractNumber: props.contract.number,
-      contractObject: props.contract.object,
+      contractObject: props.contract.object ?? null,
       itensCriticos: props.itensCriticos,
     }),
   );
@@ -69,7 +69,7 @@ export function StockReplenishmentDialog(props: Props) {
     setForm(
       montarSugestaoProcessoReposicao({
         contractNumber: props.contract.number,
-        contractObject: props.contract.object,
+        contractObject: props.contract.object ?? null,
         itensCriticos: props.itensCriticos,
       }),
     );
