@@ -439,18 +439,19 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 - [ ] Registrar aceite e reconciliar o histórico antes de uma implantação controlada no SMS2. Consolidação entre Secretarias, classificação de catálogo e publicação externa pertencem a etapas posteriores.
 
 
-## IA multiprovedor — homologação e implantação controlada (23/11/2026)
+## IA multiprovedor — implantação no SMS2 (23/11/2026)
 
-A evolução adiciona cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; lista de provedores autorizados por Secretaria; failover; métricas de tokens e estimativa de custos. A migration `20261123144614_platform_ai_multi_provider.sql` é aditiva.
+A entrega disponibiliza cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; allow-list por Secretaria; failover; métricas de tokens e estimativa de custos.
 
-- [x] Aplicar migrations `20261123144614_platform_ai_multi_provider.sql` e `20261123144927_fix_ai_non_primary_provider_failure.sql` diretamente no SMS2; conferir tabelas, RLS/FORCE RLS, privilégios `anon`/`authenticated` e trigger de allow-list.
-- [ ] Homologar os cinco adaptadores com credenciais de teste próprias, modelos/deployments autorizados e endpoints HTTPS; não usar chaves reais em fixtures, logs ou commits.
-- [ ] Validar cadastro/edição, teste individual, definição de principal, ordenação de alternativas e promoção automática de fallback após falha da principal.
-- [x] Validar no banco a allow-list por Secretaria e o bloqueio de habilitação sem provedor conectado; teste comportamental transacional cobre a falha do único provedor autorizado.
-- [ ] Validar consumo por Secretaria/provedor, tokens, custos com tarifas cadastradas e sinalização de custo parcial quando faltarem tarifas/contagens.
-- [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados para cada provedor antes de liberar dados institucionais.
-- [x] Aplicar as migrations no SMS2 em produção; confirmar o registro `20261123144614` e `20261123144927` na tabela de histórico.
-- [x] Publicar `platform-ai-configuration` e `primus-ai` (versão 17, `verify_jwt=true`) após a migration.
-- [x] Confirmar configuração global inicial desligada, zero provedores cadastrados e nenhuma Secretaria habilitada automaticamente; validar que as chaves só podem ser recuperadas pelo `service_role`.
+- [x] Aplicar as migrations `20261123144614_platform_ai_multi_provider.sql` e `20261123144927_fix_ai_non_primary_provider_failure.sql` diretamente no SMS2.
+- [x] Executar o teste pgTAP com 20 verificações de tabelas, RLS/FORCE RLS, privilégios, RPCs, endpoint e trigger de autorização.
+- [x] Executar teste comportamental transacional: falha do único provedor secundário autorizado, promoção de fallback, desligamento quando todos os provedores falham; fixtures e segredos sintéticos revertidos por rollback.
+- [x] Confirmar que nenhuma chave pode ser lida por `anon` ou `authenticated`, e que as três tabelas novas usam RLS e FORCE RLS.
+- [x] Publicar `platform-ai-configuration` versão 18 e `primus-ai` versão 17, ambas com `verify_jwt=true`.
+- [x] Confirmar configuração global desligada, zero provedores cadastrados e nenhuma Secretaria habilitada automaticamente.
+- [ ] Cadastrar credenciais reais diretamente no Painel Master e testar individualmente os cinco adaptadores com modelos/deployments e endpoints autorizados.
+- [ ] Validar consumo, tokens e custos com chamadas reais de cada provedor.
+- [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados antes de liberar dados institucionais.
+- [ ] Executar CI completo, teste de navegador e smoke test autenticado após o cadastro das credenciais.
 
-**Estado:** backend e banco implantados no SMS2. Testes SQL de segurança (20 verificações) e comportamento (falha do único provedor secundário autorizado, failover da principal e desligamento quando todos falham) passaram com rollback das fixtures. No SMS2 não havia configuração OpenAI nem credencial legada cadastrada; o registro inicial foi criado desligado, sem provedores. Ainda falta cadastrar credenciais reais diretamente no Painel Master, testar cada API externa, revisar privacidade/contratos e liberar explicitamente provedores e capacidades por Secretaria. A IA global permanece desligada. CI completo, teste de navegador e smoke test autenticado não foram executados nesta implantação.
+**Estado:** banco e backend multiprovedor estão implantados no SMS2. O SMS2 não possuía configuração OpenAI nem credencial legada antes da implantação; o registro global inicial foi criado desligado. Nenhuma chave real foi fornecida ou armazenada e nenhum provedor está ativo. A IA global permanece desligada até que o Administrador Master cadastre e teste uma credencial e autorize expressamente os provedores/capacidades por Secretaria.
