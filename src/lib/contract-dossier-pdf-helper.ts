@@ -271,7 +271,9 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
   lines.push("1. IDENTIFICAÇÃO DO INSTRUMENTO E DAS PARTES");
   lines.push("Órgão Contratante: " + singleLine(payload.tenantName));
   lines.push("Instrumento / Contrato nº: " + singleLine(payload.contract.number));
-  lines.push("Processo Administrativo de Origem: " + singleLine(payload.processNumber, "Não vinculado"));
+  lines.push(
+    "Processo Administrativo de Origem: " + singleLine(payload.processNumber, "Não vinculado"),
+  );
   lines.push("Modalidade de Contratação: " + singleLine(payload.contract.modality).toUpperCase());
   lines.push("Tipo de Instrumento: " + singleLine(payload.contract.instrumentType).toUpperCase());
   lines.push("Situação Cadastral: " + singleLine(payload.contract.status).toUpperCase());
@@ -284,8 +286,14 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
       " a " +
       formatarDataIsoPtBr(payload.contract.endDate),
   );
-  lines.push("Gestor do Contrato: " + singleLine(payload.contract.managerName, "Não designado formalmente"));
-  lines.push("Fiscal do Contrato: " + singleLine(payload.contract.inspectorName, "Não designado formalmente"));
+  lines.push(
+    "Gestor do Contrato: " +
+      singleLine(payload.contract.managerName, "Não designado formalmente"),
+  );
+  lines.push(
+    "Fiscal do Contrato: " +
+      singleLine(payload.contract.inspectorName, "Não designado formalmente"),
+  );
   if (payload.contract.ordinance) {
     lines.push("Portaria de Designação: " + singleLine(payload.contract.ordinance));
   }
@@ -300,7 +308,14 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
     lines.push("Nenhum termo aditivo ou apostilamento registrado até a presente data.");
   } else {
     lines.push(
-      ["Termo", "Espécie", "Assinatura", "Nova Vigência", "Alteração de Valor", "Observações"].join("\t"),
+      [
+        "Termo",
+        "Espécie",
+        "Assinatura",
+        "Nova Vigência",
+        "Alteração de Valor",
+        "Observações",
+      ].join("\t"),
     );
     for (const amendment of amendments) {
       lines.push(
@@ -351,12 +366,25 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
   lines.push("");
 
   lines.push("4. RESUMO FINANCEIRO CONSOLIDADO DA EXECUÇÃO");
-  lines.push("Valor Global Original do Instrumento: " + currency.format(payload.summary.originalValue));
-  lines.push("Variação Acumulada por Termos Aditivos: " + currency.format(payload.summary.amendmentsValueChange));
-  lines.push("Valor Global Atualizado do Instrumento: " + currency.format(payload.summary.updatedValue));
-  lines.push("Valor Total Executado / Fornecido: " + currency.format(payload.summary.executedValue));
+  lines.push(
+    "Valor Global Original do Instrumento: " + currency.format(payload.summary.originalValue),
+  );
+  lines.push(
+    "Variação Acumulada por Termos Aditivos: " +
+      currency.format(payload.summary.amendmentsValueChange),
+  );
+  lines.push(
+    "Valor Global Atualizado do Instrumento: " + currency.format(payload.summary.updatedValue),
+  );
+  lines.push(
+    "Valor Total Executado / Fornecido: " + currency.format(payload.summary.executedValue),
+  );
   lines.push("Saldo Financeiro Disponível: " + currency.format(payload.summary.balanceValue));
-  lines.push("Percentual de Execução Global: " + percentageTwoDecimals.format(payload.summary.executionPercentage) + "%");
+  lines.push(
+    "Percentual de Execução Global: " +
+      percentageTwoDecimals.format(payload.summary.executionPercentage) +
+      "%",
+  );
   lines.push("Quantidade de Itens Contratuais: " + String(payload.summary.totalItems));
   lines.push("Ordens de Fornecimento Identificadas: " + String(payload.summary.totalOrders));
   lines.push("");
@@ -371,7 +399,13 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
     lines.push("Nenhuma ordem de fornecimento emitida para este instrumento.");
   } else {
     lines.push(
-      ["Ordem / Empenho", "Data de Emissão", "Qtd. Itens", "Finalidade / Destino", "Valor Total"].join("\t"),
+      [
+        "Ordem / Empenho",
+        "Data de Emissão",
+        "Qtd. Itens",
+        "Finalidade / Destino",
+        "Valor Total",
+      ].join("\t"),
     );
     for (const order of orders) {
       lines.push(
@@ -401,7 +435,10 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
   lines.push("");
   lines.push("____________________________________________________________");
   lines.push(singleLine(payload.contract.inspectorName, "Fiscal do Contrato"));
-  lines.push("Fiscal Designado — Matrícula / Portaria: " + singleLine(payload.contract.ordinance, "Conforme designação"));
+  lines.push(
+    "Fiscal Designado — Matrícula / Portaria: " +
+      singleLine(payload.contract.ordinance, "Conforme designação"),
+  );
   lines.push("");
   lines.push("____________________________________________________________");
   lines.push(singleLine(payload.contract.managerName, "Gestor do Contrato"));
