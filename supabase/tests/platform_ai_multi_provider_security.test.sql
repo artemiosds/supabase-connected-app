@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(19);
+SELECT extensions.plan(20);
 
 SELECT extensions.has_table('public', 'platform_ai_providers', 'AI provider registry exists');
 SELECT extensions.has_table('public', 'platform_ai_tenant_provider_access', 'per-tenant provider allow-list exists');
@@ -104,6 +104,15 @@ SELECT extensions.ok(
       AND conname = 'platform_ai_providers_endpoint_check'
   ),
   'custom endpoints are constrained at the database layer'
+);
+SELECT extensions.ok(
+  EXISTS (
+    SELECT 1 FROM pg_catalog.pg_trigger
+    WHERE tgrelid = 'public.tenant_ai_settings'::regclass
+      AND tgname = 'enforce_tenant_ai_provider_access'
+      AND NOT tgisinternal
+  ),
+  'database rejects enabling a tenant without an allowed connected provider'
 );
 
 SELECT * FROM extensions.finish();
