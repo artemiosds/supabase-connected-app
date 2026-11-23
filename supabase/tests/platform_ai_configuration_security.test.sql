@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(10);
+SELECT extensions.plan(11);
 
 SELECT extensions.has_table('public', 'platform_ai_configuration', 'platform AI configuration metadata exists');
 SELECT extensions.has_table('public', 'tenant_ai_settings', 'per-tenant AI feature settings exist');
@@ -13,6 +13,13 @@ SELECT extensions.ok(
   (SELECT relrowsecurity AND relforcerowsecurity
    FROM pg_catalog.pg_class WHERE oid = 'public.tenant_ai_settings'::regclass),
   'tenant AI settings force row-level security'
+);
+SELECT extensions.ok(
+  has_table_privilege('service_role', 'public.platform_admins', 'SELECT')
+    AND NOT has_table_privilege('service_role', 'public.platform_admins', 'INSERT')
+    AND NOT has_table_privilege('service_role', 'public.platform_admins', 'UPDATE')
+    AND NOT has_table_privilege('service_role', 'public.platform_admins', 'DELETE'),
+  'the trusted backend can verify platform administrators with read-only access'
 );
 SELECT extensions.ok(
   NOT has_table_privilege('anon', 'public.platform_ai_configuration', 'SELECT')
