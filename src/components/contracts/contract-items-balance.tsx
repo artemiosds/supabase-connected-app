@@ -101,6 +101,7 @@ export function ContractItemsBalance(props: {
   contract: Contract;
   tenantId: string;
   userId: string;
+  autoOpen?: boolean;
 }) {
   const { selecionado } = useTenant();
   const { session } = useAuth();
@@ -178,6 +179,10 @@ export function ContractItemsBalance(props: {
       setLoading(false);
     }
   }, [props.contract.id, props.tenantId]);
+
+  useEffect(() => {
+    if (props.autoOpen) setAberto(true);
+  }, [props.autoOpen]);
 
   useEffect(() => {
     if (aberto) void carregar();

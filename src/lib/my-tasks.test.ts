@@ -174,3 +174,72 @@ describe("minhas tarefas municipais", () => {
     });
   });
 });
+
+describe("radar de desabastecimento em minhas tarefas", () => {
+  const item = (
+    quantity: number,
+    movements: Array<{ movement_type: string; quantity: number }>,
+  ) => ({
+    contract_id: "c1",
+    contract_number: "28/2026",
+    item_id: "i1",
+    description: "Dipirona 500mg",
+    quantity_total: quantity,
+    movements,
+  });
+  const tasks = (items: ReturnType<typeof item>[], contracts = [contrato()]) =>
+    montarMinhasTarefas("user-1", null, [], [], contracts, [], hoje, [], items);
+
+  it("gera uma tarefa crítica por contrato para item esgotado ou até 20%", () => {
+    const result = tasks([
+      item(10, [{ movement_type: "consumption", quantity: 10 }]),
+      {
+        ...item(10, [{ movement_type: "consumption", quantity: 8 }]),
+        item_id: "i2",
+        description: "Amoxicilina",
+      },
+    ]).filter((task) => task.tipo === "saldo_critico");
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: "saldo-critico-c1",
+      dias: 0,
+      destino: "/contratos",
+      entityId: "c1",
+    });
+    expect(result[0]?.descricao).toContain("Dipirona 500mg, Amoxicilina");
+    expect(criticidadeTarefa(result[0]?.dias ?? null)).toBe("critical");
+  });
+
+  it("não alerta com saldo acima de 20%", () => {
+    expect(
+      tasks([item(10, [{ movement_type: "consumption", quantity: 7.9 }])]).filter(
+        (task) => task.tipo === "saldo_critico",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("ignora contratos sem vínculo e instrumentos encerrados", () => {
+    expect(
+      tasks(
+        [item(10, [{ movement_type: "consumption", quantity: 10 }])],
+        [
+          contrato({ manager_user_id: "outro", inspector_user_id: "outro" }),
+          contrato({ id: "encerrado", status: "encerrado" }),
+        ],
+      ).filter((task) => task.tipo === "saldo_critico"),
+    ).toHaveLength(0);
+  });
+
+  it("considera estornos ao calcular o saldo disponível", () => {
+    const movements = [
+      { movement_type: "consumption", quantity: 9 },
+      { movement_type: "reversal", quantity: 2 },
+    ];
+    expect(
+      tasks([item(10, movements)]).filter((task) => task.tipo === "saldo_critico"),
+    ).toHaveLength(0);
+    expect(
+      tasks([item(10, movements.slice(0, 1))]).filter((task) => task.tipo === "saldo_critico"),
+    ).toHaveLength(1);
+  });
+});

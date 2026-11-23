@@ -165,6 +165,7 @@ function Contratos() {
   const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const requisicaoRef = useRef(0);
   const [historicosAbertos, setHistoricosAbertos] = useState<Record<string, boolean>>({});
+  const [saldoContratoId, setSaldoContratoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, setPendente] = useState(false);
@@ -294,6 +295,7 @@ function Contratos() {
       } else if (novoAditivo) {
         setAditivoDe(contrato);
       } else {
+        if (url.searchParams.get("saldo") === "1") setSaldoContratoId(contrato.id);
         document.getElementById(`contrato-${contractId}`)?.scrollIntoView({
           behavior: "smooth",
           block: "center",
@@ -304,6 +306,7 @@ function Contratos() {
     url.searchParams.delete("contrato");
     url.searchParams.delete("aditivo");
     url.searchParams.delete("renovacao");
+    url.searchParams.delete("saldo");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   }, [loading, selecionado?.id, tenantCarregadoId, lista]);
 
@@ -711,6 +714,7 @@ function Contratos() {
                       </Button>
                     </div>
                     <ContractItemsBalance
+                      autoOpen={saldoContratoId === c.id}
                       contract={c}
                       tenantId={selecionado.id}
                       userId={session?.user.id ?? ""}

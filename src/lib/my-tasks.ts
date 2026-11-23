@@ -1,4 +1,5 @@
 import { diasAte } from "@/lib/contratacao";
+import { calcularPercentualDisponivel, classificarNivelSaldo } from "@/lib/contract-item-balance";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type ProcessoMinhaTarefa = Pick<
@@ -29,9 +30,18 @@ export type TarefaRenovacaoMinhaTarefa = Pick<
   "id" | "contract_id" | "title" | "due_date" | "status" | "item_key"
 >;
 
+export type ItemSaldoContratoMinhaTarefa = {
+  contract_id: string;
+  contract_number: string;
+  item_id: string;
+  description: string;
+  quantity_total: number;
+  movements: Array<{ movement_type: string; quantity: number }>;
+};
+
 export type MinhaTarefa = {
   id: string;
-  tipo: "processo" | "contrato" | "certidao" | "renovacao";
+  tipo: "processo" | "contrato" | "certidao" | "renovacao" | "saldo_critico";
   titulo: string;
   descricao: string;
   dias: number | null;
@@ -68,6 +78,7 @@ export function montarMinhasTarefas(
   documentos: DocumentoMinhaTarefa[],
   hoje = new Date(),
   tarefasRenovacao: TarefaRenovacaoMinhaTarefa[] = [],
+  itensSaldo: ItemSaldoContratoMinhaTarefa[] = [],
 ): MinhaTarefa[] {
   if (!userId) return [];
   const tarefas: MinhaTarefa[] = [];
@@ -124,6 +135,44 @@ export function montarMinhasTarefas(
           ? "Revisar vigência do contrato sob sua fiscalização"
           : "Planejar providências para o contrato sob sua gestão",
       dias,
+      destino: "/contratos",
+      entityId: contrato.id,
+    });
+  }
+
+  const itensPorContrato = new Map<string, ItemSaldoContratoMinhaTarefa[]>();
+  for (const item of itensSaldo) {
+    const lista = itensPorContrato.get(item.contract_id) ?? [];
+    lista.push(item);
+    itensPorContrato.set(item.contract_id, lista);
+  }
+  for (const contrato of meusContratos) {
+    const emRisco = (itensPorContrato.get(contrato.id) ?? [])
+      .map((item) => ({
+        item,
+        nivel: classificarNivelSaldo(
+          calcularPercentualDisponivel(item.quantity_total, item.movements),
+        ),
+      }))
+      .filter(({ nivel }) => nivel === "esgotado" || nivel === "critico");
+    if (emRisco.length === 0) continue;
+    const esgotados = emRisco.filter(({ nivel }) => nivel === "esgotado").length;
+    const criticos = emRisco.length - esgotados;
+    const resumo = [
+      esgotados ? `${esgotados} item(ns) esgotado(s) (0%)` : "",
+      criticos ? `${criticos} item(ns) em nível crítico (≤20%)` : "",
+    ]
+      .filter(Boolean)
+      .join(" e ");
+    tarefas.push({
+      id: `saldo-critico-${contrato.id}`,
+      tipo: "saldo_critico",
+      titulo: `Risco de Desabastecimento: Contrato nº ${contrato.number}`,
+      descricao: `${resumo}: ${emRisco
+        .slice(0, 2)
+        .map(({ item }) => item.description)
+        .join(", ")}`,
+      dias: 0,
       destino: "/contratos",
       entityId: contrato.id,
     });

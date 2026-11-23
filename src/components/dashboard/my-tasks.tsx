@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
+  AlertOctagon,
   ArrowUpRight,
   CalendarClock,
   CheckCircle2,
@@ -23,10 +24,21 @@ import {
   type ContratoMinhaTarefa,
   type DocumentoMinhaTarefa,
   type EtapaMinhaTarefa,
+  type ItemSaldoContratoMinhaTarefa,
   type MinhaTarefa,
   type ProcessoMinhaTarefa,
   type TarefaRenovacaoMinhaTarefa,
 } from "@/lib/my-tasks";
+import type { Tables } from "@/integrations/supabase/types";
+
+type ContractItemRow = Pick<
+  Tables<"contract_items">,
+  "id" | "contract_id" | "description" | "quantity_total"
+>;
+type ContractMovementRow = Pick<
+  Tables<"contract_item_movements">,
+  "contract_item_id" | "movement_type" | "quantity"
+>;
 
 type TaskState = {
   tenantId: string;
@@ -149,6 +161,63 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
         ),
       );
 
+      const meusContratos = contracts.filter(
+        (contract) => contract.manager_user_id === userId || contract.inspector_user_id === userId,
+      );
+      let itensSaldo: ItemSaldoContratoMinhaTarefa[] = [];
+      let saldoFailed = false;
+      if (meusContratos.length > 0) {
+        try {
+          const contractItems: ContractItemRow[] = [];
+          const numeros = new Map(meusContratos.map((contract) => [contract.id, contract.number]));
+          for (let index = 0; index < meusContratos.length; index += 100) {
+            const ids = meusContratos.slice(index, index + 100).map((contract) => contract.id);
+            contractItems.push(
+              ...(await carregarTodasAsPaginas<ContractItemRow>((start, end) =>
+                db
+                  .from("contract_items")
+                  .select("id,contract_id,description,quantity_total")
+                  .eq("tenant_id", tenantId)
+                  .in("contract_id", ids)
+                  .order("id")
+                  .range(start, end),
+              )),
+            );
+          }
+          const movementsByItem = new Map<string, ItemSaldoContratoMinhaTarefa["movements"]>();
+          for (let index = 0; index < contractItems.length; index += 100) {
+            const ids = contractItems.slice(index, index + 100).map((item) => item.id);
+            const movements = await carregarTodasAsPaginas<ContractMovementRow>((start, end) =>
+              db
+                .from("contract_item_movements")
+                .select("contract_item_id,movement_type,quantity")
+                .eq("tenant_id", tenantId)
+                .in("contract_item_id", ids)
+                .order("id")
+                .range(start, end),
+            );
+            for (const movement of movements) {
+              const list = movementsByItem.get(movement.contract_item_id) ?? [];
+              list.push({
+                movement_type: movement.movement_type,
+                quantity: Number(movement.quantity),
+              });
+              movementsByItem.set(movement.contract_item_id, list);
+            }
+          }
+          itensSaldo = contractItems.map((item) => ({
+            contract_id: item.contract_id,
+            contract_number: numeros.get(item.contract_id) ?? "",
+            item_id: item.id,
+            description: item.description,
+            quantity_total: Number(item.quantity_total),
+            movements: movementsByItem.get(item.id) ?? [],
+          }));
+        } catch {
+          saldoFailed = true;
+        }
+      }
+
       let documents: DocumentoMinhaTarefa[] = [];
       let documentsFailed = false;
       if (suppliers.length > 0) {
@@ -191,7 +260,8 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           stagesResult.status === "rejected" ||
           contractsResult.status === "rejected" ||
           renewalTasksResult.status === "rejected" ||
-          documentsFailed,
+          documentsFailed ||
+          saldoFailed,
         items: montarMinhasTarefas(
           userId,
           fullName,
@@ -201,6 +271,7 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           documents,
           new Date(),
           renewalTasks,
+          saldoFailed ? [] : itensSaldo,
         ),
         canCreateDocuments,
         canViewSuppliers,
@@ -222,9 +293,11 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
   const contratos = current.items.filter((task) => task.tipo === "contrato").length;
   const certidoes = current.items.filter((task) => task.tipo === "certidao").length;
   const renovacoes = current.items.filter((task) => task.tipo === "renovacao").length;
+  const saldoCriticoCount = current.items.filter((task) => task.tipo === "saldo_critico").length;
   const filtros = [
     { value: "todas", label: "Todas", count: current.items.length },
     { value: "urgentes", label: "Urgentes", count: urgentes },
+    { value: "saldo_critico", label: "Desabastecimento", count: saldoCriticoCount },
     { value: "processo", label: "Processos", count: processos },
     { value: "contrato", label: "Contratos", count: contratos },
     { value: "certidao", label: "Certidões", count: certidoes },
@@ -422,19 +495,23 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
               maxHeight={540}
               renderItem={(task) => {
                 const Icon =
-                  task.tipo === "processo"
-                    ? FolderKanban
-                    : task.tipo === "contrato"
-                      ? ClipboardList
-                      : task.tipo === "renovacao"
-                        ? CalendarClock
-                        : FileText;
+                  task.tipo === "saldo_critico"
+                    ? AlertOctagon
+                    : task.tipo === "processo"
+                      ? FolderKanban
+                      : task.tipo === "contrato"
+                        ? ClipboardList
+                        : task.tipo === "renovacao"
+                          ? CalendarClock
+                          : FileText;
                 const critical = criticidadeTarefa(task.dias) === "critical";
                 const attention = criticidadeTarefa(task.dias) === "attention";
                 const detalhe =
-                  task.tipo === "renovacao" || task.tipo === "contrato"
-                    ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&renovacao=1`
-                    : `${task.destino}?${task.tipo === "processo" ? "processo" : "documento"}=${encodeURIComponent(task.entityId)}`;
+                  task.tipo === "saldo_critico"
+                    ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&saldo=1`
+                    : task.tipo === "renovacao" || task.tipo === "contrato"
+                      ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&renovacao=1`
+                      : `${task.destino}?${task.tipo === "processo" ? "processo" : "documento"}=${encodeURIComponent(task.entityId)}`;
                 return (
                   <div className="group relative bg-card transition-colors hover:bg-muted/25">
                     <div
@@ -453,20 +530,22 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                             {task.titulo}
                           </p>
                           <Badge variant="outline" className={classePrazo(task.dias)}>
-                            {prazo(task.dias)}
+                            {task.tipo === "saldo_critico" ? "Saldo crítico" : prazo(task.dias)}
                           </Badge>
                         </div>
                         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                           {task.descricao}
                         </p>
                         <p className="mt-1 text-[11px] font-medium text-muted-foreground">
-                          {task.tipo === "processo"
-                            ? "Processo administrativo"
-                            : task.tipo === "contrato"
-                              ? "Gestão e fiscalização"
-                              : task.tipo === "renovacao"
-                                ? "Providência de renovação contratual"
-                                : "Regularidade documental"}
+                          {task.tipo === "saldo_critico"
+                            ? "Risco de desabastecimento na rede"
+                            : task.tipo === "processo"
+                              ? "Processo administrativo"
+                              : task.tipo === "contrato"
+                                ? "Gestão e fiscalização"
+                                : task.tipo === "renovacao"
+                                  ? "Providência de renovação contratual"
+                                  : "Regularidade documental"}
                         </p>
                       </div>
                       <Button
