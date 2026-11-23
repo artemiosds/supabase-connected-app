@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  CalendarClock,
   ChevronDown,
   ChevronUp,
   FilePlus2,
@@ -20,6 +21,7 @@ import { ReportExportActions } from "@/components/reports/report-export-actions"
 import type { CsvColumn } from "@/lib/csv-export";
 import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
 import { RenewalWorkspace } from "@/components/contracts/renewal-workspace";
+import { ContractExtensionDialog } from "@/components/contracts/contract-extension-dialog";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -172,6 +174,7 @@ function Contratos() {
   const [novoAberto, setNovoAberto] = useState(false);
   const [contratoEditando, setContratoEditando] = useState<Contrato | null>(null);
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
+  const [prorrogacaoDe, setProrrogacaoDe] = useState<Contrato | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "alerta" | NivelAlerta>("todos");
   const [aba, setAba] = useState<"contratos" | "aditivos" | "renovacoes">("contratos");
   const [busca, setBusca] = useState("");
@@ -182,6 +185,7 @@ function Contratos() {
   useEffect(() => {
     setSeletorAberto(false);
     setAditivoDe(null);
+    setProrrogacaoDe(null);
     setBusca("");
     setBuscaContrato("");
     setFiltro("todos");
@@ -315,6 +319,13 @@ function Contratos() {
   const fornecedoresAtuais = dadosTenantAtual ? fornecedores : [];
   const processosAtuais = dadosTenantAtual ? processos : [];
   const aditivosAtuais = dadosTenantAtual ? aditivos : [];
+  const aditivosDoContrato = useMemo(
+    () =>
+      prorrogacaoDe
+        ? aditivosAtuais.filter((item) => item.contract_id === prorrogacaoDe.id)
+        : [],
+    [aditivosAtuais, prorrogacaoDe?.id],
+  );
   const loadingAtual = loading || !dadosTenantAtual;
   const erroAtual = dadosTenantAtual ? erro : null;
   const pendenteAtual = dadosTenantAtual && pendente;
@@ -686,6 +697,27 @@ function Contratos() {
                       >
                         <FilePlus2 className="h-4 w-4" /> Registrar aditivo
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                        disabled={
+                          c.status !== "vigente" ||
+                          c.instrument_type !== "contrato" ||
+                          diasAte(c.end_date) <= 0
+                        }
+                        aria-label={`Prorrogar vigência — Contrato ${c.number}`}
+                        title={
+                          c.instrument_type !== "contrato"
+                            ? "Atas de registro de preços exigem análise própria."
+                            : diasAte(c.end_date) <= 0
+                              ? "A prorrogação deve ser formalizada antes do fim da vigência."
+                              : undefined
+                        }
+                        onClick={() => setProrrogacaoDe(c)}
+                      >
+                        <CalendarClock className="h-4 w-4" /> Prorrogar vigência
+                      </Button>
                       {c.process_id && (
                         <Button asChild size="sm" variant="ghost">
                           <Link to="/processos">Abrir processo relacionado</Link>
@@ -919,6 +951,27 @@ function Contratos() {
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
         onSalvo={carregar}
+      />
+      <ContractExtensionDialog
+        open={!!prorrogacaoDe}
+        onOpenChange={(open) => !open && setProrrogacaoDe(null)}
+        contrato={prorrogacaoDe}
+        supplierName={
+          prorrogacaoDe ? nomeFornecedor(prorrogacaoDe.supplier_id) : undefined
+        }
+        aditivosContrato={aditivosDoContrato}
+        tenantId={selecionado.id}
+        userId={session?.user.id ?? ""}
+        onSucesso={() => {
+          setProrrogacaoDe(null);
+          void carregar();
+        }}
+        onIrParaRenovacoes={() => {
+          if (!prorrogacaoDe) return;
+          setProrrogacaoDe(null);
+          setAba("renovacoes");
+          setBusca(prorrogacaoDe.number);
+        }}
       />
     </div>
   );
