@@ -155,3 +155,10 @@
     color: var(--color-foreground);
   }
 }
+
+/* Hide the complete Lovable branding widget on every route. */
+#lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
