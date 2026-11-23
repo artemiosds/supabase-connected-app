@@ -1,5 +1,7 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
 import {
+  AiProviderError,
+  getAiProviderCompatibilityIssue,
   invokeAiProvider,
   type AiProviderConfig,
   type AiProviderKind,
@@ -267,6 +269,12 @@ Deno.serve(async (request: Request) => {
               "input_cost_per_million",
               "output_cost_per_million",
               "last_test_at",
+              "last_test_error",
+              "last_test_http_status",
+              "last_test_error_code",
+              "last_test_error_type",
+              "last_test_retryable",
+              "last_test_retry_after",
               "updated_at",
               "vault_secret_id",
             ].join(","),
@@ -446,6 +454,17 @@ Deno.serve(async (request: Request) => {
         origin,
       );
     }
+    const compatibilityIssue = getAiProviderCompatibilityIssue({
+      id: providerId ?? "new-provider",
+      name,
+      provider: provider as AiProviderKind,
+      model,
+      api_base_url: apiBaseUrl,
+      api_version: apiVersion,
+    });
+    if (compatibilityIssue)
+      return response({ error: compatibilityIssue }, 400, origin);
+
     if (
       provider === "azure_openai" &&
       !/^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$/.test(apiVersion ?? "")
@@ -490,37 +509,79 @@ Deno.serve(async (request: Request) => {
       return response({ error: "Provedor não encontrado." }, 404, origin);
 
     const provider = providerRow as AiProviderConfig;
-    const { data: apiKey, error: secretError } = await adminClient.rpc(
-      "platform_ai_get_provider_api_key",
-      { p_provider_id: providerId },
-    );
     let connected = false;
+    let resultStatus: "connected" | "failed" | "transient_error" = "failed";
     let message = "Não foi possível validar a conexão com o provedor.";
-    if (!secretError && typeof apiKey === "string" && apiKey) {
-      try {
-        await invokeAiProvider(
-          provider,
-          apiKey,
-          [{ role: "user", content: "Responda somente com OK." }],
-          "Teste técnico de conectividade. Responda somente com OK.",
-          16,
-          15_000,
-        );
-        connected = true;
-        message = "Conexão validada. O provedor está disponível para uso e contingência.";
-      } catch (cause) {
-        message = cause instanceof Error ? cause.message : message;
-      }
+    let httpStatus: number | null = null;
+    let errorCode: string | null = null;
+    let errorType: string | null = null;
+    let retryable = false;
+    let retryAfter: string | null = null;
+
+    const compatibilityIssue = getAiProviderCompatibilityIssue(provider);
+    if (compatibilityIssue) {
+      message = compatibilityIssue;
+      errorCode = "unsupported_api";
+      errorType = "unsupported_model_api";
     } else {
-      message = "Não foi possível recuperar a credencial protegida no Supabase Vault.";
+      const { data: apiKey, error: secretError } = await adminClient.rpc(
+        "platform_ai_get_provider_api_key",
+        { p_provider_id: providerId },
+      );
+
+      if (!secretError && typeof apiKey === "string" && apiKey) {
+        try {
+          await invokeAiProvider(
+            provider,
+            apiKey,
+            [{ role: "user", content: "Responda exatamente: OK." }],
+            "Teste técnico de conectividade. Responda exatamente: OK.",
+            512,
+            30_000,
+          );
+          connected = true;
+          resultStatus = "connected";
+          message = "Conexão validada. O provedor está disponível para uso e contingência.";
+        } catch (cause) {
+          if (cause instanceof AiProviderError) {
+            message = cause.message;
+            httpStatus = cause.details.httpStatus;
+            errorCode = cause.details.errorCode;
+            errorType = cause.details.errorType;
+            retryable = cause.details.retryable;
+            retryAfter = cause.details.retryAfter;
+          } else {
+            message =
+              cause instanceof Error
+                ? cause.message.slice(0, 500)
+                : "Falha inesperada ao testar o provedor.";
+            errorCode = cause instanceof Error ? cause.name : "unknown_error";
+            errorType = "unexpected_error";
+            retryable = true;
+          }
+          resultStatus = retryable ? "transient_error" : "failed";
+        }
+      } else {
+        message = "Não foi possível recuperar a credencial protegida no Supabase Vault.";
+        errorCode = secretError?.code ?? "vault_unavailable";
+        errorType = "vault_error";
+        retryable = true;
+        resultStatus = "transient_error";
+      }
     }
 
     const { data: statusData, error: statusError } = await adminClient.rpc(
-      "platform_ai_update_provider_test_status",
+      "platform_ai_record_provider_test_result",
       {
         p_actor_id: authData.user.id,
         p_provider_id: providerId,
-        p_status: connected ? "connected" : "failed",
+        p_status: resultStatus,
+        p_error_message: connected ? null : message,
+        p_http_status: httpStatus,
+        p_error_code: errorCode,
+        p_error_type: errorType,
+        p_retryable: retryable,
+        p_retry_after: retryAfter,
       },
     );
     if (statusError) {
@@ -531,8 +592,20 @@ Deno.serve(async (request: Request) => {
         origin,
       );
     }
+
     return response(
-      { connected, message, result: statusData },
+      {
+        connected,
+        status: resultStatus,
+        message,
+        http_status: httpStatus,
+        error_code: errorCode,
+        error_type: errorType,
+        retryable,
+        retry_after: retryAfter,
+        provider_preserved: resultStatus === "transient_error",
+        result: statusData,
+      },
       200,
       origin,
     );
