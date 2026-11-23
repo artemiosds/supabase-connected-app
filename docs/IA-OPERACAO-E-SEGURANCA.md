@@ -2,14 +2,14 @@
 
 ## Quem pode configurar
 
-Somente uma conta ativa em \`platform_admins\` (Administrador Master/dono da plataforma) pode cadastrar provedores, armazenar credenciais, validar conexões, definir a IA principal e alternativas, ligar a IA global e liberar provedores/capacidades por Secretaria. Equipe Interna, Suporte e administradores municipais não recebem essa permissão por herança. A autorização é verificada pela Edge Function e novamente nas RPCs protegidas.
+Somente uma conta ativa em `platform_admins` (Administrador Master/dono da plataforma) pode cadastrar provedores, armazenar credenciais, validar conexões, definir a IA principal e alternativas, ligar a IA global e liberar provedores/capacidades por Secretaria. Equipe Interna, Suporte e administradores municipais não recebem essa permissão por herança. A autorização é verificada pela Edge Function e novamente nas RPCs protegidas.
 
 ## Provedores e APIs suportados
 
 O gerenciador multiprovedor aceita:
 
 - **OpenAI:** API Responses.
-- **Google Gemini:** API \`generateContent\`.
+- **Google Gemini:** API `generateContent`.
 - **Anthropic Claude:** API Messages.
 - **Azure OpenAI:** endpoint do recurso, versão da API e nome do deployment.
 - **APIs compatíveis com OpenAI:** endpoint HTTPS com interface Chat Completions, para serviços que documentem compatibilidade com esse contrato.
@@ -51,7 +51,7 @@ Se o teste da IA principal falhar, o backend desabilita esse provedor e promove 
 
 ## Limites, privacidade e salvaguardas
 
-- Cada solicitação passa pela sessão autenticada e por vínculo ativo da conta à Secretaria. Consultas de contexto usam o cliente Supabase do próprio usuário com RLS; o navegador não envia \`tenant_id\` como prova de autorização.
+- Cada solicitação passa pela sessão autenticada e por vínculo ativo da conta à Secretaria. Consultas de contexto usam o cliente Supabase do próprio usuário com RLS; o navegador não envia `tenant_id` como prova de autorização.
 - O conteúdo e o contexto selecionado são enviados ao provedor que responder à solicitação. Com failover, o mesmo contexto pode ser enviado a mais de um provedor autorizado na mesma tentativa. O órgão deve aprovar contrato, privacidade, retenção e transferência de dados de cada provedor liberado antes do uso com dados pessoais ou sensíveis.
 - A conversa não é persistida pelo Primus. A auditoria registra Secretaria, usuário, capacidade, provedor, modelo e contagem de tokens, sem registrar prompts, respostas, documentos ou segredos.
 - Limite atual: 10 mensagens por chamada, até 3.000 caracteres por mensagem e 40 solicitações por usuário/Secretaria por hora.
@@ -61,7 +61,7 @@ Se o teste da IA principal falhar, o backend desabilita esse provedor e promove 
 
 ## Implantação controlada
 
-A migration \`20261123153000_platform_ai_multi_provider.sql\` é aditiva e deve ser validada em projeto descartável/homologação antes de qualquer aplicação ao SMS2. O deploy das Edge Functions \`platform-ai-configuration\` e \`primus-ai\` deve ocorrer somente depois da migration, dos testes de segurança e da homologação do fluxo multiprovedor. Não executar \`db push\` indiscriminado nem publicar as funções novas antes do schema correspondente.
+A migration `20261123153000_platform_ai_multi_provider.sql` é aditiva e deve ser validada em projeto descartável/homologação antes de qualquer aplicação ao SMS2. O deploy das Edge Functions `platform-ai-configuration` e `primus-ai` deve ocorrer somente depois da migration, dos testes de segurança e da homologação do fluxo multiprovedor. Não executar `db push` indiscriminado nem publicar as funções novas antes do schema correspondente.
 
 ## Evidências de aceite
 
