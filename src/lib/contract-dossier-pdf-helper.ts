@@ -143,7 +143,9 @@ export function reconstruirValorOriginalContrato(
   const originalValue = roundMoney(currentContractValue - amendmentsValueChange);
 
   if (originalValue < 0) {
-    throw new RangeError("O histórico de aditivos não permite reconstruir um valor original válido.");
+    throw new RangeError(
+      "O histórico de aditivos não permite reconstruir um valor original válido.",
+    );
   }
 
   return originalValue;
@@ -444,7 +446,8 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
   lines.push(
     "Atestamos, para os devidos fins de controle interno, auditoria e prestação de contas junto " +
       "ao Tribunal de Contas, que os quantitativos e valores discriminados neste dossiê refletem " +
-      "os registros de execução, as ordens de fornecimento, notas de entrega e medições vinculadas " +
+      "os registros de execução, as ordens de fornecimento, " +
+      "notas de entrega e medições vinculadas " +
       "ao Contrato nº " +
       singleLine(payload.contract.number) +
       ", nos termos do art. 117 da Lei Federal nº 14.133/2021, " +
