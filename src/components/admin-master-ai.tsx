@@ -229,6 +229,31 @@ export function AdminMasterAi() {
     [tenants, selectedTenantId],
   );
   const selectedTenantOperational = selectedTenant?.operational === true;
+  const primaryProvider = providers.find((provider) => provider.is_primary) ?? null;
+  const readyProviders = providers.filter(
+    (provider) => provider.is_enabled && provider.status === "connected",
+  );
+  const savedAllowedReadyIds = (selectedTenant?.allowed_provider_ids ?? []).filter((id) =>
+    readyProviders.some((provider) => provider.id === id),
+  );
+  const configuredFeatures = parseAiFeatureSettings(selectedTenant?.features);
+  const savedFeatureCount = AI_FEATURES.filter((item) => configuredFeatures[item.key]).length;
+  const draftFeatureCount = AI_FEATURES.filter((item) => features[item.key]).length;
+  const hasUnsavedProviders =
+    [...allowedProviderIds].sort().join("|") !==
+    [...(selectedTenant?.allowed_provider_ids ?? [])].sort().join("|");
+  const hasUnsavedTenantSettings =
+    tenantEnabled !== (selectedTenant?.enabled ?? false) ||
+    AI_FEATURES.some((item) => configuredFeatures[item.key] !== features[item.key]);
+  const assistantReady =
+    selectedTenantOperational &&
+    configuration?.enabled === true &&
+    primaryProvider?.is_enabled === true &&
+    primaryProvider?.status === "connected" &&
+    savedAllowedReadyIds.length > 0 &&
+    selectedTenant?.enabled === true &&
+    savedFeatureCount > 0;
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -508,6 +533,14 @@ export function AdminMasterAi() {
 
   async function saveTenantSettings() {
     if (!selectedTenant) return;
+    if (tenantEnabled && draftFeatureCount === 0) {
+      toast.error("Ative pelo menos um recurso antes de habilitar a IA desta Secretaria.");
+      return;
+    }
+    if (tenantEnabled && hasUnsavedProviders) {
+      toast.error("Salve primeiro os provedores autorizados desta Secretaria.");
+      return;
+    }
     setSavingTenant(true);
     try {
       await invokeAction("save_tenant", {
@@ -515,7 +548,11 @@ export function AdminMasterAi() {
         enabled: tenantEnabled,
         features,
       });
-      toast.success("Recursos de IA atualizados para " + selectedTenant.name + ".");
+      toast.success(
+        tenantEnabled
+          ? "IA e recursos habilitados para " + selectedTenant.name + "."
+          : "Recursos preparados e salvos para " + selectedTenant.name + ". A IA continua desligada.",
+      );
       await load();
     } catch (cause) {
       toast.error(
@@ -530,6 +567,12 @@ export function AdminMasterAi() {
 
   function updateFeature(key: AiFeatureKey, enabled: boolean) {
     setFeatures((current) => ({ ...current, [key]: enabled }));
+  }
+
+  function setAllFeatures(enabled: boolean) {
+    setFeatures(
+      Object.fromEntries(AI_FEATURES.map((item) => [item.key, enabled])) as AiFeatureSettings,
+    );
   }
 
   function toggleTenantProvider(providerId: string, enabled: boolean) {
@@ -549,8 +592,6 @@ export function AdminMasterAi() {
         />
       </div>
     );
-
-  const primaryProvider = providers.find((provider) => provider.is_primary) ?? null;
 
   return (
     <div className="space-y-6">
@@ -1059,7 +1100,9 @@ export function AdminMasterAi() {
               {configuration?.enabled ? "IA global ligada" : "IA global desligada"}
             </p>
             <p className="text-sm text-muted-foreground">
-              Principal atual: {primaryProvider?.name ?? "Nenhum provedor principal"}
+              Principal atual: {primaryProvider
+                  ? primaryProvider.name + " · " + primaryProvider.model
+                  : "Nenhum provedor principal. Clique em Tornar principal na lista acima."}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -1068,7 +1111,11 @@ export function AdminMasterAi() {
             </Badge>
             <Switch
               checked={configuration?.enabled ?? false}
-              disabled={savingGlobal || !primaryProvider}
+              disabled={
+                savingGlobal ||
+                (!configuration?.enabled &&
+                  (!primaryProvider?.is_enabled || primaryProvider.status !== "connected"))
+              }
               onCheckedChange={(checked) => void setGlobalEnabled(checked)}
               aria-label="Ativar IA globalmente"
             />
