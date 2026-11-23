@@ -441,16 +441,16 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 
 ## IA multiprovedor — homologação e implantação controlada (23/11/2026)
 
-A evolução adiciona cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; lista de provedores autorizados por Secretaria; failover; métricas de tokens e estimativa de custos. A migration `20261123153000_platform_ai_multi_provider.sql` é aditiva.
+A evolução adiciona cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; lista de provedores autorizados por Secretaria; failover; métricas de tokens e estimativa de custos. A migration `20261123144614_platform_ai_multi_provider.sql` é aditiva.
 
-- [ ] Validar a migration e o teste pgTAP em banco descartável, incluindo RLS/FORCE RLS, privilégios `anon`/`authenticated`, RPCs e preservação da credencial OpenAI existente.
+- [x] Aplicar migrations `20261123144614_platform_ai_multi_provider.sql` e `20261123144927_fix_ai_non_primary_provider_failure.sql` diretamente no SMS2; conferir tabelas, RLS/FORCE RLS, privilégios `anon`/`authenticated` e trigger de allow-list.
 - [ ] Homologar os cinco adaptadores com credenciais de teste próprias, modelos/deployments autorizados e endpoints HTTPS; não usar chaves reais em fixtures, logs ou commits.
 - [ ] Validar cadastro/edição, teste individual, definição de principal, ordenação de alternativas e promoção automática de fallback após falha da principal.
 - [ ] Validar allow-list por Secretaria: uma Secretaria não pode usar provedor não autorizado, desabilitado ou sem conexão validada.
 - [ ] Validar consumo por Secretaria/provedor, tokens, custos com tarifas cadastradas e sinalização de custo parcial quando faltarem tarifas/contagens.
 - [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados para cada provedor antes de liberar dados institucionais.
-- [ ] Após CI, pgTAP, homologação visual e backup/restore aprovado, aplicar a migration ao SMS2 em janela controlada.
-- [ ] Somente depois da migration, publicar `platform-ai-configuration` e `primus-ai` com JWT obrigatório e executar smoke tests autenticados.
-- [ ] Confirmar no Painel Master que a configuração OpenAI anterior foi preservada e que nenhuma Secretaria recebeu acesso a novos provedores sem autorização.
+- [x] Aplicar as migrations no SMS2 em produção; confirmar o registro `20261123144614` e `20261123144927` na tabela de histórico.
+- [x] Publicar `platform-ai-configuration` e `primus-ai` (versão 17, `verify_jwt=true`) após a migration.
+- [x] Confirmar configuração global inicial desligada, zero provedores cadastrados e nenhuma Secretaria habilitada automaticamente; validar que as chaves só podem ser recuperadas pelo `service_role`.
 
-**Estado:** preparação de código; implantação no SMS2 e publicação das novas Edge Functions permanecem pendentes. Não considerar o recurso pronto para produção até concluir todos os gates acima.
+**Estado:** backend e banco implantados no SMS2. Testes SQL de segurança (20 verificações) e comportamento (falha de provedor secundário, failover da principal e desligamento quando todos falham) passaram com rollback das fixtures. Ainda falta cadastrar credenciais reais, testar cada API externa e liberar explicitamente os provedores/capacidades por Secretaria. A IA global permanece desligada até essa configuração.
