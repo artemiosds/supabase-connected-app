@@ -189,6 +189,49 @@ WHERE s.enabled = true
   AND p.status = 'connected'
 ON CONFLICT (tenant_id, provider_id) DO NOTHING;
 
+-- Never leave a tenant enabled when the legacy migration could not authorize a connected provider.
+UPDATE public.tenant_ai_settings s
+SET enabled = false, updated_at = pg_catalog.now()
+WHERE s.enabled = true
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.platform_ai_tenant_provider_access a
+    JOIN public.platform_ai_providers p ON p.id = a.provider_id
+    WHERE a.tenant_id = s.tenant_id
+      AND a.is_allowed = true
+      AND p.is_enabled = true
+      AND p.status = 'connected'
+  );
+
+CREATE OR REPLACE FUNCTION public.enforce_tenant_ai_provider_access()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  IF NEW.enabled AND NOT EXISTS (
+    SELECT 1
+    FROM public.platform_ai_tenant_provider_access a
+    JOIN public.platform_ai_providers p ON p.id = a.provider_id
+    WHERE a.tenant_id = NEW.tenant_id
+      AND a.is_allowed = true
+      AND p.is_enabled = true
+      AND p.status = 'connected'
+  ) THEN
+    RAISE EXCEPTION 'Libere ao menos um provedor conectado para habilitar a IA desta Secretaria.'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.enforce_tenant_ai_provider_access() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS enforce_tenant_ai_provider_access ON public.tenant_ai_settings;
+CREATE TRIGGER enforce_tenant_ai_provider_access
+  BEFORE INSERT OR UPDATE ON public.tenant_ai_settings
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_tenant_ai_provider_access();
+
 CREATE OR REPLACE FUNCTION public.platform_ai_get_provider_api_key(p_provider_id uuid)
 RETURNS text
 LANGUAGE sql
