@@ -1542,10 +1542,12 @@ GRANT EXECUTE ON FUNCTION public.platform_ai_set_global_enabled(uuid, boolean) T
 
 COMMIT;
 
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.localhost'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.local'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.internal'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.test'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localhost'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.local'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.internal'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.test'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localdomain'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.lan'
     )
     OR (
       provider NOT IN ('azure_openai', 'openai_compatible')
@@ -3603,10 +3605,10 @@ GRANT EXECUTE ON FUNCTION public.platform_ai_set_global_enabled(uuid, boolean) T
 
 COMMIT;
 
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.localhost'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.local'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.internal'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.test'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localhost'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.local'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.internal'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.test'
     )
     OR (
       provider NOT IN ('azure_openai', 'openai_compatible')
@@ -4356,10 +4358,12 @@ GRANT EXECUTE ON FUNCTION public.platform_ai_set_global_enabled(uuid, boolean) T
 
 COMMIT;
 
-      OR lower(split_part(split_part(p_api_base_url, '://', 2), '/', 1)) LIKE '%.localhost'
-      OR lower(split_part(split_part(p_api_base_url, '://', 2), '/', 1)) LIKE '%.local'
-      OR lower(split_part(split_part(p_api_base_url, '://', 2), '/', 1)) LIKE '%.internal'
-      OR lower(split_part(split_part(p_api_base_url, '://', 2), '/', 1)) LIKE '%.test'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.localhost'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.local'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.internal'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.test'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.localdomain'
+      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.lan'
     THEN
       RAISE EXCEPTION 'Informe uma URL HTTPS válida para o endpoint do provedor.';
     END IF;
@@ -5666,10 +5670,10 @@ GRANT EXECUTE ON FUNCTION public.platform_ai_set_global_enabled(uuid, boolean) T
 
 COMMIT;
 
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.localhost'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.local'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.internal'
-      AND lower(split_part(split_part(api_base_url, '://', 2), '/', 1)) NOT LIKE '%.test'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localhost'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.local'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.internal'
+      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.test'
     )
     OR (
       provider NOT IN ('azure_openai', 'openai_compatible')
