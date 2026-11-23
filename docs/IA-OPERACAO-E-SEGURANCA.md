@@ -61,7 +61,7 @@ Se o teste da IA principal falhar, o backend desabilita esse provedor e promove 
 
 ## Implantação controlada
 
-A migration `20261123153000_platform_ai_multi_provider.sql` é aditiva e deve ser validada em projeto descartável/homologação antes de qualquer aplicação ao SMS2. O deploy das Edge Functions `platform-ai-configuration` e `primus-ai` deve ocorrer somente depois da migration, dos testes de segurança e da homologação do fluxo multiprovedor. Não executar `db push` indiscriminado nem publicar as funções novas antes do schema correspondente.
+As migrations `20261123144614_platform_ai_multi_provider.sql` e `20261123144927_fix_ai_non_primary_provider_failure.sql` foram aplicadas diretamente ao SMS2 em 23/11/2026. As Edge Functions `platform-ai-configuration` e `primus-ai` foram publicadas com JWT obrigatório. Os testes SQL de segurança e comportamento foram executados com fixtures transacionais e rollback. Antes de liberar uso real, o Administrador Master ainda precisa cadastrar credenciais próprias, testar cada conexão e autorizar provedores por Secretaria. Não executar `db push` indiscriminado.
 
 ## Evidências de aceite
 
