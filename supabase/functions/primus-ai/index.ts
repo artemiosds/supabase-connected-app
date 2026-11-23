@@ -378,13 +378,33 @@ Deno.serve(async (request: Request) => {
     .eq("tenant_id", tenantId)
     .eq("is_allowed", true);
   if (providerAccessError)
-    return response({ error: "Não foi possível validar os provedores liberados para a Secretaria." }, 503, origin);
+    return response(
+      { error: "Não foi possível validar os provedores liberados para a Secretaria." },
+      503,
+      origin,
+    );
   const allowedProviderIds = (providerAccess ?? []).map((entry) => entry.provider_id);
   let providerCandidates: AiProviderConfig[] = [];
   if (allowedProviderIds.length > 0) {
     const { data: configuredProviders, error: providersError } = await adminClient
       .from("platform_ai_providers")
-      .select("id,name,provider,model,api_base_url,api_version,is_enabled,is_primary,fallback_priority,status,vault_secret_id,input_cost_per_million,output_cost_per_million")
+      .select(
+        [
+          "id",
+          "name",
+          "provider",
+          "model",
+          "api_base_url",
+          "api_version",
+          "is_enabled",
+          "is_primary",
+          "fallback_priority",
+          "status",
+          "vault_secret_id",
+          "input_cost_per_million",
+          "output_cost_per_million",
+        ].join(","),
+      )
       .in("id", allowedProviderIds)
       .eq("is_enabled", true)
       .eq("status", "connected")
@@ -392,7 +412,11 @@ Deno.serve(async (request: Request) => {
       .order("fallback_priority", { ascending: true })
       .order("created_at", { ascending: true });
     if (providersError)
-      return response({ error: "Não foi possível carregar os provedores de IA autorizados." }, 503, origin);
+      return response(
+        { error: "Não foi possível carregar os provedores de IA autorizados." },
+        503,
+        origin,
+      );
     providerCandidates = (configuredProviders ?? []) as AiProviderConfig[];
   }
 
