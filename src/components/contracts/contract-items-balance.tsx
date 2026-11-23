@@ -339,7 +339,6 @@ export function ContractItemsBalance(props: {
     }
   }
 
-
   async function exportarDossieTce() {
     if (items.length === 0) {
       toast.error("O contrato não possui itens cadastrados para emitir o dossiê.");
