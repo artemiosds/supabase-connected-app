@@ -19,6 +19,7 @@ import {
   Clock3,
 } from "lucide-react";
 import { SinoAlertas } from "@/components/sino-alertas";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PrimusAiAssistant } from "@/components/ai/primus-ai-assistant";
 import { useAuth } from "@/hooks/use-auth";
 import { TenantProvider, useTenant } from "@/hooks/use-tenant";
@@ -207,6 +208,7 @@ function LayoutAutenticado() {
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 <PrimusAiAssistant />
                 <SinoAlertas />
+                <ThemeToggle />
                 <AtalhoCentralSuporte />
               </div>
             </header>
