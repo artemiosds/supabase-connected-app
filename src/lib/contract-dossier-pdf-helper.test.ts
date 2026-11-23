@@ -28,7 +28,7 @@ describe("contract-dossier-pdf-helper", () => {
     expect(traduzirTipoAditivo("outro")).toBe("outro");
   });
 
-  it("reconstrói o valor original sem duplicar acréscimos ou supressões já aplicados no contrato", () => {
+  it("reconstrói o valor original sem duplicar aditivos já aplicados", () => {
     expect(
       reconstruirValorOriginalContrato(2500, [
         {
