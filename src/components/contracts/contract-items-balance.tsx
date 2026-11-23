@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  FileText,
   Loader2,
   Plus,
   Printer,
@@ -29,6 +30,10 @@ import {
   resumirAlertasSaldo,
 } from "@/lib/contract-item-balance";
 import { groupMovementsBySupplyOrder } from "@/lib/supply-order-history-helper";
+import {
+  buildContractDossierDocumentText,
+  calcularResumoDossieContratual,
+} from "@/lib/contract-dossier-pdf-helper";
 import { filtrarItensCriticosParaReposicao } from "@/lib/stock-replenishment-helper";
 import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
 import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
@@ -134,6 +139,7 @@ export function ContractItemsBalance(props: {
   });
   const [reversalReasons, setReversalReasons] = useState<Record<string, string>>({});
   const [reprintingReference, setReprintingReference] = useState<string | null>(null);
+  const [gerandoDossie, setGerandoDossie] = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -333,6 +339,189 @@ export function ContractItemsBalance(props: {
     }
   }
 
+
+  async function exportarDossieTce() {
+    if (items.length === 0) {
+      toast.error("O contrato não possui itens cadastrados para emitir o dossiê.");
+      return;
+    }
+    if (loading || erro) {
+      toast.error("Aguarde o carregamento completo dos itens e movimentações antes de emitir o dossiê.");
+      return;
+    }
+    if (!inScope()) {
+      toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+
+    setGerandoDossie(true);
+    try {
+      const [tenantResult, contractResult, amendmentsResult] = await Promise.all([
+        db.from("tenants").select("name").eq("id", props.tenantId).maybeSingle(),
+        db
+          .from("contracts")
+          .select("*")
+          .eq("id", props.contract.id)
+          .eq("tenant_id", props.tenantId)
+          .maybeSingle(),
+        db
+          .from("contract_amendments")
+          .select("*")
+          .eq("contract_id", props.contract.id)
+          .eq("tenant_id", props.tenantId)
+          .order("signed_at", { ascending: true }),
+      ]);
+
+      if (tenantResult.error || !tenantResult.data?.name) {
+        throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
+      }
+      if (contractResult.error || !contractResult.data) {
+        throw new Error("Não foi possível confirmar o contrato ou a ata.");
+      }
+      if (amendmentsResult.error) {
+        throw new Error("Não foi possível carregar o histórico de aditivos e apostilamentos.");
+      }
+      if (!inScope()) {
+        throw new Error("A Secretaria ou a sessão mudou durante a geração.");
+      }
+
+      if (!contractResult.data.supplier_id) {
+        throw new Error("O instrumento não possui fornecedor vinculado para identificar no dossiê.");
+      }
+
+      const [supplierResult, processResult] = await Promise.all([
+        db
+          .from("suppliers")
+          .select("legal_name,trade_name,cnpj")
+          .eq("id", contractResult.data.supplier_id)
+          .eq("tenant_id", props.tenantId)
+          .maybeSingle(),
+        contractResult.data.process_id
+          ? db
+              .from("procurement_processes")
+              .select("number")
+              .eq("id", contractResult.data.process_id)
+              .eq("tenant_id", props.tenantId)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (supplierResult.error || !supplierResult.data) {
+        throw new Error("Não foi possível confirmar o fornecedor vinculado ao instrumento.");
+      }
+      if (processResult.error) {
+        throw new Error("Não foi possível confirmar o processo administrativo de origem.");
+      }
+      if (!inScope()) {
+        throw new Error("A Secretaria ou a sessão mudou durante a geração.");
+      }
+
+      const { itemsCalculated, summary } = calcularResumoDossieContratual({
+        contractTotalValue: Number(contractResult.data.total_value),
+        items: items.map((item) => ({
+          id: item.id,
+          lineNumber: item.line_number,
+          description: item.description,
+          unit: item.unit,
+          quantityTotal: Number(item.quantity_total),
+          unitValue: Number(item.unit_value),
+        })),
+        movements: movements.map((movement) => ({
+          contract_item_id: movement.contract_item_id,
+          movement_type: movement.movement_type,
+          quantity: Number(movement.quantity),
+        })),
+        amendments: (amendmentsResult.data ?? []).map((amendment) => ({
+          number: amendment.number,
+          kind: amendment.kind,
+          signedAt: amendment.signed_at,
+          newEndDate: amendment.new_end_date,
+          valueChange: Number(amendment.value_change),
+          notes: amendment.notes,
+        })),
+        ordersCount: supplyOrders.length,
+      });
+
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantResult.data.name);
+      if (!inScope()) {
+        throw new Error("A Secretaria ou a sessão mudou durante a geração.");
+      }
+
+      const documentText = buildContractDossierDocumentText({
+        tenantName: tenantResult.data.name,
+        contract: {
+          number: contractResult.data.number,
+          instrumentType: contractResult.data.instrument_type,
+          modality: contractResult.data.modality,
+          object: contractResult.data.object,
+          startDate: contractResult.data.start_date,
+          endDate: contractResult.data.end_date,
+          totalValue: Number(contractResult.data.total_value),
+          status: contractResult.data.status,
+          managerName: contractResult.data.manager_name,
+          inspectorName: contractResult.data.inspector_name,
+          ordinance: contractResult.data.ordinance,
+        },
+        processNumber: processResult.data?.number ?? null,
+        supplier: {
+          name: supplierResult.data.trade_name || supplierResult.data.legal_name,
+          cnpj: supplierResult.data.cnpj,
+        },
+        amendments: (amendmentsResult.data ?? []).map((amendment) => ({
+          number: amendment.number,
+          kind: amendment.kind,
+          signedAt: amendment.signed_at,
+          newEndDate: amendment.new_end_date,
+          valueChange: Number(amendment.value_change),
+          notes: amendment.notes,
+        })),
+        items: itemsCalculated,
+        orders: supplyOrders.map((order) => ({
+          referenceNumber: order.referenceNumber,
+          createdAt: order.createdAt,
+          reason: order.reason,
+          itemsCount: order.itemsCount,
+          totalValue: order.totalValue,
+        })),
+        summary,
+        generatedAt: new Date().toLocaleString("pt-BR"),
+      });
+
+      const title = "Dossiê TCE - Contrato " + contractResult.data.number;
+      const docxBytes = await buildDocxFromText(documentText, title, "landscape");
+      const model = await docxToModel(docxBytes);
+      const pdfBytes = await renderPdf(model, {
+        branding,
+        title,
+        useTemplatePageSize: true,
+      });
+
+      if (!inScope()) {
+        throw new Error("A Secretaria ou a sessão mudou durante a geração do PDF.");
+      }
+
+      const blob = new Blob([pdfBytes.slice().buffer as ArrayBuffer], {
+        type: "application/pdf",
+      });
+      const url = URL.createObjectURL(blob);
+      const cleanNumber =
+        contractResult.data.number.replace(/[^a-zA-Z0-9_-]/g, "_") || "instrumento";
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "Dossie-TCE-Contrato-" + cleanNumber + ".pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      toast.success("Dossiê TCE e Prestação de Contas gerado em PDF com sucesso!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao gerar dossiê TCE.");
+    } finally {
+      setGerandoDossie(false);
+    }
+  }
+
   async function salvarItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!props.userId) {
@@ -505,6 +694,21 @@ export function ContractItemsBalance(props: {
                   onSaved={carregar}
                 />
               )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void exportarDossieTce()}
+                disabled={gerandoDossie || loading || Boolean(erro) || items.length === 0 || !inScope()}
+                title="Gerar Dossiê de Execução Contratual e Prestação de Contas (TCE) em PDF"
+              >
+                {gerandoDossie ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                Dossiê TCE (PDF)
+              </Button>
               <Button
                 type="button"
                 size="sm"
