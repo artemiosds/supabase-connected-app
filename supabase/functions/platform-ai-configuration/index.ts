@@ -704,6 +704,16 @@ Deno.serve(async (request: Request) => {
       !validFeatures(body.features)
     )
       return response({ error: "Configuração da Secretaria inválida." }, 400, origin);
+    if (
+      body.enabled === true &&
+      !Object.values(body.features as Record<string, boolean>).some(Boolean)
+    ) {
+      return response(
+        { error: "Selecione e salve pelo menos uma capacidade antes de ativar a IA." },
+        400,
+        origin,
+      );
+    }
     const { data, error } = await adminClient.rpc("platform_ai_set_tenant_settings", {
       p_actor_id: authData.user.id,
       p_tenant_id: tenantId,
@@ -712,11 +722,13 @@ Deno.serve(async (request: Request) => {
     });
     if (error) {
       console.error("Falha ao salvar configuração da Secretaria:", error.message);
-      return response(
-        { error: "Não foi possível salvar os recursos de IA desta Secretaria." },
-        400,
-        origin,
-      );
+      const knownMessage =
+        /A IA global precisa estar ativa|Libere ao menos um provedor conectado|A Secretaria precisa estar operacional|A lista de recursos de IA contém/.test(
+          error.message,
+        )
+          ? error.message
+          : "Não foi possível salvar os recursos de IA desta Secretaria.";
+      return response({ error: knownMessage }, 400, origin);
     }
     return response({ result: data }, 200, origin);
   }
