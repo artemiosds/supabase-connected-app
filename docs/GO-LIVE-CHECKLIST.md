@@ -437,3 +437,20 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 - [ ] Verificar com perfis distintos a visibilidade por Secretaria e as permissões para cadastrar, aprovar e abrir o processo.
 - [ ] Após aprovação, criar o processo, conferir seus itens e abrir o DFD vinculado. Repetir a conversão e verificar que o processo é o mesmo.
 - [ ] Registrar aceite e reconciliar o histórico antes de uma implantação controlada no SMS2. Consolidação entre Secretarias, classificação de catálogo e publicação externa pertencem a etapas posteriores.
+
+
+## IA multiprovedor — homologação e implantação controlada (23/11/2026)
+
+A evolução adiciona cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; lista de provedores autorizados por Secretaria; failover; métricas de tokens e estimativa de custos. A migration `20261123153000_platform_ai_multi_provider.sql` é aditiva.
+
+- [ ] Validar a migration e o teste pgTAP em banco descartável, incluindo RLS/FORCE RLS, privilégios `anon`/`authenticated`, RPCs e preservação da credencial OpenAI existente.
+- [ ] Homologar os cinco adaptadores com credenciais de teste próprias, modelos/deployments autorizados e endpoints HTTPS; não usar chaves reais em fixtures, logs ou commits.
+- [ ] Validar cadastro/edição, teste individual, definição de principal, ordenação de alternativas e promoção automática de fallback após falha da principal.
+- [ ] Validar allow-list por Secretaria: uma Secretaria não pode usar provedor não autorizado, desabilitado ou sem conexão validada.
+- [ ] Validar consumo por Secretaria/provedor, tokens, custos com tarifas cadastradas e sinalização de custo parcial quando faltarem tarifas/contagens.
+- [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados para cada provedor antes de liberar dados institucionais.
+- [ ] Após CI, pgTAP, homologação visual e backup/restore aprovado, aplicar a migration ao SMS2 em janela controlada.
+- [ ] Somente depois da migration, publicar `platform-ai-configuration` e `primus-ai` com JWT obrigatório e executar smoke tests autenticados.
+- [ ] Confirmar no Painel Master que a configuração OpenAI anterior foi preservada e que nenhuma Secretaria recebeu acesso a novos provedores sem autorização.
+
+**Estado:** preparação de código; implantação no SMS2 e publicação das novas Edge Functions permanecem pendentes. Não considerar o recurso pronto para produção até concluir todos os gates acima.
