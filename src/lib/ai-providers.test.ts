@@ -210,7 +210,7 @@ describe("adaptadores multiprovedor de IA", () => {
     expect((failure as AiProviderError).message).not.toContain(apiKey);
     expect((failure as AiProviderError).details).toMatchObject({
       httpStatus: 429,
-      errorCode: "429",
+      errorCode: "rate_limited",
       errorType: "rate_limit_exceeded",
       retryable: true,
       retryAfter: "30",
