@@ -93,6 +93,7 @@ type AiUsageSummary = {
   input_tokens: number;
   output_tokens: number;
   estimated_cost_usd: number;
+  cost_available: boolean;
   cost_complete: boolean;
 };
 
@@ -1117,9 +1118,11 @@ export function AdminMasterAi() {
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="font-semibold tabular-nums">
-                      {item.cost_complete
-                        ? formatUsd(Number(item.estimated_cost_usd))
-                        : "Custo parcial: " + formatUsd(Number(item.estimated_cost_usd))}
+                      {!item.cost_available
+                        ? "Sem tarifa cadastrada"
+                        : item.cost_complete
+                          ? formatUsd(Number(item.estimated_cost_usd))
+                          : "Custo parcial: " + formatUsd(Number(item.estimated_cost_usd))}
                     </p>
                     {!item.cost_complete && (
                       <p className="text-xs text-muted-foreground">
