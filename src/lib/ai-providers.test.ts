@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AiProviderError,
   invokeAiProvider,
   type AiProviderConfig,
 } from "../../supabase/functions/_shared/ai-providers";
@@ -21,7 +22,7 @@ function provider(
   };
 }
 
-function mockFetch(payload: unknown, status = 200) {
+function mockFetch(payload: unknown, status = 200, headers: Record<string, string> = {}) {
   let requestUrl = "";
   let requestInit: RequestInit | undefined;
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -29,7 +30,7 @@ function mockFetch(payload: unknown, status = 200) {
     requestInit = init;
     return new Response(JSON.stringify(payload), {
       status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
     });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -154,10 +155,116 @@ describe("adaptadores multiprovedor de IA", () => {
     });
   });
 
-  it("retorna erro sanitizado quando o provedor responde fora de 2xx", async () => {
-    mockFetch({ error: { message: "detalhe interno que não deve ser exibido" } }, 401);
-    await expect(
-      invokeAiProvider(provider("openai"), "sk-test-openai", messages, "Instruções"),
-    ).rejects.toThrow("Provedor de teste respondeu HTTP 401.");
+  it("classifica 401 como falha permanente sem expor credenciais", async () => {
+    const apiKey = "sk-test-openai-credential-123456789";
+    mockFetch({ error: { message: "Invalid API key " + apiKey, code: "invalid_api_key" } }, 401);
+    let failure: unknown;
+    try {
+      await invokeAiProvider(provider("openai"), apiKey, messages, "Instruções");
+    } catch (cause) {
+      failure = cause;
+    }
+
+    expect(failure).toBeInstanceOf(AiProviderError);
+    expect((failure as AiProviderError).message).toContain("HTTP 401");
+    expect((failure as AiProviderError).message).not.toContain(apiKey);
+    expect((failure as AiProviderError).details).toMatchObject({
+      httpStatus: 401,
+      errorCode: "invalid_api_key",
+      retryable: false,
+    });
+  });
+
+  it("classifica HTTP 429 como transitório e preserva Retry-After", async () => {
+    const apiKey = "sk-or-v1-test-secret-123456789";
+    mockFetch(
+      {
+        error: {
+          message: "Rate limit exceeded for " + apiKey,
+          code: 429,
+          metadata: {
+            error_type: "rate_limit_exceeded",
+            provider_code: "rate_limited",
+          },
+        },
+      },
+      429,
+      { "Retry-After": "30" },
+    );
+    let failure: unknown;
+    try {
+      await invokeAiProvider(
+        provider("openai_compatible", {
+          api_base_url: "https://openrouter.ai/api/v1",
+        }),
+        apiKey,
+        messages,
+        "Instruções",
+      );
+    } catch (cause) {
+      failure = cause;
+    }
+
+    expect(failure).toBeInstanceOf(AiProviderError);
+    expect((failure as AiProviderError).message).toContain("HTTP 429");
+    expect((failure as AiProviderError).message).not.toContain(apiKey);
+    expect((failure as AiProviderError).details).toMatchObject({
+      httpStatus: 429,
+      errorCode: "429",
+      errorType: "rate_limit_exceeded",
+      retryable: true,
+      retryAfter: "30",
+    });
+  });
+
+  it("bloqueia Perplexity Decider no adaptador de chat antes de chamar a API", async () => {
+    const mock = mockFetch({ choices: [] });
+    let failure: unknown;
+    try {
+      await invokeAiProvider(
+        provider("openai_compatible", {
+          model: "perplexity/pplx-decider-v1.3:free",
+          api_base_url: "https://openrouter.ai/api/v1",
+        }),
+        "sk-or-test-key-123456789",
+        messages,
+        "Instruções",
+      );
+    } catch (cause) {
+      failure = cause;
+    }
+
+    expect(failure).toBeInstanceOf(AiProviderError);
+    expect((failure as AiProviderError).details).toMatchObject({
+      httpStatus: 400,
+      errorCode: "unsupported_api",
+      errorType: "unsupported_model_api",
+      retryable: false,
+    });
+    expect((failure as Error).message).toContain("Decisions API");
+    expect(mock.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("permite o Nemotron no endpoint OpenRouter Chat Completions", async () => {
+    const mock = mockFetch({
+      choices: [{ message: { content: "OK" } }],
+      usage: { prompt_tokens: 8, completion_tokens: 2 },
+    });
+    const result = await invokeAiProvider(
+      provider("openai_compatible", {
+        model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+        api_base_url: "https://openrouter.ai/api/v1",
+      }),
+      "sk-or-test-key-123456789",
+      messages,
+      "Instruções",
+      512,
+    );
+    const request = mock.getRequest();
+    const body = JSON.parse(String(request.init?.body));
+
+    expect(request.url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(body.max_tokens).toBe(512);
+    expect(result.text).toBe("OK");
   });
 });
