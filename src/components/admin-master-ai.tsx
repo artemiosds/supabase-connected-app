@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
   KeyRound,
   Loader2,
   LockKeyhole,
+  Pencil,
+  Plus,
   RefreshCw,
   Save,
   Sparkles,
@@ -35,6 +38,30 @@ import {
 } from "@/lib/ai-capabilities";
 import { db } from "@/lib/db";
 
+type AiProviderKind =
+  | "openai"
+  | "gemini"
+  | "anthropic"
+  | "azure_openai"
+  | "openai_compatible";
+
+type AiProvider = {
+  id: string;
+  name: string;
+  provider: AiProviderKind;
+  model: string;
+  api_base_url: string | null;
+  api_version: string | null;
+  status: string;
+  is_enabled: boolean;
+  is_primary: boolean;
+  fallback_priority: number;
+  input_cost_per_million: number | string | null;
+  output_cost_per_million: number | string | null;
+  last_test_at: string | null;
+  has_credentials: boolean;
+};
+
 type AiTenant = {
   id: string;
   name: string;
@@ -44,31 +71,132 @@ type AiTenant = {
   enabled: boolean;
   features: unknown;
   updated_at: string | null;
+  allowed_provider_ids: string[];
 };
+
 type AiConfiguration = {
-  provider: string;
-  model: string | null;
+  provider: string | null;
   enabled: boolean;
   status: string;
-  has_credentials: boolean;
   last_test_at: string | null;
   updated_at: string | null;
-} | null;
-type LoadPayload = { configuration: AiConfiguration; tenants: AiTenant[] };
+};
+
+type AiUsageSummary = {
+  tenant_id: string;
+  tenant_name: string;
+  provider_id: string;
+  provider_name: string;
+  model: string;
+  requests: number;
+  failed_requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_usd: number;
+  cost_complete: boolean;
+};
+
+type LoadPayload = {
+  configuration: AiConfiguration;
+  providers: AiProvider[];
+  tenants: AiTenant[];
+  usage: AiUsageSummary[];
+  usage_period_days: number;
+};
+
+const PROVIDER_LABELS: Record<AiProviderKind, string> = {
+  openai: "OpenAI",
+  gemini: "Google Gemini",
+  anthropic: "Anthropic Claude",
+  azure_openai: "Azure OpenAI",
+  openai_compatible: "API compatível com OpenAI",
+};
+
+const EMPTY_PROVIDER_FORM = {
+  provider: "openai" as AiProviderKind,
+  name: "OpenAI",
+  model: "",
+  api_key: "",
+  api_base_url: "",
+  api_version: "2024-10-21",
+  input_cost_per_million: "",
+  output_cost_per_million: "",
+  fallback_priority: "100",
+};
+
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Ainda não testado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function providerStatus(provider: AiProvider) {
+  if (provider.status === "connected" && provider.is_enabled) return "Conectado e disponível";
+  if (provider.status === "connected") return "Conectado, desativado";
+  if (provider.status === "failed") return "Falha no teste";
+  return "Credencial salva; teste pendente";
+}
+
+async function getFunctionErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const payload: unknown = await context.clone().json();
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string" &&
+          payload.error.trim()
+        ) {
+          return payload.error;
+        }
+      } catch {
+        // Preserve the fallback when the response is not JSON.
+      }
+    }
+  }
+
+  if (
+    error instanceof Error &&
+    error.message &&
+    error.message !== "Edge Function returned a non-2xx status code"
+  ) {
+    return error.message;
+  }
+  return fallback;
+}
 
 export function AdminMasterAi() {
-  const [configuration, setConfiguration] = useState<AiConfiguration>(null);
+  const [configuration, setConfiguration] = useState<AiConfiguration | null>(null);
+  const [providers, setProviders] = useState<AiProvider[]>([]);
   const [tenants, setTenants] = useState<AiTenant[]>([]);
+  const [usage, setUsage] = useState<AiUsageSummary[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState("");
-  const [model, setModel] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [features, setFeatures] = useState<AiFeatureSettings>({ ...EMPTY_AI_FEATURES });
   const [tenantEnabled, setTenantEnabled] = useState(false);
+  const [allowedProviderIds, setAllowedProviderIds] = useState<string[]>([]);
+  const [providerForm, setProviderForm] = useState({ ...EMPTY_PROVIDER_FORM });
+  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
+  const [priorityDrafts, setPriorityDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [globalSaving, setGlobalSaving] = useState(false);
-  const [tenantSaving, setTenantSaving] = useState(false);
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
+  const [changingProviderId, setChangingProviderId] = useState<string | null>(null);
+  const [savingGlobal, setSavingGlobal] = useState(false);
+  const [savingTenant, setSavingTenant] = useState(false);
+  const [savingTenantProviders, setSavingTenantProviders] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedTenant = useMemo(
@@ -76,6 +204,10 @@ export function AdminMasterAi() {
     [tenants, selectedTenantId],
   );
   const selectedTenantOperational = selectedTenant?.operational === true;
+  const configuredProviders = useMemo(
+    () => providers.filter((provider) => provider.status === "connected" && provider.is_enabled),
+    [providers],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,8 +231,17 @@ export function AdminMasterAi() {
         return;
       }
       setConfiguration(data.configuration);
+      setProviders(data.providers ?? []);
       setTenants(data.tenants ?? []);
-      setModel(data.configuration?.model ?? "");
+      setUsage(data.usage ?? []);
+      setPriorityDrafts(
+        Object.fromEntries(
+          (data.providers ?? []).map((provider) => [
+            provider.id,
+            String(provider.fallback_priority),
+          ]),
+        ),
+      );
       setSelectedTenantId((current) => current || data.tenants?.[0]?.id || "");
     } catch (cause) {
       setError(
@@ -122,59 +263,148 @@ export function AdminMasterAi() {
     if (!selectedTenant) {
       setTenantEnabled(false);
       setFeatures({ ...EMPTY_AI_FEATURES });
+      setAllowedProviderIds([]);
       return;
     }
     setTenantEnabled(selectedTenant.enabled);
     setFeatures(parseAiFeatureSettings(selectedTenant.features));
+    setAllowedProviderIds(selectedTenant.allowed_provider_ids ?? []);
   }, [selectedTenant]);
 
   async function invokeAction<T>(action: string, values: Record<string, unknown> = {}) {
-    const { data, error: invokeError } = await db.functions.invoke<T>("platform-ai-configuration", {
-      body: { action, ...values },
-    });
+    const { data, error: invokeError } = await db.functions.invoke<T>(
+      "platform-ai-configuration",
+      { body: { action, ...values } },
+    );
     if (invokeError) {
       throw new Error(
-        await getFunctionErrorMessage(
-          invokeError,
-          "Falha na solicitação de configuração.",
-        ),
+        await getFunctionErrorMessage(invokeError, "Falha na solicitação de configuração."),
       );
     }
     return data;
   }
 
-  async function saveConfiguration() {
-    setSaving(true);
+  function resetProviderForm() {
+    setEditingProviderId(null);
+    setProviderForm({ ...EMPTY_PROVIDER_FORM });
+  }
+
+  function editProvider(provider: AiProvider) {
+    setEditingProviderId(provider.id);
+    setProviderForm({
+      provider: provider.provider,
+      name: provider.name,
+      model: provider.model,
+      api_key: "",
+      api_base_url: provider.api_base_url ?? "",
+      api_version: provider.api_version ?? "2024-10-21",
+      input_cost_per_million:
+        provider.input_cost_per_million === null
+          ? ""
+          : String(provider.input_cost_per_million),
+      output_cost_per_million:
+        provider.output_cost_per_million === null
+          ? ""
+          : String(provider.output_cost_per_million),
+      fallback_priority: String(provider.fallback_priority),
+    });
+  }
+
+  async function saveProvider() {
+    setSavingProvider(true);
     try {
-      await invokeAction("save", { model: model.trim(), api_key: apiKey });
-      setApiKey("");
-      toast.success("Configuração salva no servidor. Teste a conexão antes de ativar.");
+      await invokeAction("save_provider", {
+        provider_id: editingProviderId,
+        provider: providerForm.provider,
+        name: providerForm.name.trim(),
+        model: providerForm.model.trim(),
+        api_key: providerForm.api_key,
+        api_base_url: providerForm.api_base_url.trim(),
+        api_version: providerForm.api_version.trim(),
+        input_cost_per_million:
+          providerForm.input_cost_per_million === ""
+            ? null
+            : Number(providerForm.input_cost_per_million),
+        output_cost_per_million:
+          providerForm.output_cost_per_million === ""
+            ? null
+            : Number(providerForm.output_cost_per_million),
+        fallback_priority: Number(providerForm.fallback_priority),
+      });
+      toast.success(
+        editingProviderId
+          ? "Provedor atualizado. Teste novamente se houve alteração de credencial, modelo ou endpoint."
+          : "Provedor cadastrado no servidor. Teste a conexão para habilitá-lo.",
+      );
+      resetProviderForm();
       await load();
     } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Não foi possível salvar a configuração.",
-      );
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar o provedor.");
     } finally {
-      setSaving(false);
+      setSavingProvider(false);
     }
   }
 
-  async function testConnection() {
-    setTesting(true);
+  async function testProvider(provider: AiProvider) {
+    setTestingProviderId(provider.id);
     try {
-      const result = await invokeAction<{ connected: boolean; message: string }>("test");
+      const result = await invokeAction<{ connected: boolean; message: string }>("test_provider", {
+        provider_id: provider.id,
+      });
       if (result?.connected) toast.success(result.message);
       else toast.error(result?.message ?? "A conexão não foi validada.");
       await load();
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Não foi possível testar a conexão.");
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível testar o provedor.");
     } finally {
-      setTesting(false);
+      setTestingProviderId(null);
+    }
+  }
+
+  async function setPrimaryProvider(provider: AiProvider) {
+    setChangingProviderId(provider.id);
+    try {
+      await invokeAction("set_primary_provider", { provider_id: provider.id });
+      toast.success(provider.name + " definido como provedor principal.");
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível definir o provedor principal.");
+    } finally {
+      setChangingProviderId(null);
+    }
+  }
+
+  async function setProviderEnabled(provider: AiProvider, enabled: boolean) {
+    setChangingProviderId(provider.id);
+    try {
+      await invokeAction("set_provider_enabled", { provider_id: provider.id, enabled });
+      toast.success(enabled ? "Provedor habilitado como alternativa." : "Provedor desabilitado.");
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar o provedor.");
+    } finally {
+      setChangingProviderId(null);
+    }
+  }
+
+  async function saveProviderPriority(provider: AiProvider) {
+    setChangingProviderId(provider.id);
+    try {
+      await invokeAction("set_provider_priority", {
+        provider_id: provider.id,
+        priority: Number(priorityDrafts[provider.id]),
+      });
+      toast.success("Prioridade de contingência atualizada.");
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar a prioridade.");
+    } finally {
+      setChangingProviderId(null);
     }
   }
 
   async function setGlobalEnabled(enabled: boolean) {
-    setGlobalSaving(true);
+    setSavingGlobal(true);
     try {
       await invokeAction("set_global_enabled", { enabled });
       toast.success(
@@ -182,24 +412,39 @@ export function AdminMasterAi() {
       );
       await load();
     } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Não foi possível alterar a ativação global.",
-      );
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar a ativação global.");
     } finally {
-      setGlobalSaving(false);
+      setSavingGlobal(false);
+    }
+  }
+
+  async function saveTenantProviders() {
+    if (!selectedTenant) return;
+    setSavingTenantProviders(true);
+    try {
+      await invokeAction("set_tenant_providers", {
+        tenant_id: selectedTenant.id,
+        provider_ids: allowedProviderIds,
+      });
+      toast.success("Provedores autorizados atualizados para " + selectedTenant.name + ".");
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar os provedores da Secretaria.");
+    } finally {
+      setSavingTenantProviders(false);
     }
   }
 
   async function saveTenantSettings() {
     if (!selectedTenant) return;
-    setTenantSaving(true);
+    setSavingTenant(true);
     try {
       await invokeAction("save_tenant", {
         tenant_id: selectedTenant.id,
         enabled: tenantEnabled,
         features,
       });
-      toast.success(`Recursos de IA atualizados para ${selectedTenant.name}.`);
+      toast.success("Recursos de IA atualizados para " + selectedTenant.name + ".");
       await load();
     } catch (cause) {
       toast.error(
@@ -208,7 +453,7 @@ export function AdminMasterAi() {
           : "Não foi possível salvar os recursos desta Secretaria.",
       );
     } finally {
-      setTenantSaving(false);
+      setSavingTenant(false);
     }
   }
 
@@ -216,23 +461,22 @@ export function AdminMasterAi() {
     setFeatures((current) => ({ ...current, [key]: enabled }));
   }
 
+  function toggleTenantProvider(providerId: string, enabled: boolean) {
+    setAllowedProviderIds((current) =>
+      enabled
+        ? [...new Set([...current, providerId])]
+        : current.filter((id) => id !== providerId),
+    );
+  }
+
   if (loading)
     return (
       <div className="flex min-h-40 items-center justify-center">
-        <Loader2
-          className="h-6 w-6 animate-spin text-muted-foreground"
-          aria-label="Carregando configurações"
-        />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Carregando configurações" />
       </div>
     );
 
-  const statusLabel =
-    configuration?.status === "connected"
-      ? "Conexão validada"
-      : configuration?.has_credentials
-        ? "Credencial cadastrada; teste pendente"
-        : "Pendente de credencial";
-  const statusVariant = configuration?.status === "connected" ? "default" : "secondary";
+  const primaryProvider = providers.find((provider) => provider.is_primary) ?? null;
 
   return (
     <div className="space-y-6">
@@ -243,124 +487,425 @@ export function AdminMasterAi() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Inteligência Artificial</h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          O Administrador Master controla o provedor central e habilita capacidades separadamente
-          para cada Secretaria. A IA prepara análises e rascunhos para revisão humana.
+          Gerencie vários provedores, defina a IA principal e alternativas e controle o acesso por
+          Secretaria. As respostas são preparadas para revisão humana.
         </p>
       </div>
+
       <Alert>
         <LockKeyhole className="h-4 w-4" />
-        <AlertTitle>Chave protegida no servidor</AlertTitle>
+        <AlertTitle>Credenciais protegidas no servidor</AlertTitle>
         <AlertDescription>
-          A credencial é armazenada no Supabase Vault e nunca retorna ao navegador. Dados
-          selecionados para uma solicitação podem ser enviados ao provedor configurado; não envie
-          informações sigilosas sem autorização institucional.
+          As chaves ficam no Supabase Vault e nunca retornam ao navegador. As solicitações enviam
+          somente o contexto necessário ao provedor escolhido. Antes de liberar dados institucionais,
+          valide contrato, privacidade e retenção de cada serviço externo.
         </AlertDescription>
       </Alert>
+
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <KeyRound className="h-5 w-5" />
-                Provedor global
-              </CardTitle>
-              <CardDescription>
-                Credencial e modelo são definidos pelo dono da plataforma.
-              </CardDescription>
-            </div>
-            <Badge variant={statusVariant}>
-              {configuration?.status === "connected" ? (
-                <CheckCircle2 className="mr-1 h-3 w-3" />
-              ) : null}
-              {statusLabel}
-            </Badge>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5" />
+            Cadastro de provedores e APIs
+          </CardTitle>
+          <CardDescription>
+            Cadastre quantas integrações forem necessárias. Alterações em chave, modelo ou endpoint
+            exigem novo teste antes que o provedor volte a ficar disponível.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="ai-model">Identificador do modelo</Label>
+              <Label htmlFor="ai-provider-type">Tipo de provedor</Label>
+              <Select
+                value={providerForm.provider}
+                onValueChange={(value) =>
+                  setProviderForm((current) => ({
+                    ...current,
+                    provider: value as AiProviderKind,
+                    name:
+                      current.name === "OpenAI" || current.name === ""
+                        ? PROVIDER_LABELS[value as AiProviderKind]
+                        : current.name,
+                    api_base_url:
+                      value === "azure_openai" || value === "openai_compatible"
+                        ? current.api_base_url
+                        : "",
+                  }))
+                }
+              >
+                <SelectTrigger id="ai-provider-type">
+                  <SelectValue placeholder="Selecione o provedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="gemini">Google Gemini</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                  <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+                  <SelectItem value="openai_compatible">API compatível com OpenAI</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-provider-name">Nome de identificação</Label>
               <Input
-                id="ai-model"
-                value={model}
-                onChange={(event) => setModel(event.target.value)}
-                placeholder="Informe o modelo habilitado na conta do provedor"
-                maxLength={100}
+                id="ai-provider-name"
+                value={providerForm.name}
+                onChange={(event) =>
+                  setProviderForm((current) => ({ ...current, name: event.target.value }))
+                }
+                placeholder="Ex.: OpenAI institucional"
+                maxLength={80}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ai-api-key">Chave da API OpenAI</Label>
+              <Label htmlFor="ai-provider-model">Identificador do modelo ou deployment</Label>
               <Input
-                id="ai-api-key"
+                id="ai-provider-model"
+                value={providerForm.model}
+                onChange={(event) =>
+                  setProviderForm((current) => ({ ...current, model: event.target.value }))
+                }
+                placeholder="Ex.: gpt-4.1, gemini-2.5-flash, claude-sonnet-4-5"
+                maxLength={150}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ai-provider-key">Chave da API</Label>
+              <Input
+                id="ai-provider-key"
                 type="password"
                 autoComplete="new-password"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder={
-                  configuration?.has_credentials
-                    ? "Credencial salva; deixe vazio para manter"
-                    : "Pendente de credencial do órgão/plataforma"
+                value={providerForm.api_key}
+                onChange={(event) =>
+                  setProviderForm((current) => ({ ...current, api_key: event.target.value }))
                 }
-                maxLength={500}
+                placeholder={
+                  editingProviderId
+                    ? "Credencial protegida; vazio mantém a chave atual"
+                    : "Cole a chave fornecida pelo provedor"
+                }
+                maxLength={1000}
               />
             </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            A chave só é enviada à Edge Function autenticada quando você salva. Ela não é exibida
-            novamente. Para trocar, informe a nova chave e salve.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => void saveConfiguration()}
-              disabled={saving || !model.trim() || (!configuration?.has_credentials && !apiKey)}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Salvando…" : "Salvar configuração"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void testConnection()}
-              disabled={testing || !configuration?.has_credentials}
-            >
-              <Wifi className="mr-2 h-4 w-4" />
-              {testing ? "Testando…" : "Testar conexão"}
-            </Button>
-            <Button variant="ghost" onClick={() => void load()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar
-            </Button>
-          </div>
-          <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-medium">Ativação global</p>
-              <p className="text-sm text-muted-foreground">
-                A IA só pode ser ligada após o teste real da credencial.
+
+            {(providerForm.provider === "azure_openai" ||
+              providerForm.provider === "openai_compatible") && (
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="ai-provider-url">
+                  {providerForm.provider === "azure_openai"
+                    ? "Endpoint do recurso Azure OpenAI"
+                    : "URL base da API compatível"}
+                </Label>
+                <Input
+                  id="ai-provider-url"
+                  value={providerForm.api_base_url}
+                  onChange={(event) =>
+                    setProviderForm((current) => ({
+                      ...current,
+                      api_base_url: event.target.value,
+                    }))
+                  }
+                  placeholder={
+                    providerForm.provider === "azure_openai"
+                      ? "https://seu-recurso.openai.azure.com"
+                      : "https://api.seu-provedor.com/v1"
+                  }
+                  maxLength={500}
+                />
+              </div>
+            )}
+
+            {providerForm.provider === "azure_openai" && (
+              <div className="space-y-2">
+                <Label htmlFor="ai-provider-version">Versão da API Azure</Label>
+                <Input
+                  id="ai-provider-version"
+                  value={providerForm.api_version}
+                  onChange={(event) =>
+                    setProviderForm((current) => ({
+                      ...current,
+                      api_version: event.target.value,
+                    }))
+                  }
+                  placeholder="2024-10-21"
+                  maxLength={30}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="ai-provider-priority">Prioridade de contingência</Label>
+              <Input
+                id="ai-provider-priority"
+                type="number"
+                min={1}
+                max={9999}
+                value={providerForm.fallback_priority}
+                onChange={(event) =>
+                  setProviderForm((current) => ({
+                    ...current,
+                    fallback_priority: event.target.value,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Menor número é tentado primeiro quando a IA principal falha.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm">{configuration?.enabled ? "Ligada" : "Desligada"}</span>
-              <Switch
-                checked={configuration?.enabled ?? false}
-                disabled={globalSaving || configuration?.status !== "connected"}
-                onCheckedChange={(checked) => void setGlobalEnabled(checked)}
-                aria-label="Ativar IA globalmente"
-              />
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <p className="mb-3 font-medium">Tarifas para estimativa de custos (USD por 1 milhão de tokens)</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ai-provider-input-cost">Tokens de entrada</Label>
+                <Input
+                  id="ai-provider-input-cost"
+                  type="number"
+                  min={0}
+                  step="0.000001"
+                  value={providerForm.input_cost_per_million}
+                  onChange={(event) =>
+                    setProviderForm((current) => ({
+                      ...current,
+                      input_cost_per_million: event.target.value,
+                    }))
+                  }
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ai-provider-output-cost">Tokens de saída</Label>
+                <Input
+                  id="ai-provider-output-cost"
+                  type="number"
+                  min={0}
+                  step="0.000001"
+                  value={providerForm.output_cost_per_million}
+                  onChange={(event) =>
+                    setProviderForm((current) => ({
+                      ...current,
+                      output_cost_per_million: event.target.value,
+                    }))
+                  }
+                  placeholder="Opcional"
+                />
+              </div>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Os valores são informados pelo Administrador Master e não são atualizados
+              automaticamente. O custo exibido é uma estimativa baseada nos tokens retornados pela API.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => void saveProvider()}
+              disabled={
+                savingProvider ||
+                !providerForm.name.trim() ||
+                !providerForm.model.trim() ||
+                (!editingProviderId && !providerForm.api_key)
+              }
+            >
+              {savingProvider ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : editingProviderId ? (
+                <Save className="mr-2 h-4 w-4" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}
+              {savingProvider
+                ? "Salvando…"
+                : editingProviderId
+                  ? "Salvar alterações"
+                  : "Cadastrar provedor"}
+            </Button>
+            {editingProviderId && (
+              <Button variant="outline" onClick={resetProviderForm}>
+                Cancelar edição
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Provedores cadastrados</CardTitle>
+          <CardDescription>
+            Defina o provedor principal. Os demais provedores habilitados funcionam como alternativas
+            na ordem de prioridade configurada.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {providers.length === 0 ? (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Nenhum provedor cadastrado</AlertTitle>
+              <AlertDescription>
+                Cadastre uma integração e teste sua conexão antes de definir a IA principal.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            providers.map((provider) => (
+              <div key={provider.id} className="rounded-lg border p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{provider.name}</p>
+                      {provider.is_primary && <Badge>IA principal</Badge>}
+                      <Badge variant={provider.status === "connected" ? "default" : "secondary"}>
+                        {providerStatus(provider)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {PROVIDER_LABELS[provider.provider]} · {provider.model}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Último teste: {formatDate(provider.last_test_at)}
+                      {" · "}
+                      Prioridade alternativa: {provider.fallback_priority}
+                    </p>
+                    {provider.api_base_url && (
+                      <p className="break-all text-xs text-muted-foreground">
+                        Endpoint: {provider.api_base_url}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Entrada:{" "}
+                      {provider.input_cost_per_million === null
+                        ? "não informada"
+                        : formatUsd(Number(provider.input_cost_per_million)) + "/1M"}
+                      {" · "}
+                      Saída:{" "}
+                      {provider.output_cost_per_million === null
+                        ? "não informada"
+                        : formatUsd(Number(provider.output_cost_per_million)) + "/1M"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void testProvider(provider)}
+                      disabled={testingProviderId === provider.id}
+                    >
+                      {testingProviderId === provider.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wifi className="mr-2 h-4 w-4" />
+                      )}
+                      Testar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => editProvider(provider)}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                    {!provider.is_primary && provider.status === "connected" && provider.is_enabled && (
+                      <Button
+                        size="sm"
+                        onClick={() => void setPrimaryProvider(provider)}
+                        disabled={changingProviderId === provider.id}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Tornar principal
+                      </Button>
+                    )}
+                    {!provider.is_primary && provider.status === "connected" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void setProviderEnabled(provider, !provider.is_enabled)}
+                        disabled={changingProviderId === provider.id}
+                      >
+                        {provider.is_enabled ? "Desabilitar" : "Habilitar alternativa"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {!provider.is_primary && provider.is_enabled && (
+                  <div className="mt-4 flex flex-wrap items-end gap-2 border-t pt-3">
+                    <div className="w-36 space-y-1">
+                      <Label htmlFor={"priority-" + provider.id}>Ordem de contingência</Label>
+                      <Input
+                        id={"priority-" + provider.id}
+                        type="number"
+                        min={1}
+                        max={9999}
+                        value={priorityDrafts[provider.id] ?? String(provider.fallback_priority)}
+                        onChange={(event) =>
+                          setPriorityDrafts((current) => ({
+                            ...current,
+                            [provider.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void saveProviderPriority(provider)}
+                      disabled={changingProviderId === provider.id}
+                    >
+                      Salvar prioridade
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Recursos por Secretaria
+            Ativação global
           </CardTitle>
           <CardDescription>
-            Selecione a organização e libere somente as funções autorizadas. Toda Secretaria começa
-            desativada.
+            A ativação global só é permitida com um provedor principal testado e disponível.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium">
+              {configuration?.enabled ? "IA global ligada" : "IA global desligada"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Principal atual: {primaryProvider?.name ?? "Nenhum provedor principal"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge variant={configuration?.enabled ? "default" : "secondary"}>
+              {configuration?.enabled ? "Ativa" : "Inativa"}
+            </Badge>
+            <Switch
+              checked={configuration?.enabled ?? false}
+              disabled={savingGlobal || !primaryProvider}
+              onCheckedChange={(checked) => void setGlobalEnabled(checked)}
+              aria-label="Ativar IA globalmente"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Permissões e recursos por Secretaria</CardTitle>
+          <CardDescription>
+            Autorize provedores específicos para cada Secretaria. A Secretaria só usa provedores
+            marcados abaixo e a ordem de contingência global é respeitada.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -369,7 +914,7 @@ export function AdminMasterAi() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Nenhuma Secretaria cadastrada</AlertTitle>
               <AlertDescription>
-                Cadastre a organização antes de habilitar recursos de IA.
+                Cadastre uma organização antes de liberar provedores e recursos de IA.
               </AlertDescription>
             </Alert>
           ) : (
@@ -384,7 +929,7 @@ export function AdminMasterAi() {
                     {tenants.map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name}
-                        {tenant.status !== "active" ? ` — ${tenant.status}` : ""}
+                        {tenant.status !== "active" ? " — " + tenant.status : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -402,17 +947,74 @@ export function AdminMasterAi() {
                       </AlertDescription>
                     </Alert>
                   )}
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div>
+                      <p className="font-medium">Provedores autorizados</p>
+                      <p className="text-sm text-muted-foreground">
+                        Marque pelo menos um provedor conectado para permitir o uso nesta Secretaria.
+                      </p>
+                    </div>
+                    {providers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Cadastre um provedor primeiro.</p>
+                    ) : (
+                      providers.map((provider) => {
+                        const available =
+                          provider.status === "connected" && provider.is_enabled;
+                        return (
+                          <div
+                            key={provider.id}
+                            className="flex items-center justify-between gap-3 border-t pt-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium">{provider.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {PROVIDER_LABELS[provider.provider]} · {provider.model}
+                                {provider.is_primary ? " · principal global" : ""}
+                              </p>
+                            </div>
+                            <Switch
+                              checked={allowedProviderIds.includes(provider.id)}
+                              disabled={!available || !selectedTenantOperational || savingTenantProviders}
+                              onCheckedChange={(checked) =>
+                                toggleTenantProvider(provider.id, checked)
+                              }
+                              aria-label={"Autorizar " + provider.name + " para " + selectedTenant.name}
+                            />
+                          </div>
+                        );
+                      })
+                    )}
+                    <Button
+                      onClick={() => void saveTenantProviders()}
+                      disabled={
+                        savingTenantProviders ||
+                        !selectedTenant ||
+                        (!allowedProviderIds.length && selectedTenant.enabled)
+                      }
+                    >
+                      {savingTenantProviders ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Salvar provedores autorizados
+                    </Button>
+                  </div>
+
                   <div className="flex items-center justify-between gap-3 rounded-lg border p-4">
                     <div>
                       <p className="font-medium">Habilitar IA para {selectedTenant.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        A ativação global também precisa estar ligada.
+                        A ativação global e ao menos um provedor autorizado também são necessários.
                       </p>
                     </div>
                     <Switch
                       checked={tenantEnabled}
                       disabled={
-                        !configuration?.enabled || !selectedTenantOperational || tenantSaving
+                        !configuration?.enabled ||
+                        !selectedTenantOperational ||
+                        allowedProviderIds.length === 0 ||
+                        savingTenant
                       }
                       onCheckedChange={setTenantEnabled}
                       aria-label="Habilitar IA para a Secretaria selecionada"
@@ -430,9 +1032,9 @@ export function AdminMasterAi() {
                         </div>
                         <Switch
                           checked={features[feature.key]}
-                          disabled={!tenantEnabled || !selectedTenantOperational || tenantSaving}
+                          disabled={!tenantEnabled || !selectedTenantOperational || savingTenant}
                           onCheckedChange={(checked) => updateFeature(feature.key, checked)}
-                          aria-label={`Habilitar ${feature.label}`}
+                          aria-label={"Habilitar " + feature.label}
                         />
                       </div>
                     ))}
@@ -440,12 +1042,13 @@ export function AdminMasterAi() {
                   <Button
                     onClick={() => void saveTenantSettings()}
                     disabled={
-                      tenantSaving ||
+                      savingTenant ||
                       !selectedTenant ||
-                      (tenantEnabled && !selectedTenantOperational)
+                      (tenantEnabled &&
+                        (!selectedTenantOperational || allowedProviderIds.length === 0))
                     }
                   >
-                    {tenantSaving ? (
+                    {savingTenant ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="mr-2 h-4 w-4" />
@@ -458,16 +1061,76 @@ export function AdminMasterAi() {
           )}
         </CardContent>
       </Card>
-      <Alert variant="default">
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Consumo e custos por Secretaria
+          </CardTitle>
+          <CardDescription>
+            Últimos 30 dias. Custos são estimativas em USD calculadas com as tarifas cadastradas para
+            cada provedor.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {usage.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ainda não há consumo registrado no período.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {usage.map((item) => (
+                <div
+                  key={item.tenant_id + ":" + item.provider_id}
+                  className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">{item.tenant_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.provider_name} · {item.model}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.requests} solicitações · {item.failed_requests} falhas ·{" "}
+                      {(item.input_tokens + item.output_tokens).toLocaleString("pt-BR")} tokens
+                    </p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="font-semibold tabular-nums">
+                      {item.cost_complete
+                        ? formatUsd(Number(item.estimated_cost_usd))
+                        : "Custo parcial: " + formatUsd(Number(item.estimated_cost_usd))}
+                    </p>
+                    {!item.cost_complete && (
+                      <p className="text-xs text-muted-foreground">
+                        Tarifas ou tokens não informados em todas as chamadas
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Alert>
         <WifiOff className="h-4 w-4" />
-        <AlertTitle>Capacidades iniciais e limites</AlertTitle>
+        <AlertTitle>Limites e segurança operacional</AlertTitle>
         <AlertDescription>
-          Esta etapa habilita consulta contextual e geração de rascunhos revisáveis. Aprovação,
-          assinatura, publicação, envio de e-mail e gravação automática continuam exigindo ação
-          humana. Leitura de arquivos privados/OCR e consulta automática ao PNCP precisam de
-          integrações próprias antes de serem anunciadas como disponíveis.
+          O sistema tenta o provedor principal e, em caso de falha, os provedores alternativos
+          autorizados para a Secretaria. O custo depende das tarifas informadas pelo Administrador
+          Master. Aprovações, assinaturas, publicações, gravações e envios continuam exigindo ação
+          humana.
         </AlertDescription>
       </Alert>
+
+      <div className="flex justify-end">
+        <Button variant="ghost" onClick={() => void load()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Atualizar dados
+        </Button>
+      </div>
     </div>
   );
 }
