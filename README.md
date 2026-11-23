@@ -12,6 +12,7 @@ Plataforma web SaaS multitenant para Secretarias de Saúde, com cadastro e acomp
 ## Módulos estruturados
 
 - Autenticação, confirmação e recuperação de senha.
+- Temas Claro, Escuro e Sistema com seletor no cabeçalho e no acesso, preferência persistida em `localStorage` (`primus-theme`) e tokens Tailwind/Shadcn compartilhados.
 - Administração global, provisionamento de Secretarias e controles comerciais.
 - Cadastro, pesquisa, edição e inativação de fornecedores.
 - Documentos de fornecedores, validade, arquivamento e GED privado em Supabase Storage.
@@ -47,6 +48,8 @@ bun run lint
 ```
 
 Use `bun.lock` como lockfile oficial. Nunca coloque `service_role`, chaves secretas, senhas, JWTs ou tokens OAuth em código de navegador ou em variáveis `VITE_*`.
+
+O gerenciamento de temas usa `next-themes` na raiz do TanStack Router (`src/routes/__root.tsx`, equivalente ao `App.tsx` convencional) e tokens em `src/styles.css` (equivalente ao `index.css` convencional). O script de inicialização aplica o tema persistido antes da hidratação. O teste Playwright inclui troca entre os três modos, persistência no recarregamento e reação à preferência do sistema.
 
 ## Plano e liberação
 
