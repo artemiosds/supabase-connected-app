@@ -110,7 +110,21 @@ Deno.serve(async (request: Request) => {
     .eq("user_id", authData.user.id)
     .eq("is_active", true)
     .maybeSingle();
-  if (adminError || !admin)
+  if (adminError) {
+    console.error("Falha ao validar o Administrador Master na plataforma:", {
+      code: adminError.code,
+      message: adminError.message,
+    });
+    return response(
+      {
+        error:
+          "Não foi possível validar a autorização do Administrador Master. Tente novamente mais tarde.",
+      },
+      500,
+      origin,
+    );
+  }
+  if (!admin)
     return response(
       { error: "Somente o Administrador Master ativo pode configurar a IA." },
       403,
