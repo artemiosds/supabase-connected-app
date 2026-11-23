@@ -423,11 +423,13 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
 
   lines.push("6. TERMO DE FISCALIZAÇÃO, ATESTO E PRESTAÇÃO DE CONTAS");
   lines.push(
-    "Atestamos, para os devidos fins de controle interno, auditoria e prestação de contas junto ao Tribunal de Contas, " +
-      "que os quantitativos e valores discriminados neste dossiê refletem os registros de execução, " +
-      "as ordens de fornecimento, notas de entrega e medições vinculadas ao Contrato nº " +
+    "Atestamos, para os devidos fins de controle interno, auditoria e prestação de contas junto " +
+      "ao Tribunal de Contas, que os quantitativos e valores discriminados neste dossiê refletem " +
+      "os registros de execução, as ordens de fornecimento, notas de entrega e medições vinculadas " +
+      "ao Contrato nº " +
       singleLine(payload.contract.number) +
-      ", nos termos do art. 117 da Lei Federal nº 14.133/2021, após conferência pelos responsáveis abaixo assinados.",
+      ", nos termos do art. 117 da Lei Federal nº 14.133/2021, " +
+      "após conferência pelos responsáveis abaixo assinados.",
   );
   lines.push("Dossiê gerado eletronicamente em: " + singleLine(payload.generatedAt));
   lines.push("");
