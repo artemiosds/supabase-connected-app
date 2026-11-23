@@ -1,5 +1,6 @@
 import { verifyBatchItems } from "./batch-items.browser.mjs";
 import { verifySupplierCompletion } from "./supplier-completion.browser.mjs";
+import { verifyThemePreference } from "./theme-preference.browser.mjs";
 import { verifyAnnualDemand } from "./annual-demand.browser.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
@@ -2058,6 +2059,7 @@ async function verifyDocumentApprovalWorkflow() {
 }
 
 try {
+  await verifyThemePreference(browser, appUrl);
   for (const scenario of scenarios) {
     await verifyAuthenticatedTenant(scenario);
   }
