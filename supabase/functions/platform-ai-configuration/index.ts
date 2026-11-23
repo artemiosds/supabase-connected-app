@@ -96,8 +96,12 @@ function aggregateUsage(
   providers: Record<string, unknown>[],
   tenants: Record<string, unknown>[],
 ) {
-  const providerNames = new Map(providers.map((provider) => [String(provider.id), provider]));
-  const tenantNames = new Map(tenants.map((tenant) => [String(tenant.id), tenant]));
+  const providerNames = new Map(
+    providers.map((provider) => [String(provider.id), provider] as const),
+  );
+  const tenantNames = new Map(
+    tenants.map((tenant) => [String(tenant.id), tenant] as const),
+  );
   const grouped = new Map<string, Record<string, unknown>>();
 
   for (const row of rows) {
@@ -318,7 +322,7 @@ Deno.serve(async (request: Request) => {
       safeProvider(row as unknown as Record<string, unknown>),
     );
     const settingsByTenant = new Map(
-      (settingsResult.data ?? []).map((setting) => [setting.tenant_id, setting]),
+      (settingsResult.data ?? []).map((setting) => [setting.tenant_id, setting] as const),
     );
     const allowedByTenant = new Map<string, string[]>();
     for (const access of accessResult.data ?? []) {
