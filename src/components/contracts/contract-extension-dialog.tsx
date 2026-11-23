@@ -116,8 +116,7 @@ export function ContractExtensionDialog(props: Props) {
   const diasRestantes = contrato ? diasAte(contrato.end_date) : 0;
   const numeroDuplicado = props.aditivosContrato.some(
     (aditivo) =>
-      aditivo.number.trim().toLocaleLowerCase("pt-BR") ===
-      numero.trim().toLocaleLowerCase("pt-BR"),
+      aditivo.number.trim().toLocaleLowerCase("pt-BR") === numero.trim().toLocaleLowerCase("pt-BR"),
   );
   const prazoInferido =
     contrato && novaData ? identificarMesesVigencia(contrato.end_date, novaData) : null;
@@ -154,9 +153,7 @@ export function ContractExtensionDialog(props: Props) {
     lock.current = false;
   }, [
     props.open,
-    contrato?.id,
-    contrato?.number,
-    contrato?.end_date,
+    contrato,
     props.supplierName,
     props.aditivosContrato,
   ]);
@@ -287,12 +284,7 @@ export function ContractExtensionDialog(props: Props) {
       const savedAssessment = await db.rpc("save_contract_renewal_assessment", {
         p_tenant_id: props.tenantId,
         p_contract_id: contrato.id,
-        p_payload: montarPayloadAnalise(
-          assessmentResult.data,
-          meses,
-          inicioProposto,
-          novaData,
-        ),
+        p_payload: montarPayloadAnalise(assessmentResult.data, meses, inicioProposto, novaData),
       });
 
       if (savedAssessment.error) {
@@ -402,8 +394,8 @@ export function ContractExtensionDialog(props: Props) {
               <AlertTitle>Registro de aditivo formalizado</AlertTitle>
               <AlertDescription>
                 Esta ação registra o aditivo já assinado e aciona o gatilho existente para atualizar
-                a vigência do contrato. Não gera minuta nem assina o documento. Antes da gravação,
-                o sistema revalida os requisitos jurídicos e documentais no servidor.
+                a vigência do contrato. Não gera minuta nem assina o documento. Antes da gravação, o
+                sistema revalida os requisitos jurídicos e documentais no servidor.
               </AlertDescription>
             </Alert>
 
