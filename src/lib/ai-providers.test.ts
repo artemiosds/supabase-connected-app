@@ -265,6 +265,7 @@ describe("adaptadores multiprovedor de IA", () => {
 
     expect(request.url).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(body.max_tokens).toBe(512);
+    expect(body.reasoning).toEqual({ effort: "low" });
     expect(result.text).toBe("OK");
   });
 });
