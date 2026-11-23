@@ -59,6 +59,12 @@ type AiProvider = {
   input_cost_per_million: number | string | null;
   output_cost_per_million: number | string | null;
   last_test_at: string | null;
+  last_test_error: string | null;
+  last_test_http_status: number | null;
+  last_test_error_code: string | null;
+  last_test_error_type: string | null;
+  last_test_retryable: boolean;
+  last_test_retry_after: string | null;
   has_credentials: boolean;
 };
 
@@ -142,6 +148,11 @@ function formatDate(value: string | null) {
 }
 
 function providerStatus(provider: AiProvider) {
+  if (provider.last_test_retryable) {
+    return provider.is_enabled
+      ? "Falha temporária; provedor preservado"
+      : "Falha temporária; novo teste pendente";
+  }
   if (provider.status === "connected" && provider.is_enabled) return "Conectado e disponível";
   if (provider.status === "connected") return "Conectado, desativado";
   if (provider.status === "failed") return "Falha no teste";
@@ -344,7 +355,12 @@ export function AdminMasterAi() {
   async function testProvider(provider: AiProvider) {
     setTestingProviderId(provider.id);
     try {
-      const result = await invokeAction<{ connected: boolean; message: string }>("test_provider", {
+      const result = await invokeAction<{
+        connected: boolean;
+        message: string;
+        retryable?: boolean;
+        provider_preserved?: boolean;
+      }>("test_provider", {
         provider_id: provider.id,
       });
       if (result?.connected) toast.success(result.message);
@@ -773,7 +789,15 @@ export function AdminMasterAi() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold">{provider.name}</p>
                       {provider.is_primary && <Badge>IA principal</Badge>}
-                      <Badge variant={provider.status === "connected" ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          provider.status === "failed"
+                            ? "destructive"
+                            : provider.status === "connected"
+                              ? "default"
+                              : "secondary"
+                        }
+                      >
                         {providerStatus(provider)}
                       </Badge>
                     </div>
@@ -789,6 +813,32 @@ export function AdminMasterAi() {
                       <p className="break-all text-xs text-muted-foreground">
                         Endpoint: {provider.api_base_url}
                       </p>
+                    )}
+                    {provider.last_test_error && (
+                      <div
+                        className={
+                          provider.last_test_retryable
+                            ? "max-w-2xl rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
+                            : "max-w-2xl rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs"
+                        }
+                      >
+                        <p className="font-medium">
+                          {provider.last_test_retryable
+                            ? "Falha temporária — o provedor foi preservado"
+                            : "Detalhe da última falha"}
+                          {provider.last_test_http_status
+                            ? " · HTTP " + provider.last_test_http_status
+                            : ""}
+                        </p>
+                        <p className="mt-1 break-words text-muted-foreground">
+                          {provider.last_test_error}
+                        </p>
+                        {provider.last_test_retry_after && (
+                          <p className="mt-1 text-muted-foreground">
+                            Retry-After: {provider.last_test_retry_after}
+                          </p>
+                        )}
+                      </div>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Entrada:{" "}
