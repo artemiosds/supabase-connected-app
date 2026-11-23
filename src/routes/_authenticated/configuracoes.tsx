@@ -804,7 +804,7 @@ function Configuracoes() {
                           <img
                             src={logoPreviewUrl}
                             alt="Prévia do brasão institucional"
-                            className="h-20 max-w-40 rounded-md border bg-white p-2 object-contain"
+                            className="h-20 max-w-40 rounded-md border bg-card p-2 object-contain"
                           />
                         )}
                         <div className="min-w-0 flex-1 text-sm text-muted-foreground">
