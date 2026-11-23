@@ -46,12 +46,12 @@ export class AiProviderError extends Error {
 
 function sanitizedErrorMessage(value: unknown, apiKey: string): string {
   if (typeof value !== "string") return "";
-  let message = value.replace(/[\\r\\n\\t]+/g, " ").replace(/\\s{2,}/g, " ").trim();
+  let message = value.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
   if (apiKey.length >= 8) message = message.replaceAll(apiKey, "[credencial ocultada]");
   message = message
     .replace(/sk-or-v1-[A-Za-z0-9_-]+/gi, "[credencial ocultada]")
     .replace(/sk-[A-Za-z0-9_-]{16,}/g, "[credencial ocultada]")
-    .replace(/Bearer\\s+[^\\s,;]+/gi, "Bearer [oculto]");
+    .replace(/Bearer\s+[^\s,;]+/gi, "Bearer [oculto]");
   return message.slice(0, 500);
 }
 
@@ -104,7 +104,7 @@ export function getAiProviderCompatibilityIssue(provider: AiProviderConfig): str
     const hostname = new URL(provider.api_base_url).hostname.toLowerCase();
     if (
       (hostname === "openrouter.ai" || hostname === "www.openrouter.ai") &&
-      /^perplexity\\/pplx-decider(?:-|:|$)/i.test(provider.model)
+      /^perplexity\/pplx-decider(?:-|:|$)/i.test(provider.model)
     ) {
       return (
         "Este modelo Perplexity Decider não é compatível com chat: no OpenRouter ele utiliza " +
