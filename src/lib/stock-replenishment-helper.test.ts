@@ -63,7 +63,7 @@ describe("reposição de estoque contratual", () => {
     expect(alta.priority).toBe("alta");
     expect(alta.modality).toBe("dispensa");
     expect(alta.requesting_unit).toBe("Fundo Municipal de Saúde / Almoxarifado Central");
-    expect(alta.number).toBe("PROC-REP-0042026-2026");
+    expect(alta.number).toBe("PROC-REP-042026-2026");
     expect(alta.title).toContain("004/2026");
     expect(alta.description).toContain("004/2026");
     expect(alta.description).toContain("Fornecimento de medicamentos");
