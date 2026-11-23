@@ -66,7 +66,9 @@ export function ThemeToggle() {
             <OptionIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <span>{label}</span>
             <Check
-              className={`ml-auto h-4 w-4 text-primary ${selected === value ? "opacity-100" : "opacity-0"}`}
+              className={`ml-auto h-4 w-4 text-primary ${
+                selected === value ? "opacity-100" : "opacity-0"
+              }`}
               aria-hidden="true"
             />
           </DropdownMenuItem>
