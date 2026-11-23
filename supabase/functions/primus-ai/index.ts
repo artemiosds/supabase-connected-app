@@ -400,7 +400,6 @@ Deno.serve(async (request: Request) => {
           "is_primary",
           "fallback_priority",
           "status",
-          "vault_secret_id",
           "input_cost_per_million",
           "output_cost_per_million",
         ].join(","),
