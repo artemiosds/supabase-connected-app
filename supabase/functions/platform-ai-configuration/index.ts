@@ -115,11 +115,12 @@ function aggregateUsage(
     };
     current.requests = Number(current.requests) + 1;
     if (row.status === "failed") current.failed_requests = Number(current.failed_requests) + 1;
+    const inputTokens = Number(row.input_tokens ?? 0);
+    const outputTokens = Number(row.output_tokens ?? 0);
     current.input_tokens =
-      Number(current.input_tokens) + (typeof row.input_tokens === "number" ? row.input_tokens : 0);
+      Number(current.input_tokens) + (Number.isFinite(inputTokens) ? inputTokens : 0);
     current.output_tokens =
-      Number(current.output_tokens) +
-      (typeof row.output_tokens === "number" ? row.output_tokens : 0);
+      Number(current.output_tokens) + (Number.isFinite(outputTokens) ? outputTokens : 0);
     if (row.estimated_cost_usd === null || row.estimated_cost_usd === undefined) {
       current.cost_complete = false;
     } else {
