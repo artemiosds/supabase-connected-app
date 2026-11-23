@@ -1086,7 +1086,7 @@ export function AdminMasterAi() {
                       {item.provider_name} · {item.model}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {item.requests} solicitações · {item.failed_requests} falhas ·{" "}
+                      {item.requests} tentativas · {item.failed_requests} falhas ·{" "}
                       {(item.input_tokens + item.output_tokens).toLocaleString("pt-BR")} tokens
                     </p>
                   </div>
