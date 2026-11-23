@@ -43,7 +43,7 @@ type Props = {
     status?: string;
     instrument_type?: string;
   } | null;
-  supplierName?: string;
+  supplierName?: string | undefined;
   aditivosContrato: AditivoExistenteParaProrrogacao[];
   tenantId: string;
   userId: string;
