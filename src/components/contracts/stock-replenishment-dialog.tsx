@@ -54,6 +54,7 @@ export function StockReplenishmentDialog(props: Props) {
   const [form, setForm] = useState<Form>(() =>
     montarSugestaoProcessoReposicao({
       contractNumber: props.contract.number,
+      contractObject: props.contract.object,
       itensCriticos: props.itensCriticos,
     }),
   );
