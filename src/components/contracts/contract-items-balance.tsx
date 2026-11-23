@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
   Loader2,
   Plus,
   Printer,
@@ -17,8 +18,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
-import { calcularQuantidadeConsumida, calcularSaldoDisponivel } from "@/lib/contract-item-balance";
+import {
+  calcularPercentualDisponivel,
+  calcularQuantidadeConsumida,
+  calcularSaldoDisponivel,
+  classificarNivelSaldo,
+  resumirAlertasSaldo,
+} from "@/lib/contract-item-balance";
 import { groupMovementsBySupplyOrder } from "@/lib/supply-order-history-helper";
 import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
 import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
@@ -195,6 +203,18 @@ export function ContractItemsBalance(props: {
         })),
       ),
     [items, movements],
+  );
+  const alertasSaldo = useMemo(
+    () =>
+      resumirAlertasSaldo(
+        items.map((item) => ({
+          percentualDisponivel: calcularPercentualDisponivel(
+            Number(item.quantity_total),
+            movementsByItem[item.id] ?? [],
+          ),
+        })),
+      ),
+    [items, movementsByItem],
   );
   const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
   const itemEditandoTemMovimentos =
@@ -611,6 +631,22 @@ export function ContractItemsBalance(props: {
               <TabsTrigger value="orders">Ordens Emitidas (OFs)</TabsTrigger>
             </TabsList>
             <TabsContent value="items" className="space-y-3">
+              {!loading && !erro && alertasSaldo.temRiscoDesabastecimento && (
+                <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="text-sm">
+                    <p className="font-semibold">Atenção: Alerta de Desabastecimento</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {alertasSaldo.criticos > 0 &&
+                        `${alertasSaldo.criticos} item(ns) com saldo crítico (≤ 20%). `}
+                      {alertasSaldo.esgotados > 0 &&
+                        `${alertasSaldo.esgotados} item(ns) com saldo esgotado. `}
+                      Considere emitir termo aditivo de quantitativo ou iniciar novo processo
+                      licitatório.
+                    </p>
+                  </div>
+                </div>
+              )}
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               ) : erro ? (
@@ -631,6 +667,12 @@ export function ContractItemsBalance(props: {
                       Number(item.quantity_total),
                       itemMovements,
                     );
+                    const percentualDisp = calcularPercentualDisponivel(
+                      Number(item.quantity_total),
+                      itemMovements,
+                    );
+                    const percentualConsumido = 100 - percentualDisp;
+                    const nivelSaldo = classificarNivelSaldo(percentualDisp);
                     const reversedIds = new Set(
                       itemMovements
                         .filter((movement) => movement.movement_type === "reversal")
@@ -652,14 +694,43 @@ export function ContractItemsBalance(props: {
                               {currency.format(Number(item.total_value))}
                             </p>
                           </div>
-                          <Badge variant={available > 0 ? "secondary" : "destructive"}>
-                            Saldo: {quantity.format(available)} {item.unit}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge
+                              variant={nivelSaldo === "esgotado" ? "destructive" : "secondary"}
+                              className={
+                                nivelSaldo === "critico"
+                                  ? "bg-red-600 text-white hover:bg-red-700"
+                                  : nivelSaldo === "atencao"
+                                    ? "bg-amber-600 text-white hover:bg-amber-700"
+                                    : undefined
+                              }
+                            >
+                              {nivelSaldo === "esgotado"
+                                ? "Esgotado (0%)"
+                                : nivelSaldo === "critico"
+                                  ? `Crítico: ${percentualDisp}% restante`
+                                  : nivelSaldo === "atencao"
+                                    ? `Atenção: ${percentualDisp}% restante`
+                                    : `Disponível: ${percentualDisp}%`}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Saldo: {quantity.format(available)} {item.unit}
+                            </span>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
                           {currency.format(used * Number(item.unit_value))}
                         </p>
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between gap-3 text-[11px] text-muted-foreground">
+                            <span>Consumo acumulado: {percentualConsumido.toFixed(1)}%</span>
+                            <span>
+                              Saldo restante: {quantity.format(available)} {item.unit}
+                            </span>
+                          </div>
+                          <Progress value={percentualConsumido} className="h-1.5" />
+                        </div>
                         <Button
                           type="button"
                           size="sm"
