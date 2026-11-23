@@ -122,6 +122,33 @@ function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/**
+ * Reconstrói o valor original porque o gatilho de aditivos já aplica
+ * acréscimos e supressões diretamente em contracts.total_value.
+ */
+export function reconstruirValorOriginalContrato(
+  currentContractValue: number,
+  amendments: DossierAmendmentData[],
+): number {
+  if (!Number.isFinite(currentContractValue) || currentContractValue < 0) {
+    throw new RangeError("O valor atual do instrumento deve ser finito e não negativo.");
+  }
+
+  const amendmentsValueChange = amendments.reduce((total, amendment) => {
+    if (!Number.isFinite(amendment.valueChange)) {
+      throw new RangeError("A alteração de valor de um aditivo não é válida.");
+    }
+    return total + amendment.valueChange;
+  }, 0);
+  const originalValue = roundMoney(currentContractValue - amendmentsValueChange);
+
+  if (originalValue < 0) {
+    throw new RangeError("O histórico de aditivos não permite reconstruir um valor original válido.");
+  }
+
+  return originalValue;
+}
+
 export function formatCnpj(value: string): string {
   const digits = value.replace(/\D/g, "");
   return digits.length === 14
