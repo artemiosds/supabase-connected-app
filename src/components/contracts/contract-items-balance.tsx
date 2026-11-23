@@ -694,24 +694,29 @@ export function ContractItemsBalance(props: {
                               {currency.format(Number(item.total_value))}
                             </p>
                           </div>
-                          <Badge
-                            variant={nivelSaldo === "esgotado" ? "destructive" : "secondary"}
-                            className={
-                              nivelSaldo === "critico"
-                                ? "bg-red-600 text-white hover:bg-red-700"
-                                : nivelSaldo === "atencao"
-                                  ? "bg-amber-600 text-white hover:bg-amber-700"
-                                  : undefined
-                            }
-                          >
-                            {nivelSaldo === "esgotado"
-                              ? "Esgotado (0%)"
-                              : nivelSaldo === "critico"
-                                ? `Crítico: ${percentualDisp}% restante`
-                                : nivelSaldo === "atencao"
-                                  ? `Atenção: ${percentualDisp}% restante`
-                                  : `Disponível: ${percentualDisp}%`}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge
+                              variant={nivelSaldo === "esgotado" ? "destructive" : "secondary"}
+                              className={
+                                nivelSaldo === "critico"
+                                  ? "bg-red-600 text-white hover:bg-red-700"
+                                  : nivelSaldo === "atencao"
+                                    ? "bg-amber-600 text-white hover:bg-amber-700"
+                                    : undefined
+                              }
+                            >
+                              {nivelSaldo === "esgotado"
+                                ? "Esgotado (0%)"
+                                : nivelSaldo === "critico"
+                                  ? `Crítico: ${percentualDisp}% restante`
+                                  : nivelSaldo === "atencao"
+                                    ? `Atenção: ${percentualDisp}% restante`
+                                    : `Disponível: ${percentualDisp}%`}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Saldo: {quantity.format(available)} {item.unit}
+                            </span>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Consumido: {quantity.format(used)} {item.unit} · Valor consumido:{" "}
