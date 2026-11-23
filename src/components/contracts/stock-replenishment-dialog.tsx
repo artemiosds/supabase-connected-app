@@ -54,7 +54,6 @@ export function StockReplenishmentDialog(props: Props) {
   const [form, setForm] = useState<Form>(() =>
     montarSugestaoProcessoReposicao({
       contractNumber: props.contract.number,
-      contractObject: props.contract.object,
       itensCriticos: props.itensCriticos,
     }),
   );
@@ -69,8 +68,7 @@ export function StockReplenishmentDialog(props: Props) {
     setForm(
       montarSugestaoProcessoReposicao({
         contractNumber: props.contract.number,
-        contractObject: props.contract.object,
-        itensCriticos: props.itensCriticos,
+          itensCriticos: props.itensCriticos,
       }),
     );
     setRows(props.itensCriticos);
@@ -166,11 +164,12 @@ export function StockReplenishmentDialog(props: Props) {
       setCreatedProcessId(null);
       props.onOpenChange(false);
       props.onSucesso(processId);
+      const completedProcessId = processId;
       toast.success("Processo de reposição criado com sucesso!", {
         action: {
           label: "Abrir Processo",
           onClick: () =>
-            window.location.assign("/processos?processo=" + encodeURIComponent(processId)),
+            window.location.assign("/processos?processo=" + encodeURIComponent(completedProcessId)),
         },
       });
     } catch (cause) {
