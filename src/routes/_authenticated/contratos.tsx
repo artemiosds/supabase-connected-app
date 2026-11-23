@@ -956,9 +956,7 @@ function Contratos() {
         open={!!prorrogacaoDe}
         onOpenChange={(open) => !open && setProrrogacaoDe(null)}
         contrato={prorrogacaoDe}
-        supplierName={
-          prorrogacaoDe ? nomeFornecedor(prorrogacaoDe.supplier_id) : undefined
-        }
+        supplierName={prorrogacaoDe ? nomeFornecedor(prorrogacaoDe.supplier_id) : undefined}
         aditivosContrato={aditivosDoContrato}
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
