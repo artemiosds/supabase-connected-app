@@ -239,9 +239,7 @@ export function calcularResumoDossieContratual(params: {
   totalExecutedValue = roundMoney(totalExecutedValue);
   const balanceValue = roundMoney(Math.max(0, updatedValue - totalExecutedValue));
   const executionPercentage =
-    updatedValue > 0
-      ? Math.max(0, Math.min(100, (totalExecutedValue / updatedValue) * 100))
-      : 0;
+    updatedValue > 0 ? Math.max(0, Math.min(100, (totalExecutedValue / updatedValue) * 100)) : 0;
 
   const summary: DossierSummary = {
     originalValue: roundMoney(params.contractTotalValue),
@@ -286,10 +284,7 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
       " a " +
       formatarDataIsoPtBr(payload.contract.endDate),
   );
-  lines.push(
-    "Gestor do Contrato: " +
-      singleLine(payload.contract.managerName, "Não designado formalmente"),
-  );
+  lines.push("Gestor do Contrato: " + singleLine(payload.contract.managerName, "Não designado formalmente"));
   lines.push(
     "Fiscal do Contrato: " +
       singleLine(payload.contract.inspectorName, "Não designado formalmente"),
@@ -308,14 +303,9 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
     lines.push("Nenhum termo aditivo ou apostilamento registrado até a presente data.");
   } else {
     lines.push(
-      [
-        "Termo",
-        "Espécie",
-        "Assinatura",
-        "Nova Vigência",
-        "Alteração de Valor",
-        "Observações",
-      ].join("\t"),
+      ["Termo", "Espécie", "Assinatura", "Nova Vigência", "Alteração de Valor", "Observações"].join(
+        "\t",
+      ),
     );
     for (const amendment of amendments) {
       lines.push(
