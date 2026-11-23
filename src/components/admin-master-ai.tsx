@@ -1160,6 +1160,71 @@ export function AdminMasterAi() {
               </div>
               {selectedTenant && (
                 <>
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div>
+                      <p className="font-semibold">Diagnóstico da ativação</p>
+                      <p className="text-sm text-muted-foreground">
+                        Autorizar provedores não ativa a IA automaticamente. Conclua os passos
+                        abaixo e salve cada configuração.
+                      </p>
+                    </div>
+                    {[
+                      {
+                        ready: readyProviders.length > 0,
+                        label: "1. Provedor conectado",
+                        hint: "Cadastre e teste pelo menos uma API.",
+                      },
+                      {
+                        ready: Boolean(
+                          primaryProvider?.is_enabled && primaryProvider.status === "connected",
+                        ),
+                        label: "2. IA principal definida",
+                        hint: "Na lista de provedores, clique em Tornar principal.",
+                      },
+                      {
+                        ready: configuration?.enabled === true,
+                        label: "3. Ativação global ligada",
+                        hint: "Depois de definir a principal, ligue a chave Ativação global.",
+                      },
+                      {
+                        ready: savedAllowedReadyIds.length > 0,
+                        label: "4. Provedor autorizado nesta Secretaria",
+                        hint: "Selecione um provedor e clique em Salvar provedores autorizados.",
+                      },
+                      {
+                        ready: selectedTenant.enabled === true,
+                        label: "5. IA da Secretaria habilitada",
+                        hint: "Ligue a chave da Secretaria e clique em Salvar recursos.",
+                      },
+                      {
+                        ready: savedFeatureCount > 0,
+                        label: "6. Recursos habilitados e salvos",
+                        hint: "Selecione as funções desejadas e salve as alterações.",
+                      },
+                    ].map((step) => (
+                      <div key={step.label} className="flex items-start gap-2 text-sm">
+                        {step.ready ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        ) : (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                        )}
+                        <div>
+                          <p className="font-medium">{step.label}</p>
+                          {!step.ready && (
+                            <p className="text-xs text-muted-foreground">{step.hint}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {(hasUnsavedProviders || hasUnsavedTenantSettings) && (
+                      <p className="text-xs font-medium text-amber-700">
+                        Existem alterações ainda não salvas. Elas só passam a valer depois de salvar.
+                      </p>
+                    )}
+                    <Badge variant={assistantReady ? "default" : "secondary"}>
+                      {assistantReady ? "IA pronta para uso nesta Secretaria" : "Ativação incompleta"}
+                    </Badge>
+                  </div>
                   {!selectedTenantOperational && (
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
