@@ -346,7 +346,9 @@ export function ContractItemsBalance(props: {
       return;
     }
     if (loading || erro) {
-      toast.error("Aguarde o carregamento completo dos itens e movimentações antes de emitir o dossiê.");
+      toast.error(
+        "Aguarde o carregamento completo dos itens e movimentações antes de emitir o dossiê.",
+      );
       return;
     }
     if (!inScope()) {
@@ -386,7 +388,9 @@ export function ContractItemsBalance(props: {
       }
 
       if (!contractResult.data.supplier_id) {
-        throw new Error("O instrumento não possui fornecedor vinculado para identificar no dossiê.");
+        throw new Error(
+          "O instrumento não possui fornecedor vinculado para identificar no dossiê.",
+        );
       }
 
       const [supplierResult, processResult] = await Promise.all([
@@ -699,7 +703,9 @@ export function ContractItemsBalance(props: {
                 size="sm"
                 variant="outline"
                 onClick={() => void exportarDossieTce()}
-                disabled={gerandoDossie || loading || Boolean(erro) || items.length === 0 || !inScope()}
+                disabled={
+                  gerandoDossie || loading || Boolean(erro) || items.length === 0 || !inScope()
+                }
                 title="Gerar Dossiê de Execução Contratual e Prestação de Contas (TCE) em PDF"
               >
                 {gerandoDossie ? (
