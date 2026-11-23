@@ -1,4 +1,5 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
+import { invokeAiProvider, type AiProviderConfig, type AiProviderKind } from "../_shared/ai-providers.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type JsonObject = Record<string, unknown>;
@@ -12,6 +13,14 @@ const FEATURE_KEYS = [
   "tasks",
   "email_alerts",
 ] as const;
+const PROVIDER_TYPES: readonly AiProviderKind[] = [
+  "openai",
+  "gemini",
+  "anthropic",
+  "azure_openai",
+  "openai_compatible",
+];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function response(payload: JsonObject, status: number, origin: string) {
   return new Response(JSON.stringify(payload), {
@@ -28,25 +37,87 @@ function response(payload: JsonObject, status: number, origin: string) {
   });
 }
 
-function safeConfiguration(row: Record<string, unknown> | null) {
-  if (!row) return null;
-  return {
-    provider: row.provider,
-    model: row.model,
-    enabled: row.enabled === true,
-    status: row.status,
-    has_credentials: Boolean(row.vault_secret_id),
-    last_test_at: row.last_test_at,
-    updated_at: row.updated_at,
-  };
-}
-
 function validFeatures(value: unknown): value is Record<string, boolean> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const entries = Object.entries(value as Record<string, unknown>);
-  return entries.every(
+  return Object.entries(value as Record<string, unknown>).every(
     ([key, enabled]) =>
       (FEATURE_KEYS as readonly string[]).includes(key) && typeof enabled === "boolean",
+  );
+}
+
+function validBaseUrl(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const url = new URL(value.trim());
+    return (
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      /^[A-Za-z0-9.-]+$/.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function optionalPrice(value: unknown): number | null | undefined {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100_000) return undefined;
+  return parsed;
+}
+
+function safeProvider(row: Record<string, unknown>) {
+  const { vault_secret_id, ...publicFields } = row;
+  return { ...publicFields, has_credentials: Boolean(vault_secret_id) };
+}
+
+function aggregateUsage(
+  rows: Record<string, unknown>[],
+  providers: Record<string, unknown>[],
+  tenants: Record<string, unknown>[],
+) {
+  const providerNames = new Map(providers.map((provider) => [String(provider.id), provider]));
+  const tenantNames = new Map(tenants.map((tenant) => [String(tenant.id), tenant]));
+  const grouped = new Map<string, Record<string, unknown>>();
+
+  for (const row of rows) {
+    const tenantId = String(row.tenant_id);
+    const providerId = String(row.provider_id ?? "unknown");
+    const key = tenantId + ":" + providerId;
+    const current = grouped.get(key) ?? {
+      tenant_id: tenantId,
+      tenant_name: String(tenantNames.get(tenantId)?.name ?? "Secretaria"),
+      provider_id: providerId,
+      provider_name: String(providerNames.get(providerId)?.name ?? "Provedor removido"),
+      model: String(row.model ?? ""),
+      requests: 0,
+      failed_requests: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      estimated_cost_usd: 0,
+      cost_complete: true,
+    };
+    current.requests = Number(current.requests) + 1;
+    if (row.status === "failed") current.failed_requests = Number(current.failed_requests) + 1;
+    current.input_tokens =
+      Number(current.input_tokens) + (typeof row.input_tokens === "number" ? row.input_tokens : 0);
+    current.output_tokens =
+      Number(current.output_tokens) +
+      (typeof row.output_tokens === "number" ? row.output_tokens : 0);
+    if (row.estimated_cost_usd === null || row.estimated_cost_usd === undefined) {
+      current.cost_complete = false;
+    } else {
+      current.estimated_cost_usd =
+        Number(current.estimated_cost_usd) + Number(row.estimated_cost_usd);
+    }
+    grouped.set(key, current);
+  }
+
+  return [...grouped.values()].sort(
+    (a, b) => Number(b.requests) - Number(a.requests) || String(a.tenant_name).localeCompare(String(b.tenant_name)),
   );
 }
 
@@ -78,14 +149,12 @@ Deno.serve(async (request: Request) => {
   if (!supabaseUrl || !anonKey || !serviceRoleKey)
     return response({ error: "O serviço de configuração de IA está incompleto." }, 503, origin);
 
-  const token = request.headers
-    .get("Authorization")
-    ?.replace(/^Bearer\s+/i, "")
-    .trim();
+  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   if (!token) return response({ error: "Sessão autenticada obrigatória." }, 401, origin);
+
   const userClient = createClient(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: { headers: { Authorization: "Bearer " + token } },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser(token);
   if (
@@ -111,18 +180,8 @@ Deno.serve(async (request: Request) => {
     .eq("is_active", true)
     .maybeSingle();
   if (adminError) {
-    console.error("Falha ao validar o Administrador Master na plataforma:", {
-      code: adminError.code,
-      message: adminError.message,
-    });
-    return response(
-      {
-        error:
-          "Não foi possível validar a autorização do Administrador Master. Tente novamente mais tarde.",
-      },
-      500,
-      origin,
-    );
+    console.error("Falha ao validar o Administrador Master:", adminError.code);
+    return response({ error: "Não foi possível validar a autorização administrativa." }, 500, origin);
   }
   if (!admin)
     return response(
@@ -131,8 +190,9 @@ Deno.serve(async (request: Request) => {
       origin,
     );
 
-  if (Number(request.headers.get("Content-Length") ?? "0") > 12_000)
+  if (Number(request.headers.get("Content-Length") ?? "0") > 20_000)
     return response({ error: "A solicitação excede o tamanho permitido." }, 413, origin);
+
   let body: JsonObject;
   try {
     const parsed: unknown = await request.json();
@@ -144,142 +204,283 @@ Deno.serve(async (request: Request) => {
   }
 
   const action = body.action;
+
   if (action === "get") {
-    const [{ data: config, error: configError }, { data: tenants, error: tenantsError }] =
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [configurationResult, providersResult, tenantsResult, accessResult, usageResult] =
       await Promise.all([
         adminClient
           .from("platform_ai_configuration")
-          .select("provider,model,enabled,status,vault_secret_id,last_test_at,updated_at")
+          .select("provider,enabled,status,last_test_at,updated_at")
           .eq("id", 1)
           .maybeSingle(),
+        adminClient
+          .from("platform_ai_providers")
+          .select(
+            "id,name,provider,model,api_base_url,api_version,status,is_enabled,is_primary,fallback_priority,input_cost_per_million,output_cost_per_million,last_test_at,updated_at,vault_secret_id",
+          )
+          .order("is_primary", { ascending: false })
+          .order("fallback_priority", { ascending: true })
+          .order("created_at", { ascending: true }),
         adminClient
           .from("tenants")
           .select("id,name,status,commercial_status,trial_starts_at,trial_ends_at")
           .order("name", { ascending: true }),
+        adminClient
+          .from("platform_ai_tenant_provider_access")
+          .select("tenant_id,provider_id")
+          .eq("is_allowed", true),
+        adminClient
+          .from("platform_ai_usage")
+          .select(
+            "tenant_id,provider_id,model,status,input_tokens,output_tokens,estimated_cost_usd,created_at",
+          )
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(10000),
       ]);
-    if (configError || tenantsError) {
-      console.error(
-        "Falha ao carregar a configuração de IA:",
-        configError?.message ?? tenantsError?.message,
-      );
-      return response({ error: "Não foi possível carregar a configuração da IA." }, 500, origin);
+
+    const failure =
+      configurationResult.error ||
+      providersResult.error ||
+      tenantsResult.error ||
+      accessResult.error ||
+      usageResult.error;
+    if (failure) {
+      console.error("Falha ao carregar o gerenciador multiprovedor:", failure.message);
+      return response({ error: "Não foi possível carregar as configurações e métricas de IA." }, 500, origin);
     }
-    const { data: settings, error: settingsError } = await adminClient
-      .from("tenant_ai_settings")
-      .select("tenant_id,enabled,features,updated_at");
-    if (settingsError) {
-      console.error("Falha ao carregar habilitações de IA por Secretaria:", settingsError.message);
-      return response(
-        { error: "Não foi possível carregar as Secretarias configuradas." },
-        500,
-        origin,
-      );
+
+    const providers = (providersResult.data ?? []).map((row) =>
+      safeProvider(row as unknown as Record<string, unknown>),
+    );
+    const allowedByTenant = new Map<string, string[]>();
+    for (const access of accessResult.data ?? []) {
+      const current = allowedByTenant.get(access.tenant_id) ?? [];
+      current.push(access.provider_id);
+      allowedByTenant.set(access.tenant_id, current);
     }
-    const settingsByTenant = new Map((settings ?? []).map((row) => [row.tenant_id, row]));
+    const now = Date.now();
+    const tenants = (tenantsResult.data ?? []).map((tenant) => {
+      const operational =
+        tenant.status === "active" &&
+        (tenant.commercial_status === "active" ||
+          (tenant.commercial_status === "trial" &&
+            typeof tenant.trial_starts_at === "string" &&
+            new Date(tenant.trial_starts_at).getTime() <= now &&
+            typeof tenant.trial_ends_at === "string" &&
+            new Date(tenant.trial_ends_at).getTime() > now));
+      return {
+        id: tenant.id,
+        name: tenant.name,
+        status: tenant.status,
+        commercial_status: tenant.commercial_status,
+        operational,
+        allowed_provider_ids: allowedByTenant.get(tenant.id) ?? [],
+      };
+    });
+    const usage = aggregateUsage(
+      (usageResult.data ?? []) as unknown as Record<string, unknown>[],
+      (providersResult.data ?? []) as unknown as Record<string, unknown>[],
+      (tenantsResult.data ?? []) as unknown as Record<string, unknown>[],
+    );
+
     return response(
       {
-        configuration: safeConfiguration(config as Record<string, unknown> | null),
-        tenants: (tenants ?? []).map((tenant) => {
-          const current = settingsByTenant.get(tenant.id);
-          const operational =
-            tenant.status === "active" &&
-            (tenant.commercial_status === "active" ||
-              (tenant.commercial_status === "trial" &&
-                typeof tenant.trial_starts_at === "string" &&
-                new Date(tenant.trial_starts_at).getTime() <= Date.now() &&
-                typeof tenant.trial_ends_at === "string" &&
-                new Date(tenant.trial_ends_at).getTime() > Date.now()));
-          return {
-            id: tenant.id,
-            name: tenant.name,
-            status: tenant.status,
-            commercial_status: tenant.commercial_status,
-            operational,
-            enabled: current?.enabled === true,
-            features: current?.features ?? {},
-            updated_at: current?.updated_at ?? null,
-          };
-        }),
+        configuration: configurationResult.data ?? {
+          provider: null,
+          enabled: false,
+          status: "not_configured",
+          last_test_at: null,
+          updated_at: null,
+        },
+        providers,
+        tenants,
+        usage,
+        usage_period_days: 30,
       },
       200,
       origin,
     );
   }
 
-  if (action === "save") {
+  if (action === "save_provider") {
+    const providerId =
+      typeof body.provider_id === "string" && UUID.test(body.provider_id) ? body.provider_id : null;
+    const provider = typeof body.provider === "string" ? body.provider : "";
+    const name = typeof body.name === "string" ? body.name.trim() : "";
     const model = typeof body.model === "string" ? body.model.trim() : "";
     const apiKey = typeof body.api_key === "string" ? body.api_key.trim() : "";
-    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/.test(model))
-      return response({ error: "Informe um identificador válido de modelo." }, 400, origin);
-    if (apiKey && (apiKey.length < 20 || apiKey.length > 500))
-      return response({ error: "A credencial informada tem tamanho inválido." }, 400, origin);
-    const { data, error } = await adminClient.rpc("platform_ai_save_configuration", {
+    const apiBaseUrl =
+      typeof body.api_base_url === "string" && body.api_base_url.trim()
+        ? body.api_base_url.trim().replace(/\/+$/, "")
+        : null;
+    const apiVersion =
+      typeof body.api_version === "string" && body.api_version.trim()
+        ? body.api_version.trim()
+        : null;
+    const inputCost = optionalPrice(body.input_cost_per_million);
+    const outputCost = optionalPrice(body.output_cost_per_million);
+    const fallbackPriority =
+      typeof body.fallback_priority === "number" ? body.fallback_priority : Number(body.fallback_priority ?? 100);
+
+    if (!PROVIDER_TYPES.includes(provider as AiProviderKind))
+      return response({ error: "Selecione um tipo de provedor suportado." }, 400, origin);
+    if (!name || name.length > 80)
+      return response({ error: "Informe um nome de provedor com até 80 caracteres." }, 400, origin);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,149}$/.test(model))
+      return response({ error: "Informe um identificador de modelo válido." }, 400, origin);
+    if (apiKey && (apiKey.length < 20 || apiKey.length > 1000))
+      return response({ error: "A chave de API deve ter entre 20 e 1000 caracteres." }, 400, origin);
+    if (providerId === null && !apiKey)
+      return response({ error: "Informe a chave de API para cadastrar um novo provedor." }, 400, origin);
+    if (inputCost === undefined || outputCost === undefined)
+      return response({ error: "Informe preços por milhão de tokens válidos e não negativos." }, 400, origin);
+    if (!Number.isInteger(fallbackPriority) || fallbackPriority < 1 || fallbackPriority > 9999)
+      return response({ error: "A prioridade de alternativa deve estar entre 1 e 9999." }, 400, origin);
+
+    if (provider === "azure_openai" || provider === "openai_compatible") {
+      if (!validBaseUrl(apiBaseUrl))
+        return response({ error: "Informe uma URL HTTPS válida, sem usuário, senha, query ou fragmento." }, 400, origin);
+    } else if (apiBaseUrl) {
+      return response({ error: "Este provedor utiliza endpoint oficial e não aceita URL personalizada." }, 400, origin);
+    }
+    if (provider === "azure_openai" && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$/.test(apiVersion ?? ""))
+      return response({ error: "Informe a versão de API do Azure OpenAI." }, 400, origin);
+
+    const { data, error } = await adminClient.rpc("platform_ai_save_provider", {
       p_actor_id: authData.user.id,
+      p_provider_id: providerId,
+      p_name: name,
+      p_provider: provider,
       p_model: model,
+      p_api_base_url: apiBaseUrl,
+      p_api_version: apiVersion,
       p_api_key: apiKey || null,
+      p_input_cost_per_million: inputCost,
+      p_output_cost_per_million: outputCost,
+      p_fallback_priority: fallbackPriority,
     });
     if (error) {
-      return response({ error: "Não foi possível salvar a configuração de IA." }, 400, origin);
+      console.error("Falha ao salvar provedor de IA:", error.message);
+      return response({ error: error.message || "Não foi possível salvar o provedor." }, 400, origin);
     }
     return response({ result: data }, 200, origin);
   }
 
-  if (action === "test") {
-    const { data: config, error: configError } = await adminClient
-      .from("platform_ai_configuration")
-      .select("model,vault_secret_id")
-      .eq("id", 1)
-      .maybeSingle();
-    if (configError || !config?.model || !config.vault_secret_id)
-      return response({ error: "Salve o modelo e a credencial antes do teste." }, 400, origin);
-    const { data: apiKey, error: secretError } = await adminClient.rpc("platform_ai_get_api_key");
-    if (secretError || typeof apiKey !== "string" || !apiKey)
-      return response({ error: "Não foi possível acessar a credencial protegida." }, 503, origin);
+  if (action === "test_provider") {
+    const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+    if (!UUID.test(providerId))
+      return response({ error: "Selecione um provedor válido para testar." }, 400, origin);
 
+    const { data: providerRow, error: providerError } = await adminClient
+      .from("platform_ai_providers")
+      .select("id,name,provider,model,api_base_url,api_version,vault_secret_id")
+      .eq("id", providerId)
+      .maybeSingle();
+    if (providerError || !providerRow)
+      return response({ error: "Provedor não encontrado." }, 404, origin);
+
+    const provider = providerRow as AiProviderConfig;
+    const { data: apiKey, error: secretError } = await adminClient.rpc(
+      "platform_ai_get_provider_api_key",
+      { p_provider_id: providerId },
+    );
     let connected = false;
-    try {
-      const providerResponse = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: config.model,
-          input: "Responda somente com a palavra OK.",
-          max_output_tokens: 16,
-          store: false,
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-      connected = providerResponse.ok;
-      if (!providerResponse.ok) await providerResponse.body?.cancel();
-      else await providerResponse.body?.cancel();
-    } catch {
-      connected = false;
+    let message = "Não foi possível validar a conexão com o provedor.";
+    if (!secretError && typeof apiKey === "string" && apiKey) {
+      try {
+        await invokeAiProvider(
+          provider,
+          apiKey,
+          [{ role: "user", content: "Responda somente com OK." }],
+          "Teste técnico de conectividade. Responda somente com OK.",
+          16,
+          15_000,
+        );
+        connected = true;
+        message = "Conexão validada. O provedor está disponível para uso e contingência.";
+      } catch (cause) {
+        message = cause instanceof Error ? cause.message : message;
+      }
+    } else {
+      message = "Não foi possível recuperar a credencial protegida no Supabase Vault.";
     }
-    const { error: statusError } = await adminClient.rpc("platform_ai_set_connection_status", {
-      p_actor_id: authData.user.id,
-      p_status: connected ? "connected" : "failed",
-    });
+
+    const { data: statusData, error: statusError } = await adminClient.rpc(
+      "platform_ai_update_provider_test_status",
+      {
+        p_actor_id: authData.user.id,
+        p_provider_id: providerId,
+        p_status: connected ? "connected" : "failed",
+      },
+    );
     if (statusError) {
-      console.error("Falha ao registrar teste de conexão de IA:", statusError.message);
-      return response(
-        { error: "O teste terminou, mas não foi possível registrar o resultado." },
-        500,
-        origin,
-      );
+      console.error("Falha ao registrar teste de provedor:", statusError.message);
+      return response({ error: "O teste terminou, mas o resultado não pôde ser registrado." }, 500, origin);
     }
     return response(
-      {
-        connected,
-        message: connected
-          ? "Conexão validada pelo provedor. A IA permanece desligada até ativação explícita."
-          : "O provedor não validou a credencial, o modelo ou a conexão. Confira-os e tente novamente.",
-      },
+      { connected, message, result: statusData },
       200,
       origin,
     );
+  }
+
+  if (action === "set_primary_provider") {
+    const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+    if (!UUID.test(providerId))
+      return response({ error: "Selecione um provedor válido." }, 400, origin);
+    const { data, error } = await adminClient.rpc("platform_ai_set_primary_provider", {
+      p_actor_id: authData.user.id,
+      p_provider_id: providerId,
+    });
+    if (error) return response({ error: error.message }, 400, origin);
+    return response({ result: data }, 200, origin);
+  }
+
+  if (action === "set_provider_enabled") {
+    const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+    if (!UUID.test(providerId) || typeof body.enabled !== "boolean")
+      return response({ error: "Informe um provedor e um estado válidos." }, 400, origin);
+    const { data, error } = await adminClient.rpc("platform_ai_set_provider_enabled", {
+      p_actor_id: authData.user.id,
+      p_provider_id: providerId,
+      p_enabled: body.enabled,
+    });
+    if (error) return response({ error: error.message }, 400, origin);
+    return response({ result: data }, 200, origin);
+  }
+
+  if (action === "set_provider_priority") {
+    const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+    const priority = Number(body.priority);
+    if (!UUID.test(providerId) || !Number.isInteger(priority))
+      return response({ error: "Informe um provedor e uma prioridade válidos." }, 400, origin);
+    const { data, error } = await adminClient.rpc("platform_ai_set_provider_priority", {
+      p_actor_id: authData.user.id,
+      p_provider_id: providerId,
+      p_priority: priority,
+    });
+    if (error) return response({ error: error.message }, 400, origin);
+    return response({ result: data }, 200, origin);
+  }
+
+  if (action === "set_tenant_providers") {
+    const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : "";
+    const providerIds = Array.isArray(body.provider_ids) ? body.provider_ids : null;
+    if (
+      !UUID.test(tenantId) ||
+      !providerIds ||
+      providerIds.some((id) => typeof id !== "string" || !UUID.test(id))
+    )
+      return response({ error: "A lista de provedores da Secretaria é inválida." }, 400, origin);
+    const { data, error } = await adminClient.rpc("platform_ai_set_tenant_providers", {
+      p_actor_id: authData.user.id,
+      p_tenant_id: tenantId,
+      p_provider_ids: providerIds,
+    });
+    if (error) return response({ error: error.message }, 400, origin);
+    return response({ result: data }, 200, origin);
   }
 
   if (action === "set_global_enabled") {
@@ -289,15 +490,14 @@ Deno.serve(async (request: Request) => {
       p_actor_id: authData.user.id,
       p_enabled: body.enabled,
     });
-    if (error)
-      return response({ error: "Teste a conexão antes de ativar globalmente a IA." }, 400, origin);
+    if (error) return response({ error: error.message }, 400, origin);
     return response({ result: data }, 200, origin);
   }
 
   if (action === "save_tenant") {
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : "";
     if (
-      !/^[0-9a-f-]{36}$/i.test(tenantId) ||
+      !UUID.test(tenantId) ||
       typeof body.enabled !== "boolean" ||
       !validFeatures(body.features)
     )
