@@ -151,7 +151,8 @@ INSERT INTO public.platform_ai_providers (
 )
 SELECT
   'OpenAI (configuração existente)', 'openai', c.model, NULL, NULL, c.vault_secret_id,
-  CASE WHEN c.status = 'connected' THEN 'connected' ELSE c.status END,
+  CASE WHEN c.status = 'connected' THEN 'connected'
+    WHEN c.status = 'failed' THEN 'failed' ELSE 'credentials_saved' END,
   c.status = 'connected',
   c.status = 'connected',
   100,
@@ -623,6 +624,12 @@ BEGIN
     WHERE p.id IS NULL OR p.is_enabled = false OR p.status <> 'connected'
   ) THEN
     RAISE EXCEPTION 'A lista contém provedor inexistente, desabilitado ou sem conexão validada.';
+  END IF;
+  IF v_selected_count <> (
+    SELECT count(DISTINCT selected.provider_id)
+    FROM unnest(COALESCE(p_provider_ids, ARRAY[]::uuid[])) AS selected(provider_id)
+  ) THEN
+    RAISE EXCEPTION 'A lista de provedores contém identificadores duplicados.';
   END IF;
   IF v_selected_count = 0 AND EXISTS (
     SELECT 1 FROM public.tenant_ai_settings s
