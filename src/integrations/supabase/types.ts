@@ -1351,6 +1351,138 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_ai_providers: {
+        Row: {
+          api_base_url: string | null
+          api_version: string | null
+          created_at: string
+          created_by: string | null
+          fallback_priority: number
+          id: string
+          input_cost_per_million: number | null
+          is_enabled: boolean
+          is_primary: boolean
+          last_test_at: string | null
+          model: string
+          name: string
+          output_cost_per_million: number | null
+          provider: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vault_secret_id: string
+        }
+        Insert: {
+          api_base_url?: string | null
+          api_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          fallback_priority?: number
+          id?: string
+          input_cost_per_million?: number | null
+          is_enabled?: boolean
+          is_primary?: boolean
+          last_test_at?: string | null
+          model: string
+          name: string
+          output_cost_per_million?: number | null
+          provider: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id: string
+        }
+        Update: {
+          api_base_url?: string | null
+          api_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          fallback_priority?: number
+          id?: string
+          input_cost_per_million?: number | null
+          is_enabled?: boolean
+          is_primary?: boolean
+          last_test_at?: string | null
+          model?: string
+          name?: string
+          output_cost_per_million?: number | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string
+        }
+        Relationships: []
+      }
+      platform_ai_tenant_provider_access: {
+        Row: {
+          is_allowed: boolean
+          provider_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          is_allowed?: boolean
+          provider_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          is_allowed?: boolean
+          provider_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_ai_usage: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          estimated_cost_usd: number | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          provider_http_status: number | null
+          provider_id: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          estimated_cost_usd?: number | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          provider_http_status?: number | null
+          provider_id?: string | null
+          status: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          estimated_cost_usd?: number | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          provider_http_status?: number | null
+          provider_id?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       platform_payment_integrations: {
         Row: {
           account_email: string | null
@@ -3740,6 +3872,46 @@ export type Database = {
       platform_ai_claim_usage: {
         Args: { p_tenant_id: string; p_actor_id: string; p_feature: string }
         Returns: boolean
+      }
+      platform_ai_get_provider_api_key: {
+        Args: { p_provider_id: string }
+        Returns: string
+      }
+      platform_ai_save_provider: {
+        Args: {
+          p_actor_id: string
+          p_provider_id: string | null
+          p_name: string
+          p_provider: string
+          p_model: string
+          p_api_base_url: string | null
+          p_api_version: string | null
+          p_api_key: string | null
+          p_input_cost_per_million: number | null
+          p_output_cost_per_million: number | null
+          p_fallback_priority: number
+        }
+        Returns: Json
+      }
+      platform_ai_update_provider_test_status: {
+        Args: { p_actor_id: string; p_provider_id: string; p_status: string }
+        Returns: Json
+      }
+      platform_ai_set_primary_provider: {
+        Args: { p_actor_id: string; p_provider_id: string }
+        Returns: Json
+      }
+      platform_ai_set_provider_enabled: {
+        Args: { p_actor_id: string; p_provider_id: string; p_enabled: boolean }
+        Returns: Json
+      }
+      platform_ai_set_provider_priority: {
+        Args: { p_actor_id: string; p_provider_id: string; p_priority: number }
+        Returns: Json
+      }
+      platform_ai_set_tenant_providers: {
+        Args: { p_actor_id: string; p_tenant_id: string; p_provider_ids: string[] }
+        Returns: Json
       }
     }
     Enums: {
