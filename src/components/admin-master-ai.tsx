@@ -80,20 +80,38 @@ export function AdminMasterAi() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: invokeError } = await db.functions.invoke<LoadPayload>(
-      "platform-ai-configuration",
-      { body: { action: "get" } },
-    );
-    if (invokeError || !data) {
-      setError(invokeError?.message ?? "Não foi possível carregar as configurações de IA.");
+    try {
+      const { data, error: invokeError } = await db.functions.invoke<LoadPayload>(
+        "platform-ai-configuration",
+        { body: { action: "get" } },
+      );
+      if (invokeError) {
+        setError(
+          await getFunctionErrorMessage(
+            invokeError,
+            "Não foi possível carregar as configurações de IA.",
+          ),
+        );
+        return;
+      }
+      if (!data) {
+        setError("O serviço de configuração de IA retornou uma resposta vazia.");
+        return;
+      }
+      setConfiguration(data.configuration);
+      setTenants(data.tenants ?? []);
+      setModel(data.configuration?.model ?? "");
+      setSelectedTenantId((current) => current || data.tenants?.[0]?.id || "");
+    } catch (cause) {
+      setError(
+        await getFunctionErrorMessage(
+          cause,
+          "Não foi possível carregar as configurações de IA.",
+        ),
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-    setConfiguration(data.configuration);
-    setTenants(data.tenants ?? []);
-    setModel(data.configuration?.model ?? "");
-    setSelectedTenantId((current) => current || data.tenants?.[0]?.id || "");
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -114,8 +132,14 @@ export function AdminMasterAi() {
     const { data, error: invokeError } = await db.functions.invoke<T>("platform-ai-configuration", {
       body: { action, ...values },
     });
-    if (invokeError)
-      throw new Error(invokeError.message || "Falha na solicitação de configuração.");
+    if (invokeError) {
+      throw new Error(
+        await getFunctionErrorMessage(
+          invokeError,
+          "Falha na solicitação de configuração.",
+        ),
+      );
+    }
     return data;
   }
 
