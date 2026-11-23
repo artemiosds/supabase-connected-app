@@ -231,8 +231,10 @@ export function ContractItemsBalance(props: {
     () => filtrarItensCriticosParaReposicao(items, movementsByItem),
     [items, movementsByItem],
   );
-  const podeIniciarReposicao = props.contract.status === "vigente" &&
-    (props.contract.manager_user_id === props.userId || props.contract.inspector_user_id === props.userId) &&
+  const podeIniciarReposicao =
+    props.contract.status === "vigente" &&
+    (props.contract.manager_user_id === props.userId ||
+      props.contract.inspector_user_id === props.userId) &&
     Boolean(props.userId);
   const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
   const itemEditandoTemMovimentos =
@@ -664,8 +666,12 @@ export function ContractItemsBalance(props: {
                     </p>
                   </div>
                   {podeIniciarReposicao && (
-                    <Button type="button" size="sm" className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
-                      onClick={() => setDialogReposicaoAberto(true)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                      onClick={() => setDialogReposicaoAberto(true)}
+                    >
                       <Plus className="h-4 w-4" /> Iniciar Reposição de Estoque
                     </Button>
                   )}
