@@ -88,11 +88,18 @@ export function StockReplenishmentDialog(props: Props) {
       (item) =>
         Number.isFinite(item.quantidadeSugerida) &&
         item.quantidadeSugerida > 0 &&
+        item.quantidadeSugerida <= 9_999_999_999.9999 &&
         item.description.trim().length >= 3 &&
-        item.unit.trim().length > 0,
+        item.description.trim().length <= 500 &&
+        item.unit.trim().length > 0 &&
+        item.unit.trim().length <= 30 &&
+        Number.isFinite(item.unit_value) &&
+        item.unit_value >= 0,
     ) &&
     form.number.trim().length > 0 &&
+    form.number.trim().length <= 60 &&
     form.title.trim().length >= 3 &&
+    form.title.trim().length <= 300 &&
     form.description.trim().length >= 10 &&
     form.requesting_unit.trim().length > 0;
 
@@ -197,15 +204,17 @@ export function StockReplenishmentDialog(props: Props) {
         </DialogHeader>
         <form onSubmit={(event) => void submit(event)} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Confira a necessidade, a modalidade e os preços históricos antes de instruir a nova
-            contratação. O preço do contrato anterior não substitui a pesquisa de preços.
+            Confira a necessidade, a modalidade e as quantidades antes de instruir a nova
+            contratação. Os valores unitários do contrato anterior serão importados como estimativas
+            manuais preliminares, apenas para referência histórica; eles não substituem a pesquisa
+            oficial de preços nem a aprovação exigida no novo processo.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="rep-number">Nº do processo *</Label>
               <Input
                 id="rep-number"
-                maxLength={100}
+                maxLength={60}
                 required
                 disabled={Boolean(createdProcessId)}
                 value={form.number}
@@ -216,7 +225,7 @@ export function StockReplenishmentDialog(props: Props) {
               <Label htmlFor="rep-title">Título *</Label>
               <Input
                 id="rep-title"
-                maxLength={250}
+                maxLength={300}
                 required
                 disabled={Boolean(createdProcessId)}
                 value={form.title}
@@ -319,6 +328,7 @@ export function StockReplenishmentDialog(props: Props) {
                     id={"rep-qty-" + item.id}
                     type="number"
                     min="0.0001"
+                    max="9999999999.9999"
                     step="0.0001"
                     value={item.quantidadeSugerida}
                     disabled={!item.selecionado || Boolean(createdProcessId)}
@@ -333,6 +343,16 @@ export function StockReplenishmentDialog(props: Props) {
                     }
                   />
                 </div>
+                {(item.description.trim().length > 500 || item.unit.trim().length > 30) && (
+                  <p role="alert" className="w-full text-xs text-destructive">
+                    {item.description.trim().length > 500
+                      ? "A descrição ultrapassa o limite de 500 caracteres. "
+                      : ""}
+                    {item.unit.trim().length > 30
+                      ? "A unidade ultrapassa o limite de 30 caracteres aceito pelo cadastro de processos. Ajuste o item no contrato antes de continuar."
+                      : ""}
+                  </p>
+                )}
               </div>
             ))}
           </div>
