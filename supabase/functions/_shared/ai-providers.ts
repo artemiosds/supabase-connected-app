@@ -26,6 +26,98 @@ export type AiProviderResult = {
 
 type JsonRecord = Record<string, unknown>;
 
+export type AiProviderErrorDetails = {
+  httpStatus: number | null;
+  errorCode: string | null;
+  errorType: string | null;
+  retryable: boolean;
+  retryAfter: string | null;
+};
+
+export class AiProviderError extends Error {
+  readonly details: AiProviderErrorDetails;
+
+  constructor(message: string, details: AiProviderErrorDetails) {
+    super(message);
+    this.name = "AiProviderError";
+    this.details = details;
+  }
+}
+
+function sanitizedErrorMessage(value: unknown, apiKey: string): string {
+  if (typeof value !== "string") return "";
+  let message = value.replace(/[\\r\\n\\t]+/g, " ").replace(/\\s{2,}/g, " ").trim();
+  if (apiKey.length >= 8) message = message.replaceAll(apiKey, "[credencial ocultada]");
+  message = message
+    .replace(/sk-or-v1-[A-Za-z0-9_-]+/gi, "[credencial ocultada]")
+    .replace(/sk-[A-Za-z0-9_-]{16,}/g, "[credencial ocultada]")
+    .replace(/Bearer\\s+[^\\s,;]+/gi, "Bearer [oculto]");
+  return message.slice(0, 500);
+}
+
+function retryableHttpStatus(status: number): boolean {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+
+function providerErrorFromResponse(
+  provider: AiProviderConfig,
+  response: Response,
+  rawBody: string,
+  apiKey: string,
+): AiProviderError {
+  let payload: JsonRecord = {};
+  try {
+    payload = record(JSON.parse(rawBody));
+  } catch {
+    // Some gateways return plain-text or HTML error bodies.
+  }
+  const error = record(payload.error);
+  const metadata = record(error.metadata);
+  const message = sanitizedErrorMessage(
+    error.message ?? payload.message ?? payload.error_description ?? rawBody,
+    apiKey,
+  );
+  const errorCodeValue = error.code ?? metadata.provider_code ?? payload.code;
+  const errorTypeValue = metadata.error_type ?? error.type ?? payload.error_type;
+  const errorCode = errorCodeValue === undefined ? null : String(errorCodeValue).slice(0, 120);
+  const errorType = errorTypeValue === undefined ? null : String(errorTypeValue).slice(0, 120);
+  const retryable = retryableHttpStatus(response.status) ||
+    errorType === "rate_limit_exceeded" ||
+    errorType === "provider_overloaded" ||
+    errorType === "provider_unavailable";
+  const description = message || "A API não informou detalhes adicionais.";
+  return new AiProviderError(
+    provider.name + " respondeu HTTP " + response.status + ": " + description,
+    {
+      httpStatus: response.status,
+      errorCode,
+      errorType,
+      retryable,
+      retryAfter: response.headers.get("Retry-After"),
+    },
+  );
+}
+
+export function getAiProviderCompatibilityIssue(provider: AiProviderConfig): string | null {
+  if (provider.provider !== "openai_compatible" || !provider.api_base_url) return null;
+  try {
+    const hostname = new URL(provider.api_base_url).hostname.toLowerCase();
+    if (
+      (hostname === "openrouter.ai" || hostname === "www.openrouter.ai") &&
+      /^perplexity\\/pplx-decider(?:-|:|$)/i.test(provider.model)
+    ) {
+      return (
+        "Este modelo Perplexity Decider não é compatível com chat: no OpenRouter ele utiliza " +
+        "a Decisions API (/api/alpha/decisions), enquanto o Primus precisa de Chat Completions. " +
+        "Cadastre um modelo de conversa compatível com /api/v1/chat/completions."
+      );
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function record(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonRecord)
@@ -190,18 +282,47 @@ export async function invokeAiProvider(
   maxOutputTokens = 1_500,
   timeoutMs = 45_000,
 ): Promise<AiProviderResult> {
+  const compatibilityIssue = getAiProviderCompatibilityIssue(provider);
+  if (compatibilityIssue) {
+    throw new AiProviderError(compatibilityIssue, {
+      httpStatus: 400,
+      errorCode: "unsupported_api",
+      errorType: "unsupported_model_api",
+      retryable: false,
+      retryAfter: null,
+    });
+  }
+
   const request = requestForProvider(provider, apiKey, messages, instructions, maxOutputTokens);
-  const response = await fetch(request.url, {
-    method: "POST",
-    headers: request.headers,
-    body: JSON.stringify(request.body),
-    redirect: "error",
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(request.url, {
+      method: "POST",
+      headers: request.headers,
+      body: JSON.stringify(request.body),
+      redirect: "error",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (cause) {
+    const errorName = cause instanceof Error ? cause.name : "NetworkError";
+    const timedOut = errorName === "TimeoutError" || errorName === "AbortError";
+    throw new AiProviderError(
+      timedOut
+        ? provider.name + " excedeu o tempo limite de resposta."
+        : provider.name + " não pôde ser alcançado. Verifique a rede e tente novamente.",
+      {
+        httpStatus: null,
+        errorCode: errorName.slice(0, 120),
+        errorType: timedOut ? "timeout" : "network_error",
+        retryable: true,
+        retryAfter: null,
+      },
+    );
+  }
 
   if (!response.ok) {
-    await response.body?.cancel();
-    throw new Error(provider.name + " respondeu HTTP " + response.status + ".");
+    const rawBody = await response.text().catch(() => "");
+    throw providerErrorFromResponse(provider, response, rawBody.slice(0, 8_000), apiKey);
   }
 
   const payload = record(await response.json().catch(() => null));
@@ -241,6 +362,19 @@ export async function invokeAiProvider(
     }
   }
 
-  if (!text) throw new Error(provider.name + " não retornou conteúdo textual.");
+  if (!text) {
+    throw new AiProviderError(
+      provider.name +
+        " respondeu HTTP 200, mas não retornou texto. O limite de saída pode ter sido consumido " +
+        "por tokens de raciocínio; tente novamente ou aumente o limite do modelo.",
+      {
+        httpStatus: 502,
+        errorCode: "empty_response",
+        errorType: "empty_response",
+        retryable: true,
+        retryAfter: null,
+      },
+    );
+  }
   return { text, inputTokens, outputTokens };
 }
