@@ -56,7 +56,9 @@ function validBaseUrl(value: unknown): value is string {
       hostname.endsWith(".localhost") ||
       hostname.endsWith(".local") ||
       hostname.endsWith(".internal") ||
-      hostname.endsWith(".test");
+      hostname.endsWith(".test") ||
+      hostname.endsWith(".localdomain") ||
+      hostname.endsWith(".lan");
     return (
       url.protocol === "https:" &&
       !url.username &&
