@@ -201,7 +201,20 @@ BEGIN
     OR v_usage_unlinked <> 3
     OR v_secret_count <> 0
   THEN
-    RAISE EXCEPTION 'Deleting the last provider failed to disable AI, remove credentials, or preserve usage history.';
+    RAISE EXCEPTION
+      'Deleting the last provider failed. Observed state: %',
+      pg_catalog.jsonb_build_object(
+        'result', v_result,
+        'configuration_model', v_configuration_model,
+        'configuration_secret_is_null', v_config_secret IS NULL,
+        'configuration_enabled', v_configuration_enabled,
+        'configuration_status', v_configuration_status,
+        'tenant_enabled', v_tenant_enabled,
+        'provider_count', v_provider_count,
+        'usage_count', v_usage_count,
+        'usage_unlinked', v_usage_unlinked,
+        'remaining_fixture_secrets', v_secret_count
+      );
   END IF;
 END
 $test$;
