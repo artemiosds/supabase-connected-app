@@ -50,6 +50,17 @@ describe("contract-dossier-pdf-helper", () => {
         },
       ]),
     ).toBe(2000);
+
+    expect(
+      reconstruirValorOriginalContrato(2500.005, [
+        {
+          number: "1º Termo Aditivo",
+          kind: "acrescimo",
+          signedAt: "2026-06-01",
+          valueChange: 500.005,
+        },
+      ]),
+    ).toBe(2000);
   });
 
   it("calcula execução líquida, saldos físicos e resumo financeiro com aditivos", () => {
