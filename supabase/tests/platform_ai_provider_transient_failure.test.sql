@@ -100,13 +100,13 @@ BEGIN
   FROM public.platform_ai_configuration
   WHERE id = 1;
 
-  IF v_provider_status <> 'connected'
+  IF v_provider_status IS DISTINCT FROM 'connected'
     OR v_provider_enabled IS DISTINCT FROM true
     OR v_provider_primary IS DISTINCT FROM true
     OR v_access_allowed IS DISTINCT FROM true
     OR v_tenant_enabled IS DISTINCT FROM true
     OR v_global_enabled IS DISTINCT FROM true
-    OR v_error <> 'Rate limit exceeded'
+    OR v_error IS DISTINCT FROM 'Rate limit exceeded'
     OR v_http_status <> 429
     OR v_retryable IS DISTINCT FROM true
   THEN
@@ -142,7 +142,7 @@ BEGIN
   FROM public.platform_ai_configuration
   WHERE id = 1;
 
-  IF v_provider_status <> 'failed'
+  IF v_provider_status IS DISTINCT FROM 'failed'
     OR v_provider_enabled IS DISTINCT FROM false
     OR v_provider_primary IS DISTINCT FROM false
     OR v_access_allowed IS DISTINCT FROM false
