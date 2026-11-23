@@ -284,7 +284,9 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
       " a " +
       formatarDataIsoPtBr(payload.contract.endDate),
   );
-  lines.push("Gestor do Contrato: " + singleLine(payload.contract.managerName, "Não designado formalmente"));
+  lines.push(
+    "Gestor do Contrato: " + singleLine(payload.contract.managerName, "Não designado formalmente"),
+  );
   lines.push(
     "Fiscal do Contrato: " +
       singleLine(payload.contract.inspectorName, "Não designado formalmente"),
