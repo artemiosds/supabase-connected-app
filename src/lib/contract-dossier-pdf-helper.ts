@@ -140,7 +140,8 @@ export function reconstruirValorOriginalContrato(
     }
     return total + amendment.valueChange;
   }, 0);
-  const originalValue = roundMoney(currentContractValue - amendmentsValueChange);
+  const roundedAmendmentsValueChange = roundMoney(amendmentsValueChange);
+  const originalValue = roundMoney(currentContractValue - roundedAmendmentsValueChange);
 
   if (originalValue < 0) {
     throw new RangeError(
