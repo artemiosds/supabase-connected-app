@@ -20,15 +20,19 @@ describe("saldo de itens de contrato e ARP", () => {
   });
 
   it("não produz saldo negativo por arredondamento", () => {
-    expect(calcularSaldoDisponivel(1, [{ movement_type: "consumption", quantity: 1.00001 }])).toBe(
-      0,
-    );
+    expect(
+      calcularSaldoDisponivel(1, [
+        { movement_type: "consumption", quantity: 1.00001 },
+      ]),
+    ).toBe(0);
   });
 
   it("rejeita quantidades não finitas ou negativas", () => {
     expect(() => calcularSaldoDisponivel(-1, [])).toThrow(RangeError);
     expect(() =>
-      calcularQuantidadeConsumida([{ movement_type: "consumption", quantity: Number.NaN }]),
+      calcularQuantidadeConsumida([
+        { movement_type: "consumption", quantity: Number.NaN },
+      ]),
     ).toThrow(RangeError);
   });
   it("calcula percentual disponível com 2,5 consumidos de 10", () => {
@@ -63,7 +67,8 @@ describe("saldo de itens de contrato e ARP", () => {
       temRiscoDesabastecimento: true,
     });
     expect(
-      resumirAlertasSaldo([{ percentualDisponivel: 80 }]).temRiscoDesabastecimento,
+      resumirAlertasSaldo([{ percentualDisponivel: 80 }])
+        .temRiscoDesabastecimento,
     ).toBe(false);
   });
 });
