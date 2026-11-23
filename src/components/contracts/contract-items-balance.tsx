@@ -1,4 +1,5 @@
 import { SupplyOrderDialog } from "@/components/contracts/supply-order-dialog";
+import { StockReplenishmentDialog } from "@/components/contracts/stock-replenishment-dialog";
 import { ContractItemsImport } from "@/components/contracts/contract-items-import";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -28,6 +29,7 @@ import {
   resumirAlertasSaldo,
 } from "@/lib/contract-item-balance";
 import { groupMovementsBySupplyOrder } from "@/lib/supply-order-history-helper";
+import { filtrarItensCriticosParaReposicao } from "@/lib/stock-replenishment-helper";
 import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
 import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
 import { carregarTimbradoSecretaria } from "@/lib/document-branding";
@@ -40,6 +42,9 @@ type Contract = {
   status: string;
   end_date: string;
   process_id: string | null;
+  object?: string | null;
+  manager_user_id?: string | null;
+  inspector_user_id?: string | null;
 };
 
 type Item = {
@@ -112,6 +117,7 @@ export function ContractItemsBalance(props: {
     scope.current.tenant === props.tenantId &&
     scope.current.user === props.userId;
   const [aberto, setAberto] = useState(false);
+  const [dialogReposicaoAberto, setDialogReposicaoAberto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -221,6 +227,13 @@ export function ContractItemsBalance(props: {
       ),
     [items, movementsByItem],
   );
+  const itensCriticos = useMemo(
+    () => filtrarItensCriticosParaReposicao(items, movementsByItem),
+    [items, movementsByItem],
+  );
+  const podeIniciarReposicao = props.contract.status === "vigente" &&
+    (props.contract.manager_user_id === props.userId || props.contract.inspector_user_id === props.userId) &&
+    Boolean(props.userId);
   const itemTotal = items.reduce((total, item) => total + Number(item.total_value), 0);
   const itemEditandoTemMovimentos =
     itemEditandoId !== null &&
@@ -650,6 +663,12 @@ export function ContractItemsBalance(props: {
                       licitatório.
                     </p>
                   </div>
+                  {podeIniciarReposicao && (
+                    <Button type="button" size="sm" className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                      onClick={() => setDialogReposicaoAberto(true)}>
+                      <Plus className="h-4 w-4" /> Iniciar Reposição de Estoque
+                    </Button>
+                  )}
                 </div>
               )}
               {loading ? (
@@ -1023,6 +1042,15 @@ export function ContractItemsBalance(props: {
               )}
             </TabsContent>
           </Tabs>
+          <StockReplenishmentDialog
+            open={dialogReposicaoAberto}
+            onOpenChange={setDialogReposicaoAberto}
+            contract={props.contract}
+            tenantId={props.tenantId}
+            userId={props.userId}
+            itensCriticos={itensCriticos}
+            onSucesso={() => void carregar()}
+          />
         </div>
       )}
     </section>
