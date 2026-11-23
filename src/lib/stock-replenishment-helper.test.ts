@@ -16,7 +16,7 @@ const item = (id: string) => ({
 });
 
 describe("reposição de estoque contratual", () => {
-  it("seleciona esgotados e críticos e ignora saldos de atenção, normais e sem consumo", () => {
+  it("seleciona somente saldos esgotados e críticos, incluindo o limite de 20%", () => {
     const result = filtrarItensCriticosParaReposicao(
       [item("zero"), item("vinte"), item("atencao"), item("normal"), item("sem")],
       {
@@ -26,6 +26,7 @@ describe("reposição de estoque contratual", () => {
         normal: [{ movement_type: "consumption", quantity: 2 }],
       },
     );
+
     expect(result.map((entry) => [entry.id, entry.nivel, entry.percentualDisponivel])).toEqual([
       ["zero", "esgotado", 0],
       ["vinte", "critico", 20],
@@ -35,7 +36,8 @@ describe("reposição de estoque contratual", () => {
     );
   });
 
-  it("respeita estorno na classificação", () => {
+  it("trata ausência de movimentações como saldo integral e respeita estornos", () => {
+    expect(filtrarItensCriticosParaReposicao([item("sem")], {})).toHaveLength(0);
     expect(
       filtrarItensCriticosParaReposicao([item("a")], {
         a: [
@@ -46,18 +48,28 @@ describe("reposição de estoque contratual", () => {
     ).toHaveLength(0);
   });
 
-  it("sugere prioridade urgente somente quando há item esgotado e referencia o contrato", () => {
+  it("sugere prioridade urgente quando há item esgotado e alta para apenas críticos", () => {
     const critico = filtrarItensCriticosParaReposicao([item("a")], {
       a: [{ movement_type: "consumption", quantity: 8 }],
     })[0]!;
+
     const alta = montarSugestaoProcessoReposicao({
       contractNumber: "004/2026",
+      contractObject: "Fornecimento de medicamentos",
       itensCriticos: [critico],
       year: 2026,
     });
+
     expect(alta.priority).toBe("alta");
+    expect(alta.modality).toBe("dispensa");
+    expect(alta.requesting_unit).toBe("Fundo Municipal de Saúde / Almoxarifado Central");
+    expect(alta.number).toBe("PROC-REP-0042026-2026");
     expect(alta.title).toContain("004/2026");
     expect(alta.description).toContain("004/2026");
+    expect(alta.description).toContain("Fornecimento de medicamentos");
+    expect(alta.description).toContain("referências históricas");
+    expect(alta.description).toContain("não substituem a pesquisa de preços");
+
     expect(
       montarSugestaoProcessoReposicao({
         contractNumber: "004/2026",
@@ -67,7 +79,7 @@ describe("reposição de estoque contratual", () => {
     ).toBe("urgente");
   });
 
-  it("mapeia vínculo, autores, numeração e totais sem preço para itens sem valor", () => {
+  it("mapeia itens ordenados, tenant, processo e autor usando somente colunas graváveis", () => {
     const payload = prepararProcurementItemsParaInsercao({
       processId: "process",
       tenantId: "tenant",
@@ -80,15 +92,58 @@ describe("reposição de estoque contratual", () => {
         unit_value: entry.unit_value,
       })),
     });
+
     expect(payload.map((entry) => entry.line_number)).toEqual([1, 2]);
     expect(payload[0]).toMatchObject({
       tenant_id: "tenant",
       process_id: "process",
       created_by: "user",
       updated_by: "user",
+      quantity: 10,
       estimated_unit_price: 2.5,
-      estimated_total: 25,
+      estimated_price_source: "manual",
     });
-    expect(payload[1]).toMatchObject({ estimated_unit_price: null, estimated_total: null });
+    expect(payload[1]).toMatchObject({
+      estimated_unit_price: null,
+      estimated_price_source: "manual",
+    });
+    expect(payload[0]).not.toHaveProperty("estimated_total");
+    expect(payload[1]).not.toHaveProperty("estimated_total");
+  });
+
+  it("recusa dados incompatíveis com as restrições existentes da tabela", () => {
+    expect(() =>
+      prepararProcurementItemsParaInsercao({
+        processId: "process",
+        tenantId: "tenant",
+        userId: "user",
+        itens: [
+          {
+            description: "Dipirona",
+            specification: null,
+            unit: "UNIDADE DE FORNECIMENTO COM MAIS DE TRINTA CARACTERES",
+            quantidadeSugerida: 10,
+            unit_value: 2.5,
+          },
+        ],
+      }),
+    ).toThrow("A unidade do item deve ter entre 1 e 30 caracteres.");
+
+    expect(() =>
+      prepararProcurementItemsParaInsercao({
+        processId: "process",
+        tenantId: "tenant",
+        userId: "user",
+        itens: [
+          {
+            description: "Dipirona",
+            specification: null,
+            unit: "AMPOLA",
+            quantidadeSugerida: 0,
+            unit_value: 2.5,
+          },
+        ],
+      }),
+    ).toThrow("A quantidade a adquirir deve ser positiva e válida.");
   });
 });
