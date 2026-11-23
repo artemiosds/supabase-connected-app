@@ -119,6 +119,7 @@ function aggregateUsage(
       input_tokens: 0,
       output_tokens: 0,
       estimated_cost_usd: 0,
+      cost_available: false,
       cost_complete: true,
     };
     current.requests = Number(current.requests) + 1;
@@ -132,6 +133,7 @@ function aggregateUsage(
     if (row.estimated_cost_usd === null || row.estimated_cost_usd === undefined) {
       current.cost_complete = false;
     } else {
+      current.cost_available = true;
       current.estimated_cost_usd =
         Number(current.estimated_cost_usd) + Number(row.estimated_cost_usd);
     }
