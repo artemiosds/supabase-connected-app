@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Download, FileText, Loader2, Send, Sparkles, Trash2 } from "lucide-react";
+import { Download, FileText, Loader2, RefreshCw, Send, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +29,7 @@ import { db } from "@/lib/db";
 
 type Message = { role: "user" | "assistant"; content: string };
 type Choice = { id: string; label: string; secondary?: string };
-type Capabilities = { enabled: boolean; features: AiFeatureKey[] };
+type Capabilities = { enabled: boolean; features: AiFeatureKey[]; reason?: string | null };
 const NEEDS_RECORD = new Set<AiFeatureKey>([
   "documents",
   "price_research",
@@ -60,6 +60,7 @@ export function PrimusAiAssistant() {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState("");
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
+  const [capabilityRevision, setCapabilityRevision] = useState(0);
   const [feature, setFeature] = useState<AiFeatureKey | "">("");
   const [choices, setChoices] = useState<Choice[]>([]);
   const [loadingChoices, setLoadingChoices] = useState(false);
@@ -108,7 +109,9 @@ export function PrimusAiAssistant() {
         setFeature(safeFeatures[0] ?? "");
         if (!safeFeatures.length)
           setCapabilityError(
-            "A IA ainda não está habilitada para esta Secretaria. Solicite ao Administrador Master a configuração e a liberação dos recursos.",
+            typeof data?.reason === "string" && data.reason.trim()
+              ? data.reason
+              : "A IA ainda não está habilitada para esta Secretaria. Solicite ao Administrador Master a liberação dos recursos.",
           );
       })
       .catch(() =>
@@ -120,7 +123,7 @@ export function PrimusAiAssistant() {
     return () => {
       cancelled = true;
     };
-  }, [open, selecionado?.id, session?.access_token]);
+  }, [open, selecionado?.id, session?.access_token, capabilityRevision]);
 
   useEffect(() => {
     if (!open || !selecionado?.id || !feature || !NEEDS_RECORD.has(feature)) {
@@ -329,6 +332,17 @@ export function PrimusAiAssistant() {
             Secretaria ativa: {selecionado.nome}. A IA produz orientação e rascunhos para
             conferência; não executa ações no sistema.
           </DialogDescription>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-2 w-fit"
+            disabled={loadingCapabilities || sending}
+            onClick={() => setCapabilityRevision((current) => current + 1)}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Atualizar permissões
+          </Button>
         </DialogHeader>
         <div className="grid gap-4 border-b p-5 sm:grid-cols-2">
           <div className="space-y-2">
@@ -389,6 +403,13 @@ export function PrimusAiAssistant() {
               {currentFeature.description}
             </p>
           )}
+          {feature && NEEDS_RECORD.has(feature) && !loadingChoices && choices.length === 0 &&
+            !capabilityError && (
+              <p className="text-xs text-amber-700 sm:col-span-2">
+                Esta capacidade precisa de um registro cadastrado e acessível nesta Secretaria.
+                Cadastre o processo, fornecedor ou contrato correspondente, ou selecione outro recurso.
+              </p>
+            )}
         </div>
         {loadingCapabilities ? (
           <div className="flex min-h-64 items-center justify-center">
