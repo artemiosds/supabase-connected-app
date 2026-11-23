@@ -320,10 +320,7 @@ function Contratos() {
   const processosAtuais = dadosTenantAtual ? processos : [];
   const aditivosAtuais = dadosTenantAtual ? aditivos : [];
   const aditivosDoContrato = useMemo(
-    () =>
-      prorrogacaoDe
-        ? aditivosAtuais.filter((item) => item.contract_id === prorrogacaoDe.id)
-        : [],
+    () => aditivosAtuais.filter((item) => item.contract_id === prorrogacaoDe?.id),
     [aditivosAtuais, prorrogacaoDe?.id],
   );
   const loadingAtual = loading || !dadosTenantAtual;
@@ -707,13 +704,7 @@ function Contratos() {
                           diasAte(c.end_date) <= 0
                         }
                         aria-label={`Prorrogar vigência — Contrato ${c.number}`}
-                        title={
-                          c.instrument_type !== "contrato"
-                            ? "Atas de registro de preços exigem análise própria."
-                            : diasAte(c.end_date) <= 0
-                              ? "A prorrogação deve ser formalizada antes do fim da vigência."
-                              : undefined
-                        }
+                        title="Disponível apenas para contratos vigentes e não vencidos."
                         onClick={() => setProrrogacaoDe(c)}
                       >
                         <CalendarClock className="h-4 w-4" /> Prorrogar vigência
