@@ -443,15 +443,16 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 
 A entrega disponibiliza cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; allow-list por Secretaria; failover; métricas de tokens e estimativa de custos.
 
-- [x] Aplicar as migrations `20261123144614_platform_ai_multi_provider.sql` e `20261123144927_fix_ai_non_primary_provider_failure.sql` diretamente no SMS2.
+- [x] Aplicar as migrations `20261123144614_platform_ai_multi_provider.sql`, `20261123144927_fix_ai_non_primary_provider_failure.sql` e `20261123174818_fix_ai_provider_test_diagnostics.sql` diretamente no SMS2.
 - [x] Executar o teste pgTAP com 20 verificações de tabelas, RLS/FORCE RLS, privilégios, RPCs, endpoint e trigger de autorização.
 - [x] Executar teste comportamental transacional: falha do único provedor secundário autorizado, promoção de fallback, desligamento quando todos os provedores falham; fixtures e segredos sintéticos revertidos por rollback.
+- [x] Executar teste comportamental de falha transitória 429: manter provedor conectado, principal, habilitado e autorizado; confirmar que falha permanente 401 desabilita o provedor e registra diagnóstico. Fixtures e segredos sintéticos revertidos por rollback.
 - [x] Confirmar que nenhuma chave pode ser lida por `anon` ou `authenticated`, e que as três tabelas novas usam RLS e FORCE RLS.
-- [x] Publicar `platform-ai-configuration` versão 18 e `primus-ai` versão 17, ambas com `verify_jwt=true`.
-- [x] Confirmar configuração global desligada, zero provedores cadastrados e nenhuma Secretaria habilitada automaticamente.
+- [x] Publicar `platform-ai-configuration` versão 22 e `primus-ai` versão 17, ambas com `verify_jwt=true`.
+- [x] Confirmar configuração global desligada e nenhuma Secretaria habilitada automaticamente; existem dois cadastros reais de provedor, ambos atualmente com estado `failed` aguardando novo teste.
 - [ ] Cadastrar credenciais reais diretamente no Painel Master e testar individualmente os cinco adaptadores com modelos/deployments e endpoints autorizados.
 - [ ] Validar consumo, tokens e custos com chamadas reais de cada provedor.
 - [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados antes de liberar dados institucionais.
 - [ ] Executar CI completo, teste de navegador e smoke test autenticado após o cadastro das credenciais.
 
-**Estado:** banco e backend multiprovedor estão implantados no SMS2. O SMS2 não possuía configuração OpenAI nem credencial legada antes da implantação; o registro global inicial foi criado desligado. Nenhuma chave real foi fornecida ou armazenada e nenhum provedor está ativo. A IA global permanece desligada até que o Administrador Master cadastre e teste uma credencial e autorize expressamente os provedores/capacidades por Secretaria.
+**Estado:** banco e backend multiprovedor estão implantados no SMS2. A correção de diagnóstico está ativa na `platform-ai-configuration` versão 22. Há dois provedores cadastrados (Nemotron e Perplexity Decider), ambos atualmente desabilitados após falhas registradas antes desta correção; não foi possível recuperar o código HTTP dessas falhas antigas. O próximo teste manual passa a registrar a causa e preservar o estado em erros transitórios. O Decider é incompatível com chat e será recusado com explicação explícita. A IA global permanece desligada até existir um provedor de chat validado e autorização por Secretaria.
