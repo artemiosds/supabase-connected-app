@@ -312,6 +312,25 @@ BEGIN
       WHERE enabled = true;
     END IF;
 
+    IF v_needs_test THEN
+      UPDATE public.platform_ai_tenant_provider_access
+      SET is_allowed = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+      WHERE provider_id = p_provider_id AND is_allowed = true;
+      UPDATE public.tenant_ai_settings s
+      SET enabled = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+      WHERE s.enabled = true
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.platform_ai_tenant_provider_access a
+          JOIN public.platform_ai_providers p ON p.id = a.provider_id
+          WHERE a.tenant_id = s.tenant_id
+            AND a.is_allowed = true
+            AND p.id <> p_provider_id
+            AND p.is_enabled = true
+            AND p.status = 'connected'
+        );
+    END IF;
+
     UPDATE public.platform_ai_providers
     SET name = pg_catalog.btrim(p_name),
         provider = p_provider,
@@ -405,6 +424,9 @@ BEGIN
     SET status = 'failed', is_enabled = false, is_primary = false,
         last_test_at = pg_catalog.now(), updated_by = p_actor_id, updated_at = pg_catalog.now()
     WHERE id = p_provider_id;
+    UPDATE public.platform_ai_tenant_provider_access
+    SET is_allowed = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+    WHERE provider_id = p_provider_id AND is_allowed = true;
 
     IF v_provider.is_primary THEN
       SELECT * INTO v_fallback
@@ -432,6 +454,18 @@ BEGIN
         SET enabled = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
         WHERE enabled = true;
       END IF;
+      UPDATE public.tenant_ai_settings s
+      SET enabled = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+      WHERE s.enabled = true
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.platform_ai_tenant_provider_access a
+          JOIN public.platform_ai_providers p ON p.id = a.provider_id
+          WHERE a.tenant_id = s.tenant_id
+            AND a.is_allowed = true
+            AND p.is_enabled = true
+            AND p.status = 'connected'
+        );
     END IF;
   END IF;
 
@@ -539,6 +573,23 @@ BEGIN
   UPDATE public.platform_ai_providers
   SET is_enabled = p_enabled, updated_by = p_actor_id, updated_at = pg_catalog.now()
   WHERE id = p_provider_id;
+  IF NOT p_enabled THEN
+    UPDATE public.platform_ai_tenant_provider_access
+    SET is_allowed = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+    WHERE provider_id = p_provider_id AND is_allowed = true;
+    UPDATE public.tenant_ai_settings s
+    SET enabled = false, updated_by = p_actor_id, updated_at = pg_catalog.now()
+    WHERE s.enabled = true
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.platform_ai_tenant_provider_access a
+        JOIN public.platform_ai_providers p ON p.id = a.provider_id
+        WHERE a.tenant_id = s.tenant_id
+          AND a.is_allowed = true
+          AND p.is_enabled = true
+          AND p.status = 'connected'
+      );
+  END IF;
 
   INSERT INTO public.audit_events (
     tenant_id, actor_id, action, entity, entity_id, details, created_at
