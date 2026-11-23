@@ -1,5 +1,9 @@
 import { getAllowedOrigins } from "../_shared/origins.ts";
-import { invokeAiProvider, type AiProviderConfig, type AiProviderKind } from "../_shared/ai-providers.ts";
+import {
+  invokeAiProvider,
+  type AiProviderConfig,
+  type AiProviderKind,
+} from "../_shared/ai-providers.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type JsonObject = Record<string, unknown>;
@@ -131,7 +135,9 @@ function aggregateUsage(
   }
 
   return [...grouped.values()].sort(
-    (a, b) => Number(b.requests) - Number(a.requests) || String(a.tenant_name).localeCompare(String(b.tenant_name)),
+    (a, b) =>
+      Number(b.requests) - Number(a.requests) ||
+      String(a.tenant_name).localeCompare(String(b.tenant_name)),
   );
 }
 
@@ -195,7 +201,11 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
   if (adminError) {
     console.error("Falha ao validar o Administrador Master:", adminError.code);
-    return response({ error: "Não foi possível validar a autorização administrativa." }, 500, origin);
+    return response(
+      { error: "Não foi possível validar a autorização administrativa." },
+      500,
+      origin,
+    );
   }
   if (!admin)
     return response(
@@ -221,8 +231,14 @@ Deno.serve(async (request: Request) => {
 
   if (action === "get") {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const [configurationResult, providersResult, tenantsResult, settingsResult, accessResult, usageResult] =
-      await Promise.all([
+    const [
+      configurationResult,
+      providersResult,
+      tenantsResult,
+      settingsResult,
+      accessResult,
+      usageResult,
+    ] = await Promise.all([
         adminClient
           .from("platform_ai_configuration")
           .select("provider,enabled,status,last_test_at,updated_at")
@@ -231,7 +247,23 @@ Deno.serve(async (request: Request) => {
         adminClient
           .from("platform_ai_providers")
           .select(
-            "id,name,provider,model,api_base_url,api_version,status,is_enabled,is_primary,fallback_priority,input_cost_per_million,output_cost_per_million,last_test_at,updated_at,vault_secret_id",
+            [
+              "id",
+              "name",
+              "provider",
+              "model",
+              "api_base_url",
+              "api_version",
+              "status",
+              "is_enabled",
+              "is_primary",
+              "fallback_priority",
+              "input_cost_per_million",
+              "output_cost_per_million",
+              "last_test_at",
+              "updated_at",
+              "vault_secret_id",
+            ].join(","),
           )
           .order("is_primary", { ascending: false })
           .order("fallback_priority", { ascending: true })
@@ -250,7 +282,16 @@ Deno.serve(async (request: Request) => {
         adminClient
           .from("platform_ai_usage")
           .select(
-            "tenant_id,provider_id,model,status,input_tokens,output_tokens,estimated_cost_usd,created_at",
+            [
+              "tenant_id",
+              "provider_id",
+              "model",
+              "status",
+              "input_tokens",
+              "output_tokens",
+              "estimated_cost_usd",
+              "created_at",
+            ].join(","),
           )
           .gte("created_at", since)
           .order("created_at", { ascending: false })
@@ -266,7 +307,11 @@ Deno.serve(async (request: Request) => {
       usageResult.error;
     if (failure) {
       console.error("Falha ao carregar o gerenciador multiprovedor:", failure.message);
-      return response({ error: "Não foi possível carregar as configurações e métricas de IA." }, 500, origin);
+      return response(
+        { error: "Não foi possível carregar as configurações e métricas de IA." },
+        500,
+        origin,
+      );
     }
 
     const providers = (providersResult.data ?? []).map((row) =>
@@ -346,7 +391,9 @@ Deno.serve(async (request: Request) => {
     const inputCost = optionalPrice(body.input_cost_per_million);
     const outputCost = optionalPrice(body.output_cost_per_million);
     const fallbackPriority =
-      typeof body.fallback_priority === "number" ? body.fallback_priority : Number(body.fallback_priority ?? 100);
+      typeof body.fallback_priority === "number"
+        ? body.fallback_priority
+        : Number(body.fallback_priority ?? 100);
 
     if (!PROVIDER_TYPES.includes(provider as AiProviderKind))
       return response({ error: "Selecione um tipo de provedor suportado." }, 400, origin);
@@ -355,21 +402,48 @@ Deno.serve(async (request: Request) => {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,149}$/.test(model))
       return response({ error: "Informe um identificador de modelo válido." }, 400, origin);
     if (apiKey && (apiKey.length < 20 || apiKey.length > 1000))
-      return response({ error: "A chave de API deve ter entre 20 e 1000 caracteres." }, 400, origin);
+      return response(
+        { error: "A chave de API deve ter entre 20 e 1000 caracteres." },
+        400,
+        origin,
+      );
     if (providerId === null && !apiKey)
-      return response({ error: "Informe a chave de API para cadastrar um novo provedor." }, 400, origin);
+      return response(
+        { error: "Informe a chave de API para cadastrar um novo provedor." },
+        400,
+        origin,
+      );
     if (inputCost === undefined || outputCost === undefined)
-      return response({ error: "Informe preços por milhão de tokens válidos e não negativos." }, 400, origin);
+      return response(
+        { error: "Informe preços por milhão de tokens válidos e não negativos." },
+        400,
+        origin,
+      );
     if (!Number.isInteger(fallbackPriority) || fallbackPriority < 1 || fallbackPriority > 9999)
-      return response({ error: "A prioridade de alternativa deve estar entre 1 e 9999." }, 400, origin);
+      return response(
+        { error: "A prioridade de alternativa deve estar entre 1 e 9999." },
+        400,
+        origin,
+      );
 
     if (provider === "azure_openai" || provider === "openai_compatible") {
       if (!validBaseUrl(apiBaseUrl))
-        return response({ error: "Informe uma URL HTTPS válida, sem usuário, senha, query ou fragmento." }, 400, origin);
+        return response(
+          { error: "Informe uma URL HTTPS válida, sem usuário, senha, query ou fragmento." },
+          400,
+          origin,
+        );
     } else if (apiBaseUrl) {
-      return response({ error: "Este provedor utiliza endpoint oficial e não aceita URL personalizada." }, 400, origin);
+      return response(
+        { error: "Este provedor utiliza endpoint oficial e não aceita URL personalizada." },
+        400,
+        origin,
+      );
     }
-    if (provider === "azure_openai" && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$/.test(apiVersion ?? ""))
+    if (
+      provider === "azure_openai" &&
+      !/^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$/.test(apiVersion ?? "")
+    )
       return response({ error: "Informe a versão de API do Azure OpenAI." }, 400, origin);
 
     const { data, error } = await adminClient.rpc("platform_ai_save_provider", {
@@ -387,7 +461,11 @@ Deno.serve(async (request: Request) => {
     });
     if (error) {
       console.error("Falha ao salvar provedor de IA:", error.message);
-      return response({ error: error.message || "Não foi possível salvar o provedor." }, 400, origin);
+      return response(
+        { error: error.message || "Não foi possível salvar o provedor." },
+        400,
+        origin,
+      );
     }
     return response({ result: data }, 200, origin);
   }
@@ -441,7 +519,11 @@ Deno.serve(async (request: Request) => {
     );
     if (statusError) {
       console.error("Falha ao registrar teste de provedor:", statusError.message);
-      return response({ error: "O teste terminou, mas o resultado não pôde ser registrado." }, 500, origin);
+      return response(
+        { error: "O teste terminou, mas o resultado não pôde ser registrado." },
+        500,
+        origin,
+      );
     }
     return response(
       { connected, message, result: statusData },
