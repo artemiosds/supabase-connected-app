@@ -6,6 +6,7 @@ import {
   calcularResumoDossieContratual,
   formatCnpj,
   formatarDataIsoPtBr,
+  reconstruirValorOriginalContrato,
   traduzirTipoAditivo,
   type ContractDossierPdfPayload,
 } from "./contract-dossier-pdf-helper";
@@ -25,6 +26,30 @@ describe("contract-dossier-pdf-helper", () => {
     expect(traduzirTipoAditivo("acrescimo")).toBe("Acréscimo de Valor/Quantitativo");
     expect(traduzirTipoAditivo("apostilamento")).toBe("Apostilamento");
     expect(traduzirTipoAditivo("outro")).toBe("outro");
+  });
+
+  it("reconstrói o valor original sem duplicar acréscimos ou supressões já aplicados no contrato", () => {
+    expect(
+      reconstruirValorOriginalContrato(2500, [
+        {
+          number: "1º Termo Aditivo",
+          kind: "acrescimo",
+          signedAt: "2026-06-01",
+          valueChange: 500,
+        },
+      ]),
+    ).toBe(2000);
+
+    expect(
+      reconstruirValorOriginalContrato(1800, [
+        {
+          number: "1º Termo Aditivo",
+          kind: "supressao",
+          signedAt: "2026-06-01",
+          valueChange: -200,
+        },
+      ]),
+    ).toBe(2000);
   });
 
   it("calcula execução líquida, saldos físicos e resumo financeiro com aditivos", () => {
