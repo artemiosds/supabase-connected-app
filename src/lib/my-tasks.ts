@@ -147,22 +147,31 @@ export function montarMinhasTarefas(
     itensPorContrato.set(item.contract_id, lista);
   }
   for (const contrato of meusContratos) {
-    const emRisco = (itensPorContrato.get(contrato.id) ?? []).map((item) => ({
-      item,
-      nivel: classificarNivelSaldo(calcularPercentualDisponivel(item.quantity_total, item.movements)),
-    })).filter(({ nivel }) => nivel === "esgotado" || nivel === "critico");
+    const emRisco = (itensPorContrato.get(contrato.id) ?? [])
+      .map((item) => ({
+        item,
+        nivel: classificarNivelSaldo(
+          calcularPercentualDisponivel(item.quantity_total, item.movements),
+        ),
+      }))
+      .filter(({ nivel }) => nivel === "esgotado" || nivel === "critico");
     if (emRisco.length === 0) continue;
     const esgotados = emRisco.filter(({ nivel }) => nivel === "esgotado").length;
     const criticos = emRisco.length - esgotados;
     const resumo = [
       esgotados ? `${esgotados} item(ns) esgotado(s) (0%)` : "",
       criticos ? `${criticos} item(ns) em nível crítico (≤20%)` : "",
-    ].filter(Boolean).join(" e ");
+    ]
+      .filter(Boolean)
+      .join(" e ");
     tarefas.push({
       id: `saldo-critico-${contrato.id}`,
       tipo: "saldo_critico",
       titulo: `Risco de Desabastecimento: Contrato nº ${contrato.number}`,
-      descricao: `${resumo}: ${emRisco.slice(0, 2).map(({ item }) => item.description).join(", ")}`,
+      descricao: `${resumo}: ${emRisco
+        .slice(0, 2)
+        .map(({ item }) => item.description)
+        .join(", ")}`,
       dias: 0,
       destino: "/contratos",
       entityId: contrato.id,
