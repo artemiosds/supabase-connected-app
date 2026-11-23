@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Building2, HeartPulse, Layers3, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type PortalEntrada = "master" | "secretaria" | "suporte";
 
@@ -116,10 +117,13 @@ export function PortalAuthShell({
               </span>
             </span>
           </div>
-          <span className="hidden shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs text-muted-foreground sm:inline-flex">
-            <LockKeyhole className="h-3.5 w-3.5" aria-hidden />
-            Acesso privado
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <span className="hidden items-center gap-2 rounded-md border px-3 py-2 text-xs text-muted-foreground sm:inline-flex">
+              <LockKeyhole className="h-3.5 w-3.5" aria-hidden />
+              Acesso privado
+            </span>
+          </div>
         </header>
 
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
