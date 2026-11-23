@@ -100,6 +100,16 @@ const quantityFormat = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 4,
 });
 
+const percentageOneDecimal = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+const percentageTwoDecimals = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 function singleLine(value: unknown, fallback = "Não informado"): string {
   const safe = Array.from(String(value ?? ""), (character) => {
     const code = character.charCodeAt(0);
@@ -330,7 +340,7 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
         quantityFormat.format(item.quantityTotal),
         quantityFormat.format(item.quantityConsumed),
         quantityFormat.format(item.quantityBalance),
-        item.percentConsumed.toFixed(1) + "%",
+        percentageOneDecimal.format(item.percentConsumed) + "%",
         currency.format(item.unitValue),
         currency.format(item.totalContracted),
         currency.format(item.totalConsumed),
@@ -346,7 +356,7 @@ export function buildContractDossierDocumentText(payload: ContractDossierPdfPayl
   lines.push("Valor Global Atualizado do Instrumento: " + currency.format(payload.summary.updatedValue));
   lines.push("Valor Total Executado / Fornecido: " + currency.format(payload.summary.executedValue));
   lines.push("Saldo Financeiro Disponível: " + currency.format(payload.summary.balanceValue));
-  lines.push("Percentual de Execução Global: " + payload.summary.executionPercentage.toFixed(2) + "%");
+  lines.push("Percentual de Execução Global: " + percentageTwoDecimals.format(payload.summary.executionPercentage) + "%");
   lines.push("Quantidade de Itens Contratuais: " + String(payload.summary.totalItems));
   lines.push("Ordens de Fornecimento Identificadas: " + String(payload.summary.totalOrders));
   lines.push("");
