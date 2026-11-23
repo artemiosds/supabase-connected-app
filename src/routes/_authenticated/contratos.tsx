@@ -319,12 +319,13 @@ function Contratos() {
   const fornecedoresAtuais = dadosTenantAtual ? fornecedores : [];
   const processosAtuais = dadosTenantAtual ? processos : [];
   const aditivosAtuais = dadosTenantAtual ? aditivos : [];
+  const prorrogacaoContratoId = prorrogacaoDe?.id;
   const aditivosDoContrato = useMemo(
     () =>
-      dadosTenantAtual && prorrogacaoDe
-        ? aditivos.filter((item) => item.contract_id === prorrogacaoDe.id)
+      dadosTenantAtual && prorrogacaoContratoId
+        ? aditivos.filter((item) => item.contract_id === prorrogacaoContratoId)
         : [],
-    [aditivos, dadosTenantAtual, prorrogacaoDe?.id],
+    [aditivos, dadosTenantAtual, prorrogacaoContratoId],
   );
   const loadingAtual = loading || !dadosTenantAtual;
   const erroAtual = dadosTenantAtual ? erro : null;
