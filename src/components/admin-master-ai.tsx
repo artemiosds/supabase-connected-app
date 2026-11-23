@@ -363,7 +363,11 @@ export function AdminMasterAi() {
       toast.success(provider.name + " definido como provedor principal.");
       await load();
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Não foi possível definir o provedor principal.");
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível definir o provedor principal.",
+      );
     } finally {
       setChangingProviderId(null);
     }
@@ -392,7 +396,9 @@ export function AdminMasterAi() {
       toast.success("Prioridade de contingência atualizada.");
       await load();
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar a prioridade.");
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível alterar a prioridade.",
+      );
     } finally {
       setChangingProviderId(null);
     }
@@ -407,7 +413,9 @@ export function AdminMasterAi() {
       );
       await load();
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Não foi possível alterar a ativação global.");
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível alterar a ativação global.",
+      );
     } finally {
       setSavingGlobal(false);
     }
@@ -424,7 +432,11 @@ export function AdminMasterAi() {
       toast.success("Provedores autorizados atualizados para " + selectedTenant.name + ".");
       await load();
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar os provedores da Secretaria.");
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível salvar os provedores da Secretaria.",
+      );
     } finally {
       setSavingTenantProviders(false);
     }
@@ -467,7 +479,10 @@ export function AdminMasterAi() {
   if (loading)
     return (
       <div className="flex min-h-40 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Carregando configurações" />
+        <Loader2
+          className="h-6 w-6 animate-spin text-muted-foreground"
+          aria-label="Carregando configurações"
+        />
       </div>
     );
 
@@ -655,7 +670,9 @@ export function AdminMasterAi() {
           </div>
 
           <div className="rounded-lg border p-4">
-            <p className="mb-3 font-medium">Tarifas para estimativa de custos (USD por 1 milhão de tokens)</p>
+            <p className="mb-3 font-medium">
+              Tarifas para estimativa de custos (USD por 1 milhão de tokens)
+            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="ai-provider-input-cost">Tokens de entrada</Label>
@@ -806,7 +823,9 @@ export function AdminMasterAi() {
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar
                     </Button>
-                    {!provider.is_primary && provider.status === "connected" && provider.is_enabled && (
+                    {!provider.is_primary &&
+                      provider.status === "connected" &&
+                      provider.is_enabled && (
                       <Button
                         size="sm"
                         onClick={() => void setPrimaryProvider(provider)}
@@ -950,7 +969,9 @@ export function AdminMasterAi() {
                       </p>
                     </div>
                     {providers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Cadastre um provedor primeiro.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cadastre um provedor primeiro.
+                      </p>
                     ) : (
                       providers.map((provider) => {
                         const available =
@@ -969,11 +990,15 @@ export function AdminMasterAi() {
                             </div>
                             <Switch
                               checked={allowedProviderIds.includes(provider.id)}
-                              disabled={!available || !selectedTenantOperational || savingTenantProviders}
+                              disabled={
+                                !available || !selectedTenantOperational || savingTenantProviders
+                              }
                               onCheckedChange={(checked) =>
                                 toggleTenantProvider(provider.id, checked)
                               }
-                              aria-label={"Autorizar " + provider.name + " para " + selectedTenant.name}
+                              aria-label={
+                                "Autorizar " + provider.name + " para " + selectedTenant.name
+                              }
                             />
                           </div>
                         );
