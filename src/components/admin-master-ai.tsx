@@ -11,10 +11,21 @@ import {
   RefreshCw,
   Save,
   Sparkles,
+  Trash2,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -206,6 +217,8 @@ export function AdminMasterAi() {
   const [savingProvider, setSavingProvider] = useState(false);
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
   const [changingProviderId, setChangingProviderId] = useState<string | null>(null);
+  const [providerPendingDeletion, setProviderPendingDeletion] = useState<AiProvider | null>(null);
+  const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null);
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingTenant, setSavingTenant] = useState(false);
   const [savingTenantProviders, setSavingTenantProviders] = useState(false);
@@ -418,6 +431,40 @@ export function AdminMasterAi() {
       );
     } finally {
       setChangingProviderId(null);
+    }
+  }
+
+  async function deleteProvider(provider: AiProvider) {
+    setDeletingProviderId(provider.id);
+    try {
+      const result = await invokeAction<{
+        result?: {
+          primary_replaced?: boolean;
+          global_disabled?: boolean;
+          usage_records_preserved?: number;
+        };
+      }>("delete_provider", { provider_id: provider.id });
+
+      if (editingProviderId === provider.id) resetProviderForm();
+      setProviderPendingDeletion(null);
+
+      if (result?.result?.global_disabled) {
+        toast.success(
+          provider.name +
+            " excluído. Como não havia outra alternativa conectada, a IA global foi desligada.",
+        );
+      } else if (result?.result?.primary_replaced) {
+        toast.success(
+          provider.name + " excluído. Outra IA conectada foi promovida automaticamente.",
+        );
+      } else {
+        toast.success(provider.name + " excluído. O histórico de consumo foi preservado.");
+      }
+      await load();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir o provedor.");
+    } finally {
+      setDeletingProviderId(null);
     }
   }
 
@@ -870,9 +917,23 @@ export function AdminMasterAi() {
                       size="sm"
                       variant="outline"
                       onClick={() => editProvider(provider)}
+                      disabled={Boolean(deletingProviderId)}
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setProviderPendingDeletion(provider)}
+                      disabled={
+                        Boolean(deletingProviderId) ||
+                        testingProviderId === provider.id ||
+                        changingProviderId === provider.id
+                      }
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
                     </Button>
                     {!provider.is_primary &&
                       provider.status === "connected" &&
@@ -931,6 +992,56 @@ export function AdminMasterAi() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={providerPendingDeletion !== null}
+        onOpenChange={(open) => {
+          if (!open && deletingProviderId === null) setProviderPendingDeletion(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir provedor de IA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {providerPendingDeletion && (
+                <>
+                  Você está prestes a excluir{" "}
+                  <strong>{providerPendingDeletion.name}</strong> (
+                  {providerPendingDeletion.model}).
+                </>
+              )}
+              {" "}A credencial correspondente também será removida do Supabase Vault. Os registros
+              históricos de consumo serão preservados, mas deixarão de estar vinculados a este
+              cadastro.
+              {providerPendingDeletion?.is_primary
+                ? " Este é o provedor principal: uma alternativa conectada será promovida automaticamente. Se não houver alternativa, a IA global e as Secretarias que dependem dela serão desligadas."
+                : " Se alguma Secretaria depender exclusivamente deste provedor, a IA dessa Secretaria será desligada."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingProviderId === providerPendingDeletion?.id}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!providerPendingDeletion || deletingProviderId !== null}
+              onClick={(event) => {
+                event.preventDefault();
+                if (providerPendingDeletion) void deleteProvider(providerPendingDeletion);
+              }}
+            >
+              {deletingProviderId === providerPendingDeletion?.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              {deletingProviderId === providerPendingDeletion?.id
+                ? "Excluindo…"
+                : "Confirmar exclusão"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardHeader>
