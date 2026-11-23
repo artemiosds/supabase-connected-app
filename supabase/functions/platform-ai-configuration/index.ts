@@ -551,11 +551,8 @@ Deno.serve(async (request: Request) => {
             retryable = cause.details.retryable;
             retryAfter = cause.details.retryAfter;
           } else {
-            message =
-              cause instanceof Error
-                ? cause.message.slice(0, 500)
-                : "Falha inesperada ao testar o provedor.";
-            errorCode = cause instanceof Error ? cause.name : "unknown_error";
+            message = "Falha inesperada ao testar o provedor. Consulte os registros técnicos.";
+            errorCode = cause instanceof Error ? cause.name.slice(0, 120) : "unknown_error";
             errorType = "unexpected_error";
             retryable = true;
           }
