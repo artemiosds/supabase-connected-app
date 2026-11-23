@@ -13,9 +13,7 @@ describe("sugerirProximoNumeroAditivo", () => {
   });
 
   it("avança o ordinal de um termo aditivo já registrado", () => {
-    expect(sugerirProximoNumeroAditivo([{ number: "1º Termo Aditivo" }])).toBe(
-      "2º Termo Aditivo",
-    );
+    expect(sugerirProximoNumeroAditivo([{ number: "1º Termo Aditivo" }])).toBe("2º Termo Aditivo");
   });
 
   it("reconhece numeração simples depois da palavra aditivo", () => {
@@ -107,9 +105,10 @@ describe("validarPayloadProrrogacao", () => {
   });
 
   it("rejeita data de assinatura futura", () => {
-    expect(
-      validarPayloadProrrogacao({ ...base, dataAssinatura: "2026-11-24" }),
-    ).toMatchObject({ valido: false, erro: "A data de assinatura não pode ser futura." });
+    expect(validarPayloadProrrogacao({ ...base, dataAssinatura: "2026-11-24" })).toMatchObject({
+      valido: false,
+      erro: "A data de assinatura não pode ser futura.",
+    });
   });
 
   it("rejeita número vazio ou acima de sessenta caracteres", () => {
@@ -122,8 +121,6 @@ describe("validarPayloadProrrogacao", () => {
   it("rejeita contrato, datas e assinatura inválidos", () => {
     expect(validarPayloadProrrogacao({ ...base, contractId: " " }).valido).toBe(false);
     expect(validarPayloadProrrogacao({ ...base, novaData: "2027-02-30" }).valido).toBe(false);
-    expect(validarPayloadProrrogacao({ ...base, dataAssinatura: "2026-11-32" }).valido).toBe(
-      false,
-    );
+    expect(validarPayloadProrrogacao({ ...base, dataAssinatura: "2026-11-32" }).valido).toBe(false);
   });
 });
