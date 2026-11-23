@@ -192,7 +192,7 @@ BEGIN
 
   IF v_result->>'global_disabled' IS DISTINCT FROM 'true'
     OR v_configuration_model IS NOT NULL
-    OR v_primary_secret IS NOT NULL
+    OR v_config_secret IS NOT NULL
     OR v_configuration_enabled IS DISTINCT FROM false
     OR v_configuration_status IS DISTINCT FROM 'not_configured'
     OR v_tenant_enabled IS DISTINCT FROM false
