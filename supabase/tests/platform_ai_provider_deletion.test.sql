@@ -12,6 +12,7 @@ DECLARE
   v_unused_id uuid;
   v_primary_secret uuid;
   v_fallback_secret uuid;
+  v_config_secret uuid;
   v_unused_secret uuid;
   v_result jsonb;
   v_configuration_model text;
@@ -166,7 +167,7 @@ BEGIN
   v_result := public.platform_ai_delete_provider(v_actor, v_fallback_id);
 
   SELECT model, vault_secret_id, enabled, status
-  INTO v_configuration_model, v_primary_secret, v_configuration_enabled, v_configuration_status
+  INTO v_configuration_model, v_config_secret, v_configuration_enabled, v_configuration_status
   FROM public.platform_ai_configuration
   WHERE id = 1;
 
@@ -187,7 +188,7 @@ BEGIN
 
   SELECT count(*) INTO v_secret_count
   FROM vault.secrets
-  WHERE id IN (v_primary_secret, v_primary_secret, v_fallback_secret, v_unused_secret);
+  WHERE id IN (v_primary_secret, v_fallback_secret, v_unused_secret);
 
   IF v_result->>'global_disabled' IS DISTINCT FROM 'true'
     OR v_configuration_model IS NOT NULL
