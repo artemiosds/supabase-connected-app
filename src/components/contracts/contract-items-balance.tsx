@@ -33,6 +33,7 @@ import { groupMovementsBySupplyOrder } from "@/lib/supply-order-history-helper";
 import {
   buildContractDossierDocumentText,
   calcularResumoDossieContratual,
+  reconstruirValorOriginalContrato,
 } from "@/lib/contract-dossier-pdf-helper";
 import { filtrarItensCriticosParaReposicao } from "@/lib/stock-replenishment-helper";
 import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
@@ -419,8 +420,18 @@ export function ContractItemsBalance(props: {
         throw new Error("A Secretaria ou a sessão mudou durante a geração.");
       }
 
+      const amendments = (amendmentsResult.data ?? []).map((amendment) => ({
+        number: amendment.number,
+        kind: amendment.kind,
+        signedAt: amendment.signed_at,
+        newEndDate: amendment.new_end_date,
+        valueChange: Number(amendment.value_change),
+        notes: amendment.notes,
+      }));
+      const currentContractValue = Number(contractResult.data.total_value);
+      const originalContractValue = reconstruirValorOriginalContrato(currentContractValue, amendments);
       const { itemsCalculated, summary } = calcularResumoDossieContratual({
-        contractTotalValue: Number(contractResult.data.total_value),
+        contractTotalValue: originalContractValue,
         items: items.map((item) => ({
           id: item.id,
           lineNumber: item.line_number,
@@ -434,16 +445,14 @@ export function ContractItemsBalance(props: {
           movement_type: movement.movement_type,
           quantity: Number(movement.quantity),
         })),
-        amendments: (amendmentsResult.data ?? []).map((amendment) => ({
-          number: amendment.number,
-          kind: amendment.kind,
-          signedAt: amendment.signed_at,
-          newEndDate: amendment.new_end_date,
-          valueChange: Number(amendment.value_change),
-          notes: amendment.notes,
-        })),
+        amendments,
         ordersCount: supplyOrders.length,
       });
+      if (Math.abs(summary.updatedValue - currentContractValue) > 0.01) {
+        throw new Error(
+          "O valor atualizado não confere com o histórico de aditivos. Revise o instrumento antes de emitir o dossiê.",
+        );
+      }
 
       const branding = await carregarTimbradoSecretaria(props.tenantId, tenantResult.data.name);
       if (!inScope()) {
@@ -470,14 +479,7 @@ export function ContractItemsBalance(props: {
           name: supplierResult.data.trade_name || supplierResult.data.legal_name,
           cnpj: supplierResult.data.cnpj,
         },
-        amendments: (amendmentsResult.data ?? []).map((amendment) => ({
-          number: amendment.number,
-          kind: amendment.kind,
-          signedAt: amendment.signed_at,
-          newEndDate: amendment.new_end_date,
-          valueChange: Number(amendment.value_change),
-          notes: amendment.notes,
-        })),
+        amendments,
         items: itemsCalculated,
         orders: supplyOrders.map((order) => ({
           referenceNumber: order.referenceNumber,
