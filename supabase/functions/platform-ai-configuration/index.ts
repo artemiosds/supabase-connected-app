@@ -207,7 +207,7 @@ Deno.serve(async (request: Request) => {
 
   if (action === "get") {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const [configurationResult, providersResult, tenantsResult, accessResult, usageResult] =
+    const [configurationResult, providersResult, tenantsResult, settingsResult, accessResult, usageResult] =
       await Promise.all([
         adminClient
           .from("platform_ai_configuration")
@@ -227,6 +227,9 @@ Deno.serve(async (request: Request) => {
           .select("id,name,status,commercial_status,trial_starts_at,trial_ends_at")
           .order("name", { ascending: true }),
         adminClient
+          .from("tenant_ai_settings")
+          .select("tenant_id,enabled,features,updated_at"),
+        adminClient
           .from("platform_ai_tenant_provider_access")
           .select("tenant_id,provider_id")
           .eq("is_allowed", true),
@@ -244,6 +247,7 @@ Deno.serve(async (request: Request) => {
       configurationResult.error ||
       providersResult.error ||
       tenantsResult.error ||
+      settingsResult.error ||
       accessResult.error ||
       usageResult.error;
     if (failure) {
@@ -253,6 +257,9 @@ Deno.serve(async (request: Request) => {
 
     const providers = (providersResult.data ?? []).map((row) =>
       safeProvider(row as unknown as Record<string, unknown>),
+    );
+    const settingsByTenant = new Map(
+      (settingsResult.data ?? []).map((setting) => [setting.tenant_id, setting]),
     );
     const allowedByTenant = new Map<string, string[]>();
     for (const access of accessResult.data ?? []) {
@@ -276,6 +283,9 @@ Deno.serve(async (request: Request) => {
         status: tenant.status,
         commercial_status: tenant.commercial_status,
         operational,
+        enabled: settingsByTenant.get(tenant.id)?.enabled === true,
+        features: settingsByTenant.get(tenant.id)?.features ?? {},
+        updated_at: settingsByTenant.get(tenant.id)?.updated_at ?? null,
         allowed_provider_ids: allowedByTenant.get(tenant.id) ?? [],
       };
     });
