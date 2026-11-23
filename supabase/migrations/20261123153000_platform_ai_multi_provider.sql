@@ -273,11 +273,16 @@ BEGIN
   END IF;
 
   v_secret_id := CASE WHEN v_exists THEN v_existing.vault_secret_id ELSE NULL END;
+  IF v_exists THEN
+    v_provider_id := p_provider_id;
+  ELSE
+    v_provider_id := gen_random_uuid();
+  END IF;
   IF p_api_key IS NOT NULL THEN
     IF v_secret_id IS NULL THEN
       v_secret_id := vault.create_secret(
         pg_catalog.btrim(p_api_key),
-        'gfs_platform_ai_' || p_provider,
+        'gfs_platform_ai_' || p_provider || '_' || pg_catalog.replace(v_provider_id::text, '-', ''),
         'API credential for Primus AI provider ' || p_name || '.',
         NULL
       );
@@ -285,7 +290,7 @@ BEGIN
       PERFORM vault.update_secret(
         v_secret_id,
         pg_catalog.btrim(p_api_key),
-        'gfs_platform_ai_' || p_provider,
+        'gfs_platform_ai_' || p_provider || '_' || pg_catalog.replace(v_provider_id::text, '-', ''),
         'API credential for Primus AI provider ' || p_name || '.',
         NULL
       );
@@ -350,11 +355,11 @@ BEGIN
     RETURNING id INTO v_provider_id;
   ELSE
     INSERT INTO public.platform_ai_providers (
-      name, provider, model, api_base_url, api_version, vault_secret_id,
+      id, name, provider, model, api_base_url, api_version, vault_secret_id,
       status, is_enabled, is_primary, fallback_priority,
       input_cost_per_million, output_cost_per_million, created_by, updated_by
     ) VALUES (
-      pg_catalog.btrim(p_name), p_provider, p_model,
+      v_provider_id, pg_catalog.btrim(p_name), p_provider, p_model,
       NULLIF(pg_catalog.btrim(p_api_base_url), ''),
       CASE WHEN p_provider = 'azure_openai' THEN p_api_version ELSE NULL END,
       v_secret_id, 'credentials_saved', false, false, p_fallback_priority,
