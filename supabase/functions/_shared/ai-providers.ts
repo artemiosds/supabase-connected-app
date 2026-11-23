@@ -195,6 +195,7 @@ export async function invokeAiProvider(
     method: "POST",
     headers: request.headers,
     body: JSON.stringify(request.body),
+    redirect: "error",
     signal: AbortSignal.timeout(timeoutMs),
   });
 
