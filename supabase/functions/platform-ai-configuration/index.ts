@@ -365,7 +365,7 @@ Deno.serve(async (request: Request) => {
       p_provider: provider,
       p_model: model,
       p_api_base_url: apiBaseUrl,
-      p_api_version: apiVersion,
+      p_api_version: provider === "azure_openai" ? apiVersion : null,
       p_api_key: apiKey || null,
       p_input_cost_per_million: inputCost,
       p_output_cost_per_million: outputCost,
