@@ -105,10 +105,7 @@ export function calcularNovaDataVigencia(dataFimAtual: string, meses: number): s
  * Retorna a quantidade inteira de meses correspondente à data informada.
  * Datas que não representam um período mensal aceito pelo validador retornam null.
  */
-export function identificarMesesVigencia(
-  dataFimAtual: string,
-  novaData: string,
-): number | null {
+export function identificarMesesVigencia(dataFimAtual: string, novaData: string): number | null {
   if (!interpretarDataISO(novaData)) return null;
 
   for (let meses = 1; meses <= 120; meses += 1) {
@@ -128,9 +125,7 @@ export function gerarJustificativaProrrogacao(params: {
   meses: number;
   novaData: string;
 }): string {
-  const fornecedorTexto = params.supplierName
-    ? " junto à empresa " + params.supplierName
-    : "";
+  const fornecedorTexto = params.supplierName ? " junto à empresa " + params.supplierName : "";
   const prazoTexto =
     params.meses > 0
       ? " por mais " + params.meses + " meses"
