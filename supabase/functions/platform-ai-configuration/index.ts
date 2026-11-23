@@ -483,7 +483,7 @@ Deno.serve(async (request: Request) => {
 
     const { data: providerRow, error: providerError } = await adminClient
       .from("platform_ai_providers")
-      .select("id,name,provider,model,api_base_url,api_version,vault_secret_id")
+      .select("id,name,provider,model,api_base_url,api_version")
       .eq("id", providerId)
       .maybeSingle();
     if (providerError || !providerRow)
