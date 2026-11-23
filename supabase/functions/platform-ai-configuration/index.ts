@@ -608,6 +608,26 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  if (action === "delete_provider") {
+    const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
+    if (!UUID.test(providerId))
+      return response({ error: "Selecione um provedor válido para excluir." }, 400, origin);
+
+    const { data, error } = await adminClient.rpc("platform_ai_delete_provider", {
+      p_actor_id: authData.user.id,
+      p_provider_id: providerId,
+    });
+    if (error) {
+      console.error("Falha ao excluir provedor de IA:", error.message);
+      return response(
+        { error: error.message || "Não foi possível excluir o provedor." },
+        400,
+        origin,
+      );
+    }
+    return response({ result: data }, 200, origin);
+  }
+
   if (action === "set_primary_provider") {
     const providerId = typeof body.provider_id === "string" ? body.provider_id : "";
     if (!UUID.test(providerId))
