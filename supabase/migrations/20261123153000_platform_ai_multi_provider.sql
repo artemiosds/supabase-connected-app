@@ -44,14 +44,14 @@ CREATE TABLE IF NOT EXISTS public.platform_ai_providers (
       provider IN ('azure_openai', 'openai_compatible')
       AND api_base_url IS NOT NULL
       AND api_base_url ~ '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/-]*)?$'
-      AND split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1) <> 'localhost'
+      AND pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.') <> 'localhost'
       AND split_part(split_part(api_base_url, '://', 2), '/', 1) !~ '^[0-9.]+(:[0-9]{1,5})?$'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localhost'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.local'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.internal'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.test'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.localdomain'
-      AND lower(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1)) NOT LIKE '%.lan'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.localhost'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.local'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.internal'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.test'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.localdomain'
+      AND lower(pg_catalog.rtrim(split_part(split_part(split_part(api_base_url, '://', 2), '/', 1), ':', 1), '.')) NOT LIKE '%.lan'
     )
     OR (
       provider NOT IN ('azure_openai', 'openai_compatible')
@@ -289,14 +289,14 @@ BEGIN
   IF p_provider IN ('azure_openai', 'openai_compatible') THEN
     IF p_api_base_url IS NULL
       OR p_api_base_url !~ '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/-]*)?$'
-      OR split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1) = 'localhost'
+      OR pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.') = 'localhost'
       OR split_part(split_part(p_api_base_url, '://', 2), '/', 1) ~ '^[0-9.]+(:[0-9]{1,5})?$'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.localhost'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.local'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.internal'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.test'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.localdomain'
-      OR lower(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1)) LIKE '%.lan'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.localhost'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.local'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.internal'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.test'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.localdomain'
+      OR lower(pg_catalog.rtrim(split_part(split_part(split_part(p_api_base_url, '://', 2), '/', 1), ':', 1), '.')) LIKE '%.lan'
     THEN
       RAISE EXCEPTION 'Informe uma URL HTTPS válida para o endpoint do provedor.';
     END IF;
