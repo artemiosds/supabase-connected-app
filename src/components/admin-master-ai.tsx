@@ -1299,22 +1299,54 @@ export function AdminMasterAi() {
                     <div>
                       <p className="font-medium">Habilitar IA para {selectedTenant.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        A ativação global e ao menos um provedor autorizado também são necessários.
+                        {configuration?.enabled
+                          ? "É necessário ter ao menos um provedor salvo e recursos selecionados."
+                          : "Primeiro defina uma IA principal e ative a IA global. Você já pode preparar os recursos abaixo."}
                       </p>
                     </div>
                     <Switch
                       checked={tenantEnabled}
                       disabled={
-                        !configuration?.enabled ||
-                        !selectedTenantOperational ||
-                        allowedProviderIds.length === 0 ||
-                        savingTenant
+                        savingTenant ||
+                        (!tenantEnabled &&
+                          (!configuration?.enabled ||
+                            !selectedTenantOperational ||
+                            savedAllowedReadyIds.length === 0 ||
+                            hasUnsavedProviders))
                       }
                       onCheckedChange={setTenantEnabled}
                       aria-label="Habilitar IA para a Secretaria selecionada"
                     />
                   </div>
-                  <div className="divide-y rounded-lg border">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">Recursos da IA</p>
+                        <p className="text-xs text-muted-foreground">
+                          É possível selecionar e salvar os recursos mesmo com a IA desligada.
+                          Eles só serão utilizados após a ativação da Secretaria.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAllFeatures(true)}
+                          disabled={savingTenant}
+                        >
+                          Selecionar todos
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAllFeatures(false)}
+                          disabled={savingTenant}
+                        >
+                          Limpar seleção
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="divide-y rounded-lg border">
                     {AI_FEATURES.map((feature) => (
                       <div
                         key={feature.key}
@@ -1326,12 +1358,13 @@ export function AdminMasterAi() {
                         </div>
                         <Switch
                           checked={features[feature.key]}
-                          disabled={!tenantEnabled || !selectedTenantOperational || savingTenant}
+                          disabled={savingTenant}
                           onCheckedChange={(checked) => updateFeature(feature.key, checked)}
                           aria-label={"Habilitar " + feature.label}
                         />
                       </div>
                     ))}
+                    </div>
                   </div>
                   <Button
                     onClick={() => void saveTenantSettings()}
@@ -1339,7 +1372,11 @@ export function AdminMasterAi() {
                       savingTenant ||
                       !selectedTenant ||
                       (tenantEnabled &&
-                        (!selectedTenantOperational || allowedProviderIds.length === 0))
+                        (!selectedTenantOperational ||
+                          !configuration?.enabled ||
+                          savedAllowedReadyIds.length === 0 ||
+                          hasUnsavedProviders ||
+                          draftFeatureCount === 0))
                     }
                   >
                     {savingTenant ? (
@@ -1347,7 +1384,9 @@ export function AdminMasterAi() {
                     ) : (
                       <Save className="mr-2 h-4 w-4" />
                     )}
-                    Salvar recursos da Secretaria
+                    {tenantEnabled
+                      ? "Salvar e habilitar recursos da Secretaria"
+                      : "Salvar configuração dos recursos"}
                   </Button>
                 </>
               )}
