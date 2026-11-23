@@ -259,6 +259,10 @@ function requestForProvider(
       if (!provider.api_base_url) throw new Error("URL base da API compatível não configurada.");
       url = compatibleEndpoint(provider.api_base_url);
       headers.Authorization = "Bearer " + apiKey;
+      const isOpenRouterNemotron =
+        (new URL(provider.api_base_url).hostname === "openrouter.ai" ||
+          new URL(provider.api_base_url).hostname === "www.openrouter.ai") &&
+        /^nvidia\\/nemotron-3-ultra-550b-a55b(?::free)?$/i.test(provider.model);
       body = {
         model: provider.model,
         messages: [
@@ -267,6 +271,7 @@ function requestForProvider(
         ],
         max_tokens: maxOutputTokens,
         stream: false,
+        ...(isOpenRouterNemotron ? { reasoning: { effort: "low" } } : {}),
       };
       break;
   }
