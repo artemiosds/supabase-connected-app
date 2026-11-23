@@ -128,7 +128,7 @@ function formatUsd(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 4,
+    maximumFractionDigits: 8,
   }).format(value);
 }
 
