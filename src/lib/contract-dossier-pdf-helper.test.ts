@@ -1,11 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_BRANDING,
-  buildDocxFromText,
-  docxToModel,
-  renderPdf,
-} from "./docx-engine";
+import { DEFAULT_BRANDING, buildDocxFromText, docxToModel, renderPdf } from "./docx-engine";
 import {
   buildContractDossierDocumentText,
   calcularResumoDossieContratual,
@@ -143,9 +138,7 @@ describe("contract-dossier-pdf-helper", () => {
           unitValue: 20,
         },
       ],
-      movements: [
-        { contract_item_id: "item-1", movement_type: "consumption", quantity: 10 },
-      ],
+      movements: [{ contract_item_id: "item-1", movement_type: "consumption", quantity: 10 }],
       amendments: [
         {
           number: "1º Termo Aditivo",
@@ -181,9 +174,7 @@ describe("contract-dossier-pdf-helper", () => {
             unitValue: 10,
           },
         ],
-        movements: [
-          { contract_item_id: "item-1", movement_type: "consumption", quantity: -1 },
-        ],
+        movements: [{ contract_item_id: "item-1", movement_type: "consumption", quantity: -1 }],
         amendments: [],
         ordersCount: 0,
       }),
