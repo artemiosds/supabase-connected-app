@@ -31,8 +31,14 @@ import {
 } from "@/lib/my-tasks";
 import type { Tables } from "@/integrations/supabase/types";
 
-type ContractItemRow = Pick<Tables<"contract_items">, "id" | "contract_id" | "description" | "quantity_total">;
-type ContractMovementRow = Pick<Tables<"contract_item_movements">, "contract_item_id" | "movement_type" | "quantity">;
+type ContractItemRow = Pick<
+  Tables<"contract_items">,
+  "id" | "contract_id" | "description" | "quantity_total"
+>;
+type ContractMovementRow = Pick<
+  Tables<"contract_item_movements">,
+  "contract_item_id" | "movement_type" | "quantity"
+>;
 
 type TaskState = {
   tenantId: string;
@@ -166,20 +172,24 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
           const numeros = new Map(meusContratos.map((contract) => [contract.id, contract.number]));
           for (let index = 0; index < meusContratos.length; index += 100) {
             const ids = meusContratos.slice(index, index + 100).map((contract) => contract.id);
-            contractItems.push(...(await carregarTodasAsPaginas<ContractItemRow>((start, end) =>
-              db.from("contract_items")
-                .select("id,contract_id,description,quantity_total")
-                .eq("tenant_id", tenantId)
-                .in("contract_id", ids)
-                .order("id")
-                .range(start, end),
-            )));
+            contractItems.push(
+              ...(await carregarTodasAsPaginas<ContractItemRow>((start, end) =>
+                db
+                  .from("contract_items")
+                  .select("id,contract_id,description,quantity_total")
+                  .eq("tenant_id", tenantId)
+                  .in("contract_id", ids)
+                  .order("id")
+                  .range(start, end),
+              )),
+            );
           }
           const movementsByItem = new Map<string, ItemSaldoContratoMinhaTarefa["movements"]>();
           for (let index = 0; index < contractItems.length; index += 100) {
             const ids = contractItems.slice(index, index + 100).map((item) => item.id);
             const movements = await carregarTodasAsPaginas<ContractMovementRow>((start, end) =>
-              db.from("contract_item_movements")
+              db
+                .from("contract_item_movements")
                 .select("contract_item_id,movement_type,quantity")
                 .eq("tenant_id", tenantId)
                 .in("contract_item_id", ids)
@@ -188,7 +198,10 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
             );
             for (const movement of movements) {
               const list = movementsByItem.get(movement.contract_item_id) ?? [];
-              list.push({ movement_type: movement.movement_type, quantity: Number(movement.quantity) });
+              list.push({
+                movement_type: movement.movement_type,
+                quantity: Number(movement.quantity),
+              });
               movementsByItem.set(movement.contract_item_id, list);
             }
           }
@@ -486,19 +499,19 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                     ? AlertOctagon
                     : task.tipo === "processo"
                       ? FolderKanban
-                    : task.tipo === "contrato"
-                      ? ClipboardList
-                      : task.tipo === "renovacao"
-                        ? CalendarClock
-                        : FileText;
+                      : task.tipo === "contrato"
+                        ? ClipboardList
+                        : task.tipo === "renovacao"
+                          ? CalendarClock
+                          : FileText;
                 const critical = criticidadeTarefa(task.dias) === "critical";
                 const attention = criticidadeTarefa(task.dias) === "attention";
                 const detalhe =
                   task.tipo === "saldo_critico"
                     ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&saldo=1`
                     : task.tipo === "renovacao" || task.tipo === "contrato"
-                    ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&renovacao=1`
-                    : `${task.destino}?${task.tipo === "processo" ? "processo" : "documento"}=${encodeURIComponent(task.entityId)}`;
+                      ? `${task.destino}?contrato=${encodeURIComponent(task.entityId)}&renovacao=1`
+                      : `${task.destino}?${task.tipo === "processo" ? "processo" : "documento"}=${encodeURIComponent(task.entityId)}`;
                 return (
                   <div className="group relative bg-card transition-colors hover:bg-muted/25">
                     <div
@@ -528,11 +541,11 @@ export function MyTasks({ tenantId, userId }: { tenantId: string; userId: string
                             ? "Risco de desabastecimento na rede"
                             : task.tipo === "processo"
                               ? "Processo administrativo"
-                            : task.tipo === "contrato"
-                              ? "Gestão e fiscalização"
-                              : task.tipo === "renovacao"
-                                ? "Providência de renovação contratual"
-                                : "Regularidade documental"}
+                              : task.tipo === "contrato"
+                                ? "Gestão e fiscalização"
+                                : task.tipo === "renovacao"
+                                  ? "Providência de renovação contratual"
+                                  : "Regularidade documental"}
                         </p>
                       </div>
                       <Button
