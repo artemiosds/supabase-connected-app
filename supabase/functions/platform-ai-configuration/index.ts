@@ -107,7 +107,7 @@ function aggregateUsage(
   for (const row of rows) {
     const tenantId = String(row.tenant_id);
     const providerId = String(row.provider_id ?? "unknown");
-    const key = tenantId + ":" + providerId;
+    const key = tenantId + ":" + providerId + ":" + String(row.model ?? "");
     const current = grouped.get(key) ?? {
       tenant_id: tenantId,
       tenant_name: String(tenantNames.get(tenantId)?.name ?? "Secretaria"),
