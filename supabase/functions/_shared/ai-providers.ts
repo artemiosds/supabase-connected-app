@@ -12,6 +12,8 @@ export type AiProviderConfig = {
   model: string;
   api_base_url: string | null;
   api_version: string | null;
+  input_cost_per_million?: number | string | null;
+  output_cost_per_million?: number | string | null;
 };
 
 export type AiChatMessage = { role: "user" | "assistant"; content: string };
