@@ -151,12 +151,7 @@ export function ContractExtensionDialog(props: Props) {
     setErro("");
     setBloqueios([]);
     lock.current = false;
-  }, [
-    props.open,
-    contrato,
-    props.supplierName,
-    props.aditivosContrato,
-  ]);
+  }, [props.open, contrato, props.supplierName, props.aditivosContrato]);
 
   function atualizarPrazo(novoPrazo: number) {
     if (!contrato) return;
