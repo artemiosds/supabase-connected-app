@@ -77,7 +77,7 @@ function providerErrorFromResponse(
     error.message ?? payload.message ?? payload.error_description ?? rawBody,
     apiKey,
   );
-  const errorCodeValue = error.code ?? metadata.provider_code ?? payload.code;
+  const errorCodeValue = metadata.provider_code ?? error.code ?? payload.code;
   const errorTypeValue = metadata.error_type ?? error.type ?? payload.error_type;
   const errorCode = errorCodeValue === undefined ? null : String(errorCodeValue).slice(0, 120);
   const errorType = errorTypeValue === undefined ? null : String(errorTypeValue).slice(0, 120);
