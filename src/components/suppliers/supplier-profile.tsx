@@ -33,6 +33,7 @@ import {
   situacaoDocumentoPerfil,
 } from "@/lib/supplier-profile";
 import { getSanctionDisplayStatus } from "@/lib/supplier-sanctions";
+import { SupplierHomologationTab } from "./supplier-homologation-tab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fornecedor = Tables<"suppliers">;
@@ -525,6 +526,7 @@ export function FichaFornecedor({
                 <Tabs defaultValue="documentos" className="space-y-3">
                   <TabsList className="h-auto w-full flex-wrap justify-start">
                     <TabsTrigger value="documentos">Documentos</TabsTrigger>
+                    <TabsTrigger value="homologacao">Homologação e Habilitação</TabsTrigger>
                     <TabsTrigger value="cotacoes">Cotações</TabsTrigger>
                     <TabsTrigger value="instrumentos">Contratos e atas</TabsTrigger>
                     <TabsTrigger value="sancoes">Sanções</TabsTrigger>
@@ -588,6 +590,15 @@ export function FichaFornecedor({
                           )}
                         </article>
                       ))}
+                  </TabsContent>
+
+                  <TabsContent value="homologacao" className="space-y-3">
+                    <SupplierHomologationTab
+                      tenantId={tenantId}
+                      supplierId={fornecedor.id}
+                      supplierCategory={fornecedor.category}
+                      canEdit={true}
+                    />
                   </TabsContent>
 
                   <TabsContent value="cotacoes" className="space-y-3">
