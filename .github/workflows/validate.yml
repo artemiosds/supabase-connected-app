@@ -119,3 +119,9 @@ jobs:
           sudo apt-get install -y age postgresql-client
           eval "$(supabase status -o env)"
           BACKUP_RESTORE_DATABASE_URL="$DB_URL" bash scripts/test_backup_encryption_roundtrip.sh
+      - name: Verify clean working tree after validation
+        run: |
+          # Supabase CLI creates these disposable local-run directories.
+          rm -rf supabase/.branches supabase/.temp
+          git status --short
+          test -z "$(git status --porcelain)"
