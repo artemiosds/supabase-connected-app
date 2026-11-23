@@ -448,7 +448,7 @@ A entrega disponibiliza cadastro de OpenAI, Google Gemini, Anthropic Claude, Azu
 - [x] Executar teste comportamental transacional: falha do único provedor secundário autorizado, promoção de fallback, desligamento quando todos os provedores falham; fixtures e segredos sintéticos revertidos por rollback.
 - [x] Executar teste comportamental de falha transitória 429: manter provedor conectado, principal, habilitado e autorizado; confirmar que falha permanente 401 desabilita o provedor e registra diagnóstico. Fixtures e segredos sintéticos revertidos por rollback.
 - [x] Confirmar que nenhuma chave pode ser lida por `anon` ou `authenticated`, e que as três tabelas novas usam RLS e FORCE RLS.
-- [x] Publicar `platform-ai-configuration` versão 22 e `primus-ai` versão 17, ambas com `verify_jwt=true`.
+- [x] Publicar `platform-ai-configuration` versão 23 e `primus-ai` versão 21, ambas com `verify_jwt=true`.
 - [x] Confirmar configuração global desligada e nenhuma Secretaria habilitada automaticamente; existem dois cadastros reais de provedor, ambos atualmente com estado `failed` aguardando novo teste.
 - [ ] Cadastrar credenciais reais diretamente no Painel Master e testar individualmente os cinco adaptadores com modelos/deployments e endpoints autorizados.
 - [ ] Validar consumo, tokens e custos com chamadas reais de cada provedor.
