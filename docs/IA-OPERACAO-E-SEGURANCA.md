@@ -27,6 +27,7 @@ A configuração OpenAI já existente é migrada automaticamente para o novo reg
 5. Para cada Secretaria, libere explicitamente os provedores que ela pode utilizar. A execução tenta a IA principal e, se houver falha, percorre apenas as alternativas autorizadas para aquela Secretaria.
 6. Ative a IA global e, em seguida, habilite cada Secretaria e suas capacidades. Todas as permissões permanecem desligadas até autorização explícita.
 7. Em homologação, entre como membro de uma Secretaria autorizada e teste cada capacidade com dados isolados.
+8. Para remover um cadastro, use **Excluir** na lista de provedores e confirme a operação. A credencial correspondente é removida do Vault; o histórico de consumo permanece, sem vínculo ao cadastro excluído. Se o provedor removido for o principal, uma alternativa conectada é promovida automaticamente; sem alternativa, a IA global é desligada. Secretarias sem outro provedor autorizado também são desligadas.
 
 Falhas transitórias (HTTP 408, 409, 425, 429, 5xx, timeout, rede ou indisponibilidade temporária do Vault) são registradas com diagnóstico e Retry-After, mas não desabilitam o provedor nem removem sua autorização por Secretaria. Falhas permanentes (por exemplo, credencial inválida, modelo inexistente ou endpoint incompatível) desabilitam o provedor e promovem uma alternativa global conectada quando aplicável; Secretarias sem outra alternativa já autorizada são desabilitadas. Alterar chave, modelo ou endpoint exige novo teste.
 
