@@ -443,16 +443,17 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 
 A entrega disponibiliza cadastro de OpenAI, Google Gemini, Anthropic Claude, Azure OpenAI e APIs compatíveis com OpenAI; seleção de principal/alternativas; allow-list por Secretaria; failover; métricas de tokens e estimativa de custos.
 
-- [x] Aplicar as migrations `20261123144614_platform_ai_multi_provider.sql`, `20261123144927_fix_ai_non_primary_provider_failure.sql` e `20261123174818_fix_ai_provider_test_diagnostics.sql` diretamente no SMS2.
+- [x] Aplicar as migrations `20261123144614_platform_ai_multi_provider.sql`, `20261123144927_fix_ai_non_primary_provider_failure.sql`, `20261123174818_fix_ai_provider_test_diagnostics.sql` e `20261123180431_platform_ai_provider_deletion.sql` diretamente no SMS2.
 - [x] Executar o teste pgTAP com 20 verificações de tabelas, RLS/FORCE RLS, privilégios, RPCs, endpoint e trigger de autorização.
 - [x] Executar teste comportamental transacional: falha do único provedor secundário autorizado, promoção de fallback, desligamento quando todos os provedores falham; fixtures e segredos sintéticos revertidos por rollback.
 - [x] Executar teste comportamental de falha transitória 429: manter provedor conectado, principal, habilitado e autorizado; confirmar que falha permanente 401 desabilita o provedor e registra diagnóstico. Fixtures e segredos sintéticos revertidos por rollback.
+- [x] Testar exclusão de provedor secundário, promoção automática ao excluir o principal, desligamento seguro ao excluir o último provedor, remoção das credenciais do Vault e preservação do histórico de consumo. Fixtures e segredos sintéticos revertidos por rollback.
 - [x] Confirmar que nenhuma chave pode ser lida por `anon` ou `authenticated`, e que as três tabelas novas usam RLS e FORCE RLS.
-- [x] Publicar `platform-ai-configuration` versão 23 e `primus-ai` versão 21, ambas com `verify_jwt=true`.
+- [x] Publicar `platform-ai-configuration` versão 25 e `primus-ai` versão 21, ambas com `verify_jwt=true`.
 - [x] Confirmar configuração global desligada e nenhuma Secretaria habilitada automaticamente; existem três provedores cadastrados: Nemotron e Moonshot Kimi conectados após a correção, e Perplexity Decider com incompatibilidade de API.
 - [ ] Cadastrar credenciais reais diretamente no Painel Master e testar individualmente os cinco adaptadores com modelos/deployments e endpoints autorizados.
 - [ ] Validar consumo, tokens e custos com chamadas reais de cada provedor.
 - [ ] Revisar contratos, retenção, privacidade e eventual transferência internacional de dados antes de liberar dados institucionais.
 - [ ] Executar CI completo, teste de navegador e smoke test autenticado após o cadastro das credenciais.
 
-**Estado:** banco e backend multiprovedor estão implantados no SMS2. A correção de diagnóstico está ativa na `platform-ai-configuration` versão 22. Há três provedores cadastrados. Após a publicação, o histórico do SMS2 confirmou novo teste bem-sucedido para NVIDIA Nemotron às 17:51:44 UTC e Moonshot Kimi às 17:52:20 UTC. Perplexity Decider permanece com falha porque usa a Decisions API, não Chat Completions. As falhas anteriores do Nemotron não continham código HTTP; a nova versão passa a registrar esses diagnósticos. A IA global permanece desligada e nenhuma Secretaria está habilitada. A IA global permanece desligada até existir um provedor de chat validado e autorização por Secretaria.
+**Estado:** banco e backend multiprovedor estão implantados no SMS2. A correção de diagnóstico e a exclusão segura estão ativas na `platform-ai-configuration` versão 25. Há três provedores cadastrados. Após a publicação, o histórico do SMS2 confirmou novo teste bem-sucedido para NVIDIA Nemotron às 17:51:44 UTC e Moonshot Kimi às 17:52:20 UTC. Perplexity Decider permanece com falha porque usa a Decisions API, não Chat Completions. As falhas anteriores do Nemotron não continham código HTTP; a nova versão passa a registrar esses diagnósticos. A IA global permanece desligada e nenhuma Secretaria está habilitada. A IA global permanece desligada até existir um provedor de chat validado e autorização por Secretaria.
