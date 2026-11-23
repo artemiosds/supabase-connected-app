@@ -422,20 +422,30 @@ Deno.serve(async (request: Request) => {
   if (body.action === "capabilities") {
     const configured =
       platformConfig?.enabled === true &&
-      platformConfig.status === "connected" &&
+      platformConfig?.status === "connected" &&
       providerCandidates.length > 0;
     const flags =
       tenantConfig?.features && typeof tenantConfig.features === "object"
         ? (tenantConfig.features as Record<string, unknown>)
         : {};
+    const enabled = configured && tenantConfig?.enabled === true;
+    const features = enabled
+      ? FEATURES.filter((feature) => flags[feature] === true)
+      : [];
+
+    let reason: string | null = null;
+    if (platformConfig?.enabled !== true || platformConfig.status !== "connected") {
+      reason = "A IA global ainda não está ativa. Solicite ao Administrador Master que defina a IA principal e ative a IA global.";
+    } else if (providerCandidates.length === 0) {
+      reason = "Nenhum provedor conectado está autorizado para esta Secretaria. Solicite liberação ao Administrador Master.";
+    } else if (tenantConfig?.enabled !== true) {
+      reason = "A IA desta Secretaria ainda está desligada. O Administrador Master precisa ativá-la e salvar as configurações.";
+    } else if (features.length === 0) {
+      reason = "Nenhum recurso de IA foi habilitado nesta Secretaria. Solicite ao Administrador Master que selecione e salve os recursos.";
+    }
+
     return response(
-      {
-        enabled: configured && tenantConfig?.enabled === true,
-        features:
-          configured && tenantConfig?.enabled === true
-            ? FEATURES.filter((feature) => flags[feature] === true)
-            : [],
-      },
+      { enabled, features, reason },
       200,
       origin,
     );
@@ -454,7 +464,7 @@ Deno.serve(async (request: Request) => {
     !tenantConfig?.enabled ||
     enabledFeatures[featureKey] !== true ||
     platformConfig?.enabled !== true ||
-    platformConfig.status !== "connected" ||
+    platformConfig?.status !== "connected" ||
     providerCandidates.length === 0
   )
     return response(
