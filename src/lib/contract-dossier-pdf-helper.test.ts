@@ -252,6 +252,7 @@ describe("contract-dossier-pdf-helper", () => {
     expect(docText).toContain("1º Termo Aditivo");
     expect(docText).toContain("Dipirona 500mg / cx");
     expect(docText).toContain("40,0%");
+    expect(docText).toContain("9,90%");
     expect(docText).toContain("OF-2026/001");
     expect(docText.indexOf("2º Termo Aditivo")).toBeGreaterThan(docText.indexOf("1º Termo Aditivo"));
     expect(docText.indexOf("OF-2026/001")).toBeLessThan(docText.indexOf("OF-2026/002"));
