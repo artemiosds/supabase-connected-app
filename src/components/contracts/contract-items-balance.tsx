@@ -429,7 +429,10 @@ export function ContractItemsBalance(props: {
         notes: amendment.notes,
       }));
       const currentContractValue = Number(contractResult.data.total_value);
-      const originalContractValue = reconstruirValorOriginalContrato(currentContractValue, amendments);
+      const originalContractValue = reconstruirValorOriginalContrato(
+        currentContractValue,
+        amendments,
+      );
       const { itemsCalculated, summary } = calcularResumoDossieContratual({
         contractTotalValue: originalContractValue,
         items: items.map((item) => ({
