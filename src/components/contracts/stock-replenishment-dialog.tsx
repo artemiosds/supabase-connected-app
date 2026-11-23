@@ -69,6 +69,7 @@ export function StockReplenishmentDialog(props: Props) {
     setForm(
       montarSugestaoProcessoReposicao({
         contractNumber: props.contract.number,
+        contractObject: props.contract.object,
         itensCriticos: props.itensCriticos,
       }),
     );
