@@ -59,6 +59,7 @@ describe("adaptadores multiprovedor de IA", () => {
     const body = JSON.parse(String(request.init?.body));
 
     expect(request.url).toBe("https://api.openai.com/v1/responses");
+    expect(request.init?.redirect).toBe("error");
     expect(new Headers(request.init?.headers).get("authorization")).toBe("Bearer sk-test-openai");
     expect(body.store).toBe(false);
     expect(result).toEqual({ text: "Resposta OpenAI", inputTokens: 12, outputTokens: 5 });
