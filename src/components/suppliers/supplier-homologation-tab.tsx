@@ -11,6 +11,9 @@ import {
   FileText,
   RefreshCw,
   Send,
+  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +62,7 @@ import {
   type ChecklistVerificationStatus,
 } from "@/lib/supplier-homologation";
 import { formatarData } from "@/lib/contratacao";
+import { gerarLinkPortalFornecedor } from "@/lib/supplier-portal";
 
 interface SupplierHomologationTabProps {
   tenantId: string;
@@ -99,6 +103,27 @@ export function SupplierHomologationTab({
   // Form Complementação
   const [exigenciasComplementacao, setExigenciasComplementacao] = useState("");
   const [salvandoComplementacao, setSalvandoComplementacao] = useState(false);
+
+  // Portal do Fornecedor Link
+  const [modalLinkAberta, setModalLinkAberta] = useState(false);
+  const [linkGerado, setLinkGerado] = useState<string>("");
+  const [gerandoLink, setGerandoLink] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
+
+  const handleGerarLinkPortal = async (homologId?: string) => {
+    try {
+      setGerandoLink(true);
+      const { url } = await gerarLinkPortalFornecedor(tenantId, supplierId, homologId);
+      setLinkGerado(url);
+      setLinkCopiado(false);
+      setModalLinkAberta(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao gerar link";
+      setErro(msg);
+    } finally {
+      setGerandoLink(false);
+    }
+  };
 
   // Form Conferência de Item
   const [itemEmEdicao, setItemEmEdicao] = useState<HomologationChecklistItem | null>(null);
@@ -371,6 +396,16 @@ export function SupplierHomologationTab({
 
                       {canEdit && analiseAtiva.status !== "completed" && (
                         <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleGerarLinkPortal(analiseAtiva.id)}
+                            disabled={gerandoLink}
+                            title="Gerar link de autoatendimento para o fornecedor enviar certidões pendentes"
+                          >
+                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                            {gerandoLink ? "Gerando..." : "Link do Fornecedor"}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -745,6 +780,71 @@ export function SupplierHomologationTab({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Link de Autoatendimento do Fornecedor */}
+      <Dialog open={modalLinkAberta} onOpenChange={setModalLinkAberta}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ExternalLink className="w-5 h-5 text-primary" />
+              Link de Autoatendimento do Fornecedor
+            </DialogTitle>
+            <DialogDescription>
+              Envie este link seguro para o fornecedor acompanhar a homologação e anexar documentos pendentes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-muted rounded-md text-xs space-y-1">
+              <p className="font-semibold text-foreground">Como funciona:</p>
+              <p className="text-muted-foreground">
+                O fornecedor acessa o portal sem necessidade de senha, visualiza apenas as certidões solicitadas pela Secretaria e envia os comprovantes diretamente para a fila de conferência.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="portal-link-input" className="text-xs">
+                Link de Acesso Seguro (Válido por 30 dias)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="portal-link-input"
+                  readOnly
+                  value={linkGerado}
+                  className="text-xs font-mono select-all"
+                />
+                <Button
+                  size="sm"
+                  variant={linkCopiado ? "default" : "outline"}
+                  onClick={() => {
+                    navigator.clipboard.writeText(linkGerado);
+                    setLinkCopiado(true);
+                    setTimeout(() => setLinkCopiado(false), 3000);
+                  }}
+                >
+                  {linkCopiado ? (
+                    <>
+                      <Check className="w-4 h-4 mr-1 text-emerald-400" />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copiar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button size="sm" onClick={() => setModalLinkAberta(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
