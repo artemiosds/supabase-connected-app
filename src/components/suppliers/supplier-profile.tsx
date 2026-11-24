@@ -45,6 +45,7 @@ import { SupplierHomologationTab } from "./supplier-homologation-tab";
 import { SupplierRegularityPanel } from "./supplier-regularity-panel";
 import { SupplierAiCopilot } from "./supplier-ai-copilot";
 import { SupplierTasksPanel } from "./supplier-tasks-panel";
+import { SupplierDossierModal } from "./supplier-dossier-modal";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fornecedor = Tables<"suppliers">;
@@ -272,6 +273,7 @@ export function FichaFornecedor({
 }) {
   const [dados, setDados] = useState<FichaDados | null>(null);
   const [recarregar, setRecarregar] = useState(0);
+  const [dossierModalOpen, setDossierModalOpen] = useState(false);
   const open = fornecedor !== null;
   const supplierId = fornecedor?.id ?? null;
   const documentosEnabled = enabledModules["documentos"] === true;
@@ -519,6 +521,17 @@ export function FichaFornecedor({
                     {rotuloStatusConsolidado360(resumo.statusConsolidado360).label}
                   </Badge>
                 )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDossierModalOpen(true)}
+                  disabled={!dados || !resumo}
+                  title="Gerar Dossiê Administrativo e Cadastral oficial para instrução processual"
+                >
+                  <FileText className="mr-1 h-4 w-4" aria-hidden />
+                  Gerar Dossiê
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -1011,6 +1024,22 @@ export function FichaFornecedor({
               </>
             )}
           </div>
+        )}
+        {resumo && fornecedor && (
+          <SupplierDossierModal
+            open={dossierModalOpen}
+            onOpenChange={setDossierModalOpen}
+            params={{
+              fornecedor,
+              statusConsolidado: resumo.statusConsolidado360,
+              ultimaHomologacao: resumo.ultimaHomologacao,
+              regularidades: dados?.regularidades.rows ?? [],
+              documentos: documentoRows,
+              sancoes: sancoes,
+              instrumentos: instrumentos,
+              cotacoesCount: quoteRows.length,
+            }}
+          />
         )}
       </DialogContent>
     </Dialog>
