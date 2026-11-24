@@ -51,6 +51,8 @@ describe("commercial access rules", () => {
     expect(isCommercialModuleEnabled(activeTenant.enabled_modules, "fornecedores")).toBe(true);
     expect(isCommercialModuleEnabled(activeTenant.enabled_modules, "documentos")).toBe(false);
     expect(isCommercialModuleEnabled(activeTenant.enabled_modules, "ged")).toBe(false);
+    expect(isCommercialModuleEnabled(activeTenant.enabled_modules, "relatorios")).toBe(false);
+    expect(isCommercialModuleEnabled(activeTenant.enabled_modules, "pca")).toBe(false);
   });
 
   it("counts MRR only for active institutional and commercial tenants", () => {

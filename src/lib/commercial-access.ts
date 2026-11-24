@@ -1,7 +1,15 @@
 export type CommercialStatus = "active" | "trial" | "blocked_billing" | "suspended" | "cancelled";
 
 export type CommercialModule =
-  "fornecedores" | "documentos" | "processos" | "contratos" | "modelos" | "ged" | "auditoria";
+  | "fornecedores"
+  | "documentos"
+  | "processos"
+  | "contratos"
+  | "modelos"
+  | "ged"
+  | "auditoria"
+  | "relatorios"
+  | "pca";
 
 export type CommercialTenant = {
   status: "active" | "suspended" | "closed" | string;

@@ -1540,6 +1540,51 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_plans: {
+        Row: {
+          default_ai_monthly_budget_usd: number | null
+          default_ai_monthly_token_limit: number | null
+          default_max_users: number
+          default_modules: Json
+          default_monthly_fee: number
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_ai_monthly_budget_usd?: number | null
+          default_ai_monthly_token_limit?: number | null
+          default_max_users?: number
+          default_modules: Json
+          default_monthly_fee?: number
+          description?: string
+          id: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_ai_monthly_budget_usd?: number | null
+          default_ai_monthly_token_limit?: number | null
+          default_max_users?: number
+          default_modules?: Json
+          default_monthly_fee?: number
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_staff: {
         Row: {
           activated_at: string | null
@@ -2937,6 +2982,8 @@ export type Database = {
         Row: {
           enabled: boolean
           features: Json
+          monthly_budget_usd: number | null
+          monthly_token_limit: number | null
           tenant_id: string
           updated_at: string
           updated_by: string | null
@@ -2944,6 +2991,8 @@ export type Database = {
         Insert: {
           enabled?: boolean
           features?: Json
+          monthly_budget_usd?: number | null
+          monthly_token_limit?: number | null
           tenant_id: string
           updated_at?: string
           updated_by?: string | null
@@ -2951,6 +3000,8 @@ export type Database = {
         Update: {
           enabled?: boolean
           features?: Json
+          monthly_budget_usd?: number | null
+          monthly_token_limit?: number | null
           tenant_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -3695,6 +3746,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_platform_tenant_ai_limits: {
+        Args: never
+        Returns: {
+          monthly_budget_usd: number | null
+          monthly_token_limit: number | null
+          tenant_id: string
+        }[]
+      }
       list_tenant_admin_candidates: {
         Args: never
         Returns: {
@@ -3796,6 +3855,20 @@ export type Database = {
         }
         Returns: string
       }
+      save_platform_plan: {
+        Args: {
+          p_default_ai_monthly_budget_usd: number | null
+          p_default_ai_monthly_token_limit: number | null
+          p_default_max_users: number
+          p_default_modules: Json
+          p_default_monthly_fee: number
+          p_description: string
+          p_is_active?: boolean
+          p_name: string
+          p_plan_id: string
+        }
+        Returns: Database["public"]["Tables"]["platform_plans"]["Row"]
+      }
       select_procurement_price_quote: {
         Args: { p_item_id: string; p_quote_id: string; p_tenant_id: string }
         Returns: undefined
@@ -3822,6 +3895,14 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: undefined
+      }
+      set_tenant_ai_limits: {
+        Args: {
+          p_monthly_budget_usd?: number | null
+          p_monthly_token_limit?: number | null
+          p_tenant_id: string
+        }
+        Returns: Json
       }
       set_tenant_invitation_auth_user: {
         Args: { p_invitation_id: string; p_invited_user_id: string }

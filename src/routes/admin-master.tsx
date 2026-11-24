@@ -6,7 +6,6 @@ import {
   BarChart3,
   Building2,
   CalendarClock,
-  CheckCircle2,
   CircleDollarSign,
   CreditCard,
   Clock3,
@@ -42,8 +41,11 @@ import { exportToXlsx } from "@/lib/xlsx-export";
 import {
   agruparClientesPorPlano,
   agruparClientesPorStatus,
+  aplicarTemplatePlanoNoDraft,
+  avaliarCotaIa,
   filtrarAuditoriaMaster,
   filtrarClientesMaster,
+  type PlatformPlanTemplate,
 } from "@/lib/admin-master-helper";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
 import { AdminMasterSupport } from "@/components/admin-master-support";
@@ -139,13 +141,29 @@ const MODULES = [
   },
   {
     key: "auditoria",
-    label: "Auditoria e relatórios",
-    description: "Histórico, trilhas e relatórios.",
+    label: "Auditoria e histórico",
+    description: "Histórico e trilhas operacionais.",
+  },
+  {
+    key: "relatorios",
+    label: "Relatórios & BI",
+    description: "Central de relatórios executivos, gráficos e exportações.",
+  },
+  {
+    key: "pca",
+    label: "Plano Anual (PCA)",
+    description: "Planejamento anual de contratações e consolidação de demandas.",
   },
 ] as const;
 
 type ModuleKey = (typeof MODULES)[number]["key"];
-type Draft = CommercialTenantInput & { name: string; slug: string; adminUserId: string };
+type Draft = CommercialTenantInput & {
+  name: string;
+  slug: string;
+  adminUserId: string;
+  aiBudgetUsd: string;
+  aiTokenLimit: string;
+};
 type CommercialStatus = "active" | "trial" | "blocked_billing" | "suspended" | "cancelled";
 type PlanTier = "basico" | "profissional" | "enterprise" | "consorcio";
 
@@ -153,6 +171,8 @@ const EMPTY_DRAFT: Draft = {
   name: "",
   slug: "",
   adminUserId: "",
+  aiBudgetUsd: "",
+  aiTokenLimit: "",
   trade_name: "",
   cnpj: "",
   municipality: "",
@@ -177,6 +197,8 @@ const EMPTY_DRAFT: Draft = {
     modelos: true,
     ged: false,
     auditoria: true,
+    relatorios: true,
+    pca: true,
   },
   max_users: 20,
   commercial_notes: "",
@@ -279,10 +301,15 @@ function AdminMaster() {
     activeUsersByTenant,
     aiEnabledByTenant,
     aiUsageByTenant,
+    plans,
+    plansBackedByDatabase,
+    aiLimitsByTenant,
     refresh,
     createTenant,
     updateTenant,
     provisionLocalAdmin,
+    savePlan,
+    saveTenantAiLimits,
   } = usePlatformAdmin();
 
   const [tab, setTab] = useState("visao-geral");
@@ -296,6 +323,9 @@ function AdminMaster() {
   const [editing, setEditing] = useState<MasterTenant | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [planDraft, setPlanDraft] = useState<PlatformPlanTemplate | null>(null);
+  const [savingPlan, setSavingPlan] = useState(false);
   const [provisionOpen, setProvisionOpen] = useState(false);
   const [provisionTenant, setProvisionTenant] = useState<MasterTenant | null>(null);
   const [provisionUser, setProvisionUser] = useState("");
@@ -337,6 +367,12 @@ function AdminMaster() {
     () => new Map(tenants.map((t) => [t.id, t.trade_name || t.name])),
     [tenants],
   );
+
+  const planById = useMemo(() => {
+    const map = new Map<string, PlatformPlanTemplate>();
+    for (const plan of plans) map.set(plan.id, plan);
+    return map;
+  }, [plans]);
 
   const clientesFiltrados = useMemo(
     () =>
@@ -414,18 +450,61 @@ function AdminMaster() {
     }
   }
 
+  function aplicarTemplatePlano(planId: PlanTier) {
+    const template = planById.get(planId);
+    if (!template) {
+      patchDraft("plan_tier", planId);
+      return;
+    }
+    setDraft((current) => {
+      const next = aplicarTemplatePlanoNoDraft(current, template);
+      return {
+        ...next,
+        aiBudgetUsd:
+          template.default_ai_monthly_budget_usd === null
+            ? ""
+            : String(template.default_ai_monthly_budget_usd),
+        aiTokenLimit:
+          template.default_ai_monthly_token_limit === null
+            ? ""
+            : String(template.default_ai_monthly_token_limit),
+      };
+    });
+  }
+
   function abrirNovoCliente() {
     setEditing(null);
-    setDraft({
+    const defaultPlan = planById.get("profissional");
+    const baseDraft: Draft = {
       ...EMPTY_DRAFT,
       trial_starts_at: new Date().toISOString(),
       trial_ends_at: new Date(Date.now() + 14 * 86_400_000).toISOString(),
-    });
+    };
+    setDraft(
+      defaultPlan
+        ? {
+            ...aplicarTemplatePlanoNoDraft(baseDraft, defaultPlan),
+            aiBudgetUsd:
+              defaultPlan.default_ai_monthly_budget_usd === null
+                ? ""
+                : String(defaultPlan.default_ai_monthly_budget_usd),
+            aiTokenLimit:
+              defaultPlan.default_ai_monthly_token_limit === null
+                ? ""
+                : String(defaultPlan.default_ai_monthly_token_limit),
+          }
+        : baseDraft,
+    );
     setDialogOpen(true);
   }
 
   function abrirEdicao(tenant: MasterTenant) {
     setEditing(tenant);
+    const aiQuota = aiLimitsByTenant[tenant.id];
+    const mergedModules = {
+      ...EMPTY_DRAFT.enabled_modules,
+      ...((tenant.enabled_modules ?? {}) as Record<string, boolean>),
+    };
     setDraft({
       ...EMPTY_DRAFT,
       name: tenant.name,
@@ -446,16 +525,46 @@ function AdminMaster() {
       billing_day: tenant.billing_day,
       billing_email: tenant.billing_email ?? "",
       billing_contact: tenant.billing_contact ?? "",
-      enabled_modules: (tenant.enabled_modules ?? EMPTY_DRAFT.enabled_modules) as Record<
-        string,
-        boolean
-      >,
+      enabled_modules: mergedModules,
       max_users: tenant.max_users,
       commercial_notes: tenant.commercial_notes ?? "",
       street: tenant.street ?? "",
       adminUserId: "",
+      aiBudgetUsd:
+        aiQuota?.monthly_budget_usd != null ? String(aiQuota.monthly_budget_usd) : "",
+      aiTokenLimit:
+        aiQuota?.monthly_token_limit != null ? String(aiQuota.monthly_token_limit) : "",
     });
     setDialogOpen(true);
+  }
+
+  function abrirEdicaoPlano(plan: PlatformPlanTemplate) {
+    setPlanDraft({
+      ...plan,
+      default_modules: {
+        ...EMPTY_DRAFT.enabled_modules,
+        ...plan.default_modules,
+      },
+    });
+    setPlanDialogOpen(true);
+  }
+
+  async function salvarPlanoCatalogo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!planDraft) return;
+    setSavingPlan(true);
+    try {
+      await savePlan(planDraft);
+      toast.success(`Plano ${planDraft.name} atualizado no catálogo.`);
+      setPlanDialogOpen(false);
+      setPlanDraft(null);
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível salvar as regras do plano.",
+      );
+    } finally {
+      setSavingPlan(false);
+    }
   }
 
   function patchDraft<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -493,6 +602,19 @@ function AdminMaster() {
       return;
     }
 
+    const parsedBudget =
+      draft.aiBudgetUsd.trim() === "" ? null : Number(draft.aiBudgetUsd.replace(",", "."));
+    const parsedTokens =
+      draft.aiTokenLimit.trim() === "" ? null : Math.round(Number(draft.aiTokenLimit));
+    if (parsedBudget !== null && (!Number.isFinite(parsedBudget) || parsedBudget < 0)) {
+      toast.error("Informe um orçamento mensal de IA válido (>= 0).");
+      return;
+    }
+    if (parsedTokens !== null && (!Number.isFinite(parsedTokens) || parsedTokens < 0)) {
+      toast.error("Informe um limite mensal de tokens válido (>= 0).");
+      return;
+    }
+
     setSaving(true);
     const details: CommercialTenantInput = {
       trade_name: draft.trade_name.trim(),
@@ -518,6 +640,7 @@ function AdminMaster() {
     };
 
     try {
+      let targetTenantId: string | null = editing ? editing.id : null;
       if (editing) {
         await updateTenant(editing.id, {
           name: draft.name.trim(),
@@ -543,11 +666,36 @@ function AdminMaster() {
           max_users: details.max_users,
           commercial_notes: details.commercial_notes || null,
         });
-        toast.success("Dados comerciais e institucionais atualizados.");
       } else {
-        await createTenant(draft.name.trim(), draft.slug.trim(), draft.adminUserId, details);
-        toast.success("Secretaria cadastrada e administrador local provisionado.");
+        const created = await createTenant(
+          draft.name.trim(),
+          draft.slug.trim(),
+          draft.adminUserId,
+          details,
+        );
+        targetTenantId = created?.tenant_id ?? null;
       }
+
+      const previousQuota = editing ? aiLimitsByTenant[editing.id] : undefined;
+      const quotaChanged =
+        (parsedBudget ?? null) !== (previousQuota?.monthly_budget_usd ?? null) ||
+        (parsedTokens ?? null) !== (previousQuota?.monthly_token_limit ?? null);
+
+      if (targetTenantId && (quotaChanged || (!editing && (parsedBudget !== null || parsedTokens !== null)))) {
+        try {
+          await saveTenantAiLimits(targetTenantId, parsedBudget, parsedTokens);
+        } catch {
+          toast.warning(
+            "Cliente salvo, mas a cota de IA não foi gravada porque a migration SQL ainda precisa ser aplicada no banco.",
+          );
+        }
+      }
+
+      toast.success(
+        editing
+          ? "Dados comerciais e institucionais atualizados."
+          : "Secretaria cadastrada e administrador local provisionado.",
+      );
       setDialogOpen(false);
       setEditing(null);
       setDraft(EMPTY_DRAFT);
@@ -1123,17 +1271,49 @@ function AdminMaster() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={() => setTab("ia")}
-                                  title="Gerenciar Inteligência Artificial"
-                                  className="inline-flex items-center"
-                                >
-                                  <Badge variant={aiStatus?.enabled ? "default" : "secondary"}>
-                                    <Sparkles className="mr-1 h-3 w-3" aria-hidden />
-                                    {aiStatus?.enabled ? "Ativa" : "Inativa"}
-                                  </Badge>
-                                </button>
+                                {(() => {
+                                  const aiUsage = aiUsageByTenant[tenant.id];
+                                  const aiQuota = aiLimitsByTenant[tenant.id];
+                                  const quotaStatus = avaliarCotaIa(
+                                    aiUsage?.costUsd ?? 0,
+                                    aiUsage?.tokens ?? 0,
+                                    aiQuota?.monthly_budget_usd,
+                                    aiQuota?.monthly_token_limit,
+                                  );
+                                  return (
+                                    <div className="space-y-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setTab("ia")}
+                                        title="Gerenciar Inteligência Artificial"
+                                        className="inline-flex items-center"
+                                      >
+                                        <Badge variant={aiStatus?.enabled ? "default" : "secondary"}>
+                                          <Sparkles className="mr-1 h-3 w-3" aria-hidden />
+                                          {aiStatus?.enabled ? "Ativa" : "Inativa"}
+                                        </Badge>
+                                      </button>
+                                      {(aiUsage?.requests || aiQuota?.monthly_budget_usd != null) && (
+                                        <p className="text-[11px] tabular-nums text-muted-foreground">
+                                          US$ {(aiUsage?.costUsd ?? 0).toFixed(2)}
+                                          {aiQuota?.monthly_budget_usd != null
+                                            ? ` / US$ ${aiQuota.monthly_budget_usd.toFixed(0)}`
+                                            : ""}
+                                          {quotaStatus.exceeded && (
+                                            <span className="ml-1 font-semibold text-destructive">
+                                              · Cota atingida
+                                            </span>
+                                          )}
+                                          {quotaStatus.nearLimit && (
+                                            <span className="ml-1 font-medium text-amber-600">
+                                              · 80%+
+                                            </span>
+                                          )}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>{money(Number(tenant.monthly_fee ?? 0))}</TableCell>
                               <TableCell className="whitespace-nowrap">
@@ -1208,42 +1388,106 @@ function AdminMaster() {
 
             {/* 3. PLANOS COMERCIAIS */}
             <TabsContent value="planos" className="mt-0 space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Planos comerciais</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Distribuição dos clientes e receita ativa por plano cadastrado.
-                </p>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Planos comerciais</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Configure preços padrão, limites de usuários, cotas de IA e pacotes de módulos
+                    aplicados automaticamente ao cadastrar novas Secretarias.
+                  </p>
+                </div>
+                <Badge variant={plansBackedByDatabase ? "default" : "secondary"}>
+                  {plansBackedByDatabase ? "Catálogo sincronizado no banco" : "Padrão local"}
+                </Badge>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {(["basico", "profissional", "enterprise", "consorcio"] as PlanTier[]).map(
-                  (plan) => {
-                    const mrrPlano = dadosGraficoPlano.find((p) => p.plano === plan)?.mrr ?? 0;
-                    return (
-                      <Card key={plan}>
-                        <CardHeader>
-                          <CardTitle className="text-base">{PLAN_LABELS[plan]}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-1">
-                          <p className="text-3xl font-semibold">{planCounts[plan]}</p>
-                          <p className="text-xs text-muted-foreground">clientes neste plano</p>
-                          <p className="pt-1 text-xs font-medium text-primary">
-                            MRR ativo: {money(mrrPlano)}
+              {!plansBackedByDatabase && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  <AlertTitle>Aguardando migration do catálogo de planos no banco</AlertTitle>
+                  <AlertDescription>
+                    Os valores padrão abaixo já preenchem novos cadastros automaticamente. Para
+                    persistir alterações no catálogo, aplique a migration SQL{" "}
+                    <code>20261124130000_platform_plans_modules_ai_quota.sql</code> no Supabase.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                {plans.map((plan) => {
+                  const mrrPlano = dadosGraficoPlano.find((p) => p.plano === plan.id)?.mrr ?? 0;
+                  const activeModules = MODULES.filter((m) => plan.default_modules[m.key] === true);
+                  return (
+                    <Card key={plan.id} className="flex flex-col justify-between">
+                      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg">{plan.name}</CardTitle>
+                            <Badge variant={plan.is_active ? "outline" : "secondary"}>
+                              {plan.is_active ? "Ativo" : "Oculto"}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!plansBackedByDatabase}
+                          onClick={() => abrirEdicaoPlano(plan)}
+                        >
+                          <Settings2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                          Editar padrão
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-xs sm:grid-cols-4">
+                          <div>
+                            <p className="text-muted-foreground">Mensalidade</p>
+                            <p className="mt-0.5 font-semibold">
+                              {money(plan.default_monthly_fee)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Usuários padrão</p>
+                            <p className="mt-0.5 font-semibold">{plan.default_max_users}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Cota IA / mês</p>
+                            <p className="mt-0.5 font-semibold">
+                              {plan.default_ai_monthly_budget_usd != null
+                                ? `US$ ${plan.default_ai_monthly_budget_usd.toFixed(0)}`
+                                : "Livre"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Clientes (MRR)</p>
+                            <p className="mt-0.5 font-semibold text-primary">
+                              {planCounts[plan.id]} ({money(mrrPlano)})
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                            Módulos inclusos ({activeModules.length}/{MODULES.length})
                           </p>
-                        </CardContent>
-                      </Card>
-                    );
-                  },
-                )}
+                          <div className="flex flex-wrap gap-1.5">
+                            {MODULES.map((module) => {
+                              const included = plan.default_modules[module.key] === true;
+                              return (
+                                <Badge
+                                  key={module.key}
+                                  variant={included ? "secondary" : "outline"}
+                                  className={included ? "" : "opacity-45"}
+                                >
+                                  {module.label}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-              <Alert>
-                <CheckCircle2 className="h-4 w-4" aria-hidden />
-                <AlertTitle>Planos configuráveis por cliente</AlertTitle>
-                <AlertDescription>
-                  O plano e a mensalidade são registrados no cadastro de cada Secretaria. A cobrança
-                  ainda é informativa; a etapa seguinte de catálogo configurável de planos preencherá
-                  automaticamente mensalidade, usuários e módulos padrão.
-                </AlertDescription>
-              </Alert>
             </TabsContent>
 
             {/* 4. COBRANÇA */}
@@ -1603,10 +1847,28 @@ function AdminMaster() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Plano</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Plano</Label>
+                      {editing && (
+                        <button
+                          type="button"
+                          onClick={() => aplicarTemplatePlano(draft.plan_tier as PlanTier)}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          Aplicar padrão deste plano
+                        </button>
+                      )}
+                    </div>
                     <Select
                       value={draft.plan_tier}
-                      onValueChange={(value) => patchDraft("plan_tier", value as PlanTier)}
+                      onValueChange={(value) => {
+                        const nextPlan = value as PlanTier;
+                        if (!editing) {
+                          aplicarTemplatePlano(nextPlan);
+                        } else {
+                          patchDraft("plan_tier", nextPlan);
+                        }
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -1619,6 +1881,12 @@ function AdminMaster() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {!editing && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Ao selecionar o plano, mensalidade, usuários, módulos e cota de IA são
+                        preenchidos automaticamente.
+                      </p>
+                    )}
                   </div>
                   {draft.commercial_status === "trial" && (
                     <>
@@ -1723,6 +1991,59 @@ function AdminMaster() {
                     ))}
                   </div>
                 </div>
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="flex items-center gap-1.5 font-medium">
+                        <Sparkles className="h-4 w-4 text-primary" aria-hidden />
+                        Inteligência Artificial & Cota Mensal
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {editing
+                          ? `Status: ${aiEnabledByTenant[editing.id]?.enabled ? "Ativa" : "Inativa"} · Uso recente (30d): ${aiUsageByTenant[editing.id]?.requests ?? 0} reqs · ${(aiUsageByTenant[editing.id]?.tokens ?? 0).toLocaleString("pt-BR")} tokens · US$ ${(aiUsageByTenant[editing.id]?.costUsd ?? 0).toFixed(2)}`
+                          : "Defina limites mensais opcionais para conter gastos da Secretaria com IA."}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDialogOpen(false);
+                        setTab("ia");
+                      }}
+                    >
+                      Gerenciar provedores e recursos
+                    </Button>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ai-budget-usd">Orçamento mensal máximo (US$)</Label>
+                      <Input
+                        id="ai-budget-usd"
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        placeholder="Sem limite"
+                        value={draft.aiBudgetUsd}
+                        onChange={(e) => patchDraft("aiBudgetUsd", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ai-token-limit">Limite mensal de tokens</Label>
+                      <Input
+                        id="ai-token-limit"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        placeholder="Sem limite"
+                        value={draft.aiTokenLimit}
+                        onChange={(e) => patchDraft("aiTokenLimit", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="commercial-notes">Observações comerciais</Label>
                   <Textarea
@@ -1789,6 +2110,178 @@ function AdminMaster() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar padrão do plano {planDraft?.name}</DialogTitle>
+            <DialogDescription>
+              Essas configurações preenchem automaticamente mensalidade, usuários, cota de IA e
+              módulos ao criar novos clientes neste plano.
+            </DialogDescription>
+          </DialogHeader>
+          {planDraft && (
+            <form onSubmit={salvarPlanoCatalogo} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="plan-name">Nome comercial</Label>
+                  <Input
+                    id="plan-name"
+                    value={planDraft.name}
+                    onChange={(e) =>
+                      setPlanDraft((curr) => (curr ? { ...curr, name: e.target.value } : curr))
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan-fee">Mensalidade padrão (R$)</Label>
+                  <Input
+                    id="plan-fee"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={planDraft.default_monthly_fee}
+                    onChange={(e) =>
+                      setPlanDraft((curr) =>
+                        curr ? { ...curr, default_monthly_fee: Number(e.target.value) } : curr,
+                      )
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan-users">Limite padrão de usuários</Label>
+                  <Input
+                    id="plan-users"
+                    type="number"
+                    min="1"
+                    max="10000"
+                    value={planDraft.default_max_users}
+                    onChange={(e) =>
+                      setPlanDraft((curr) =>
+                        curr ? { ...curr, default_max_users: Number(e.target.value) } : curr,
+                      )
+                    }
+                    required
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div>
+                    <Label htmlFor="plan-active">Plano ativo para venda</Label>
+                    <p className="text-xs text-muted-foreground">Exibido no catálogo comercial</p>
+                  </div>
+                  <Switch
+                    id="plan-active"
+                    checked={planDraft.is_active}
+                    onCheckedChange={(checked) =>
+                      setPlanDraft((curr) => (curr ? { ...curr, is_active: checked } : curr))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan-ai-budget">Cota padrão de IA (US$ / mês)</Label>
+                  <Input
+                    id="plan-ai-budget"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Sem limite"
+                    value={planDraft.default_ai_monthly_budget_usd ?? ""}
+                    onChange={(e) =>
+                      setPlanDraft((curr) =>
+                        curr
+                          ? {
+                              ...curr,
+                              default_ai_monthly_budget_usd:
+                                e.target.value === "" ? null : Number(e.target.value),
+                            }
+                          : curr,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan-ai-tokens">Limite padrão de tokens / mês</Label>
+                  <Input
+                    id="plan-ai-tokens"
+                    type="number"
+                    min="0"
+                    step="10000"
+                    placeholder="Sem limite"
+                    value={planDraft.default_ai_monthly_token_limit ?? ""}
+                    onChange={(e) =>
+                      setPlanDraft((curr) =>
+                        curr
+                          ? {
+                              ...curr,
+                              default_ai_monthly_token_limit:
+                                e.target.value === "" ? null : Math.round(Number(e.target.value)),
+                            }
+                          : curr,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="plan-desc">Descrição comercial</Label>
+                  <Textarea
+                    id="plan-desc"
+                    rows={2}
+                    value={planDraft.description}
+                    onChange={(e) =>
+                      setPlanDraft((curr) =>
+                        curr ? { ...curr, description: e.target.value } : curr,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Módulos padrão do plano</Label>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {MODULES.map((module) => (
+                    <div
+                      key={module.key}
+                      className="flex items-center justify-between gap-3 rounded-lg border p-2.5"
+                    >
+                      <Label htmlFor={`plan-mod-${module.key}`} className="cursor-pointer text-xs">
+                        {module.label}
+                      </Label>
+                      <Switch
+                        id={`plan-mod-${module.key}`}
+                        checked={planDraft.default_modules[module.key] === true}
+                        onCheckedChange={(checked) =>
+                          setPlanDraft((curr) =>
+                            curr
+                              ? {
+                                  ...curr,
+                                  default_modules: {
+                                    ...curr.default_modules,
+                                    [module.key]: checked,
+                                  },
+                                }
+                              : curr,
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setPlanDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={savingPlan}>
+                  {savingPlan && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
+                  Salvar padrão do plano
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

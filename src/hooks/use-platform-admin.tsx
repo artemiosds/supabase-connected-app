@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { db } from "@/lib/db";
-import { resumirUsoIaPorTenant, type AiTenantUsageSummary } from "@/lib/admin-master-helper";
+import {
+  DEFAULT_PLATFORM_PLANS,
+  resumirUsoIaPorTenant,
+  type AiTenantUsageSummary,
+  type PlatformPlanTemplate,
+  type PlatformPlanTier,
+} from "@/lib/admin-master-helper";
 import { useAuth } from "@/hooks/use-auth";
 
 export type MasterTenant = Tables<"tenants">;
@@ -38,6 +44,11 @@ export type AiTenantSummary = {
   enabled: boolean;
   operational: boolean;
   allowedProvidersCount: number;
+};
+
+export type AiTenantQuota = {
+  monthly_budget_usd: number | null;
+  monthly_token_limit: number | null;
 };
 
 export type CommercialTenantInput = {
@@ -113,6 +124,9 @@ export function usePlatformAdmin() {
   const [activeUsersByTenant, setActiveUsersByTenant] = useState<Record<string, number>>({});
   const [aiEnabledByTenant, setAiEnabledByTenant] = useState<Record<string, AiTenantSummary>>({});
   const [aiUsageByTenant, setAiUsageByTenant] = useState<Record<string, AiTenantUsageSummary>>({});
+  const [plans, setPlans] = useState<PlatformPlanTemplate[]>(DEFAULT_PLATFORM_PLANS);
+  const [plansBackedByDatabase, setPlansBackedByDatabase] = useState(false);
+  const [aiLimitsByTenant, setAiLimitsByTenant] = useState<Record<string, AiTenantQuota>>({});
   const userId = session?.user.id;
   const userEmail = session?.user.email;
 
@@ -179,21 +193,31 @@ export function usePlatformAdmin() {
     }
 
     setStaffAccess(null);
-    const [tenantResult, metricsResult, candidatesResult, auditResult, membershipsResult, aiResult] =
-      await Promise.all([
-        db.from("tenants").select("*").order("name", { ascending: true }),
-        db.rpc("get_platform_master_metrics"),
-        db.rpc("list_tenant_admin_candidates"),
-        db
-          .from("audit_events")
-          .select("id, actor_id, action, entity, entity_id, created_at, tenant_id, details")
-          .order("created_at", { ascending: false })
-          .limit(200),
-        db.from("tenant_memberships").select("tenant_id").eq("status", "active"),
-        db.functions
-          .invoke("platform-ai-configuration", { body: { action: "load" } })
-          .catch(() => ({ data: null, error: null })),
-      ]);
+    const [
+      tenantResult,
+      metricsResult,
+      candidatesResult,
+      auditResult,
+      membershipsResult,
+      aiResult,
+      plansResult,
+      aiLimitsResult,
+    ] = await Promise.all([
+      db.from("tenants").select("*").order("name", { ascending: true }),
+      db.rpc("get_platform_master_metrics"),
+      db.rpc("list_tenant_admin_candidates"),
+      db
+        .from("audit_events")
+        .select("id, actor_id, action, entity, entity_id, created_at, tenant_id, details")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      db.from("tenant_memberships").select("tenant_id").eq("status", "active"),
+      db.functions
+        .invoke("platform-ai-configuration", { body: { action: "get" } })
+        .catch(() => ({ data: null, error: null })),
+      db.from("platform_plans").select("*").order("sort_order", { ascending: true }),
+      db.rpc("list_platform_tenant_ai_limits"),
+    ]);
 
     if (tenantResult.error || metricsResult.error || candidatesResult.error || auditResult.error) {
       const firstError =
@@ -246,6 +270,50 @@ export function usePlatformAdmin() {
       }
     }
 
+    const limitsMap: Record<string, AiTenantQuota> = {};
+    if (!aiLimitsResult.error && Array.isArray(aiLimitsResult.data)) {
+      for (const item of aiLimitsResult.data) {
+        if (item.tenant_id) {
+          limitsMap[item.tenant_id] = {
+            monthly_budget_usd:
+              item.monthly_budget_usd === null ? null : Number(item.monthly_budget_usd),
+            monthly_token_limit:
+              item.monthly_token_limit === null ? null : Number(item.monthly_token_limit),
+          };
+        }
+      }
+    }
+
+    if (!plansResult.error && Array.isArray(plansResult.data) && plansResult.data.length > 0) {
+      setPlans(
+        plansResult.data.map((row) => ({
+          id: row.id as PlatformPlanTier,
+          name: row.name,
+          description: row.description,
+          default_monthly_fee: Number(row.default_monthly_fee ?? 0),
+          default_max_users: Number(row.default_max_users ?? 20),
+          default_ai_monthly_budget_usd:
+            row.default_ai_monthly_budget_usd === null
+              ? null
+              : Number(row.default_ai_monthly_budget_usd),
+          default_ai_monthly_token_limit:
+            row.default_ai_monthly_token_limit === null
+              ? null
+              : Number(row.default_ai_monthly_token_limit),
+          default_modules:
+            row.default_modules && typeof row.default_modules === "object" && !Array.isArray(row.default_modules)
+              ? (row.default_modules as Record<string, boolean>)
+              : {},
+          sort_order: Number(row.sort_order ?? 1),
+          is_active: Boolean(row.is_active),
+        })),
+      );
+      setPlansBackedByDatabase(true);
+    } else {
+      setPlans(DEFAULT_PLATFORM_PLANS);
+      setPlansBackedByDatabase(false);
+    }
+
     setTenants((tenantResult.data ?? []) as MasterTenant[]);
     setMetrics(metricsResult.error ? METRICS_EMPTY : parseMetrics(metricsResult.data));
     setCandidates((candidatesResult.data ?? []) as AdminCandidate[]);
@@ -253,6 +321,7 @@ export function usePlatformAdmin() {
     setActiveUsersByTenant(userCounts);
     setAiEnabledByTenant(aiSummaryMap);
     setAiUsageByTenant(aiUsageMap);
+    setAiLimitsByTenant(limitsMap);
     setLoading(false);
   }, [userId, userEmail]);
 
@@ -263,14 +332,18 @@ export function usePlatformAdmin() {
 
   const createTenant = useCallback(
     async (name: string, slug: string, adminUserId: string, details: CommercialTenantInput) => {
-      const { error: rpcError } = await db.rpc("create_tenant_with_admin_commercial", {
-        p_name: name,
-        p_slug: slug,
-        p_admin_user_id: adminUserId,
-        p_details: details as unknown as Json,
-      });
+      const { data: rpcData, error: rpcError } = await db.rpc(
+        "create_tenant_with_admin_commercial",
+        {
+          p_name: name,
+          p_slug: slug,
+          p_admin_user_id: adminUserId,
+          p_details: details as unknown as Json,
+        },
+      );
       if (rpcError) throw rpcError;
       await load();
+      return rpcData as { tenant_id?: string } | null;
     },
     [load],
   );
@@ -306,6 +379,42 @@ export function usePlatformAdmin() {
     [load],
   );
 
+  const savePlan = useCallback(
+    async (plan: PlatformPlanTemplate) => {
+      const { error: planError } = await db.rpc("save_platform_plan", {
+        p_plan_id: plan.id,
+        p_name: plan.name,
+        p_description: plan.description,
+        p_default_monthly_fee: plan.default_monthly_fee,
+        p_default_max_users: plan.default_max_users,
+        p_default_ai_monthly_budget_usd: plan.default_ai_monthly_budget_usd,
+        p_default_ai_monthly_token_limit: plan.default_ai_monthly_token_limit,
+        p_default_modules: plan.default_modules as Json,
+        p_is_active: plan.is_active,
+      });
+      if (planError) throw planError;
+      await load();
+    },
+    [load],
+  );
+
+  const saveTenantAiLimits = useCallback(
+    async (
+      tenantId: string,
+      monthlyBudgetUsd: number | null,
+      monthlyTokenLimit: number | null,
+    ) => {
+      const { error: limitsError } = await db.rpc("set_tenant_ai_limits", {
+        p_tenant_id: tenantId,
+        p_monthly_budget_usd: monthlyBudgetUsd,
+        p_monthly_token_limit: monthlyTokenLimit,
+      });
+      if (limitsError) throw limitsError;
+      await load();
+    },
+    [load],
+  );
+
   return {
     session,
     authorized,
@@ -320,9 +429,14 @@ export function usePlatformAdmin() {
     activeUsersByTenant,
     aiEnabledByTenant,
     aiUsageByTenant,
+    plans,
+    plansBackedByDatabase,
+    aiLimitsByTenant,
     refresh: load,
     createTenant,
     updateTenant,
     provisionLocalAdmin,
+    savePlan,
+    saveTenantAiLimits,
   };
 }

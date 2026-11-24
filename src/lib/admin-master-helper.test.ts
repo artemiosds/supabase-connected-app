@@ -5,8 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_PLATFORM_PLANS,
   agruparClientesPorPlano,
   agruparClientesPorStatus,
+  aplicarTemplatePlanoNoDraft,
+  avaliarCotaIa,
   filtrarAuditoriaMaster,
   filtrarClientesMaster,
   resumirUsoIaPorTenant,
@@ -129,6 +132,50 @@ describe("admin-master-helper", () => {
       requests: 15,
       tokens: 2000,
       costUsd: 0.03,
+    });
+  });
+
+  it("aplica template de plano preenchendo mensalidade, limite de usuários, IA e módulos", () => {
+    const basico = DEFAULT_PLATFORM_PLANS.find((p) => p.id === "basico")!;
+    const draft = aplicarTemplatePlanoNoDraft(
+      {
+        plan_tier: "profissional",
+        monthly_fee: 1990,
+        max_users: 25,
+        enabled_modules: { fornecedores: true, pca: true },
+        ai_monthly_budget_usd: 30,
+        ai_monthly_token_limit: 8_000_000,
+      },
+      basico,
+    );
+
+    expect(draft.plan_tier).toBe("basico");
+    expect(draft.monthly_fee).toBe(990);
+    expect(draft.max_users).toBe(10);
+    expect(draft.enabled_modules.pca).toBe(false);
+    expect(draft.enabled_modules.relatorios).toBe(true);
+    expect(draft.ai_monthly_budget_usd).toBe(10);
+    expect(draft.ai_monthly_token_limit).toBe(2_000_000);
+  });
+
+  it("avalia corretamente percentual e alertas da cota mensal de IA", () => {
+    expect(avaliarCotaIa(25, 4_000_000, 30, 8_000_000)).toEqual({
+      costPct: 83,
+      tokenPct: 50,
+      exceeded: false,
+      nearLimit: true,
+    });
+    expect(avaliarCotaIa(32, 4_000_000, 30, 8_000_000)).toEqual({
+      costPct: 107,
+      tokenPct: 50,
+      exceeded: true,
+      nearLimit: false,
+    });
+    expect(avaliarCotaIa(5, 1000, null, null)).toEqual({
+      costPct: null,
+      tokenPct: null,
+      exceeded: false,
+      nearLimit: false,
     });
   });
 });

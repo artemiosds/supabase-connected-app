@@ -59,7 +59,13 @@ const itensMenu: {
   module?: CommercialModule;
 }[] = [
   { para: "/painel", rotulo: "Painel", icone: LayoutDashboard, grupo: "visao-geral" },
-  { para: "/relatorios", rotulo: "Relatórios & BI", icone: BarChart3, grupo: "visao-geral" },
+  {
+    para: "/relatorios",
+    rotulo: "Relatórios & BI",
+    icone: BarChart3,
+    grupo: "visao-geral",
+    module: "relatorios",
+  },
   {
     para: "/fornecedores",
     rotulo: "Fornecedores",
@@ -72,7 +78,7 @@ const itensMenu: {
     rotulo: "Plano Anual (PCA)",
     icone: CalendarClock,
     grupo: "operacao",
-    module: "processos",
+    module: "pca",
   },
   {
     para: "/processos",
@@ -123,13 +129,24 @@ const itensMenu: {
 ];
 
 const moduleByRoute: Array<{ prefix: string; module: CommercialModule }> = [
+  { prefix: "/relatorios", module: "relatorios" },
   { prefix: "/fornecedores", module: "fornecedores" },
-  { prefix: "/pca", module: "processos" },
+  { prefix: "/pca", module: "pca" },
   { prefix: "/processos", module: "processos" },
   { prefix: "/contratos", module: "contratos" },
   { prefix: "/documentos", module: "documentos" },
   { prefix: "/historico", module: "auditoria" },
 ];
+
+function isTenantRouteModuleEnabled(
+  enabledModules: Record<string, boolean>,
+  module: CommercialModule,
+): boolean {
+  if (module === "relatorios" || module === "pca") {
+    return enabledModules[module] !== false;
+  }
+  return enabledModules[module] === true;
+}
 
 function acompanharBrilhoMenu(event: ReactPointerEvent<HTMLElement>) {
   if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
@@ -336,7 +353,7 @@ function MenuLateral({ onNavigate }: { onNavigate?: () => void } = {}) {
   const allowedItems = itensMenu.filter((item) => {
     if (supportOnly) return !!supportAccess?.session_id && item.para === "/fornecedores";
     if (!item.module || !selecionado) return true;
-    return selecionado.enabled_modules[item.module] === true;
+    return isTenantRouteModuleEnabled(selecionado.enabled_modules, item.module);
   });
 
   return (
@@ -511,7 +528,7 @@ function ConteudoPortal() {
   }
 
   const requiredModule = moduleByRoute.find((entry) => pathname.startsWith(entry.prefix))?.module;
-  if (requiredModule && selecionado.enabled_modules[requiredModule] !== true) {
+  if (requiredModule && !isTenantRouteModuleEnabled(selecionado.enabled_modules, requiredModule)) {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center">
         <div className="w-full rounded-xl border bg-card p-6 text-center sm:p-8">
