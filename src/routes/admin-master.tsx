@@ -1492,7 +1492,7 @@ function AdminMaster() {
 
             {/* 4. COBRANÇA */}
             <TabsContent value="cobranca" className="mt-0 space-y-6">
-              <MasterBillingSettings />
+              <MasterBillingSettings tenants={tenants} onBillingChanged={refresh} />
             </TabsContent>
 
             {/* 5. CONFIGURAÇÕES TÉCNICAS */}

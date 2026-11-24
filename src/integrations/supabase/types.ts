@@ -1483,6 +1483,71 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          external_reference: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_url: string | null
+          plan_tier: string
+          reference_month: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_url?: string | null
+          plan_tier: string
+          reference_month: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_url?: string | null
+          plan_tier?: string
+          reference_month?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_payment_integrations: {
         Row: {
           account_email: string | null
@@ -3911,6 +3976,36 @@ export type Database = {
       set_tenant_member_role: {
         Args: { p_membership_id: string; p_role_id: string }
         Returns: undefined
+      }
+      create_platform_invoice: {
+        Args: {
+          p_amount: number
+          p_due_date: string
+          p_notes?: string | null
+          p_payment_method?: string
+          p_reference_month: string
+          p_tenant_id: string
+        }
+        Returns: Database["public"]["Tables"]["platform_invoices"]["Row"]
+      }
+      generate_monthly_platform_invoices: {
+        Args: { p_reference_month?: string | null }
+        Returns: Json
+      }
+      sync_overdue_platform_invoices: {
+        Args: { p_block_delinquent_tenants?: boolean }
+        Returns: Json
+      }
+      update_platform_invoice_status: {
+        Args: {
+          p_external_reference?: string | null
+          p_invoice_id: string
+          p_notes?: string | null
+          p_payment_method?: string | null
+          p_status: string
+          p_sync_tenant_status?: boolean
+        }
+        Returns: Database["public"]["Tables"]["platform_invoices"]["Row"]
       }
       start_platform_support_session: {
         Args: { p_reason: string; p_tenant_id: string }

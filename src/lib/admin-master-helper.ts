@@ -322,3 +322,65 @@ export function avaliarCotaIa(
     !exceeded && ((costPct !== null && costPct >= 80) || (tokenPct !== null && tokenPct >= 80));
   return { costPct, tokenPct, exceeded, nearLimit };
 }
+
+export interface PlatformInvoiceLike {
+  id: string;
+  tenant_id: string;
+  reference_month: string;
+  amount: number | string;
+  due_date: string;
+  status: string;
+  payment_method: string;
+  external_reference: string | null;
+}
+
+export function resumirFinanceiroFaturas(invoices: PlatformInvoiceLike[]): {
+  totalPaid: number;
+  totalPending: number;
+  totalOverdue: number;
+  countPaid: number;
+  countPending: number;
+  countOverdue: number;
+} {
+  let totalPaid = 0;
+  let totalPending = 0;
+  let totalOverdue = 0;
+  let countPaid = 0;
+  let countPending = 0;
+  let countOverdue = 0;
+
+  for (const inv of invoices) {
+    const amount = Number(inv.amount ?? 0) || 0;
+    if (inv.status === "paid") {
+      totalPaid += amount;
+      countPaid += 1;
+    } else if (inv.status === "pending") {
+      totalPending += amount;
+      countPending += 1;
+    } else if (inv.status === "overdue") {
+      totalOverdue += amount;
+      countOverdue += 1;
+    }
+  }
+
+  return { totalPaid, totalPending, totalOverdue, countPaid, countPending, countOverdue };
+}
+
+export function filtrarFaturasMaster<T extends PlatformInvoiceLike>(
+  invoices: T[],
+  filtros: { status?: string; competencia?: string; busca?: string },
+  tenantNamesById: Map<string, string>,
+): T[] {
+  const status = filtros.status ?? "todas";
+  const competencia = (filtros.competencia ?? "").trim();
+  const busca = (filtros.busca ?? "").trim().toLowerCase();
+
+  return invoices.filter((inv) => {
+    if (status !== "todas" && inv.status !== status) return false;
+    if (competencia && inv.reference_month !== competencia) return false;
+    if (!busca) return true;
+    const tenantName = (tenantNamesById.get(inv.tenant_id) ?? "").toLowerCase();
+    const ref = (inv.external_reference ?? "").toLowerCase();
+    return tenantName.includes(busca) || ref.includes(busca) || inv.reference_month.includes(busca);
+  });
+}

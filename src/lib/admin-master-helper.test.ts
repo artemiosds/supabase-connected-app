@@ -12,6 +12,8 @@ import {
   avaliarCotaIa,
   filtrarAuditoriaMaster,
   filtrarClientesMaster,
+  filtrarFaturasMaster,
+  resumirFinanceiroFaturas,
   resumirUsoIaPorTenant,
 } from "./admin-master-helper";
 
@@ -177,5 +179,58 @@ describe("admin-master-helper", () => {
       exceeded: false,
       nearLimit: false,
     });
+  });
+
+  it("resume totais e filtra faturas por status, competência e secretaria", () => {
+    const faturas = [
+      {
+        id: "f1",
+        tenant_id: "t1",
+        reference_month: "2026-11",
+        amount: 1990,
+        due_date: "2026-11-10",
+        status: "paid",
+        payment_method: "pix",
+        external_reference: "PIX-001",
+      },
+      {
+        id: "f2",
+        tenant_id: "t2",
+        reference_month: "2026-11",
+        amount: 3990,
+        due_date: "2026-11-05",
+        status: "overdue",
+        payment_method: "boleto",
+        external_reference: null,
+      },
+      {
+        id: "f3",
+        tenant_id: "t3",
+        reference_month: "2026-12",
+        amount: 990,
+        due_date: "2026-12-10",
+        status: "pending",
+        payment_method: "manual",
+        external_reference: null,
+      },
+    ];
+
+    expect(resumirFinanceiroFaturas(faturas)).toEqual({
+      totalPaid: 1990,
+      totalPending: 990,
+      totalOverdue: 3990,
+      countPaid: 1,
+      countPending: 1,
+      countOverdue: 1,
+    });
+
+    const nomes = new Map([
+      ["t1", "SMS Oriximiná"],
+      ["t2", "SMS Santarém"],
+      ["t3", "FMS Belém"],
+    ]);
+    expect(filtrarFaturasMaster(faturas, { status: "overdue" }, nomes)).toHaveLength(1);
+    expect(filtrarFaturasMaster(faturas, { busca: "oriximiná" }, nomes)).toHaveLength(1);
+    expect(filtrarFaturasMaster(faturas, { competencia: "2026-12" }, nomes)).toHaveLength(1);
   });
 });

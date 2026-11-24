@@ -1,20 +1,34 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
+  Ban,
+  CalendarClock,
   CheckCircle2,
   CreditCard,
+  FilePlus2,
   Loader2,
   LockKeyhole,
+  Receipt,
   RefreshCw,
   Save,
+  Search,
   ShieldCheck,
   Unplug,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,7 +38,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import type { MasterTenant } from "@/hooks/use-platform-admin";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { filtrarFaturasMaster, resumirFinanceiroFaturas } from "@/lib/admin-master-helper";
 
 type Provider = "mercado_pago" | "stripe" | "other";
 type Environment = "sandbox" | "production";
@@ -89,7 +117,82 @@ function formatDate(value: string | null | undefined): string {
     : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
-export function MasterBillingSettings() {
+function formatMoney(value: number | string | null | undefined): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    Number(value ?? 0) || 0,
+  );
+}
+
+function formatShortDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat("pt-BR").format(parsed);
+}
+
+function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+type PlatformInvoice = Tables<"platform_invoices">;
+
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendente",
+  paid: "Paga",
+  overdue: "Em atraso",
+  cancelled: "Cancelada",
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  manual: "Manual",
+  pix: "PIX",
+  boleto: "Boleto",
+  cartao: "Cartão",
+  transferencia: "Transferência / TED",
+  gateway: "Gateway",
+};
+
+function invoiceStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  if (status === "paid") return "default";
+  if (status === "overdue") return "destructive";
+  if (status === "pending") return "secondary";
+  return "outline";
+}
+
+export function MasterBillingSettings({
+  tenants = [],
+  onBillingChanged,
+}: {
+  tenants?: MasterTenant[];
+  onBillingChanged?: () => Promise<void> | void;
+}) {
+  const [billingTab, setBillingTab] = useState<"faturas" | "gateway">("faturas");
+  const [invoices, setInvoices] = useState<PlatformInvoice[]>([]);
+  const [invoicesBackedByDb, setInvoicesBackedByDb] = useState(true);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [refMonth, setRefMonth] = useState(currentYearMonth);
+  const [statusFiltro, setStatusFiltro] = useState("todas");
+  const [buscaFatura, setBuscaFatura] = useState("");
+  const [runningBatch, setRunningBatch] = useState(false);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newInvoiceTenantId, setNewInvoiceTenantId] = useState("");
+  const [newInvoiceMonth, setNewInvoiceMonth] = useState(currentYearMonth);
+  const [newInvoiceAmount, setNewInvoiceAmount] = useState("");
+  const [newInvoiceDueDate, setNewInvoiceDueDate] = useState(
+    () => new Date().toISOString().slice(0, 10),
+  );
+  const [newInvoiceMethod, setNewInvoiceMethod] = useState("pix");
+  const [newInvoiceNotes, setNewInvoiceNotes] = useState("");
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+
+  const [settleInvoice, setSettleInvoice] = useState<PlatformInvoice | null>(null);
+  const [settleMethod, setSettleMethod] = useState("pix");
+  const [settleRef, setSettleRef] = useState("");
+  const [settleNotes, setSettleNotes] = useState("");
+  const [settleSyncTenant, setSettleSyncTenant] = useState(true);
+  const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
+
   const [configuration, setConfiguration] = useState<BillingConfiguration | null>(null);
   const [form, setForm] = useState<BillingForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
@@ -153,6 +256,186 @@ export function MasterBillingSettings() {
   useEffect(() => {
     void loadConfiguration();
   }, [loadConfiguration]);
+
+  const tenantNameById = useMemo(
+    () => new Map(tenants.map((t) => [t.id, t.trade_name || t.name])),
+    [tenants],
+  );
+
+  const loadInvoices = useCallback(async () => {
+    setInvoicesLoading(true);
+    const { data, error } = await supabase
+      .from("platform_invoices")
+      .select("*")
+      .order("due_date", { ascending: false })
+      .limit(300);
+
+    if (error) {
+      setInvoices([]);
+      setInvoicesBackedByDb(false);
+    } else {
+      setInvoices((data ?? []) as PlatformInvoice[]);
+      setInvoicesBackedByDb(true);
+    }
+    setInvoicesLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadInvoices();
+  }, [loadInvoices]);
+
+  const resumoFaturas = useMemo(() => resumirFinanceiroFaturas(invoices), [invoices]);
+  const faturasFiltradas = useMemo(
+    () =>
+      filtrarFaturasMaster(
+        invoices,
+        { status: statusFiltro, busca: buscaFatura },
+        tenantNameById,
+      ),
+    [invoices, statusFiltro, buscaFatura, tenantNameById],
+  );
+  const blockedCount = useMemo(
+    () => tenants.filter((t) => t.commercial_status === "blocked_billing").length,
+    [tenants],
+  );
+
+  async function gerarMensalidadesMes() {
+    setRunningBatch(true);
+    const { data, error } = await supabase.rpc("generate_monthly_platform_invoices", {
+      p_reference_month: refMonth,
+    });
+    setRunningBatch(false);
+    if (error) {
+      toast.error(error.message || "Não foi possível gerar as mensalidades.");
+      return;
+    }
+    const generated =
+      data && typeof data === "object" && !Array.isArray(data)
+        ? Number((data as { generated_count?: number }).generated_count ?? 0)
+        : 0;
+    toast.success(
+      generated > 0
+        ? `${generated} fatura(s) gerada(s) para ${refMonth}.`
+        : `Nenhuma nova fatura pendente para ${refMonth} (todas já emitidas ou sem mensalidade > 0).`,
+    );
+    await loadInvoices();
+  }
+
+  async function sincronizarVencidas(bloquearInadimplentes: boolean) {
+    setRunningBatch(true);
+    const { data, error } = await supabase.rpc("sync_overdue_platform_invoices", {
+      p_block_delinquent_tenants: bloquearInadimplentes,
+    });
+    setRunningBatch(false);
+    if (error) {
+      toast.error(error.message || "Não foi possível sincronizar faturas vencidas.");
+      return;
+    }
+    const payload = (data && typeof data === "object" && !Array.isArray(data)
+      ? data
+      : {}) as { overdue_marked?: number; tenants_blocked?: number };
+    toast.success(
+      `Sincronização concluída: ${payload.overdue_marked ?? 0} fatura(s) em atraso` +
+        (bloquearInadimplentes
+          ? ` e ${payload.tenants_blocked ?? 0} Secretaria(s) bloqueada(s).`
+          : "."),
+    );
+    await loadInvoices();
+    if (bloquearInadimplentes) await onBillingChanged?.();
+  }
+
+  function abrirNovaFatura() {
+    const defaultTenant = tenants.find((t) => t.commercial_status === "active") ?? tenants[0];
+    setNewInvoiceTenantId(defaultTenant?.id ?? "");
+    setNewInvoiceMonth(refMonth);
+    setNewInvoiceAmount(defaultTenant ? String(Number(defaultTenant.monthly_fee ?? 0)) : "");
+    setNewInvoiceDueDate(new Date().toISOString().slice(0, 10));
+    setNewInvoiceMethod("pix");
+    setNewInvoiceNotes("");
+    setCreateOpen(true);
+  }
+
+  async function criarFaturaAvulsa(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newInvoiceTenantId) {
+      toast.error("Selecione a Secretaria.");
+      return;
+    }
+    const amount = Number(newInvoiceAmount.replace(",", "."));
+    if (!Number.isFinite(amount) || amount < 0) {
+      toast.error("Informe um valor válido.");
+      return;
+    }
+    setCreatingInvoice(true);
+    const { error } = await supabase.rpc("create_platform_invoice", {
+      p_tenant_id: newInvoiceTenantId,
+      p_reference_month: newInvoiceMonth,
+      p_amount: amount,
+      p_due_date: newInvoiceDueDate,
+      p_payment_method: newInvoiceMethod,
+      p_notes: newInvoiceNotes.trim() || null,
+    });
+    setCreatingInvoice(false);
+    if (error) {
+      toast.error(error.message || "Não foi possível criar a fatura.");
+      return;
+    }
+    toast.success("Fatura emitida com sucesso.");
+    setCreateOpen(false);
+    await loadInvoices();
+  }
+
+  function abrirBaixaPagamento(invoice: PlatformInvoice) {
+    setSettleInvoice(invoice);
+    setSettleMethod(invoice.payment_method || "pix");
+    setSettleRef(invoice.external_reference ?? "");
+    setSettleNotes(invoice.notes ?? "");
+    setSettleSyncTenant(true);
+  }
+
+  async function confirmarBaixaPagamento(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settleInvoice) return;
+    setUpdatingInvoiceId(settleInvoice.id);
+    const { error } = await supabase.rpc("update_platform_invoice_status", {
+      p_invoice_id: settleInvoice.id,
+      p_status: "paid",
+      p_payment_method: settleMethod,
+      p_external_reference: settleRef.trim() || null,
+      p_notes: settleNotes.trim() || null,
+      p_sync_tenant_status: settleSyncTenant,
+    });
+    setUpdatingInvoiceId(null);
+    if (error) {
+      toast.error(error.message || "Não foi possível registrar a baixa da fatura.");
+      return;
+    }
+    toast.success("Pagamento confirmado e histórico atualizado.");
+    setSettleInvoice(null);
+    await loadInvoices();
+    await onBillingChanged?.();
+  }
+
+  async function alterarStatusFatura(invoice: PlatformInvoice, nextStatus: "overdue" | "cancelled") {
+    setUpdatingInvoiceId(invoice.id);
+    const { error } = await supabase.rpc("update_platform_invoice_status", {
+      p_invoice_id: invoice.id,
+      p_status: nextStatus,
+      p_sync_tenant_status: nextStatus === "overdue",
+    });
+    setUpdatingInvoiceId(null);
+    if (error) {
+      toast.error(error.message || "Não foi possível atualizar o status da fatura.");
+      return;
+    }
+    toast.success(
+      nextStatus === "overdue"
+        ? "Fatura marcada em atraso e inadimplência sincronizada."
+        : "Fatura cancelada.",
+    );
+    await loadInvoices();
+    if (nextStatus === "overdue") await onBillingChanged?.();
+  }
 
   const saveConfiguration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -270,23 +553,298 @@ export function MasterBillingSettings() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Conta de recebimento da plataforma
-          </h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Cobrança, Faturas e Gateway</h2>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Cadastre a conta que futuramente receberá as mensalidades das Secretarias. O provedor
-            permanece à sua escolha e pode ser vinculado aqui pelo Painel Master.
+            Gere mensalidades por competência, acompanhe baixas de pagamento e controle a
+            inadimplência das Secretarias ou configure a conta do gateway de pagamento.
           </p>
         </div>
-        <Button variant="outline" onClick={() => void loadConfiguration()} disabled={loading}>
-          {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Atualizar
-        </Button>
       </div>
+
+      <Tabs
+        value={billingTab}
+        onValueChange={(value) => setBillingTab(value as "faturas" | "gateway")}
+        className="space-y-6"
+      >
+        <TabsList>
+          <TabsTrigger value="faturas" className="gap-2">
+            <Receipt className="h-4 w-4" aria-hidden />
+            Faturas e inadimplência
+          </TabsTrigger>
+          <TabsTrigger value="gateway" className="gap-2">
+            <CreditCard className="h-4 w-4" aria-hidden />
+            Gateway e credenciais (Cofre)
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="faturas" className="space-y-6">
+          {!invoicesBackedByDb && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Aguardando migration de faturas no banco</AlertTitle>
+              <AlertDescription>
+                Para ativar a geração de mensalidades e baixas no Supabase, aplique a migration SQL{" "}
+                <code>20261124140000_platform_invoices_and_billing_cycle.sql</code> no projeto.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Recebido (Pagas)
+                </CardTitle>
+                <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{formatMoney(resumoFaturas.totalPaid)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {resumoFaturas.countPaid} fatura(s) quitada(s)
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  A receber (Pendentes)
+                </CardTitle>
+                <CalendarClock className="h-4 w-4 text-muted-foreground" aria-hidden />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{formatMoney(resumoFaturas.totalPending)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {resumoFaturas.countPending} fatura(s) em aberto
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Em atraso (Vencidas)
+                </CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold text-destructive">
+                  {formatMoney(resumoFaturas.totalOverdue)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {resumoFaturas.countOverdue} fatura(s) vencida(s)
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Bloqueados por cobrança
+                </CardTitle>
+                <Ban className="h-4 w-4 text-muted-foreground" aria-hidden />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{blockedCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  reativação automática ao dar baixa
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border bg-card p-4">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="billing-ref-month" className="text-xs">
+                  Competência
+                </Label>
+                <Input
+                  id="billing-ref-month"
+                  type="month"
+                  value={refMonth}
+                  onChange={(e) => setRefMonth(e.target.value)}
+                  className="h-9 w-[160px]"
+                />
+              </div>
+              <Button
+                onClick={() => void gerarMensalidadesMes()}
+                disabled={runningBatch || !invoicesBackedByDb}
+              >
+                {runningBatch && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Gerar mensalidades do mês
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void sincronizarVencidas(false)}
+                disabled={runningBatch || !invoicesBackedByDb}
+              >
+                Verificar vencidas
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void sincronizarVencidas(true)}
+                disabled={runningBatch || !invoicesBackedByDb}
+              >
+                Bloquear inadimplentes
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={abrirNovaFatura}
+                disabled={!invoicesBackedByDb || tenants.length === 0}
+              >
+                <FilePlus2 className="mr-2 h-4 w-4" aria-hidden />
+                Nova fatura avulsa
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => void loadInvoices()}
+                disabled={invoicesLoading}
+                aria-label="Atualizar faturas"
+              >
+                <RefreshCw className={`h-4 w-4 ${invoicesLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1 max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={buscaFatura}
+                onChange={(e) => setBuscaFatura(e.target.value)}
+                placeholder="Buscar por Secretaria, referência ou mês..."
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFiltro} onValueChange={setStatusFiltro}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todos os status</SelectItem>
+                <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="overdue">Em atraso</SelectItem>
+                <SelectItem value="paid">Pagas</SelectItem>
+                <SelectItem value="cancelled">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Secretaria</TableHead>
+                  <TableHead>Competência</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Forma / Ref.</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {faturasFiltradas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                      {invoices.length === 0
+                        ? "Nenhuma fatura emitida ainda. Clique em 'Gerar mensalidades do mês' ou 'Nova fatura avulsa'."
+                        : "Nenhuma fatura corresponde aos filtros selecionados."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  faturasFiltradas.map((inv) => {
+                    const busy = updatingInvoiceId === inv.id;
+                    return (
+                      <TableRow key={inv.id}>
+                        <TableCell className="font-medium">
+                          {tenantNameById.get(inv.tenant_id) ?? inv.tenant_id}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{inv.reference_month}</TableCell>
+                        <TableCell className="tabular-nums">{formatShortDate(inv.due_date)}</TableCell>
+                        <TableCell className="tabular-nums font-medium">
+                          {formatMoney(inv.amount)}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {PAYMENT_METHOD_LABELS[inv.payment_method] ?? inv.payment_method}
+                          {inv.external_reference ? ` · ${inv.external_reference}` : ""}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={invoiceStatusVariant(inv.status)}>
+                            {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            {(inv.status === "pending" || inv.status === "overdue") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  disabled={busy}
+                                  onClick={() => abrirBaixaPagamento(inv)}
+                                >
+                                  Dar baixa
+                                </Button>
+                                {inv.status === "pending" && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={busy}
+                                    onClick={() => void alterarStatusFatura(inv, "overdue")}
+                                  >
+                                    Atraso
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={busy}
+                                  onClick={() => void alterarStatusFatura(inv, "cancelled")}
+                                >
+                                  Cancelar
+                                </Button>
+                              </>
+                            )}
+                            {inv.status === "paid" && (
+                              <span className="text-xs text-muted-foreground">
+                                Pago em {formatDate(inv.paid_at)}
+                              </span>
+                            )}
+                            {inv.status === "cancelled" && (
+                              <span className="text-xs text-muted-foreground">Cancelada</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="gateway" className="space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold tracking-tight">
+                Conta de recebimento da plataforma
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                Cadastre as credenciais do provedor (Mercado Pago, Stripe ou outro) no Supabase
+                Vault para futura automatização de links e webhooks.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => void loadConfiguration()} disabled={loading}>
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Atualizar
+            </Button>
+          </div>
 
       <Alert>
         <LockKeyhole className="h-4 w-4" />
@@ -594,9 +1152,189 @@ export function MasterBillingSettings() {
         <AlertDescription>
           O cadastro aceita Mercado Pago, Stripe ou outro provedor. A integração de API, validação
           de credenciais, webhooks, planos, assinaturas e recebimento de mensalidades será feita
-          depois que você escolher o serviço. Até lá, o sistema mantém os pagamentos desligados.
+          depois que você escolher o serviço. Até lá, você já pode controlar faturas e baixas na
+          aba Faturas e inadimplência.
         </AlertDescription>
       </Alert>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Emitir fatura avulsa</DialogTitle>
+            <DialogDescription>
+              Registre uma mensalidade ou cobrança manual vinculada a uma Secretaria.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={criarFaturaAvulsa} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Secretaria</Label>
+              <Select
+                value={newInvoiceTenantId}
+                onValueChange={(value) => {
+                  setNewInvoiceTenantId(value);
+                  const found = tenants.find((t) => t.id === value);
+                  if (found) setNewInvoiceAmount(String(Number(found.monthly_fee ?? 0)));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a Secretaria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.trade_name || t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-inv-month">Competência</Label>
+                <Input
+                  id="new-inv-month"
+                  type="month"
+                  value={newInvoiceMonth}
+                  onChange={(e) => setNewInvoiceMonth(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-inv-due">Vencimento</Label>
+                <Input
+                  id="new-inv-due"
+                  type="date"
+                  value={newInvoiceDueDate}
+                  onChange={(e) => setNewInvoiceDueDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-inv-amount">Valor (R$)</Label>
+                <Input
+                  id="new-inv-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newInvoiceAmount}
+                  onChange={(e) => setNewInvoiceAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Forma prevista</Label>
+                <Select value={newInvoiceMethod} onValueChange={setNewInvoiceMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PAYMENT_METHOD_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-inv-notes">Observações</Label>
+              <Textarea
+                id="new-inv-notes"
+                rows={2}
+                value={newInvoiceNotes}
+                onChange={(e) => setNewInvoiceNotes(e.target.value)}
+                placeholder="Ex.: Empenho nº, parcela de implantação..."
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={creatingInvoice}>
+                {creatingInvoice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Emitir fatura
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(settleInvoice)} onOpenChange={(open) => !open && setSettleInvoice(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar recebimento</DialogTitle>
+            <DialogDescription>
+              {settleInvoice
+                ? `${tenantNameById.get(settleInvoice.tenant_id) ?? "Secretaria"} · ${settleInvoice.reference_month} (${formatMoney(settleInvoice.amount)})`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={confirmarBaixaPagamento} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Meio de pagamento</Label>
+                <Select value={settleMethod} onValueChange={setSettleMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PAYMENT_METHOD_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="settle-ref">Comprovante / Referência</Label>
+                <Input
+                  id="settle-ref"
+                  value={settleRef}
+                  onChange={(e) => setSettleRef(e.target.value)}
+                  placeholder="ID PIX, boleto ou nota"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="settle-notes">Observações</Label>
+              <Textarea
+                id="settle-notes"
+                rows={2}
+                value={settleNotes}
+                onChange={(e) => setSettleNotes(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label htmlFor="settle-reactivate" className="cursor-pointer">
+                  Reativar Secretaria automaticamente
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Libera o acesso caso esteja bloqueada por cobrança e sem outras faturas vencidas.
+                </p>
+              </div>
+              <Switch
+                id="settle-reactivate"
+                checked={settleSyncTenant}
+                onCheckedChange={setSettleSyncTenant}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setSettleInvoice(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={Boolean(updatingInvoiceId)}>
+                {updatingInvoiceId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirmar pagamento
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
