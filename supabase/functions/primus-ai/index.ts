@@ -105,7 +105,7 @@ function featureInstructions(feature: FeatureKey) {
     price_research:
       "Apoie a análise de preços sem criar cotações nem substituir cálculos do sistema. Não recomende homologação como decisão final. Aponte amostras incomparáveis, ausentes ou que exigem justificativa.",
     supplier_documents:
-      "Ajude a identificar campos e validade informados pelo usuário. Não declare habilitação, regularidade jurídica ou sanitária sem verificação oficial e conferência humana.",
+      "Apoie a análise cadastral, verificação de certidões, regularidade e habilitação do fornecedor. Destaque pendências, validades expiradas, sanções ou divergências. Prepare minutas orientativas de parecer conclusivo ou de solicitação de complementação para revisão do servidor. Nunca declare homologação ou sanção definitiva de forma autônoma; toda decisão é exclusiva da autoridade competente.",
     contract_monitoring:
       "Resuma vigência e providências com base nos registros fornecidos. Não decida prorrogação, reajuste, penalidade ou alteração contratual.",
     delivery_receiving:
@@ -215,19 +215,47 @@ async function collectContext(
       .maybeSingle();
     if (supplierError || !supplier)
       throw new Error("Fornecedor indisponível para esta sessão ou Secretaria.");
-    const { data: documents, error: documentsError } = await userClient
-      .from("supplier_documents")
-      .select("title,document_type,issue_date,expires_at,status")
-      .eq("tenant_id", tenantId)
-      .eq("supplier_id", recordId)
-      .order("expires_at", { ascending: true })
-      .limit(100);
-    if (documentsError) throw new Error("Documentos do fornecedor indisponíveis para esta sessão.");
+    const [docsResult, sanctionsResult, homologationsResult, regularityResult] = await Promise.all([
+      userClient
+        .from("supplier_documents")
+        .select("title,document_type,issue_date,expires_at,status")
+        .eq("tenant_id", tenantId)
+        .eq("supplier_id", recordId)
+        .order("expires_at", { ascending: true })
+        .limit(100),
+      userClient
+        .from("supplier_sanctions")
+        .select("measure,reason,legal_basis,start_date,end_date,status")
+        .eq("tenant_id", tenantId)
+        .eq("supplier_id", recordId)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      userClient
+        .from("supplier_homologations")
+        .select("status,category,scope_description,conclusion_status,conclusion_notes,opened_at")
+        .eq("tenant_id", tenantId)
+        .eq("supplier_id", recordId)
+        .order("opened_at", { ascending: false })
+        .limit(10),
+      userClient
+        .from("supplier_regularity_checks")
+        .select("source_label,status,certificate_number,valid_until,notes,requires_action,checked_at")
+        .eq("tenant_id", tenantId)
+        .eq("supplier_id", recordId)
+        .order("checked_at", { ascending: false })
+        .limit(30),
+    ]);
+
+    if (docsResult.error) throw new Error("Documentos do fornecedor indisponíveis para esta sessão.");
+
     return {
       supplier,
-      documents: documents ?? [],
+      documents: docsResult.data ?? [],
+      sanctions: sanctionsResult.data ?? [],
+      homologations: homologationsResult.data ?? [],
+      regularity_checks: regularityResult.data ?? [],
       notice:
-        "Somente metadados estão disponíveis. Nenhum arquivo ou conteúdo de Storage foi enviado ao modelo.",
+        "Somente metadados e registros oficiais estruturados estão disponíveis. Nenhum arquivo ou conteúdo de Storage privado foi enviado ao modelo.",
     };
   }
 

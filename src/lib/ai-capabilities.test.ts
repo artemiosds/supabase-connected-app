@@ -26,6 +26,7 @@ describe("configuração de recursos da IA", () => {
 
   it("reconhece apenas chaves de capacidade cadastradas", () => {
     expect(isAiFeatureKey("documents")).toBe(true);
+    expect(isAiFeatureKey("supplier_documents")).toBe(true);
     expect(isAiFeatureKey("publish_without_review")).toBe(false);
   });
 });
