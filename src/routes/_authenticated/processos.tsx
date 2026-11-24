@@ -3,6 +3,8 @@ import { BatchPriceApprovalDialog } from "@/components/procurement/batch-price-a
 import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
 import { StageTransitionDialog } from "@/components/procurement/stage-transition-dialog";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import {
   calculateItemTotal,
   UNIDADES_SAUDE_PADRAO,
@@ -4129,6 +4131,17 @@ function NovoProcesso(props: {
     due_date: "",
   };
   const [f, setF] = useState(vazio);
+  const { isOnline, draftAvailable, lastSavedAt, restoreDraft, discardDraft, clearDraft } =
+    useFormDraft({
+      tenantId: props.tenantId,
+      userId: props.userId,
+      formId: "novo_processo",
+      currentData: f,
+      onRestore: (recuperado) => {
+        setF(recuperado);
+        toast.info("Rascunho recuperado com sucesso.");
+      },
+    });
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof typeof vazio) => (v: string) => setF((s) => ({ ...s, [k]: v }));
 
@@ -4160,6 +4173,7 @@ function NovoProcesso(props: {
     }
 
     toast.success("Processo criado com o checklist completo.");
+    clearDraft();
     setF(vazio);
     props.onSalvo(processId);
     props.onFechar();
@@ -4171,6 +4185,13 @@ function NovoProcesso(props: {
         <DialogHeader>
           <DialogTitle>Novo processo de contratação</DialogTitle>
         </DialogHeader>
+        <OfflineDraftBanner
+          isOnline={isOnline}
+          draftDate={draftAvailable?.savedAt}
+          lastSavedAt={lastSavedAt}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
         <form onSubmit={salvar} className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label>Nº do processo *</Label>
