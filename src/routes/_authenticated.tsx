@@ -18,6 +18,7 @@ import {
   LockKeyhole,
   Clock3,
   BarChart3,
+  CalendarClock,
 } from "lucide-react";
 import { SinoAlertas } from "@/components/sino-alertas";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -65,6 +66,13 @@ const itensMenu: {
     icone: Truck,
     grupo: "operacao",
     module: "fornecedores",
+  },
+  {
+    para: "/pca",
+    rotulo: "Plano Anual (PCA)",
+    icone: CalendarClock,
+    grupo: "operacao",
+    module: "processos",
   },
   {
     para: "/processos",
@@ -116,6 +124,7 @@ const itensMenu: {
 
 const moduleByRoute: Array<{ prefix: string; module: CommercialModule }> = [
   { prefix: "/fornecedores", module: "fornecedores" },
+  { prefix: "/pca", module: "processos" },
   { prefix: "/processos", module: "processos" },
   { prefix: "/contratos", module: "contratos" },
   { prefix: "/documentos", module: "documentos" },

@@ -29,6 +29,7 @@ import { Route as AuthenticatedProcessosRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSuporteRouteImport } from './routes/_authenticated/suporte'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
+import { Route as AuthenticatedPcaRouteImport } from './routes/_authenticated/pca'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -133,6 +134,11 @@ const AuthenticatedRelatoriosRoute =
     path: '/relatorios',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedPcaRoute = AuthenticatedPcaRouteImport.update({
+  id: '/pca',
+  path: '/pca',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/suporte': typeof AuthenticatedSuporteRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/pca': typeof AuthenticatedPcaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/suporte': typeof AuthenticatedSuporteRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/pca': typeof AuthenticatedPcaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -416,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/pca': {
+      id: '/_authenticated/pca'
+      path: '/pca'
+      fullPath: '/pca'
+      preLoaderRoute: typeof AuthenticatedPcaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -431,6 +446,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSuporteRoute: typeof AuthenticatedSuporteRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedPcaRoute: typeof AuthenticatedPcaRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -445,6 +461,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSuporteRoute: AuthenticatedSuporteRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedPcaRoute: AuthenticatedPcaRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
