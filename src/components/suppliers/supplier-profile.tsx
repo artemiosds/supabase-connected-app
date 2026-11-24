@@ -37,6 +37,7 @@ import { getSanctionDisplayStatus } from "@/lib/supplier-sanctions";
 import { SupplierHomologationTab } from "./supplier-homologation-tab";
 import { SupplierRegularityPanel } from "./supplier-regularity-panel";
 import { SupplierAiCopilot } from "./supplier-ai-copilot";
+import { SupplierTasksPanel } from "./supplier-tasks-panel";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fornecedor = Tables<"suppliers">;
@@ -531,6 +532,7 @@ export function FichaFornecedor({
                     <TabsTrigger value="documentos">Documentos</TabsTrigger>
                     <TabsTrigger value="homologacao">Homologação e Habilitação</TabsTrigger>
                     <TabsTrigger value="regularidade">Regularidade Oficial</TabsTrigger>
+                    <TabsTrigger value="tarefas">Tarefas e Pendências</TabsTrigger>
                     <TabsTrigger value="ia" className="gap-1 font-medium text-primary">
                       <Sparkles className="h-3.5 w-3.5" /> Copiloto IA
                     </TabsTrigger>
@@ -623,6 +625,14 @@ export function FichaFornecedor({
                       supplierId={fornecedor.id}
                       supplierName={fornecedor.legal_name}
                       supplierCategory={fornecedor.category}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="tarefas" className="space-y-3">
+                    <SupplierTasksPanel
+                      tenantId={tenantId}
+                      supplierId={fornecedor.id}
+                      canEdit={true}
                     />
                   </TabsContent>
 
