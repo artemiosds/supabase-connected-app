@@ -2,6 +2,7 @@ import { PriceMatrixView } from "@/components/procurement/price-matrix-view";
 import { BatchPriceApprovalDialog } from "@/components/procurement/batch-price-approval-dialog";
 import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
+import { StageTransitionDialog } from "@/components/procurement/stage-transition-dialog";
 import {
   calculateItemTotal,
   UNIDADES_SAUDE_PADRAO,
@@ -167,6 +168,21 @@ function Processos() {
     }
   }, []);
   const [dadosAbertos, setDadosAbertos] = useState(false);
+  const [transicaoAberta, setTransicaoAberta] = useState(false);
+  const [totalItensProcurement, setTotalItensProcurement] = useState(0);
+  useEffect(() => {
+    if (!abertoId || !selecionado?.id) {
+      setTotalItensProcurement(0);
+      return;
+    }
+    db.from("procurement_items")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", selecionado.id)
+      .eq("process_id", abertoId)
+      .then(({ count }) => {
+        setTotalItensProcurement(count ?? 0);
+      });
+  }, [abertoId, selecionado?.id, dadosAbertos]);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
   const [filtroEtapa, setFiltroEtapa] = useState<"todas" | EtapaId>("todas");
@@ -760,7 +776,7 @@ function Processos() {
                   <ChevronLeft className="h-4 w-4" /> Devolver
                 </Button>
                 {proximaEtapa(aberto.stage) ? (
-                  <Button onClick={() => moverEtapa(aberto, proximaEtapa(aberto.stage))}>
+                  <Button onClick={() => setTransicaoAberta(true)}>
                     Avançar etapa <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
@@ -775,14 +791,43 @@ function Processos() {
       </Dialog>
 
       {aberto && (
-        <DadosEstruturados
-          aberto={dadosAbertos}
-          onFechar={() => setDadosAbertos(false)}
-          tenantId={selecionado.id}
-          processId={aberto.id}
-          processNumber={aberto.number}
-          userId={userId}
-        />
+        <>
+          <DadosEstruturados
+            aberto={dadosAbertos}
+            onFechar={() => setDadosAbertos(false)}
+            tenantId={selecionado.id}
+            processId={aberto.id}
+            processNumber={aberto.number}
+            userId={userId}
+          />
+          <StageTransitionDialog
+            open={transicaoAberta}
+            onOpenChange={setTransicaoAberta}
+            processo={aberto}
+            itensChecklist={itens.filter((item) => item.process_id === aberto.id)}
+            totalItensProcesso={totalItensProcurement}
+            onConfirm={async ({ destino, responsible_name, due_date }) => {
+              const { error } = await db
+                .from("procurement_processes")
+                .update({
+                  stage: destino,
+                  responsible_name,
+                  due_date,
+                  updated_by: userId,
+                })
+                .eq("id", aberto.id)
+                .eq("tenant_id", selecionado?.id ?? "");
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+              const nomeProxima = ETAPAS.find((e) => e.id === destino)?.nome ?? destino;
+              toast.success(`Processo avançado para ${nomeProxima} com sucesso.`);
+              setTransicaoAberta(false);
+              void carregar();
+            }}
+          />
+        </>
       )}
     </div>
   );
