@@ -143,3 +143,5 @@ export async function exportarXlsx<Row>(
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
+
+export const exportToXlsx = exportarXlsx;

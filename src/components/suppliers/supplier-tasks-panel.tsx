@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   listarTarefasFornecedor,
   criarTarefa,
@@ -67,7 +67,6 @@ export function SupplierTasksPanel({
   supplierId,
   canEdit,
 }: SupplierTasksPanelProps) {
-  const { toast } = useToast();
   const [tasks, setTasks] = useState<SupplierPendingTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
@@ -99,15 +98,13 @@ export function SupplierTasksPanel({
       setTasks(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      toast({
-        title: "Erro ao carregar pendências",
+      toast.error("Erro ao carregar pendências", {
         description: msg,
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [tenantId, supplierId, filterStatus, filterPriority, toast]);
+  }, [tenantId, supplierId, filterStatus, filterPriority]);
 
   useEffect(() => {
     carregarTarefas();
@@ -115,10 +112,8 @@ export function SupplierTasksPanel({
 
   const handleCriarTarefa = async () => {
     if (!newTitle.trim()) {
-      toast({
-        title: "Título obrigatório",
+      toast.error("Título obrigatório", {
         description: "Por favor informe o título da tarefa.",
-        variant: "destructive",
       });
       return;
     }
@@ -135,8 +130,7 @@ export function SupplierTasksPanel({
         due_date: newDueDate || undefined,
       });
 
-      toast({
-        title: "Tarefa registrada",
+      toast.success("Tarefa registrada", {
         description: "A pendência foi adicionada à fila com sucesso.",
       });
 
@@ -149,10 +143,8 @@ export function SupplierTasksPanel({
       await carregarTarefas();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao criar tarefa";
-      toast({
-        title: "Falha ao registrar",
+      toast.error("Falha ao registrar", {
         description: msg,
-        variant: "destructive",
       });
     } finally {
       setSavingTask(false);
@@ -171,8 +163,7 @@ export function SupplierTasksPanel({
         action: resolvingAction,
       });
 
-      toast({
-        title: resolvingAction === "resolved" ? "Tarefa resolvida" : "Tarefa dispensada",
+      toast.success(resolvingAction === "resolved" ? "Tarefa resolvida" : "Tarefa dispensada", {
         description: "Status atualizado com sucesso.",
       });
 
@@ -182,10 +173,8 @@ export function SupplierTasksPanel({
       await carregarTarefas();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao resolver tarefa";
-      toast({
-        title: "Falha ao atualizar",
+      toast.error("Falha ao atualizar", {
         description: msg,
-        variant: "destructive",
       });
     } finally {
       setSavingResolution(false);

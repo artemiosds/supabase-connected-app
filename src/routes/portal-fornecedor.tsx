@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData } from "@/lib/contratacao";
 import {
@@ -56,7 +56,6 @@ export const Route = createFileRoute("/portal-fornecedor")({
 
 function PortalFornecedorPage() {
   const { token } = Route.useSearch();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PortalResponseData | null>(null);
@@ -109,10 +108,8 @@ function PortalFornecedorPage() {
 
   const handleEnviarDocumento = async () => {
     if (!docTitle.trim()) {
-      toast({
-        title: "Título obrigatório",
+      toast.error("Título obrigatório", {
         description: "Informe o título do documento.",
-        variant: "destructive",
       });
       return;
     }
@@ -133,8 +130,7 @@ function PortalFornecedorPage() {
       }
 
       setLastProtocol(res.protocol || "PROTO-REGISTRADO");
-      toast({
-        title: "Documento enviado com sucesso!",
+      toast.success("Documento enviado com sucesso!", {
         description: `Protocolo gerado: ${res.protocol}`,
       });
 
@@ -142,10 +138,8 @@ function PortalFornecedorPage() {
       await carregarDados();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro no envio";
-      toast({
-        title: "Falha ao enviar",
+      toast.error("Falha ao enviar", {
         description: msg,
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

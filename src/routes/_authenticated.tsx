@@ -17,6 +17,7 @@ import {
   Workflow,
   LockKeyhole,
   Clock3,
+  BarChart3,
 } from "lucide-react";
 import { SinoAlertas } from "@/components/sino-alertas";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -57,6 +58,7 @@ const itensMenu: {
   module?: CommercialModule;
 }[] = [
   { para: "/painel", rotulo: "Painel", icone: LayoutDashboard, grupo: "visao-geral" },
+  { para: "/relatorios", rotulo: "Relatórios & BI", icone: BarChart3, grupo: "visao-geral" },
   {
     para: "/fornecedores",
     rotulo: "Fornecedores",
