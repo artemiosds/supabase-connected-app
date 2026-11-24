@@ -1150,6 +1150,7 @@ function DadosEstruturados(props: {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [gerandoDossieTce, setGerandoDossieTce] = useState(false);
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [quoteTarget, setQuoteTarget] = useState<string | null>(null);
   const [budgetFormOpen, setBudgetFormOpen] = useState(false);
@@ -2090,6 +2091,193 @@ function DadosEstruturados(props: {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o mapa.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function exportarDossieTceProcesso() {
+    setGerandoDossieTce(true);
+    try {
+      const { buildDocxFromText, generateDocx, docxToModel, renderPdf } =
+        await import("@/lib/docx-engine");
+      const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
+      const {
+        calcularResumoDossieProcesso,
+        buildProcessDossierDocumentText,
+      } = await import("@/lib/process-dossier-pdf-helper");
+
+      const [tenantRes, profileRes, processRes, contractsRes] = await Promise.all([
+        db.from("tenants").select("name").eq("id", props.tenantId).single(),
+        db.from("profiles").select("full_name").eq("id", props.userId).single(),
+        db
+          .from("procurement_processes")
+          .select("number,title,modality,status,created_at,responsible_name")
+          .eq("id", props.processId)
+          .eq("tenant_id", props.tenantId)
+          .single(),
+        db
+          .from("contracts")
+          .select("number,supplier_id,start_date,end_date,total_value,status")
+          .eq("process_id", props.processId)
+          .eq("tenant_id", props.tenantId),
+      ]);
+
+      if (tenantRes.error) throw tenantRes.error;
+      if (profileRes.error) throw profileRes.error;
+      if (processRes.error) throw processRes.error;
+
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantRes.data.name);
+      const supplierById = new Map(suppliers.map((s) => [s.id, s]));
+
+      const fundingSourceLabels: Record<string, string> = {
+        own_resources: "Recursos próprios do ente",
+        federal_transfer: "Transferência da União",
+        state_transfer: "Transferência estadual",
+        other_transfer: "Outra transferência voluntária",
+        mixed: "Recursos de origens mistas",
+      };
+      const fundingSourceLabel =
+        fundingSourceLabels[compliance?.funding_source_type ?? ""] ??
+        compliance?.funding_source_description ??
+        "Recursos Ordinários de Saúde";
+
+      const basisLabel =
+        compliance?.normative_basis === "in65_2021"
+          ? "Lei nº 14.133/2021 & IN SEGES/ME nº 65/2021"
+          : compliance?.normative_basis === "local_regulation" && compliance?.local_regulation_name
+            ? `Lei nº 14.133/2021 & ${compliance.local_regulation_name}`
+            : "Lei Federal nº 14.133/2021";
+
+      const activeItems = items.filter((item) => item.is_active);
+      const currentApprovals = approvals.filter((a) => a.status === "approved");
+
+      const dossierItems = activeItems.map((item) => {
+        const approval = currentApprovals.find((a) => a.procurement_item_id === item.id);
+        const itemQuotes = quotes
+          .filter((q) => q.procurement_item_id === item.id && q.is_active)
+          .sort((a, b) => Number(a.unit_price) - Number(b.unit_price));
+        const winnerQuote =
+          itemQuotes.find((q) => q.selected_for_estimate) ?? itemQuotes[0] ?? null;
+        const winnerSupplier = winnerQuote?.supplier_id
+          ? supplierById.get(winnerQuote.supplier_id)
+          : undefined;
+
+        const estimatedPrice = Number(item.estimated_unit_price) || 0;
+        const approvedPrice =
+          Number(approval?.approved_unit_price) ||
+          Number(winnerQuote?.unit_price) ||
+          estimatedPrice;
+
+        return {
+          itemNumber: item.line_number,
+          description: item.description,
+          unit: item.unit,
+          quantity: Number(item.quantity) || 0,
+          estimatedPrice,
+          approvedPrice,
+          winnerSupplierName:
+            winnerSupplier?.legal_name ?? winnerQuote?.source_name ?? null,
+          winnerSupplierCnpj:
+            winnerSupplier?.cnpj ?? winnerQuote?.source_tax_id ?? null,
+        };
+      });
+
+      const quoteGroupMap = new Map<
+        string,
+        { supplierName: string; supplierCnpj: string; itemIds: Set<string>; totalQuotedValue: number }
+      >();
+      for (const q of quotes.filter((row) => row.is_active)) {
+        const sup = q.supplier_id ? supplierById.get(q.supplier_id) : undefined;
+        const key = q.supplier_id ?? q.source_name;
+        const supplierName = sup?.legal_name ?? q.source_name;
+        const supplierCnpj = sup?.cnpj ?? q.source_tax_id ?? "Não informado";
+        if (!quoteGroupMap.has(key)) {
+          quoteGroupMap.set(key, {
+            supplierName,
+            supplierCnpj,
+            itemIds: new Set(),
+            totalQuotedValue: 0,
+          });
+        }
+        const entry = quoteGroupMap.get(key)!;
+        entry.itemIds.add(q.procurement_item_id);
+        entry.totalQuotedValue += Number(q.total_price ?? Number(q.quantity) * Number(q.unit_price)) || 0;
+      }
+
+      const dossierQuotes = Array.from(quoteGroupMap.values()).map((q) => ({
+        supplierName: q.supplierName,
+        supplierCnpj: q.supplierCnpj,
+        quotedItemsCount: q.itemIds.size,
+        totalQuotedValue: q.totalQuotedValue,
+      }));
+
+      const dossierContracts = (contractsRes.data ?? []).map((c) => {
+        const sup = c.supplier_id ? supplierById.get(c.supplier_id) : undefined;
+        return {
+          number: c.number,
+          supplierName: sup?.legal_name ?? "Fornecedor não identificado",
+          supplierCnpj: sup?.cnpj ?? "Não informado",
+          startDate: c.start_date ? formatarData(c.start_date) : "—",
+          endDate: c.end_date ? formatarData(c.end_date) : "—",
+          totalValue: Number(c.total_value) || 0,
+          status: c.status,
+        };
+      });
+
+      const summary = calcularResumoDossieProcesso(dossierItems, dossierContracts.length);
+      const docText = buildProcessDossierDocumentText({
+        process: {
+          number: processRes.data.number,
+          title: processRes.data.title,
+          modality: MODALIDADES[processRes.data.modality] ?? processRes.data.modality,
+          status: processRes.data.status,
+          createdAt: formatarData(processRes.data.created_at),
+          responsibleName: processRes.data.responsible_name,
+          legalBasis: basisLabel,
+          fundingSource: fundingSourceLabel,
+        },
+        items: dossierItems,
+        quotes: dossierQuotes,
+        contracts: dossierContracts,
+        summary,
+        generatedBy: profileRes.data.full_name || "Servidor Responsável",
+      });
+
+      const generated = await generateDocx({
+        template: await buildDocxFromText(
+          docText,
+          `DOSSIÊ TCE — PROCESSO ${props.processNumber}`,
+          "landscape",
+        ),
+        values: {},
+        items: [],
+        branding,
+      });
+
+      const pdfBytes = await renderPdf(
+        { ...(await docxToModel(generated.bytes)), footerText: [] },
+        {
+          branding,
+          title: `Dossiê TCE — Processo ${props.processNumber}`,
+          useTemplatePageSize: true,
+        },
+      );
+
+      const url = URL.createObjectURL(
+        new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Dossie_TCE_Processo_${props.processNumber.replace(/[^a-zA-Z0-9_-]+/g, "_")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("Dossiê TCE do Processo gerado com sucesso!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível gerar o Dossiê TCE.",
+      );
+    } finally {
+      setGerandoDossieTce(false);
     }
   }
   async function abrirComprovanteCotacao(quote: CotacaoCompra) {
@@ -3654,6 +3842,16 @@ function DadosEstruturados(props: {
               </Button>
               <Button disabled={saving} onClick={() => void exportarMapa("pdf")}>
                 Gerar mapa PDF
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving || gerandoDossieTce}
+                onClick={() => void exportarDossieTceProcesso()}
+                title="Gerar Dossiê Consolidado de Prestação de Contas (TCE) em PDF timbrado"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {gerandoDossieTce ? "Gerando Dossiê..." : "Dossiê TCE do Processo (PDF)"}
               </Button>
               <Button disabled={saving} onClick={() => void exportarMapa("docx")}>
                 Gerar mapa DOCX
