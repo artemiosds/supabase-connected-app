@@ -876,6 +876,9 @@ export function AdminMasterAi() {
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold">{provider.name}</p>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {provider.model}
+                      </Badge>
                       {provider.is_primary && <Badge>IA principal</Badge>}
                       <Badge
                         variant={

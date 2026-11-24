@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { db } from "@/lib/db";
+import { resumirUsoIaPorTenant, type AiTenantUsageSummary } from "@/lib/admin-master-helper";
 import { useAuth } from "@/hooks/use-auth";
 
 export type MasterTenant = Tables<"tenants">;
@@ -32,6 +33,12 @@ export type MasterAuditEvent = Pick<
   Tables<"audit_events">,
   "id" | "actor_id" | "action" | "entity" | "entity_id" | "created_at" | "tenant_id"
 > & { details: Json };
+
+export type AiTenantSummary = {
+  enabled: boolean;
+  operational: boolean;
+  allowedProvidersCount: number;
+};
 
 export type CommercialTenantInput = {
   trade_name: string;
@@ -103,6 +110,9 @@ export function usePlatformAdmin() {
   const [metrics, setMetrics] = useState<MasterMetrics>(METRICS_EMPTY);
   const [candidates, setCandidates] = useState<AdminCandidate[]>([]);
   const [auditEvents, setAuditEvents] = useState<MasterAuditEvent[]>([]);
+  const [activeUsersByTenant, setActiveUsersByTenant] = useState<Record<string, number>>({});
+  const [aiEnabledByTenant, setAiEnabledByTenant] = useState<Record<string, AiTenantSummary>>({});
+  const [aiUsageByTenant, setAiUsageByTenant] = useState<Record<string, AiTenantUsageSummary>>({});
   const userId = session?.user.id;
   const userEmail = session?.user.email;
 
@@ -169,16 +179,21 @@ export function usePlatformAdmin() {
     }
 
     setStaffAccess(null);
-    const [tenantResult, metricsResult, candidatesResult, auditResult] = await Promise.all([
-      db.from("tenants").select("*").order("name", { ascending: true }),
-      db.rpc("get_platform_master_metrics"),
-      db.rpc("list_tenant_admin_candidates"),
-      db
-        .from("audit_events")
-        .select("id, actor_id, action, entity, entity_id, created_at, tenant_id, details")
-        .order("created_at", { ascending: false })
-        .limit(100),
-    ]);
+    const [tenantResult, metricsResult, candidatesResult, auditResult, membershipsResult, aiResult] =
+      await Promise.all([
+        db.from("tenants").select("*").order("name", { ascending: true }),
+        db.rpc("get_platform_master_metrics"),
+        db.rpc("list_tenant_admin_candidates"),
+        db
+          .from("audit_events")
+          .select("id, actor_id, action, entity, entity_id, created_at, tenant_id, details")
+          .order("created_at", { ascending: false })
+          .limit(200),
+        db.from("tenant_memberships").select("tenant_id").eq("status", "active"),
+        db.functions
+          .invoke("platform-ai-configuration", { body: { action: "load" } })
+          .catch(() => ({ data: null, error: null })),
+      ]);
 
     if (tenantResult.error || metricsResult.error || candidatesResult.error || auditResult.error) {
       const firstError =
@@ -186,10 +201,58 @@ export function usePlatformAdmin() {
       setError(firstError?.message ?? "Não foi possível carregar os dados do painel Master.");
     }
 
+    const userCounts: Record<string, number> = {};
+    if (!membershipsResult.error && Array.isArray(membershipsResult.data)) {
+      for (const m of membershipsResult.data) {
+        if (m.tenant_id) userCounts[m.tenant_id] = (userCounts[m.tenant_id] ?? 0) + 1;
+      }
+    }
+
+    const aiSummaryMap: Record<string, AiTenantSummary> = {};
+    let aiUsageMap: Record<string, AiTenantUsageSummary> = {};
+    const aiData = aiResult?.data as
+      | {
+          tenants?: Array<{
+            id: string;
+            enabled?: boolean;
+            operational?: boolean;
+            allowed_provider_ids?: string[];
+          }>;
+          usage?: Array<{
+            tenant_id: string;
+            requests: number;
+            input_tokens: number;
+            output_tokens: number;
+            estimated_cost_usd: number;
+          }>;
+        }
+      | null
+      | undefined;
+
+    if (aiData && !aiResult?.error) {
+      if (Array.isArray(aiData.tenants)) {
+        for (const t of aiData.tenants) {
+          aiSummaryMap[t.id] = {
+            enabled: Boolean(t.enabled),
+            operational: Boolean(t.operational),
+            allowedProvidersCount: Array.isArray(t.allowed_provider_ids)
+              ? t.allowed_provider_ids.length
+              : 0,
+          };
+        }
+      }
+      if (Array.isArray(aiData.usage)) {
+        aiUsageMap = resumirUsoIaPorTenant(aiData.usage);
+      }
+    }
+
     setTenants((tenantResult.data ?? []) as MasterTenant[]);
     setMetrics(metricsResult.error ? METRICS_EMPTY : parseMetrics(metricsResult.data));
     setCandidates((candidatesResult.data ?? []) as AdminCandidate[]);
     setAuditEvents((auditResult.data ?? []) as MasterAuditEvent[]);
+    setActiveUsersByTenant(userCounts);
+    setAiEnabledByTenant(aiSummaryMap);
+    setAiUsageByTenant(aiUsageMap);
     setLoading(false);
   }, [userId, userEmail]);
 
@@ -254,6 +317,9 @@ export function usePlatformAdmin() {
     metrics,
     candidates,
     auditEvents,
+    activeUsersByTenant,
+    aiEnabledByTenant,
+    aiUsageByTenant,
     refresh: load,
     createTenant,
     updateTenant,

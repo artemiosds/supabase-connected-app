@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Activity,
   AlertCircle,
+  BarChart3,
   Building2,
   CalendarClock,
   CheckCircle2,
   CircleDollarSign,
   CreditCard,
   Clock3,
+  Download,
   FileClock,
   FileText,
   LayoutDashboard,
@@ -16,6 +18,7 @@ import {
   LockKeyhole,
   Plus,
   RefreshCw,
+  Search,
   Sparkles,
   ShieldCheck,
   Settings2,
@@ -23,8 +26,25 @@ import {
   Wallet,
   XCircle,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+} from "recharts";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { exportToXlsx } from "@/lib/xlsx-export";
+import {
+  agruparClientesPorPlano,
+  agruparClientesPorStatus,
+  filtrarAuditoriaMaster,
+  filtrarClientesMaster,
+} from "@/lib/admin-master-helper";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
 import { AdminMasterSupport } from "@/components/admin-master-support";
 import { AdminMasterStaff } from "@/components/admin-master-staff";
@@ -256,6 +276,9 @@ function AdminMaster() {
     metrics,
     candidates,
     auditEvents,
+    activeUsersByTenant,
+    aiEnabledByTenant,
+    aiUsageByTenant,
     refresh,
     createTenant,
     updateTenant,
@@ -263,6 +286,12 @@ function AdminMaster() {
   } = usePlatformAdmin();
 
   const [tab, setTab] = useState("visao-geral");
+  const [clienteBusca, setClienteBusca] = useState("");
+  const [clienteStatusFiltro, setClienteStatusFiltro] = useState("todos");
+  const [clientePlanoFiltro, setClientePlanoFiltro] = useState("todos");
+  const [auditoriaBusca, setAuditoriaBusca] = useState("");
+  const [auditoriaAcaoFiltro, setAuditoriaAcaoFiltro] = useState("todas");
+  const [auditoriaEntidadeFiltro, setAuditoriaEntidadeFiltro] = useState("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MasterTenant | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
@@ -303,6 +332,87 @@ function AdminMaster() {
     });
     return counts;
   }, [tenants]);
+
+  const tenantNameById = useMemo(
+    () => new Map(tenants.map((t) => [t.id, t.trade_name || t.name])),
+    [tenants],
+  );
+
+  const clientesFiltrados = useMemo(
+    () =>
+      filtrarClientesMaster(tenants, {
+        busca: clienteBusca,
+        status: clienteStatusFiltro,
+        plano: clientePlanoFiltro,
+      }),
+    [tenants, clienteBusca, clienteStatusFiltro, clientePlanoFiltro],
+  );
+
+  const acoesAuditoria = useMemo(
+    () => Array.from(new Set(auditEvents.map((e) => e.action))).sort(),
+    [auditEvents],
+  );
+
+  const entidadesAuditoria = useMemo(
+    () => Array.from(new Set(auditEvents.map((e) => e.entity))).sort(),
+    [auditEvents],
+  );
+
+  const auditoriaFiltrada = useMemo(
+    () =>
+      filtrarAuditoriaMaster(auditEvents, {
+        busca: auditoriaBusca,
+        acao: auditoriaAcaoFiltro,
+        entidade: auditoriaEntidadeFiltro,
+      }),
+    [auditEvents, auditoriaBusca, auditoriaAcaoFiltro, auditoriaEntidadeFiltro],
+  );
+
+  const dadosGraficoPlano = useMemo(
+    () => agruparClientesPorPlano(tenants, PLAN_LABELS),
+    [tenants],
+  );
+
+  const dadosGraficoStatus = useMemo(
+    () => agruparClientesPorStatus(tenants, STATUS_LABELS),
+    [tenants],
+  );
+
+  async function exportarAuditoriaXlsx() {
+    try {
+      const columns = [
+        {
+          header: "Data/Hora",
+          value: (ev: (typeof auditoriaFiltrada)[number]) =>
+            new Intl.DateTimeFormat("pt-BR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            }).format(new Date(ev.created_at)),
+        },
+        { header: "Ação", value: (ev: (typeof auditoriaFiltrada)[number]) => ev.action },
+        { header: "Entidade", value: (ev: (typeof auditoriaFiltrada)[number]) => ev.entity },
+        {
+          header: "Secretaria",
+          value: (ev: (typeof auditoriaFiltrada)[number]) =>
+            ev.tenant_id ? (tenantNameById.get(ev.tenant_id) ?? ev.tenant_id) : "Global",
+        },
+        {
+          header: "Identificador",
+          value: (ev: (typeof auditoriaFiltrada)[number]) => ev.entity_id ?? "—",
+        },
+        {
+          header: "Ator",
+          value: (ev: (typeof auditoriaFiltrada)[number]) => ev.actor_id ?? "Sistema",
+        },
+      ];
+      await exportToXlsx("auditoria-global-primus", columns, auditoriaFiltrada);
+      toast.success("Auditoria global exportada em XLSX.");
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível exportar a auditoria.",
+      );
+    }
+  }
 
   function abrirNovoCliente() {
     setEditing(null);
@@ -570,461 +680,712 @@ function AdminMaster() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 md:px-8 md:py-8">
+      <main className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-8">
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" aria-hidden />
             <AlertTitle>Alguns dados não puderam ser carregados</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-          <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
-            <TabsTrigger value="visao-geral">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Visão geral
-            </TabsTrigger>
-            <TabsTrigger value="clientes">
-              <Building2 className="mr-2 h-4 w-4" />
-              Clientes
-            </TabsTrigger>
-            <TabsTrigger value="planos">
-              <Wallet className="mr-2 h-4 w-4" />
-              Planos
-            </TabsTrigger>
-            <TabsTrigger value="cobranca">
-              <CreditCard className="mr-2 h-4 w-4" />
-              Cobrança
-            </TabsTrigger>
-            <TabsTrigger value="configuracoes">
-              <Settings2 className="mr-2 h-4 w-4" />
-              Configuração técnica
-            </TabsTrigger>
-            <TabsTrigger value="ia">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Inteligência Artificial
-            </TabsTrigger>
-            <TabsTrigger value="metricas">
-              <Activity className="mr-2 h-4 w-4" />
-              Métricas
-            </TabsTrigger>
-            <TabsTrigger value="auditoria">
-              <FileClock className="mr-2 h-4 w-4" />
-              Auditoria global
-            </TabsTrigger>
-            <TabsTrigger value="equipe-interna">
-              <Users className="mr-2 h-4 w-4" />
-              Equipe Interna
-            </TabsTrigger>
-            <TabsTrigger value="suporte">
-              <Users className="mr-2 h-4 w-4" />
-              Equipe de Suporte
-            </TabsTrigger>
-          </TabsList>
+        <Tabs
+          value={tab}
+          onValueChange={setTab}
+          className="grid gap-6 lg:grid-cols-[240px_1fr] lg:items-start"
+        >
+          {/* Navegação mobile compacta */}
+          <div className="lg:hidden">
+            <Label htmlFor="master-nav-mobile" className="sr-only">
+              Seção do Painel Master
+            </Label>
+            <Select value={tab} onValueChange={setTab}>
+              <SelectTrigger id="master-nav-mobile" className="w-full bg-card">
+                <SelectValue placeholder="Selecione a área" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="visao-geral">Dashboard Executivo</SelectItem>
+                <SelectItem value="clientes">Clientes e Secretarias</SelectItem>
+                <SelectItem value="planos">Planos Comerciais</SelectItem>
+                <SelectItem value="cobranca">Cobrança e Gateway</SelectItem>
+                <SelectItem value="ia">Inteligência Artificial</SelectItem>
+                <SelectItem value="configuracoes">Configuração Técnica</SelectItem>
+                <SelectItem value="auditoria">Auditoria Global</SelectItem>
+                <SelectItem value="equipe-interna">Equipe Interna</SelectItem>
+                <SelectItem value="suporte">Equipe de Suporte</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <TabsContent value="visao-geral" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Visão executiva</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Acompanhamento comercial e operacional de toda a plataforma.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="MRR estimado"
-                value={money(metrics.mrr_estimated)}
-                subtitle="Clientes ativos e adimplentes"
-                icon={CircleDollarSign}
-              />
-              <MetricCard
-                title="Clientes ativos"
-                value={String(metrics.active_clients)}
-                subtitle="Secretarias em operação"
-                icon={Building2}
-              />
-              <MetricCard
-                title="Em demonstração"
-                value={String(metrics.trial_clients)}
-                subtitle={`${metrics.trials_expiring_7d} vencem nos próximos 7 dias`}
-                icon={Clock3}
-              />
-              <MetricCard
-                title="Bloqueados"
-                value={String(metrics.blocked_clients)}
-                subtitle="Pendência de cobrança"
-                icon={LockKeyhole}
-              />
-            </div>
-            <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Clientes que exigem atenção</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Demonstrações próximas do fim e contas bloqueadas.
-                    </p>
+          {/* Menu lateral organizado do Backoffice SaaS */}
+          <aside className="hidden rounded-xl border bg-card p-3 lg:sticky lg:top-6 lg:block">
+            <nav aria-label="Navegação do Painel Master" className="space-y-5">
+              {[
+                {
+                  grupo: "Visão Executiva",
+                  itens: [
+                    { id: "visao-geral", label: "Dashboard Executivo", icon: LayoutDashboard },
+                  ],
+                },
+                {
+                  grupo: "Comercial & Clientes",
+                  itens: [
+                    { id: "clientes", label: "Clientes e Secretarias", icon: Building2 },
+                    { id: "planos", label: "Planos Comerciais", icon: Wallet },
+                    { id: "cobranca", label: "Cobrança e Gateway", icon: CreditCard },
+                  ],
+                },
+                {
+                  grupo: "IA & Infraestrutura",
+                  itens: [
+                    { id: "ia", label: "Inteligência Artificial", icon: Sparkles },
+                    { id: "configuracoes", label: "Configuração Técnica", icon: Settings2 },
+                  ],
+                },
+                {
+                  grupo: "Governança & Equipes",
+                  itens: [
+                    { id: "auditoria", label: "Auditoria Global", icon: FileClock },
+                    { id: "equipe-interna", label: "Equipe Interna", icon: Users },
+                    { id: "suporte", label: "Equipe de Suporte", icon: Users },
+                  ],
+                },
+              ].map((secao) => (
+                <div key={secao.grupo} className="space-y-1">
+                  <p className="px-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {secao.grupo}
+                  </p>
+                  <div className="space-y-0.5">
+                    {secao.itens.map((item) => {
+                      const Icon = item.icon;
+                      const active = tab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setTab(item.id)}
+                          className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                            active
+                              ? "bg-primary text-primary-foreground font-medium shadow-xs"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Badge variant={trialsExpiring.length ? "destructive" : "secondary"}>
-                    {trialsExpiring.length + metrics.blocked_clients}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {trialsExpiring.map((tenant) => (
-                    <div
-                      key={tenant.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{tenant.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Demonstração termina em {dataCurta(tenant.trial_ends_at)}
-                        </p>
+                </div>
+              ))}
+            </nav>
+          </aside>
+
+          <div className="min-w-0 space-y-6">
+            {/* 1. DASHBOARD EXECUTIVO (Visão Geral + Métricas unificadas com gráficos) */}
+            <TabsContent value="visao-geral" className="mt-0 space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight">Dashboard Executivo</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Visão consolidada comercial, operacional e de uso de toda a plataforma SaaS.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                  title="MRR estimado"
+                  value={money(metrics.mrr_estimated)}
+                  subtitle="Clientes ativos e adimplentes"
+                  icon={CircleDollarSign}
+                />
+                <MetricCard
+                  title="Clientes ativos"
+                  value={String(metrics.active_clients)}
+                  subtitle="Secretarias em operação"
+                  icon={Building2}
+                />
+                <MetricCard
+                  title="Em demonstração"
+                  value={String(metrics.trial_clients)}
+                  subtitle={`${metrics.trials_expiring_7d} vencem nos próximos 7 dias`}
+                  icon={Clock3}
+                />
+                <MetricCard
+                  title="Bloqueados / Suspensos"
+                  value={String(metrics.blocked_clients + metrics.suspended_clients)}
+                  subtitle={`${metrics.blocked_clients} cobrança · ${metrics.suspended_clients} suspensão`}
+                  icon={LockKeyhole}
+                />
+                <MetricCard
+                  title="Contratos"
+                  value={String(metrics.contracts_total)}
+                  subtitle="Volume global registrado"
+                  icon={FileText}
+                />
+                <MetricCard
+                  title="Processos"
+                  value={String(metrics.processes_total)}
+                  subtitle="Volume global registrado"
+                  icon={Activity}
+                />
+                <MetricCard
+                  title="Fornecedores"
+                  value={String(metrics.suppliers_total)}
+                  subtitle="Cadastros nas Secretarias"
+                  icon={Users}
+                />
+                <MetricCard
+                  title="Cancelados / Auditoria"
+                  value={String(metrics.audit_events_total)}
+                  subtitle={`${metrics.cancelled_clients} contas canceladas`}
+                  icon={XCircle}
+                />
+              </div>
+
+              {/* Gráficos Recharts do SaaS */}
+              <div className="grid gap-6 xl:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <BarChart3 className="h-4 w-4 text-primary" />
+                      Distribuição de Clientes por Plano
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {tenants.length === 0 ? (
+                      <p className="py-12 text-center text-sm text-muted-foreground">
+                        Nenhum cliente cadastrado para gerar gráfico.
+                      </p>
+                    ) : (
+                      <div className="h-60 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={dadosGraficoPlano}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                            <XAxis dataKey="nome" tick={{ fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                            <Tooltip
+                              formatter={(val: unknown) => [String(val), "Clientes"]}
+                              contentStyle={{
+                                backgroundColor: "var(--background)",
+                                borderColor: "var(--border)",
+                                fontSize: "12px",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="clientes" radius={[4, 4, 0, 0]} fill="#0f766e" />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                      <Badge variant="secondary">Trial próximo do fim</Badge>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CalendarClock className="h-4 w-4 text-primary" />
+                      Situação Comercial da Base
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {dadosGraficoStatus.length === 0 ? (
+                      <p className="py-12 text-center text-sm text-muted-foreground">
+                        Nenhum dado disponível.
+                      </p>
+                    ) : (
+                      <div className="h-60 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={dadosGraficoStatus}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                            <XAxis dataKey="nome" tick={{ fontSize: 11 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                            <Tooltip
+                              formatter={(val: unknown) => [String(val), "Secretarias"]}
+                              contentStyle={{
+                                backgroundColor: "var(--background)",
+                                borderColor: "var(--border)",
+                                fontSize: "12px",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="quantidade" radius={[4, 4, 0, 0]}>
+                              {dadosGraficoStatus.map((entry, idx) => (
+                                <Cell
+                                  key={entry.status}
+                                  fill={
+                                    entry.status === "active"
+                                      ? "#10b981"
+                                      : entry.status === "trial"
+                                        ? "#0284c7"
+                                        : entry.status === "blocked_billing"
+                                          ? "#ef4444"
+                                          : ["#f59e0b", "#64748b"][idx % 2]
+                                  }
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Clientes que exigem atenção</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Demonstrações próximas do fim e contas bloqueadas.
+                      </p>
                     </div>
-                  ))}
-                  {tenants
-                    .filter((tenant) => tenant.commercial_status === "blocked_billing")
-                    .map((tenant) => (
+                    <Badge variant={trialsExpiring.length ? "destructive" : "secondary"}>
+                      {trialsExpiring.length + metrics.blocked_clients}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {trialsExpiring.map((tenant) => (
                       <div
                         key={tenant.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/20 p-3"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
                       >
                         <div className="min-w-0">
                           <p className="truncate font-medium">{tenant.name}</p>
-                          <p className="text-xs text-muted-foreground">Pendência financeira</p>
+                          <p className="text-xs text-muted-foreground">
+                            Demonstração termina em {dataCurta(tenant.trial_ends_at)}
+                          </p>
                         </div>
-                        <Badge variant="destructive">Bloqueado</Badge>
+                        <Badge variant="secondary">Trial próximo do fim</Badge>
                       </div>
                     ))}
-                  {trialsExpiring.length === 0 && metrics.blocked_clients === 0 && (
-                    <p className="py-8 text-center text-sm text-muted-foreground">
-                      Nenhum cliente exige ação imediata.
-                    </p>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => setTab("clientes")}>
-                    Abrir gestão de clientes
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumo da plataforma</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Volume total já registrado no banco.
-                  </p>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-2xl font-semibold">{metrics.contracts_total}</p>
-                    <p className="text-xs text-muted-foreground">Contratos</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold">{metrics.processes_total}</p>
-                    <p className="text-xs text-muted-foreground">Processos</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold">{metrics.suppliers_total}</p>
-                    <p className="text-xs text-muted-foreground">Fornecedores</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold">{metrics.audit_events_total}</p>
-                    <p className="text-xs text-muted-foreground">Eventos de auditoria</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="clientes" className="space-y-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Clientes e secretarias</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Controle institucional, comercial, cobrança e módulos contratados.
-                </p>
-              </div>
-              <Button onClick={abrirNovoCliente}>
-                <Plus className="mr-2 h-4 w-4" aria-hidden />
-                Novo cliente
-              </Button>
-            </div>
-            <div className="overflow-hidden rounded-xl border bg-card">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Secretaria</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Situação comercial</TableHead>
-                      <TableHead>Mensalidade</TableHead>
-                      <TableHead>Trial</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tenants.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                          Nenhum cliente cadastrado. Cadastre a primeira Secretaria para iniciar a
-                          operação comercial.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      tenants.map((tenant) => (
-                        <TableRow key={tenant.id}>
-                          <TableCell className="min-w-[220px]">
-                            <p className="font-medium">{tenant.trade_name || tenant.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {tenant.municipality || "Município não informado"}
-                              {tenant.state ? ` / ${tenant.state}` : ""}
-                            </p>
-                          </TableCell>
-                          <TableCell>
-                            {PLAN_LABELS[tenant.plan_tier as PlanTier] ?? tenant.plan_tier}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={statusVariant(tenant.commercial_status)}>
-                              {STATUS_LABELS[tenant.commercial_status as CommercialStatus] ??
-                                tenant.commercial_status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{money(Number(tenant.monthly_fee ?? 0))}</TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            {tenant.commercial_status === "trial"
-                              ? dataCurta(tenant.trial_ends_at)
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => abrirEdicao(tenant)}
-                              >
-                                Configurar
-                              </Button>
-                              {tenant.commercial_status === "blocked_billing" ||
-                              tenant.commercial_status === "suspended" ? (
-                                <Button
-                                  size="sm"
-                                  onClick={() => void atualizarStatus(tenant, "active")}
-                                >
-                                  Reativar
-                                </Button>
-                              ) : tenant.commercial_status !== "cancelled" ? (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => void atualizarStatus(tenant, "blocked_billing")}
-                                >
-                                  Bloquear
-                                </Button>
-                              ) : null}
-                              <Select
-                                onValueChange={(value) =>
-                                  void prorrogarTrial(tenant, Number(value))
-                                }
-                              >
-                                <SelectTrigger
-                                  className="h-9 w-[118px]"
-                                  aria-label={`Prorrogar demonstração de ${tenant.name}`}
-                                >
-                                  <SelectValue placeholder="Trial" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="7">+7 dias</SelectItem>
-                                  <SelectItem value="15">+15 dias</SelectItem>
-                                  <SelectItem value="30">+30 dias</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => abrirProvisionamento(tenant)}
-                              >
-                                <Users className="h-4 w-4" aria-hidden />
-                                <span className="sr-only">Adicionar administrador</span>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                    {tenants
+                      .filter((tenant) => tenant.commercial_status === "blocked_billing")
+                      .map((tenant) => (
+                        <div
+                          key={tenant.id}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/20 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{tenant.name}</p>
+                            <p className="text-xs text-muted-foreground">Pendência financeira</p>
+                          </div>
+                          <Badge variant="destructive">Bloqueado</Badge>
+                        </div>
+                      ))}
+                    {trialsExpiring.length === 0 && metrics.blocked_clients === 0 && (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        Nenhum cliente exige ação imediata.
+                      </p>
                     )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="planos" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Planos comerciais</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Distribuição dos clientes por plano cadastrado.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {(["basico", "profissional", "enterprise", "consorcio"] as PlanTier[]).map((plan) => (
-                <Card key={plan}>
-                  <CardHeader>
-                    <CardTitle className="text-base">{PLAN_LABELS[plan]}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-semibold">{planCounts[plan]}</p>
-                    <p className="text-xs text-muted-foreground">clientes neste plano</p>
+                    <Button variant="outline" size="sm" onClick={() => setTab("clientes")}>
+                      Abrir gestão de clientes
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" aria-hidden />
-              <AlertTitle>Planos configuráveis por cliente</AlertTitle>
-              <AlertDescription>
-                O plano e a mensalidade são registrados no cadastro de cada Secretaria. A cobrança
-                ainda é informativa; não há emissão automática de boleto ou integração financeira
-                nesta etapa.
-              </AlertDescription>
-            </Alert>
-          </TabsContent>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resumo operacional</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Indicadores rápidos de adoção e governança.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="text-muted-foreground">Total de Secretarias</span>
+                      <span className="font-semibold tabular-nums">{tenants.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="text-muted-foreground">Usuários ativos nas Secretarias</span>
+                      <span className="font-semibold tabular-nums">
+                        {Object.values(activeUsersByTenant).reduce((a, b) => a + b, 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="text-muted-foreground">Secretarias com IA ativa</span>
+                      <span className="font-semibold tabular-nums">
+                        {Object.values(aiEnabledByTenant).filter((a) => a.enabled).length}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-          <TabsContent value="cobranca" className="space-y-6">
-            <MasterBillingSettings />
-          </TabsContent>
+            {/* 2. CLIENTES E SECRETARIAS */}
+            <TabsContent value="clientes" className="mt-0 space-y-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Clientes e secretarias</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Controle institucional, comercial, usuários ativos, IA e módulos contratados.
+                  </p>
+                </div>
+                <Button onClick={abrirNovoCliente}>
+                  <Plus className="mr-2 h-4 w-4" aria-hidden />
+                  Novo cliente
+                </Button>
+              </div>
 
-          <TabsContent value="configuracoes" className="space-y-6">
-            <AdminMasterConfiguration onOpenBilling={() => setTab("cobranca")} />
-          </TabsContent>
+              {/* Barra de busca e filtros */}
+              <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={clienteBusca}
+                    onChange={(e) => setClienteBusca(e.target.value)}
+                    placeholder="Buscar por Secretaria, município, UF ou CNPJ..."
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={clienteStatusFiltro} onValueChange={setClienteStatusFiltro}>
+                  <SelectTrigger className="w-full sm:w-[190px]">
+                    <SelectValue placeholder="Situação comercial" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as situações</SelectItem>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={clientePlanoFiltro} onValueChange={setClientePlanoFiltro}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="Plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os planos</SelectItem>
+                    {Object.entries(PLAN_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <TabsContent value="ia" className="space-y-6">
-            <AdminMasterAi />
-          </TabsContent>
-
-          <TabsContent value="metricas" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Métricas globais</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Indicadores consolidados do ambiente SaaS.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="MRR estimado"
-                value={money(metrics.mrr_estimated)}
-                subtitle="Soma das mensalidades ativas"
-                icon={CircleDollarSign}
-              />
-              <MetricCard
-                title="Clientes ativos"
-                value={String(metrics.active_clients)}
-                subtitle="Ativos e com instituição ativa"
-                icon={Building2}
-              />
-              <MetricCard
-                title="Demonstrações"
-                value={String(metrics.trial_clients)}
-                subtitle={`${metrics.trials_expiring_7d} vencem em até 7 dias`}
-                icon={CalendarClock}
-              />
-              <MetricCard
-                title="Bloqueados"
-                value={String(metrics.blocked_clients)}
-                subtitle="Bloqueio por cobrança"
-                icon={LockKeyhole}
-              />
-              <MetricCard
-                title="Suspensos"
-                value={String(metrics.suspended_clients)}
-                subtitle="Suspensão comercial ou institucional"
-                icon={AlertCircle}
-              />
-              <MetricCard
-                title="Cancelados"
-                value={String(metrics.cancelled_clients)}
-                subtitle="Contas canceladas ou encerradas"
-                icon={XCircle}
-              />
-              <MetricCard
-                title="Contratos"
-                value={String(metrics.contracts_total)}
-                subtitle="Volume global registrado"
-                icon={FileText}
-              />
-              <MetricCard
-                title="Processos"
-                value={String(metrics.processes_total)}
-                subtitle="Volume global registrado"
-                icon={Activity}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="auditoria" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Auditoria global</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Eventos mais recentes registrados pela plataforma.
-              </p>
-            </div>
-            <div className="overflow-hidden rounded-xl border bg-card">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Evento</TableHead>
-                      <TableHead>Entidade</TableHead>
-                      <TableHead>Identificador</TableHead>
-                      <TableHead>Ator</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditEvents.length === 0 ? (
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                          Nenhum evento registrado.
-                        </TableCell>
+                        <TableHead>Secretaria</TableHead>
+                        <TableHead>Plano</TableHead>
+                        <TableHead>Situação</TableHead>
+                        <TableHead>Usuários</TableHead>
+                        <TableHead>IA</TableHead>
+                        <TableHead>Mensalidade</TableHead>
+                        <TableHead>Trial</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
-                    ) : (
-                      auditEvents.map((event) => (
-                        <TableRow key={event.id}>
-                          <TableCell className="whitespace-nowrap">
-                            {new Intl.DateTimeFormat("pt-BR", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            }).format(new Date(event.created_at))}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={event.action === "ACCESS_DENIED" ? "destructive" : "outline"}
-                            >
-                              {event.action}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{event.entity}</TableCell>
-                          <TableCell className="max-w-[220px] truncate">
-                            {event.entity_id ?? "—"}
-                          </TableCell>
-                          <TableCell className="max-w-[180px] truncate">
-                            {event.actor_id ?? "Sistema"}
+                    </TableHeader>
+                    <TableBody>
+                      {clientesFiltrados.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                            {tenants.length === 0
+                              ? "Nenhum cliente cadastrado. Cadastre a primeira Secretaria para iniciar a operação comercial."
+                              : "Nenhuma Secretaria encontrada para os filtros aplicados."}
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        clientesFiltrados.map((tenant) => {
+                          const activeCount = activeUsersByTenant[tenant.id] ?? 0;
+                          const aiStatus = aiEnabledByTenant[tenant.id];
+                          const nearLimit =
+                            tenant.max_users > 0 && activeCount >= tenant.max_users;
+
+                          return (
+                            <TableRow key={tenant.id}>
+                              <TableCell className="min-w-[210px]">
+                                <p className="font-medium">{tenant.trade_name || tenant.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {tenant.municipality || "Município não informado"}
+                                  {tenant.state ? ` / ${tenant.state}` : ""}
+                                  {tenant.cnpj ? ` · ${formatarCnpj(tenant.cnpj)}` : ""}
+                                </p>
+                              </TableCell>
+                              <TableCell>
+                                {PLAN_LABELS[tenant.plan_tier as PlanTier] ?? tenant.plan_tier}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={statusVariant(tenant.commercial_status)}>
+                                  {STATUS_LABELS[tenant.commercial_status as CommercialStatus] ??
+                                    tenant.commercial_status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                <Badge variant={nearLimit ? "destructive" : "outline"} className="tabular-nums">
+                                  {activeCount} / {tenant.max_users}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setTab("ia")}
+                                  title="Gerenciar Inteligência Artificial"
+                                  className="inline-flex items-center"
+                                >
+                                  <Badge variant={aiStatus?.enabled ? "default" : "secondary"}>
+                                    <Sparkles className="mr-1 h-3 w-3" aria-hidden />
+                                    {aiStatus?.enabled ? "Ativa" : "Inativa"}
+                                  </Badge>
+                                </button>
+                              </TableCell>
+                              <TableCell>{money(Number(tenant.monthly_fee ?? 0))}</TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {tenant.commercial_status === "trial"
+                                  ? dataCurta(tenant.trial_ends_at)
+                                  : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => abrirEdicao(tenant)}
+                                  >
+                                    Configurar
+                                  </Button>
+                                  {tenant.commercial_status === "blocked_billing" ||
+                                  tenant.commercial_status === "suspended" ? (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => void atualizarStatus(tenant, "active")}
+                                    >
+                                      Reativar
+                                    </Button>
+                                  ) : tenant.commercial_status !== "cancelled" ? (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        void atualizarStatus(tenant, "blocked_billing")
+                                      }
+                                    >
+                                      Bloquear
+                                    </Button>
+                                  ) : null}
+                                  <Select
+                                    onValueChange={(value) =>
+                                      void prorrogarTrial(tenant, Number(value))
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      className="h-9 w-[110px]"
+                                      aria-label={`Prorrogar demonstração de ${tenant.name}`}
+                                    >
+                                      <SelectValue placeholder="Trial" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="7">+7 dias</SelectItem>
+                                      <SelectItem value="15">+15 dias</SelectItem>
+                                      <SelectItem value="30">+30 dias</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => abrirProvisionamento(tenant)}
+                                  >
+                                    <Users className="h-4 w-4" aria-hidden />
+                                    <span className="sr-only">Adicionar administrador</span>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="equipe-interna" className="space-y-6">
-            <AdminMasterStaff />
-          </TabsContent>
+            {/* 3. PLANOS COMERCIAIS */}
+            <TabsContent value="planos" className="mt-0 space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight">Planos comerciais</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Distribuição dos clientes e receita ativa por plano cadastrado.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {(["basico", "profissional", "enterprise", "consorcio"] as PlanTier[]).map(
+                  (plan) => {
+                    const mrrPlano = dadosGraficoPlano.find((p) => p.plano === plan)?.mrr ?? 0;
+                    return (
+                      <Card key={plan}>
+                        <CardHeader>
+                          <CardTitle className="text-base">{PLAN_LABELS[plan]}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-1">
+                          <p className="text-3xl font-semibold">{planCounts[plan]}</p>
+                          <p className="text-xs text-muted-foreground">clientes neste plano</p>
+                          <p className="pt-1 text-xs font-medium text-primary">
+                            MRR ativo: {money(mrrPlano)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  },
+                )}
+              </div>
+              <Alert>
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+                <AlertTitle>Planos configuráveis por cliente</AlertTitle>
+                <AlertDescription>
+                  O plano e a mensalidade são registrados no cadastro de cada Secretaria. A cobrança
+                  ainda é informativa; a etapa seguinte de catálogo configurável de planos preencherá
+                  automaticamente mensalidade, usuários e módulos padrão.
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
 
-          <TabsContent value="suporte" className="space-y-6">
-            <AdminMasterSupport tenants={tenants} />
-          </TabsContent>
+            {/* 4. COBRANÇA */}
+            <TabsContent value="cobranca" className="mt-0 space-y-6">
+              <MasterBillingSettings />
+            </TabsContent>
+
+            {/* 5. CONFIGURAÇÕES TÉCNICAS */}
+            <TabsContent value="configuracoes" className="mt-0 space-y-6">
+              <AdminMasterConfiguration onOpenBilling={() => setTab("cobranca")} />
+            </TabsContent>
+
+            {/* 6. INTELIGÊNCIA ARTIFICIAL */}
+            <TabsContent value="ia" className="mt-0 space-y-6">
+              <AdminMasterAi />
+            </TabsContent>
+
+            {/* 7. AUDITORIA GLOBAL */}
+            <TabsContent value="auditoria" className="mt-0 space-y-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Auditoria global</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Eventos recentes registrados pela plataforma ({auditoriaFiltrada.length} exibidos).
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void exportarAuditoriaXlsx()}
+                  disabled={auditoriaFiltrada.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden />
+                  Exportar XLSX
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={auditoriaBusca}
+                    onChange={(e) => setAuditoriaBusca(e.target.value)}
+                    placeholder="Filtrar por ação, entidade, ID ou ator..."
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={auditoriaAcaoFiltro} onValueChange={setAuditoriaAcaoFiltro}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Ação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as ações</SelectItem>
+                    {acoesAuditoria.map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={auditoriaEntidadeFiltro} onValueChange={setAuditoriaEntidadeFiltro}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Entidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as entidades</SelectItem>
+                    {entidadesAuditoria.map((ent) => (
+                      <SelectItem key={ent} value={ent}>
+                        {ent}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Evento</TableHead>
+                        <TableHead>Entidade</TableHead>
+                        <TableHead>Secretaria</TableHead>
+                        <TableHead>Identificador</TableHead>
+                        <TableHead>Ator</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {auditoriaFiltrada.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                            Nenhum evento encontrado para os filtros aplicados.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        auditoriaFiltrada.map((event) => (
+                          <TableRow key={event.id}>
+                            <TableCell className="whitespace-nowrap">
+                              {new Intl.DateTimeFormat("pt-BR", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              }).format(new Date(event.created_at))}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={event.action === "ACCESS_DENIED" ? "destructive" : "outline"}
+                              >
+                                {event.action}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{event.entity}</TableCell>
+                            <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">
+                              {event.tenant_id
+                                ? (tenantNameById.get(event.tenant_id) ?? event.tenant_id)
+                                : "Global"}
+                            </TableCell>
+                            <TableCell className="max-w-[180px] truncate">
+                              {event.entity_id ?? "—"}
+                            </TableCell>
+                            <TableCell className="max-w-[160px] truncate">
+                              {event.actor_id ?? "Sistema"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* 8. EQUIPE INTERNA */}
+            <TabsContent value="equipe-interna" className="mt-0 space-y-6">
+              <AdminMasterStaff />
+            </TabsContent>
+
+            {/* 9. EQUIPE DE SUPORTE */}
+            <TabsContent value="suporte" className="mt-0 space-y-6">
+              <AdminMasterSupport tenants={tenants} />
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
 
@@ -1038,6 +1399,46 @@ function AdminMaster() {
               Dados institucionais e comerciais. O isolamento de dados é aplicado pelo banco SMS2.
             </DialogDescription>
           </DialogHeader>
+          {editing && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3 text-xs">
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <span className="text-muted-foreground">Usuários ativos: </span>
+                  <strong className="tabular-nums">
+                    {activeUsersByTenant[editing.id] ?? 0} / {editing.max_users}
+                  </strong>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">IA: </span>
+                  <Badge
+                    variant={aiEnabledByTenant[editing.id]?.enabled ? "default" : "outline"}
+                    className="text-[11px]"
+                  >
+                    {aiEnabledByTenant[editing.id]?.enabled ? "Habilitada" : "Desligada"}
+                  </Badge>
+                  {aiUsageByTenant[editing.id] && (
+                    <span className="text-muted-foreground tabular-nums">
+                      ({aiUsageByTenant[editing.id].requests} req ·{" "}
+                      {aiUsageByTenant[editing.id].tokens.toLocaleString("pt-BR")} tokens)
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setTab("ia");
+                }}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                Gerenciar IA desta Secretaria
+              </Button>
+            </div>
+          )}
           <form onSubmit={salvarCliente} className="space-y-5">
             <Tabs defaultValue="institucional" className="space-y-4">
               <TabsList>
