@@ -7,11 +7,13 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Building2,
+  FileBadge,
   FileText,
   History,
   Loader2,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +34,12 @@ import {
   diasAteDataIso,
   resumirFichaFornecedor,
   situacaoDocumentoPerfil,
+  rotuloStatusConsolidado360,
+  type HomologacaoPerfil,
+  type RegularidadePerfil,
+  type TarefaPerfil,
 } from "@/lib/supplier-profile";
+import { rotuloStatusHomologacao } from "@/lib/supplier-homologation";
 import { getSanctionDisplayStatus } from "@/lib/supplier-sanctions";
 import { SupplierHomologationTab } from "./supplier-homologation-tab";
 import { SupplierRegularityPanel } from "./supplier-regularity-panel";
@@ -87,6 +94,10 @@ type Sancao = Pick<
   "id" | "measure" | "reason" | "reference_number" | "start_date" | "end_date" | "status"
 >;
 
+type HomologacaoResumo = HomologacaoPerfil & { id: string; category?: string };
+type RegularidadeResumo = RegularidadePerfil & { id: string; source_label?: string; requires_action: boolean };
+type TarefaResumo = TarefaPerfil & { id: string; title?: string };
+
 type EstadoSecao<T> = {
   status: "ready" | "error" | "disabled";
   rows: T[];
@@ -105,6 +116,9 @@ type FichaDados = {
   cotacoesContexto: Cotacoes;
   instrumentos: EstadoSecao<Instrumento>;
   sancoes: EstadoSecao<Sancao>;
+  homologacoes: EstadoSecao<HomologacaoResumo>;
+  regularidades: EstadoSecao<RegularidadeResumo>;
+  tarefas: EstadoSecao<TarefaResumo>;
 };
 
 const SEM_COTACOES: Cotacoes = {
@@ -161,7 +175,7 @@ function Metrica({
   detail,
 }: {
   label: string;
-  value: number | null;
+  value: number | string | null;
   detail?: string | undefined;
 }) {
   return (
@@ -314,50 +328,85 @@ export function FichaFornecedor({
       };
 
     async function carregar() {
-      const [documentosResult, cotacoesResult, instrumentosResult, sancoesResult] =
-        await Promise.allSettled([
-          documentosEnabled
-            ? carregarTodasAsPaginas<Documento>((start, end) =>
-                db
-                  .from("supplier_documents")
-                  .select(
-                    "id,title,document_type,status,issue_date,expires_at,notes,storage_path,external_url,storage_provider,file_name",
-                  )
-                  .eq("tenant_id", tenantId)
-                  .eq("supplier_id", supplierId!)
-                  .order("expires_at", { ascending: true, nullsFirst: false })
-                  .order("id")
-                  .range(start, end),
-              )
-            : Promise.resolve(null),
-          processosEnabled
-            ? buscarCotacoesVinculadas(tenantId, supplierId!)
-            : Promise.resolve(null),
-          contratosEnabled
-            ? carregarTodasAsPaginas<Instrumento>((start, end) =>
-                db
-                  .from("contracts")
-                  .select(
-                    "id,number,instrument_type,object,status,start_date,end_date,total_value,process_id",
-                  )
-                  .eq("tenant_id", tenantId)
-                  .eq("supplier_id", supplierId!)
-                  .order("end_date", { ascending: true })
-                  .order("id")
-                  .range(start, end),
-              )
-            : Promise.resolve(null),
-          carregarTodasAsPaginas<Sancao>((start, end) =>
-            db
-              .from("supplier_sanctions")
-              .select("id,measure,reason,reference_number,start_date,end_date,status")
-              .eq("tenant_id", tenantId)
-              .eq("supplier_id", supplierId!)
-              .order("start_date", { ascending: false })
-              .order("id")
-              .range(start, end),
-          ),
-        ]);
+      const [
+        documentosResult,
+        cotacoesResult,
+        instrumentosResult,
+        sancoesResult,
+        homologacoesResult,
+        regularidadesResult,
+        tarefasResult,
+      ] = await Promise.allSettled([
+        documentosEnabled
+          ? carregarTodasAsPaginas<Documento>((start, end) =>
+              db
+                .from("supplier_documents")
+                .select(
+                  "id,title,document_type,status,issue_date,expires_at,notes,storage_path,external_url,storage_provider,file_name",
+                )
+                .eq("tenant_id", tenantId)
+                .eq("supplier_id", supplierId!)
+                .order("expires_at", { ascending: true, nullsFirst: false })
+                .order("id")
+                .range(start, end),
+            )
+          : Promise.resolve(null),
+        processosEnabled
+          ? buscarCotacoesVinculadas(tenantId, supplierId!)
+          : Promise.resolve(null),
+        contratosEnabled
+          ? carregarTodasAsPaginas<Instrumento>((start, end) =>
+              db
+                .from("contracts")
+                .select(
+                  "id,number,instrument_type,object,status,start_date,end_date,total_value,process_id",
+                )
+                .eq("tenant_id", tenantId)
+                .eq("supplier_id", supplierId!)
+                .order("end_date", { ascending: true })
+                .order("id")
+                .range(start, end),
+            )
+          : Promise.resolve(null),
+        carregarTodasAsPaginas<Sancao>((start, end) =>
+          db
+            .from("supplier_sanctions")
+            .select("id,measure,reason,reference_number,start_date,end_date,status")
+            .eq("tenant_id", tenantId)
+            .eq("supplier_id", supplierId!)
+            .order("start_date", { ascending: false })
+            .order("id")
+            .range(start, end),
+        ),
+        carregarTodasAsPaginas<HomologacaoResumo>((start, end) =>
+          db
+            .from("supplier_homologations")
+            .select("id,status,conclusion_status,concluded_at,created_at,category")
+            .eq("tenant_id", tenantId)
+            .eq("supplier_id", supplierId!)
+            .order("created_at", { ascending: false })
+            .range(start, end),
+        ),
+        carregarTodasAsPaginas<RegularidadeResumo>((start, end) =>
+          db
+            .from("supplier_regularity_checks")
+            .select("id,source,source_label,status,valid_until,requires_action")
+            .eq("tenant_id", tenantId)
+            .eq("supplier_id", supplierId!)
+            .order("created_at", { ascending: false })
+            .range(start, end),
+        ),
+        carregarTodasAsPaginas<TarefaResumo>((start, end) =>
+          db
+            .from("supplier_pending_tasks")
+            .select("id,task_type,priority,status,due_date")
+            .eq("tenant_id", tenantId)
+            .eq("supplier_id", supplierId!)
+            .in("status", ["open", "in_progress"])
+            .order("created_at", { ascending: false })
+            .range(start, end),
+        ),
+      ]);
 
       if (!active) return;
       const cotacoesContexto =
@@ -374,6 +423,9 @@ export function FichaFornecedor({
         cotacoesContexto,
         instrumentos: secao(instrumentosResult, contratosEnabled),
         sancoes: secao(sancoesResult, true),
+        homologacoes: secao(homologacoesResult, true),
+        regularidades: secao(regularidadesResult, true),
+        tarefas: secao(tarefasResult, true),
       });
     }
 
@@ -395,8 +447,21 @@ export function FichaFornecedor({
   const quoteRows = dados?.cotacoes.rows ?? [];
   const instrumentos = dados?.instrumentos.rows ?? [];
   const sancoes = dados?.sancoes.rows ?? [];
+  const homologacoes = dados?.homologacoes.rows ?? [];
+  const regularidades = dados?.regularidades.rows ?? [];
+  const tarefas = dados?.tarefas.rows ?? [];
   const resumo = dados
-    ? resumirFichaFornecedor(documentoRows, quoteRows, instrumentos, sancoes, hoje)
+    ? resumirFichaFornecedor(
+        documentoRows,
+        quoteRows,
+        instrumentos,
+        sancoes,
+        hoje,
+        homologacoes,
+        regularidades,
+        tarefas,
+        fornecedor?.status === "active",
+      )
     : null;
   const itemById = new Map(dados?.cotacoesContexto.items.map((item) => [item.id, item]) ?? []);
   const processById = new Map(
@@ -437,10 +502,23 @@ export function FichaFornecedor({
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>
                   {fornecedor.status === "active" ? "Cadastro ativo" : "Cadastro inativo"}
                 </Badge>
+                {resumo && (
+                  <Badge
+                    variant={rotuloStatusConsolidado360(resumo.statusConsolidado360).variante}
+                    className={`flex items-center gap-1.5 font-medium ${rotuloStatusConsolidado360(resumo.statusConsolidado360).corBadge}`}
+                    title={rotuloStatusConsolidado360(resumo.statusConsolidado360).descricao}
+                  >
+                    {resumo.statusConsolidado360 === "apto" && <ShieldCheck className="h-3.5 w-3.5" />}
+                    {resumo.statusConsolidado360 === "atencao" && <AlertTriangle className="h-3.5 w-3.5" />}
+                    {resumo.statusConsolidado360 === "inapto" && <ShieldAlert className="h-3.5 w-3.5" />}
+                    {resumo.statusConsolidado360 === "em_homologacao" && <FileBadge className="h-3.5 w-3.5" />}
+                    {rotuloStatusConsolidado360(resumo.statusConsolidado360).label}
+                  </Badge>
+                )}
                 <Button
                   type="button"
                   size="sm"
@@ -464,7 +542,7 @@ export function FichaFornecedor({
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                   <Metrica
                     label="Documentos ativos"
                     value={dados.documentos.status === "ready" ? (resumo?.documentos ?? 0) : null}
@@ -475,8 +553,51 @@ export function FichaFornecedor({
                     }
                   />
                   <Metrica
-                    label="Cotações vinculadas"
-                    value={dados.cotacoes.status === "ready" ? (resumo?.cotacoes ?? 0) : null}
+                    label="Homologação"
+                    value={
+                      dados.homologacoes.status === "ready"
+                        ? resumo?.ultimaHomologacao
+                          ? rotuloStatusHomologacao(resumo.ultimaHomologacao.status as any)
+                          : "Não iniciada"
+                        : null
+                    }
+                    detail={
+                      resumo?.ultimaHomologacao?.concluded_at
+                        ? `Concluída em ${formatarData(resumo.ultimaHomologacao.concluded_at)}`
+                        : resumo?.ultimaHomologacao
+                        ? "Processo em aberto"
+                        : "Sem processo anterior"
+                    }
+                  />
+                  <Metrica
+                    label="Regularidade Oficial"
+                    value={
+                      dados.regularidades.status === "ready"
+                        ? `${resumo?.regularidade.regulares ?? 0} / ${resumo?.regularidade.total ?? 0}`
+                        : null
+                    }
+                    detail={
+                      dados.regularidades.status === "ready"
+                        ? (resumo?.regularidade.irregulares ?? 0) > 0
+                          ? `${resumo?.regularidade.irregulares} irregularidade(s)`
+                          : (resumo?.regularidade.total ?? 0) > 0
+                          ? "Fontes oficiais regulares"
+                          : "Nenhuma consulta registrada"
+                        : undefined
+                    }
+                  />
+                  <Metrica
+                    label="Pendências Ativas"
+                    value={
+                      dados.tarefas.status === "ready" ? (resumo?.tarefas.abertas ?? 0) : null
+                    }
+                    detail={
+                      (resumo?.tarefas.criticas ?? 0) > 0
+                        ? `${resumo?.tarefas.criticas} crítica(s) imediata(s)`
+                        : (resumo?.tarefas.vencidas ?? 0) > 0
+                        ? `${resumo?.tarefas.vencidas} com prazo expirado`
+                        : "Nenhuma pendência crítica"
+                    }
                   />
                   <Metrica
                     label="Contratos / Atas"
@@ -495,7 +616,11 @@ export function FichaFornecedor({
                     label="Sanções vigentes"
                     value={dados.sancoes.status === "ready" ? (resumo?.sancoesVigentes ?? 0) : null}
                     detail={
-                      dados.sancoes.status !== "ready" ? "Situação não verificada" : undefined
+                      dados.sancoes.status !== "ready"
+                        ? "Situação não verificada"
+                        : (resumo?.sancoesVigentes ?? 0) > 0
+                        ? "Restrição de fornecimento"
+                        : "Sem sanções vigentes"
                     }
                   />
                 </div>
@@ -504,10 +629,29 @@ export function FichaFornecedor({
                 (resumo.vencidos ||
                   resumo.aVencer ||
                   resumo.vencimentosContratuais ||
-                  resumo.sancoesVigentes) ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/50 p-3 text-sm">
-                    <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-                    <span>Itens que exigem acompanhamento:</span>
+                  resumo.sancoesVigentes ||
+                  resumo.regularidade.irregulares ||
+                  resumo.tarefas.criticas) ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-3 text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+                    <span className="font-medium text-amber-900 dark:text-amber-200">
+                      Itens que exigem acompanhamento:
+                    </span>
+                    {Boolean(resumo.sancoesVigentes) && (
+                      <Badge variant="destructive">
+                        {resumo.sancoesVigentes} sanção(ões) vigente(s)
+                      </Badge>
+                    )}
+                    {Boolean(resumo.regularidade.irregulares) && (
+                      <Badge variant="destructive">
+                        {resumo.regularidade.irregulares} irregularidade(s) em consultas oficiais
+                      </Badge>
+                    )}
+                    {Boolean(resumo.tarefas.criticas) && (
+                      <Badge variant="destructive">
+                        {resumo.tarefas.criticas} pendência(s) crítica(s) na fila
+                      </Badge>
+                    )}
                     {Boolean(resumo.vencidos) && (
                       <Badge variant="destructive">{resumo.vencidos} documento(s) vencido(s)</Badge>
                     )}
@@ -517,11 +661,6 @@ export function FichaFornecedor({
                     {Boolean(resumo.vencimentosContratuais) && (
                       <Badge variant="outline">
                         {resumo.vencimentosContratuais} contrato(s)/ata(s) próximos do vencimento
-                      </Badge>
-                    )}
-                    {Boolean(resumo.sancoesVigentes) && (
-                      <Badge variant="destructive">
-                        {resumo.sancoesVigentes} sanção(ões) vigente(s)
                       </Badge>
                     )}
                   </div>
