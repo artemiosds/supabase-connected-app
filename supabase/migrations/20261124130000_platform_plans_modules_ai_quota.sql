@@ -219,12 +219,17 @@ ALTER TABLE public.tenants
     '{"fornecedores": true, "documentos": true, "processos": true, "contratos": true, "modelos": true, "ged": false, "auditoria": true, "relatorios": true, "pca": true}'::jsonb;
 
 -- Garantir que os clientes já existentes em produção recebam relatorios = true e pca = true
+-- (Desabilita temporariamente apenas a trigger de proteção de campos durante o backfill da migration)
+ALTER TABLE public.tenants DISABLE TRIGGER trg_tenants_protect_fields;
+
 UPDATE public.tenants
 SET enabled_modules = enabled_modules
   || CASE WHEN NOT (enabled_modules ? 'relatorios') THEN '{"relatorios": true}'::jsonb ELSE '{}'::jsonb END
   || CASE WHEN NOT (enabled_modules ? 'pca') THEN '{"pca": true}'::jsonb ELSE '{}'::jsonb END
 WHERE NOT (enabled_modules ? 'relatorios')
    OR NOT (enabled_modules ? 'pca');
+
+ALTER TABLE public.tenants ENABLE TRIGGER trg_tenants_protect_fields;
 
 CREATE OR REPLACE FUNCTION public.create_tenant_with_admin_commercial(
   p_name text,
