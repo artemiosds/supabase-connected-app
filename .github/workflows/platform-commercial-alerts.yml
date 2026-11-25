@@ -1,0 +1,60 @@
+name: Send commercial billing & quota alerts
+
+on:
+  schedule:
+    # Daily at 09:30 BRT (12:30 UTC)
+    - cron: "30 12 * * *"
+  workflow_dispatch:
+    inputs:
+      confirm_send:
+        description: "Confirm real email delivery. Leave unchecked for safe dry-run simulation."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-billing-alerts
+  cancel-in-progress: false
+
+jobs:
+  send:
+    if: ${{ (github.event_name == 'schedule' && vars.COMMERCIAL_ALERTS_ENABLED == 'true') || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EXPIRY_ALERTS_CRON_SECRET: ${{ secrets.EXPIRY_ALERTS_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::Missing SUPABASE_URL secret."; exit 1; }
+          test -n "$SUPABASE_ANON_KEY" || { echo "::error::Missing SUPABASE_ANON_KEY secret."; exit 1; }
+          test -n "$EXPIRY_ALERTS_CRON_SECRET" || { echo "::error::Missing EXPIRY_ALERTS_CRON_SECRET secret."; exit 1; }
+
+      - name: Run commercial billing & quota alerts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EXPIRY_ALERTS_CRON_SECRET: ${{ secrets.EXPIRY_ALERTS_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          endpoint="${SUPABASE_URL%/}/functions/v1/platform-commercial-alerts"
+          dry_run=true
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "${{ inputs.confirm_send }}" = "true" ]; then
+            dry_run=false
+          fi
+
+          response="$(curl --silent --show-error --fail-with-body \
+            --request POST "$endpoint" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "x-expiry-alert-secret: $EXPIRY_ALERTS_CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data "{\"dry_run\":$dry_run}")"
+
+          echo "$response" | jq -c '{status,candidates_count,sent,failed,skipped}'

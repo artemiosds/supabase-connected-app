@@ -93,6 +93,12 @@ describe("invariantes automatizadas de cibersegurança", () => {
     expect(readText("supabase/functions/send-expiry-notifications/index.ts")).toContain(
       "expectedSecret.length < 32",
     );
+    expect(readText("supabase/functions/platform-commercial-alerts/index.ts")).toContain(
+      "expectedCronSecret.length >= 32",
+    );
+    expect(readText("supabase/functions/platform-commercial-alerts/index.ts")).toContain(
+      "getAllowedOrigins",
+    );
   });
 
   it("SSR aplica cabeçalhos de segurança, CSP e proteção CSRF", () => {
@@ -182,5 +188,11 @@ describe("invariantes automatizadas de cibersegurança", () => {
     expect(dependabot).toContain('package-ecosystem: "bun"');
     expect(securityWorkflow).toContain("gitleaks/gitleaks-action");
     expect(securityWorkflow).toContain("bun pm audit");
+    expect(
+      readText("supabase/migrations/20261125120000_platform_commercial_alerts_outbox.sql"),
+    ).toContain("FORCE ROW LEVEL SECURITY");
+    expect(readText("supabase/tests/platform_commercial_alerts.test.sql")).toContain(
+      "relforcerowsecurity",
+    );
   });
 });

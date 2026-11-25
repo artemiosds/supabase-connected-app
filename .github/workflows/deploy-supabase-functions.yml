@@ -104,3 +104,8 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy lookup-cnpj --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy commercial alerts function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy platform-commercial-alerts --project-ref rwbbznqtocunzrpcvjvk

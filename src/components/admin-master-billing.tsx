@@ -20,6 +20,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminMasterCommercialAlerts } from "@/components/admin-master-commercial-alerts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -918,6 +919,7 @@ export function MasterBillingSettings({
               </TableBody>
             </Table>
           </div>
+          <AdminMasterCommercialAlerts tenantNameById={tenantNameById} />
         </TabsContent>
 
         <TabsContent value="gateway" className="space-y-6">
@@ -958,7 +960,7 @@ export function MasterBillingSettings({
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
                   <span className="text-muted-foreground">URL do Webhook:</span>
                   <code className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
-                    {`${import.meta.env.VITE_SUPABASE_URL || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`}
+                    {`${import.meta.env["VITE_SUPABASE_URL"] || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`}
                   </code>
                   <Button
                     type="button"
@@ -967,7 +969,7 @@ export function MasterBillingSettings({
                     className="h-6 px-2 text-xs"
                     onClick={() =>
                       void copiarTexto(
-                        `${import.meta.env.VITE_SUPABASE_URL || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`,
+                        `${import.meta.env["VITE_SUPABASE_URL"] || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`,
                         "URL do webhook",
                       )
                     }
