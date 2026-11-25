@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  Eye,
   FileText,
   Loader2,
   Plus,
@@ -14,6 +15,10 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DocumentViewerSheet,
+  type DocumentoParaVisualizar,
+} from "@/components/documents/document-viewer-sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +146,8 @@ export function ContractItemsBalance(props: {
   const [reversalReasons, setReversalReasons] = useState<Record<string, string>>({});
   const [reprintingReference, setReprintingReference] = useState<string | null>(null);
   const [gerandoDossie, setGerandoDossie] = useState(false);
+  const [documentoVisualizando, setDocumentoVisualizando] =
+    useState<DocumentoParaVisualizar | null>(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -248,6 +255,86 @@ export function ContractItemsBalance(props: {
     itemEditandoId !== null &&
     movements.some((movement) => movement.contract_item_id === itemEditandoId);
 
+  async function montarTextoOrdemFornecimento(order: (typeof supplyOrders)[number]) {
+    const [tenantResult, contractResult] = await Promise.all([
+      db.from("tenants").select("name").eq("id", props.tenantId).single(),
+      db
+        .from("contracts")
+        .select("number,object,process_id,supplier_id,inspector_name")
+        .eq("tenant_id", props.tenantId)
+        .eq("id", props.contract.id)
+        .single(),
+    ]);
+    if (tenantResult.error || !tenantResult.data?.name)
+      throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
+    if (contractResult.error || !contractResult.data)
+      throw new Error("Não foi possível carregar os dados do contrato ou da ata.");
+    if (!contractResult.data.supplier_id)
+      throw new Error("O contrato não possui fornecedor vinculado para identificar na OF.");
+
+    const [supplierResult, processResult] = await Promise.all([
+      db
+        .from("suppliers")
+        .select("legal_name,trade_name,cnpj")
+        .eq("tenant_id", props.tenantId)
+        .eq("id", contractResult.data.supplier_id)
+        .single(),
+      contractResult.data.process_id
+        ? db
+            .from("procurement_processes")
+            .select("number")
+            .eq("tenant_id", props.tenantId)
+            .eq("id", contractResult.data.process_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+    if (supplierResult.error || !supplierResult.data)
+      throw new Error("Não foi possível confirmar o fornecedor vinculado.");
+    if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
+    if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a geração do PDF.");
+
+    const documentText = buildSupplyOrderDocumentText({
+      tenantName: tenantResult.data.name,
+      contractNumber: contractResult.data.number,
+      contractObject: contractResult.data.object,
+      ...(processResult.data?.number ? { processNumber: processResult.data.number } : {}),
+      supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
+      supplierCnpj: supplierResult.data.cnpj,
+      referenceNumber: order.referenceNumber,
+      reason: order.reason,
+      createdAt: new Date(order.createdAt).toLocaleString("pt-BR"),
+      items: order.items,
+      totalValue: order.totalValue,
+      ...(contractResult.data.inspector_name
+        ? { responsibleName: contractResult.data.inspector_name }
+        : {}),
+    });
+
+    return { documentText, tenantName: tenantResult.data.name };
+  }
+
+  async function visualizarOrdem(order: (typeof supplyOrders)[number]) {
+    if (reprintingReference || !inScope()) {
+      if (!inScope()) toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+    setReprintingReference(order.referenceNumber);
+    try {
+      const { documentText } = await montarTextoOrdemFornecimento(order);
+      setDocumentoVisualizando({
+        id: `of-${order.referenceNumber}`,
+        title: `Ordem de Fornecimento nº ${order.referenceNumber}`,
+        status: "signed",
+        content: documentText,
+        created_at: order.createdAt,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível visualizar a OF.");
+    } finally {
+      setReprintingReference(null);
+    }
+  }
+
   async function reimprimirOrdem(order: (typeof supplyOrders)[number]) {
     if (reprintingReference || !inScope()) {
       if (!inScope()) toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
@@ -255,60 +342,8 @@ export function ContractItemsBalance(props: {
     }
     setReprintingReference(order.referenceNumber);
     try {
-      const [tenantResult, contractResult] = await Promise.all([
-        db.from("tenants").select("name").eq("id", props.tenantId).single(),
-        db
-          .from("contracts")
-          .select("number,object,process_id,supplier_id,inspector_name")
-          .eq("tenant_id", props.tenantId)
-          .eq("id", props.contract.id)
-          .single(),
-      ]);
-      if (tenantResult.error || !tenantResult.data?.name)
-        throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
-      if (contractResult.error || !contractResult.data)
-        throw new Error("Não foi possível carregar os dados do contrato ou da ata.");
-      if (!contractResult.data.supplier_id)
-        throw new Error("O contrato não possui fornecedor vinculado para identificar na OF.");
-
-      const [supplierResult, processResult] = await Promise.all([
-        db
-          .from("suppliers")
-          .select("legal_name,trade_name,cnpj")
-          .eq("tenant_id", props.tenantId)
-          .eq("id", contractResult.data.supplier_id)
-          .single(),
-        contractResult.data.process_id
-          ? db
-              .from("procurement_processes")
-              .select("number")
-              .eq("tenant_id", props.tenantId)
-              .eq("id", contractResult.data.process_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-      ]);
-      if (supplierResult.error || !supplierResult.data)
-        throw new Error("Não foi possível confirmar o fornecedor vinculado.");
-      if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
-      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a geração do PDF.");
-
-      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantResult.data.name);
-      const documentText = buildSupplyOrderDocumentText({
-        tenantName: tenantResult.data.name,
-        contractNumber: contractResult.data.number,
-        contractObject: contractResult.data.object,
-        ...(processResult.data?.number ? { processNumber: processResult.data.number } : {}),
-        supplierName: supplierResult.data.trade_name || supplierResult.data.legal_name,
-        supplierCnpj: supplierResult.data.cnpj,
-        referenceNumber: order.referenceNumber,
-        reason: order.reason,
-        createdAt: new Date(order.createdAt).toLocaleString("pt-BR"),
-        items: order.items,
-        totalValue: order.totalValue,
-        ...(contractResult.data.inspector_name
-          ? { responsibleName: contractResult.data.inspector_name }
-          : {}),
-      });
+      const { documentText, tenantName } = await montarTextoOrdemFornecimento(order);
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantName);
       const docxBytes = await buildDocxFromText(documentText, "Ordem de Fornecimento");
       const model = await docxToModel(docxBytes);
       const pdfBytes = await renderPdf(model, {
@@ -340,162 +375,193 @@ export function ContractItemsBalance(props: {
     }
   }
 
-  async function exportarDossieTce() {
+  function validarPreCondicoesDossie(): boolean {
     if (items.length === 0) {
       toast.error("O contrato não possui itens cadastrados para emitir o dossiê.");
-      return;
+      return false;
     }
     if (loading || erro) {
       toast.error(
         "Aguarde o carregamento completo dos itens e movimentações antes de emitir o dossiê.",
       );
-      return;
+      return false;
     }
     if (!inScope()) {
       toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function montarTextoDossieTce() {
+    const [tenantResult, contractResult, amendmentsResult] = await Promise.all([
+      db.from("tenants").select("name").eq("id", props.tenantId).maybeSingle(),
+      db
+        .from("contracts")
+        .select("*")
+        .eq("id", props.contract.id)
+        .eq("tenant_id", props.tenantId)
+        .maybeSingle(),
+      db
+        .from("contract_amendments")
+        .select("*")
+        .eq("contract_id", props.contract.id)
+        .eq("tenant_id", props.tenantId)
+        .order("signed_at", { ascending: true }),
+    ]);
+
+    if (tenantResult.error || !tenantResult.data?.name) {
+      throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
+    }
+    if (contractResult.error || !contractResult.data) {
+      throw new Error("Não foi possível confirmar o contrato ou a ata.");
+    }
+    if (amendmentsResult.error) {
+      throw new Error("Não foi possível carregar o histórico de aditivos e apostilamentos.");
+    }
+    if (!inScope()) {
+      throw new Error("A Secretaria ou a sessão mudou durante a geração.");
+    }
+
+    if (!contractResult.data.supplier_id) {
+      throw new Error("O instrumento não possui fornecedor vinculado para identificar no dossiê.");
+    }
+
+    const [supplierResult, processResult] = await Promise.all([
+      db
+        .from("suppliers")
+        .select("legal_name,trade_name,cnpj")
+        .eq("id", contractResult.data.supplier_id)
+        .eq("tenant_id", props.tenantId)
+        .maybeSingle(),
+      contractResult.data.process_id
+        ? db
+            .from("procurement_processes")
+            .select("number")
+            .eq("id", contractResult.data.process_id)
+            .eq("tenant_id", props.tenantId)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (supplierResult.error || !supplierResult.data) {
+      throw new Error("Não foi possível confirmar o fornecedor vinculado ao instrumento.");
+    }
+    if (processResult.error) {
+      throw new Error("Não foi possível confirmar o processo administrativo de origem.");
+    }
+    if (!inScope()) {
+      throw new Error("A Secretaria ou a sessão mudou durante a geração.");
+    }
+
+    const amendments = (amendmentsResult.data ?? []).map((amendment) => ({
+      number: amendment.number,
+      kind: amendment.kind,
+      signedAt: amendment.signed_at,
+      newEndDate: amendment.new_end_date,
+      valueChange: Number(amendment.value_change),
+      notes: amendment.notes,
+    }));
+    const currentContractValue = Number(contractResult.data.total_value);
+    const originalContractValue = reconstruirValorOriginalContrato(
+      currentContractValue,
+      amendments,
+    );
+    const { itemsCalculated, summary } = calcularResumoDossieContratual({
+      contractTotalValue: originalContractValue,
+      items: items.map((item) => ({
+        id: item.id,
+        lineNumber: item.line_number,
+        description: item.description,
+        unit: item.unit,
+        quantityTotal: Number(item.quantity_total),
+        unitValue: Number(item.unit_value),
+      })),
+      movements: movements.map((movement) => ({
+        contract_item_id: movement.contract_item_id,
+        movement_type: movement.movement_type,
+        quantity: Number(movement.quantity),
+      })),
+      amendments,
+      ordersCount: supplyOrders.length,
+    });
+    if (Math.abs(summary.updatedValue - currentContractValue) > 0.01) {
+      throw new Error(
+        "O valor atualizado não confere com o histórico de aditivos. Revise o instrumento antes de emitir o dossiê.",
+      );
+    }
+
+    const documentText = buildContractDossierDocumentText({
+      tenantName: tenantResult.data.name,
+      contract: {
+        number: contractResult.data.number,
+        instrumentType: contractResult.data.instrument_type,
+        modality: contractResult.data.modality,
+        object: contractResult.data.object,
+        startDate: contractResult.data.start_date,
+        endDate: contractResult.data.end_date,
+        totalValue: Number(contractResult.data.total_value),
+        status: contractResult.data.status,
+        managerName: contractResult.data.manager_name,
+        inspectorName: contractResult.data.inspector_name,
+        ordinance: contractResult.data.ordinance,
+      },
+      processNumber: processResult.data?.number ?? null,
+      supplier: {
+        name: supplierResult.data.trade_name || supplierResult.data.legal_name,
+        cnpj: supplierResult.data.cnpj,
+      },
+      amendments,
+      items: itemsCalculated,
+      orders: supplyOrders.map((order) => ({
+        referenceNumber: order.referenceNumber,
+        createdAt: order.createdAt,
+        reason: order.reason,
+        itemsCount: order.itemsCount,
+        totalValue: order.totalValue,
+      })),
+      summary,
+      generatedAt: new Date().toLocaleString("pt-BR"),
+    });
+
+    return {
+      documentText,
+      tenantName: tenantResult.data.name,
+      contractNumber: contractResult.data.number,
+    };
+  }
+
+  async function visualizarDossieTce() {
+    if (!validarPreCondicoesDossie()) return;
+    setGerandoDossie(true);
+    try {
+      const { documentText, contractNumber } = await montarTextoDossieTce();
+      setDocumentoVisualizando({
+        id: `dossie-tce-${props.contract.id}`,
+        title: `Dossiê TCE - Contrato nº ${contractNumber}`,
+        status: "signed",
+        content: documentText,
+        created_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao visualizar dossiê TCE.");
+    } finally {
+      setGerandoDossie(false);
+    }
+  }
+
+  async function exportarDossieTce() {
+    if (!validarPreCondicoesDossie()) return;
 
     setGerandoDossie(true);
     try {
-      const [tenantResult, contractResult, amendmentsResult] = await Promise.all([
-        db.from("tenants").select("name").eq("id", props.tenantId).maybeSingle(),
-        db
-          .from("contracts")
-          .select("*")
-          .eq("id", props.contract.id)
-          .eq("tenant_id", props.tenantId)
-          .maybeSingle(),
-        db
-          .from("contract_amendments")
-          .select("*")
-          .eq("contract_id", props.contract.id)
-          .eq("tenant_id", props.tenantId)
-          .order("signed_at", { ascending: true }),
-      ]);
-
-      if (tenantResult.error || !tenantResult.data?.name) {
-        throw new Error("Não foi possível confirmar a Secretaria do instrumento.");
-      }
-      if (contractResult.error || !contractResult.data) {
-        throw new Error("Não foi possível confirmar o contrato ou a ata.");
-      }
-      if (amendmentsResult.error) {
-        throw new Error("Não foi possível carregar o histórico de aditivos e apostilamentos.");
-      }
+      const { documentText, tenantName, contractNumber } = await montarTextoDossieTce();
+      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantName);
       if (!inScope()) {
         throw new Error("A Secretaria ou a sessão mudou durante a geração.");
       }
 
-      if (!contractResult.data.supplier_id) {
-        throw new Error(
-          "O instrumento não possui fornecedor vinculado para identificar no dossiê.",
-        );
-      }
-
-      const [supplierResult, processResult] = await Promise.all([
-        db
-          .from("suppliers")
-          .select("legal_name,trade_name,cnpj")
-          .eq("id", contractResult.data.supplier_id)
-          .eq("tenant_id", props.tenantId)
-          .maybeSingle(),
-        contractResult.data.process_id
-          ? db
-              .from("procurement_processes")
-              .select("number")
-              .eq("id", contractResult.data.process_id)
-              .eq("tenant_id", props.tenantId)
-              .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
-      ]);
-
-      if (supplierResult.error || !supplierResult.data) {
-        throw new Error("Não foi possível confirmar o fornecedor vinculado ao instrumento.");
-      }
-      if (processResult.error) {
-        throw new Error("Não foi possível confirmar o processo administrativo de origem.");
-      }
-      if (!inScope()) {
-        throw new Error("A Secretaria ou a sessão mudou durante a geração.");
-      }
-
-      const amendments = (amendmentsResult.data ?? []).map((amendment) => ({
-        number: amendment.number,
-        kind: amendment.kind,
-        signedAt: amendment.signed_at,
-        newEndDate: amendment.new_end_date,
-        valueChange: Number(amendment.value_change),
-        notes: amendment.notes,
-      }));
-      const currentContractValue = Number(contractResult.data.total_value);
-      const originalContractValue = reconstruirValorOriginalContrato(
-        currentContractValue,
-        amendments,
-      );
-      const { itemsCalculated, summary } = calcularResumoDossieContratual({
-        contractTotalValue: originalContractValue,
-        items: items.map((item) => ({
-          id: item.id,
-          lineNumber: item.line_number,
-          description: item.description,
-          unit: item.unit,
-          quantityTotal: Number(item.quantity_total),
-          unitValue: Number(item.unit_value),
-        })),
-        movements: movements.map((movement) => ({
-          contract_item_id: movement.contract_item_id,
-          movement_type: movement.movement_type,
-          quantity: Number(movement.quantity),
-        })),
-        amendments,
-        ordersCount: supplyOrders.length,
-      });
-      if (Math.abs(summary.updatedValue - currentContractValue) > 0.01) {
-        throw new Error(
-          "O valor atualizado não confere com o histórico de aditivos. Revise o instrumento antes de emitir o dossiê.",
-        );
-      }
-
-      const branding = await carregarTimbradoSecretaria(props.tenantId, tenantResult.data.name);
-      if (!inScope()) {
-        throw new Error("A Secretaria ou a sessão mudou durante a geração.");
-      }
-
-      const documentText = buildContractDossierDocumentText({
-        tenantName: tenantResult.data.name,
-        contract: {
-          number: contractResult.data.number,
-          instrumentType: contractResult.data.instrument_type,
-          modality: contractResult.data.modality,
-          object: contractResult.data.object,
-          startDate: contractResult.data.start_date,
-          endDate: contractResult.data.end_date,
-          totalValue: Number(contractResult.data.total_value),
-          status: contractResult.data.status,
-          managerName: contractResult.data.manager_name,
-          inspectorName: contractResult.data.inspector_name,
-          ordinance: contractResult.data.ordinance,
-        },
-        processNumber: processResult.data?.number ?? null,
-        supplier: {
-          name: supplierResult.data.trade_name || supplierResult.data.legal_name,
-          cnpj: supplierResult.data.cnpj,
-        },
-        amendments,
-        items: itemsCalculated,
-        orders: supplyOrders.map((order) => ({
-          referenceNumber: order.referenceNumber,
-          createdAt: order.createdAt,
-          reason: order.reason,
-          itemsCount: order.itemsCount,
-          totalValue: order.totalValue,
-        })),
-        summary,
-        generatedAt: new Date().toLocaleString("pt-BR"),
-      });
-
-      const title = "Dossiê TCE - Contrato " + contractResult.data.number;
+      const title = "Dossiê TCE - Contrato " + contractNumber;
       const docxBytes = await buildDocxFromText(documentText, title, "landscape");
       const model = await docxToModel(docxBytes);
       const pdfBytes = await renderPdf(model, {
@@ -512,8 +578,7 @@ export function ContractItemsBalance(props: {
         type: "application/pdf",
       });
       const url = URL.createObjectURL(blob);
-      const cleanNumber =
-        contractResult.data.number.replace(/[^a-zA-Z0-9_-]/g, "_") || "instrumento";
+      const cleanNumber = contractNumber.replace(/[^a-zA-Z0-9_-]/g, "_") || "instrumento";
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = "Dossie-TCE-Contrato-" + cleanNumber + ".pdf";
@@ -702,6 +767,19 @@ export function ContractItemsBalance(props: {
                   onSaved={carregar}
                 />
               )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void visualizarDossieTce()}
+                disabled={
+                  gerandoDossie || loading || Boolean(erro) || items.length === 0 || !inScope()
+                }
+                title="Visualizar dossiê em tela antes de imprimir"
+              >
+                <Eye className="mr-1.5 h-4 w-4" aria-hidden />
+                Visualizar Dossiê
+              </Button>
               <Button
                 type="button"
                 size="sm"
@@ -1193,20 +1271,33 @@ export function ContractItemsBalance(props: {
                           <span className="font-semibold">{currency.format(order.totalValue)}</span>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={reprintingReference !== null || loading || Boolean(erro)}
-                        onClick={() => void reimprimirOrdem(order)}
-                      >
-                        {reprintingReference === order.referenceNumber ? (
-                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Printer className="mr-1 h-4 w-4" />
-                        )}
-                        Reimprimir Termo (PDF)
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={reprintingReference !== null || loading || Boolean(erro)}
+                          onClick={() => void visualizarOrdem(order)}
+                          title="Visualizar termo da Ordem de Fornecimento em tela"
+                        >
+                          <Eye className="mr-1 h-4 w-4" aria-hidden />
+                          Visualizar Termo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={reprintingReference !== null || loading || Boolean(erro)}
+                          onClick={() => void reimprimirOrdem(order)}
+                        >
+                          {reprintingReference === order.referenceNumber ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Printer className="mr-1 h-4 w-4" />
+                          )}
+                          Reimprimir Termo (PDF)
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{order.reason}</p>
                     <details className="text-sm">
@@ -1273,6 +1364,15 @@ export function ContractItemsBalance(props: {
           />
         </div>
       )}
+
+      <DocumentViewerSheet
+        documento={documentoVisualizando}
+        aberto={documentoVisualizando !== null}
+        onOpenChange={(abertoSheet) => {
+          if (!abertoSheet) setDocumentoVisualizando(null);
+        }}
+        onImprimir={() => window.print()}
+      />
     </section>
   );
 }

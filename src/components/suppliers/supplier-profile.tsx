@@ -345,32 +345,32 @@ export function FichaFornecedor({
       ] = await Promise.allSettled([
         documentosEnabled
           ? carregarTodasAsPaginas<Documento>((start, end) =>
-              db
-                .from("supplier_documents")
-                .select(
-                  "id,title,document_type,status,issue_date,expires_at,notes,storage_path,external_url,storage_provider,file_name",
-                )
-                .eq("tenant_id", tenantId)
-                .eq("supplier_id", supplierId!)
-                .order("expires_at", { ascending: true, nullsFirst: false })
-                .order("id")
-                .range(start, end),
-            )
+            db
+              .from("supplier_documents")
+              .select(
+                "id,title,document_type,status,issue_date,expires_at,notes,storage_path,external_url,storage_provider,file_name",
+              )
+              .eq("tenant_id", tenantId)
+              .eq("supplier_id", supplierId!)
+              .order("expires_at", { ascending: true, nullsFirst: false })
+              .order("id")
+              .range(start, end),
+          )
           : Promise.resolve(null),
         processosEnabled ? buscarCotacoesVinculadas(tenantId, supplierId!) : Promise.resolve(null),
         contratosEnabled
           ? carregarTodasAsPaginas<Instrumento>((start, end) =>
-              db
-                .from("contracts")
-                .select(
-                  "id,number,instrument_type,object,status,start_date,end_date,total_value,process_id",
-                )
-                .eq("tenant_id", tenantId)
-                .eq("supplier_id", supplierId!)
-                .order("end_date", { ascending: true })
-                .order("id")
-                .range(start, end),
-            )
+            db
+              .from("contracts")
+              .select(
+                "id,number,instrument_type,object,status,start_date,end_date,total_value,process_id",
+              )
+              .eq("tenant_id", tenantId)
+              .eq("supplier_id", supplierId!)
+              .order("end_date", { ascending: true })
+              .order("id")
+              .range(start, end),
+          )
           : Promise.resolve(null),
         carregarTodasAsPaginas<Sancao>((start, end) =>
           db
@@ -456,16 +456,16 @@ export function FichaFornecedor({
   const tarefas = dados?.tarefas.rows ?? [];
   const resumo = dados
     ? resumirFichaFornecedor(
-        documentoRows,
-        quoteRows,
-        instrumentos,
-        sancoes,
-        hoje,
-        homologacoes,
-        regularidades,
-        tarefas,
-        fornecedor?.status === "active",
-      )
+      documentoRows,
+      quoteRows,
+      instrumentos,
+      sancoes,
+      hoje,
+      homologacoes,
+      regularidades,
+      tarefas,
+      fornecedor?.status === "active",
+    )
     : null;
   const itemById = new Map(dados?.cotacoesContexto.items.map((item) => [item.id, item]) ?? []);
   const processById = new Map(
@@ -581,10 +581,10 @@ export function FichaFornecedor({
                       dados.homologacoes.status === "ready"
                         ? resumo?.ultimaHomologacao
                           ? rotuloStatusHomologacao(
-                              resumo.ultimaHomologacao.status as Parameters<
-                                typeof rotuloStatusHomologacao
-                              >[0],
-                            )
+                            resumo.ultimaHomologacao.status as Parameters<
+                              typeof rotuloStatusHomologacao
+                            >[0],
+                          )
                           : "Não iniciada"
                         : null
                     }
@@ -651,12 +651,12 @@ export function FichaFornecedor({
                 </div>
 
                 {resumo &&
-                (resumo.vencidos ||
-                  resumo.aVencer ||
-                  resumo.vencimentosContratuais ||
-                  resumo.sancoesVigentes ||
-                  resumo.regularidade.irregulares ||
-                  resumo.tarefas.criticas) ? (
+                  (resumo.vencidos ||
+                    resumo.aVencer ||
+                    resumo.vencimentosContratuais ||
+                    resumo.sancoesVigentes ||
+                    resumo.regularidade.irregulares ||
+                    resumo.tarefas.criticas) ? (
                   <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/50 bg-amber-500/5 p-3 text-sm">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
                     <span className="font-medium text-amber-900 dark:text-amber-200">
