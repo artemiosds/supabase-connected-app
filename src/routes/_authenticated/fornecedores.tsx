@@ -30,6 +30,9 @@ import { MonitoramentoDocumentalFornecedores } from "@/components/suppliers/supp
 import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
+import { useAuth } from "@/hooks/use-auth";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
 import {
   cnpjDivergente,
@@ -147,6 +150,7 @@ const CATEGORIAS: { value: Categoria; label: string }[] = [
 
 function Fornecedores() {
   const { selecionado, bancoPendente } = useTenant();
+  const { session } = useAuth();
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const [capacidades, setCapacidades] = useState<Capacidades>({
@@ -194,6 +198,19 @@ function Fornecedores() {
   });
 
   const requisicaoRef = useRef(0);
+
+  const formId = editando ? `editar_fornecedor_${editando.id}` : "novo_fornecedor";
+  const { isOnline, draftAvailable, lastSavedAt, restoreDraft, discardDraft, clearDraft } =
+    useFormDraft({
+      tenantId: aberto && selecionado?.id ? selecionado.id : "",
+      userId: aberto && session?.user?.id ? session.user.id : "",
+      formId,
+      currentData: formulario as unknown as Record<string, unknown>,
+      onRestore: (recuperado) => {
+        setFormulario(recuperado as unknown as FormularioFornecedor);
+        toast.info("Rascunho do fornecedor recuperado com sucesso.");
+      },
+    });
 
   const carregar = useCallback(async () => {
     const requisicaoAtual = ++requisicaoRef.current;
@@ -683,6 +700,7 @@ function Fornecedores() {
           "O cadastro foi atualizado por outro usuário. Reabra o fornecedor antes de salvar.",
         );
       toast.success(editando ? "Fornecedor atualizado." : "Fornecedor cadastrado.");
+      clearDraft();
       setAberto(false);
       setEditando(null);
       setFormulario(FORMULARIO_VAZIO);
@@ -1152,6 +1170,15 @@ function Fornecedores() {
               {selecionado?.nome}. O registro ficará isolado nesta Secretaria.
             </DialogDescription>
           </DialogHeader>
+
+          <OfflineDraftBanner
+            isOnline={isOnline}
+            draftDate={draftAvailable?.savedAt ?? null}
+            lastSavedAt={lastSavedAt}
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
+
           <form onSubmit={salvar} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
