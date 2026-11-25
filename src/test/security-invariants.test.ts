@@ -175,4 +175,20 @@ describe("invariantes automatizadas de cibersegurança", () => {
     }
     expect(sqlTest).toContain("relforcerowsecurity");
   });
+
+  it("monitoramento contínuo, Dependabot e varredura de segredos estão configurados", () => {
+    const monitoringSql = readText(
+      "supabase/migrations/20261125110000_security_monitoring_signals_and_rls.sql",
+    );
+    const monitoringTest = readText("supabase/tests/platform_security_monitoring.test.sql");
+    const dependabot = readText(".github/dependabot.yml");
+    const securityWorkflow = readText(".github/workflows/security-monitor.yml");
+
+    expect(monitoringSql).toContain("get_platform_security_signals");
+    expect(monitoringSql).toContain("is_platform_admin");
+    expect(monitoringTest).toContain("has_function_privilege");
+    expect(dependabot).toContain('package-ecosystem: "npm"');
+    expect(securityWorkflow).toContain("gitleaks/gitleaks-action");
+    expect(securityWorkflow).toContain("bun pm audit");
+  });
 });

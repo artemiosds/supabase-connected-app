@@ -1,0 +1,63 @@
+name: Continuous security monitoring
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Monday 06:00 BRT (09:00 UTC)
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-monitor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret & credential leak scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for leaked credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-and-security-invariants:
+    name: Dependency audit & security invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dependencies against known advisories
+        run: bun pm audit --audit-level=high
+
+      - name: Run automated security invariants & regression tests
+        run: |
+          bunx vitest run \
+            src/test/security-invariants.test.ts \
+            src/lib/security-monitoring-helper.test.ts \
+            src/lib/security-headers.test.ts \
+            src/lib/billing-webhook.test.ts \
+            src/lib/edge-origins.test.ts \
+            src/components/ui/chart-security.test.ts

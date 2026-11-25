@@ -56,6 +56,7 @@ import { AdminMasterStaff } from "@/components/admin-master-staff";
 import { AdminMasterConfiguration } from "@/components/admin-master-configuration";
 import { AdminMasterAi } from "@/components/admin-master-ai";
 import { PlatformStaffWorkspace } from "@/components/platform-staff-workspace";
+import { AdminMasterSecurityMonitor } from "@/components/admin-master-security-monitor";
 import { MasterMfaGate } from "@/components/master-mfa-gate";
 import { TenantProvider } from "@/hooks/use-tenant";
 import {
@@ -1732,6 +1733,7 @@ function AdminMaster() {
 
               {/* 7. AUDITORIA GLOBAL */}
               <TabsContent value="auditoria" className="mt-0 space-y-6">
+                <AdminMasterSecurityMonitor />
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h2 className="text-2xl font-semibold tracking-tight">Auditoria global</h2>
