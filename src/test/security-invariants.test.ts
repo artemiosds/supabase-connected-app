@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -25,7 +25,11 @@ describe("invariantes automatizadas de cibersegurança", () => {
   it("nenhuma Edge Function usa CORS wildcard (*) e todas enviam X-Content-Type-Options: nosniff", () => {
     const functionsRoot = join(ROOT, "supabase", "functions");
     const functionDirs = readdirSync(functionsRoot).filter(
-      (name) => name !== "_shared" && statSync(join(functionsRoot, name)).isDirectory(),
+      (name) =>
+        name !== "_shared" &&
+        name !== "node_modules" &&
+        statSync(join(functionsRoot, name)).isDirectory() &&
+        existsSync(join(functionsRoot, name, "index.ts")),
     );
 
     expect(functionDirs.length).toBeGreaterThanOrEqual(11);
