@@ -1225,6 +1225,12 @@ export function MasterBillingSettings({
                           autoComplete="new-password"
                           spellCheck={false}
                         />
+                        {form.provider === "mercado_pago" && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Obrigatório para confirmar webhooks do Mercado Pago com validação HMAC
+                            fail-closed.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">

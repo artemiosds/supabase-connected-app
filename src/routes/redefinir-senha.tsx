@@ -46,6 +46,10 @@ function RedefinirSenha() {
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
     setErro(null);
+    if (senha.length < 10) {
+      setErro("A senha deve ter no mínimo 10 caracteres.");
+      return;
+    }
     if (senha !== confirmacao) {
       setErro("As senhas não coincidem.");
       return;
@@ -166,10 +170,11 @@ function RedefinirSenha() {
             type="password"
             autoComplete="new-password"
             required
-            minLength={6}
+            minLength={10}
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">Mínimo de 10 caracteres.</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmacao">Confirmar nova senha</Label>
@@ -178,7 +183,7 @@ function RedefinirSenha() {
             type="password"
             autoComplete="new-password"
             required
-            minLength={6}
+            minLength={10}
             value={confirmacao}
             onChange={(e) => setConfirmacao(e.target.value)}
           />

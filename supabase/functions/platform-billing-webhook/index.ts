@@ -1,45 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4?target=deno";
+import {
+  safeParseJsonObject,
+  verifyMercadoPagoWebhookSignature,
+  verifyStripeWebhookSignature,
+} from "../_shared/billing-webhook.ts";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function jsonResponse(payload: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-async function hmacSha256Hex(secret: string, message: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function parseSignatureParts(header: string): Record<string, string> {
-  const parts: Record<string, string> = {};
-  for (const segment of header.split(",")) {
-    const [k, ...rest] = segment.split("=");
-    if (k && rest.length > 0) parts[k.trim()] = rest.join("=").trim();
-  }
-  return parts;
 }
 
 Deno.serve(async (request: Request) => {
@@ -84,28 +60,24 @@ Deno.serve(async (request: Request) => {
   const mpSigHeader = request.headers.get("x-signature");
 
   if (gw.provider === "stripe" || providerHint === "stripe" || stripeSigHeader) {
-    const webhookSecret = gw.credentials.webhook_secret;
-    if (!webhookSecret || !stripeSigHeader) {
-      return jsonResponse({ error: "Missing Stripe signature or webhook secret" }, 401);
+    const signatureCheck = await verifyStripeWebhookSignature({
+      webhookSecret: gw.credentials.webhook_secret,
+      signatureHeader: stripeSigHeader,
+      rawBody,
+    });
+    if (!signatureCheck.valid) {
+      return jsonResponse({ error: signatureCheck.error }, signatureCheck.status);
     }
 
-    const parts = parseSignatureParts(stripeSigHeader);
-    const timestamp = parts["t"];
-    const expectedV1 = parts["v1"];
-    if (!timestamp || !expectedV1) {
-      return jsonResponse({ error: "Malformed Stripe signature" }, 401);
-    }
-
-    const computed = await hmacSha256Hex(webhookSecret, `${timestamp}.${rawBody}`);
-    if (!constantTimeEqual(computed.toLowerCase(), expectedV1.toLowerCase())) {
-      return jsonResponse({ error: "Invalid Stripe signature" }, 401);
-    }
-
-    const event = JSON.parse(rawBody) as {
+    const event = safeParseJsonObject(rawBody) as {
       id?: string;
       type?: string;
       data?: { object?: Record<string, unknown> };
-    };
+    } | null;
+    if (!event) {
+      return jsonResponse({ error: "Invalid JSON payload" }, 400);
+    }
+
     const obj = event.data?.object ?? {};
     const eventType = event.type ?? "";
     const isPaidCheckout =
@@ -143,32 +115,29 @@ Deno.serve(async (request: Request) => {
   }
 
   if (gw.provider === "mercado_pago" || providerHint === "mercado_pago") {
-    const bodyJson = JSON.parse(rawBody) as {
+    const bodyJson = safeParseJsonObject(rawBody) as {
       type?: string;
       action?: string;
       data?: { id?: string | number };
       id?: string | number;
-    };
+    } | null;
+    if (!bodyJson) {
+      return jsonResponse({ error: "Invalid JSON payload" }, 400);
+    }
 
     const paymentId =
       bodyJson.data?.id !== undefined
         ? String(bodyJson.data.id)
         : url.searchParams.get("data.id") || url.searchParams.get("id");
 
-    const webhookSecret = gw.credentials.webhook_secret;
-    if (webhookSecret && mpSigHeader) {
-      const parts = parseSignatureParts(mpSigHeader);
-      const ts = parts["ts"];
-      const v1 = parts["v1"];
-      const requestId = request.headers.get("x-request-id") ?? "";
-      if (!ts || !v1 || !paymentId) {
-        return jsonResponse({ error: "Invalid Mercado Pago signature" }, 401);
-      }
-      const manifest = `id:${paymentId};request-id:${requestId};ts:${ts};`;
-      const computed = await hmacSha256Hex(webhookSecret, manifest);
-      if (!constantTimeEqual(computed.toLowerCase(), v1.toLowerCase())) {
-        return jsonResponse({ error: "Signature mismatch" }, 401);
-      }
+    const signatureCheck = await verifyMercadoPagoWebhookSignature({
+      webhookSecret: gw.credentials.webhook_secret,
+      signatureHeader: mpSigHeader,
+      requestId: request.headers.get("x-request-id"),
+      paymentId,
+    });
+    if (!signatureCheck.valid) {
+      return jsonResponse({ error: signatureCheck.error }, signatureCheck.status);
     }
 
     if (!paymentId || (bodyJson.type && bodyJson.type !== "payment")) {
@@ -206,7 +175,7 @@ Deno.serve(async (request: Request) => {
         p_external_reference: extRef ?? paymentId,
         p_invoice_id: extRef && UUID_REGEX.test(extRef) ? extRef : null,
         p_provider: "mercado_pago",
-        p_event_id: paymentId,
+        p_event_id: String(mpPayment.id ?? paymentId),
       },
     );
     if (confirmError) {
@@ -217,5 +186,5 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ received: true, result: confirmResult }, 200);
   }
 
-  return jsonResponse({ received: true, ignored: true }, 200);
+  return jsonResponse({ ignored: true, reason: "unsupported_provider" }, 200);
 });

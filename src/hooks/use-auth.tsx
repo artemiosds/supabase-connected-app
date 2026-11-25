@@ -13,7 +13,7 @@ function traduzErro(mensagem: string): string {
     return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
   }
   if (mensagem.toLowerCase().includes("password should be at least")) {
-    return "A senha deve ter no mínimo 6 caracteres.";
+    return "A senha não atende ao tamanho mínimo exigido pelo sistema.";
   }
   if (mensagem.includes("Email not confirmed")) {
     return "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.";

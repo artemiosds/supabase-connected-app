@@ -39,6 +39,10 @@ function Cadastro() {
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
+    if (senha.length < 10) {
+      setErro("A senha deve ter no mínimo 10 caracteres.");
+      return;
+    }
     setErro(null);
     setEnviando(true);
     const resultado = await signUp(email.trim(), senha, nome.trim());
@@ -106,11 +110,11 @@ function Cadastro() {
             type="password"
             autoComplete="new-password"
             required
-            minLength={6}
+            minLength={10}
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">Mínimo de 6 caracteres.</p>
+          <p className="text-xs text-muted-foreground">Mínimo de 10 caracteres.</p>
         </div>
         {erro && (
           <p

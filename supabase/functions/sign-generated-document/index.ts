@@ -63,8 +63,14 @@ Deno.serve(async (request: Request) => {
     global: { headers: { Authorization: authorization } },
   });
   const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user)
-    return json({ error: "Sessão inválida ou expirada." }, 401, origin);
+  if (
+    authError ||
+    !authData.user ||
+    authData.user.is_anonymous ||
+    !authData.user.email_confirmed_at
+  ) {
+    return json({ error: "Sessão autenticada e e-mail confirmado são obrigatórios." }, 401, origin);
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -91,19 +97,16 @@ Deno.serve(async (request: Request) => {
     return json({ error: "O caminho do PDF não corresponde ao documento." }, 400, origin);
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+  // Valida vínculo com a Secretaria, permissão de leitura e estado aprovado usando RLS do próprio chamador
   const [{ data: document, error: documentError }, { data: workflow, error: workflowError }] =
     await Promise.all([
-      admin
+      userClient
         .from("generated_documents")
         .select("id,tenant_id,status,content_snapshot")
         .eq("id", documentId)
         .eq("tenant_id", tenantId)
         .maybeSingle(),
-      admin
+      userClient
         .from("generated_document_workflows")
         .select("status")
         .eq("document_id", documentId)
@@ -113,12 +116,15 @@ Deno.serve(async (request: Request) => {
 
   if (documentError || workflowError) {
     return json(
-      { error: "Não foi possível conferir o documento e o fluxo de aprovação." },
-      500,
+      { error: "Não foi possível conferir a permissão sobre o documento e o fluxo de aprovação." },
+      403,
       origin,
     );
   }
-  if (!document || document.status !== "draft" || workflow?.status !== "approved") {
+  if (!document) {
+    return json({ error: "Documento não encontrado ou sem acesso nesta Secretaria." }, 403, origin);
+  }
+  if (document.status !== "draft" || workflow?.status !== "approved") {
     return json(
       { error: "O documento precisa estar aprovado e disponível para assinatura." },
       409,
@@ -126,11 +132,16 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const { data: pdf, error: downloadError } = await admin.storage
+  // Baixa o PDF com a sessão do usuário (exige owner = auth.uid() e permissão documents:sign via Storage RLS)
+  const { data: pdf, error: downloadError } = await userClient.storage
     .from("gfs-private-documents")
     .download(storagePath);
   if (downloadError || !pdf)
-    return json({ error: "Não foi possível recuperar o PDF final." }, 422, origin);
+    return json(
+      { error: "Não foi possível validar a autoria ou recuperar o PDF final para assinatura." },
+      403,
+      origin,
+    );
   if (pdf.size < 1 || pdf.size > MAX_PDF_SIZE) {
     return json({ error: "O PDF final deve ter até 20 MB." }, 413, origin);
   }
@@ -139,6 +150,10 @@ Deno.serve(async (request: Request) => {
   const header = new TextDecoder().decode(bytes.slice(0, 5));
   if (header !== "%PDF-")
     return json({ error: "O arquivo enviado não é um PDF válido." }, 415, origin);
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   const fileSha256 = await sha256Hex(bytes);
   const contentSha256 = await sha256Hex(new TextEncoder().encode(document.content_snapshot));
@@ -155,9 +170,15 @@ Deno.serve(async (request: Request) => {
     },
   );
   if (finalizeError) {
+    console.error("Erro ao finalizar assinatura:", finalizeError.code, finalizeError.message);
     return json(
-      { error: finalizeError.message || "Não foi possível finalizar a assinatura." },
-      409,
+      {
+        error:
+          finalizeError.code === "42501"
+            ? "Você não possui permissão para finalizar a assinatura deste documento."
+            : "Não foi possível finalizar a assinatura do documento.",
+      },
+      finalizeError.code === "42501" ? 403 : 409,
       origin,
     );
   }
