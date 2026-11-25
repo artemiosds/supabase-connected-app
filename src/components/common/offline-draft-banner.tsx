@@ -4,8 +4,8 @@ import { WifiOff, FileClock, Check } from "lucide-react";
 
 interface OfflineDraftBannerProps {
   isOnline: boolean;
-  draftDate?: string | null;
-  lastSavedAt?: string | null;
+  draftDate?: string | null | undefined;
+  lastSavedAt?: string | null | undefined;
   onRestore?: () => void;
   onDiscard?: () => void;
 }
@@ -28,7 +28,8 @@ export function OfflineDraftBanner({
           <WifiOff className="h-4 w-4" />
           <AlertTitle className="text-xs font-semibold">Sem conexão com a internet</AlertTitle>
           <AlertDescription className="text-xs">
-            Você está operando offline. As alterações estão sendo salvas localmente neste navegador e não serão perdidas.
+            Você está operando offline. As alterações estão sendo salvas localmente neste navegador
+            e não serão perdidas.
           </AlertDescription>
         </Alert>
       )}

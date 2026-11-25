@@ -4400,7 +4400,7 @@ function NovoProcesso(props: {
         </DialogHeader>
         <OfflineDraftBanner
           isOnline={isOnline}
-          draftDate={draftAvailable?.savedAt}
+          draftDate={draftAvailable?.savedAt ?? null}
           lastSavedAt={lastSavedAt}
           onRestore={restoreDraft}
           onDiscard={discardDraft}
