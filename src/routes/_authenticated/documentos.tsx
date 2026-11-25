@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
+  Eye,
   FilePlus2,
   FileText,
   History,
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
+import { DocumentViewerSheet } from "@/components/documents/document-viewer-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -326,6 +328,7 @@ function Documentos() {
   const [conteudoGerado, setConteudoGerado] = useState("");
   const [salvandoGerado, setSalvandoGerado] = useState(false);
   const [documentoImpressao, setDocumentoImpressao] = useState<DocumentoGerado | null>(null);
+  const [documentoVisualizando, setDocumentoVisualizando] = useState<DocumentoGerado | null>(null);
   const [baixandoRascunhoId, setBaixandoRascunhoId] = useState<string | null>(null);
   const [documentoGeradoEditando, setDocumentoGeradoEditando] = useState<DocumentoGerado | null>(
     null,
@@ -2447,6 +2450,15 @@ function Documentos() {
                                   <Button
                                     size="icon"
                                     variant="ghost"
+                                    onClick={() => setDocumentoVisualizando(d)}
+                                    aria-label={`Visualizar ${d.title}`}
+                                    title="Visualização rápida do documento"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
                                     onClick={() => setDocumentoImpressao(d)}
                                     aria-label="Visualizar e imprimir"
                                   >
@@ -3296,6 +3308,18 @@ function Documentos() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <DocumentViewerSheet
+        documento={documentoVisualizando}
+        aberto={documentoVisualizando !== null}
+        onOpenChange={(aberto) => {
+          if (!aberto) setDocumentoVisualizando(null);
+        }}
+        onImprimir={(doc) => setDocumentoImpressao(doc)}
+        onBaixarDocx={(doc) => void baixarRascunho(doc, "docx")}
+        onBaixarPdf={(doc) => void baixarRascunho(doc, "pdf")}
+        baixando={baixandoRascunhoId !== null}
+      />
 
       {documentoImpressao && (
         <div className="hidden print:block print:p-12">

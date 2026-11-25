@@ -29,6 +29,7 @@ import {
   Search,
   FileText,
   ExternalLink,
+  Eye,
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +38,8 @@ import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
+import type { Tables } from "@/integrations/supabase/types";
+import { DocumentViewerSheet } from "@/components/documents/document-viewer-sheet";
 import {
   ETAPAS,
   etapaAnterior,
@@ -835,15 +838,6 @@ function Processos() {
   );
 }
 
-type DocumentoVinculado = {
-  id: string;
-  title: string;
-  status: string;
-  document_type: string;
-  template_version: number | null;
-  created_at: string;
-};
-
 const TIPOS_DOCUMENTO_PROCESSO = [
   { value: "dfd", label: "DFD" },
   { value: "etp", label: "ETP" },
@@ -862,7 +856,9 @@ const ROTULOS_TIPO_DOCUMENTO: Record<string, string> = {
 };
 
 function DocumentosVinculados(props: { aberto: boolean; tenantId: string; processId: string }) {
-  const [documentos, setDocumentos] = useState<DocumentoVinculado[]>([]);
+  const [documentos, setDocumentos] = useState<Tables<"generated_documents">[]>([]);
+  const [documentoVisualizando, setDocumentoVisualizando] =
+    useState<Tables<"generated_documents"> | null>(null);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -876,7 +872,7 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
     setErro(null);
     const { data, error } = await db
       .from("generated_documents")
-      .select("id,title,status,document_type,template_version,created_at")
+      .select("*")
       .eq("tenant_id", props.tenantId)
       .eq("process_id", props.processId)
       .order("created_at", { ascending: false })
@@ -887,7 +883,7 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
       setDocumentos([]);
       setErro("Não foi possível carregar os documentos vinculados a este processo.");
     } else {
-      setDocumentos((data ?? []) as DocumentoVinculado[]);
+      setDocumentos((data ?? []) as Tables<"generated_documents">[]);
     }
     setLoading(false);
   }, [props.aberto, props.tenantId, props.processId]);
@@ -975,12 +971,22 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
                     {new Date(documento.created_at).toLocaleString("pt-BR")}
                   </p>
                 </div>
-                <Badge
-                  variant={documento.status === "signed" ? "default" : "secondary"}
-                  className="shrink-0"
-                >
-                  {statusLabel[documento.status] ?? documento.status}
-                </Badge>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setDocumentoVisualizando(documento)}
+                    aria-label={`Visualizar ${documento.title}`}
+                    title="Visualização rápida"
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    Visualizar
+                  </Button>
+                  <Badge variant={documento.status === "signed" ? "default" : "secondary"}>
+                    {statusLabel[documento.status] ?? documento.status}
+                  </Badge>
+                </div>
               </div>
             ))
           )}
@@ -992,6 +998,15 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
           )}
         </div>
       </div>
+
+      <DocumentViewerSheet
+        documento={documentoVisualizando}
+        aberto={documentoVisualizando !== null}
+        onOpenChange={(aberto) => {
+          if (!aberto) setDocumentoVisualizando(null);
+        }}
+        onImprimir={() => window.print()}
+      />
     </Card>
   );
 }
