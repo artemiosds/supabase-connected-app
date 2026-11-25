@@ -2100,10 +2100,8 @@ function DadosEstruturados(props: {
       const { buildDocxFromText, generateDocx, docxToModel, renderPdf } =
         await import("@/lib/docx-engine");
       const { carregarTimbradoSecretaria } = await import("@/lib/document-branding");
-      const {
-        calcularResumoDossieProcesso,
-        buildProcessDossierDocumentText,
-      } = await import("@/lib/process-dossier-pdf-helper");
+      const { calcularResumoDossieProcesso, buildProcessDossierDocumentText } =
+        await import("@/lib/process-dossier-pdf-helper");
 
       const [tenantRes, profileRes, processRes, contractsRes] = await Promise.all([
         db.from("tenants").select("name").eq("id", props.tenantId).single(),
@@ -2174,16 +2172,19 @@ function DadosEstruturados(props: {
           quantity: Number(item.quantity) || 0,
           estimatedPrice,
           approvedPrice,
-          winnerSupplierName:
-            winnerSupplier?.legal_name ?? winnerQuote?.source_name ?? null,
-          winnerSupplierCnpj:
-            winnerSupplier?.cnpj ?? winnerQuote?.source_tax_id ?? null,
+          winnerSupplierName: winnerSupplier?.legal_name ?? winnerQuote?.source_name ?? null,
+          winnerSupplierCnpj: winnerSupplier?.cnpj ?? winnerQuote?.source_tax_id ?? null,
         };
       });
 
       const quoteGroupMap = new Map<
         string,
-        { supplierName: string; supplierCnpj: string; itemIds: Set<string>; totalQuotedValue: number }
+        {
+          supplierName: string;
+          supplierCnpj: string;
+          itemIds: Set<string>;
+          totalQuotedValue: number;
+        }
       >();
       for (const q of quotes.filter((row) => row.is_active)) {
         const sup = q.supplier_id ? supplierById.get(q.supplier_id) : undefined;
@@ -2200,7 +2201,8 @@ function DadosEstruturados(props: {
         }
         const entry = quoteGroupMap.get(key)!;
         entry.itemIds.add(q.procurement_item_id);
-        entry.totalQuotedValue += Number(q.total_price ?? Number(q.quantity) * Number(q.unit_price)) || 0;
+        entry.totalQuotedValue +=
+          Number(q.total_price ?? Number(q.quantity) * Number(q.unit_price)) || 0;
       }
 
       const dossierQuotes = Array.from(quoteGroupMap.values()).map((q) => ({
@@ -2273,9 +2275,7 @@ function DadosEstruturados(props: {
 
       toast.success("Dossiê TCE do Processo gerado com sucesso!");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível gerar o Dossiê TCE.",
-      );
+      toast.error(error instanceof Error ? error.message : "Não foi possível gerar o Dossiê TCE.");
     } finally {
       setGerandoDossieTce(false);
     }

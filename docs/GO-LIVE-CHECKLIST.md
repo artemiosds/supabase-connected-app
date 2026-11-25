@@ -47,7 +47,6 @@ As seções anteriores são registros históricos; seus números de migrations, 
 
 Registrar responsável, data, versão, evidência restrita e conclusão por frente. Não registrar segredos ou links temporários.
 
-
 ## Estado consolidado — 16/11/2026
 
 **Decisão: NO-GO para produção e comercialização.** O projeto segue em homologação técnica. Não anunciar integrações, backup real ou envio de e-mail como operacionais sem evidência verificável.
@@ -125,11 +124,10 @@ Registrar responsável, data, versão, evidência restrita e conclusão por fren
 
 **Resultado verificado em 16/11/2026:** `main` está no commit documental `f46258b`; o código de aplicação está no pai `8ee4e17`. Validação/segurança ([run 43878865833](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865833)), formatação ([run 43878865720](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878865720)) e E2E autenticado ([run 43878866355](https://github.com/artemiosds/supabase-connected-app/actions/runs/43878866355)) passaram nesse head. A reconciliação somente leitura confirmou 89 migrations no SMS2 contra 91 no `main`; as duas pendentes estão identificadas no início deste checklist e não foram aplicadas. **O sistema permanece NO-GO para produção/venda** até concluir os gates operacionais: backup/restore real, entrega controlada de e-mail, documentos oficiais aprovados, cobertura navegador de compras/contratos e aceite formal.
 
-
 ---
 
-
 > **Fotografia histórica de 12/11/2026.** Os números e pendências deste bloco foram substituídos pelo estado consolidado acima; mantidos apenas para rastreabilidade. SMS2 foi consultado somente para leitura; a CI mais recente é do commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`.
+>
 > - O schema `public` tem 38 tabelas, todas com RLS habilitada; 27 também usam FORCE RLS e existem 133 políticas. O histórico remoto registra 74 migrations até `20261112123300`. O repositório `main` tem 82 arquivos SQL e oito migrations futuras não aplicadas ao SMS2: fonte DOCX, timbrado por Secretaria, bloqueio de campos pendentes, guardas do workflow de contratação, FORCE RLS da fonte DOCX, cobertura de índices FK e remoção de políticas SELECT redundantes.
 > - Há 1 Secretaria, 1 vínculo municipal, 2 perfis e 2 identidades Auth; não há fornecedores, documentos operacionais, processos ou contratos. O catálogo global contém 5 modelos.
 > - Cinco Edge Functions estão ativas: `invite-tenant-user` v15, `platform-billing-config` v13, `invite-platform-support-agent` v6, `invite-platform-staff` v4 e `send-expiry-notifications` v3. Ativa não significa que e-mail real ou scheduler esteja homologado.
@@ -162,6 +160,7 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - Não há backup com restore comprovado; domínio/publicação final ainda não confirmados.
 
 ## Gate 1 — Auth, equipe e e-mail
+
 - [ ] SMTP transacional configurado com domínio próprio verificado.
 - [ ] SPF/DKIM/DMARC publicados e verificados.
 - [ ] Supabase Auth Site URL e Redirect URLs configurados.
@@ -175,6 +174,7 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - [ ] Rever política de senha e alerta de proteção contra senhas vazadas.
 
 ## Gate 2 — Duas Secretarias e isolamento
+
 - [ ] Criar duas Secretarias de homologação pelo fluxo normal.
 - [ ] Criar usuários e administradores diferentes em cada uma.
 - [ ] Testar leitura/escrita cruzada em fornecedores, documentos, Storage, modelos, processos, cotações, orçamento, contratos, aditivos e auditoria.
@@ -182,6 +182,7 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - [ ] Validar no navegador autenticado, não apenas por SQL/CI.
 
 ## Gate 3 — GED, modelos e documentos
+
 - [ ] Testar upload/download autenticado, URLs assinadas, expiração e bloqueio após arquivamento.
 - [ ] Testar isolamento do Storage entre tenants.
 - [ ] Testar MIME, tamanho acima de 20 MiB, arquivo inválido e substituição.
@@ -192,12 +193,14 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - [ ] Definir retenção, PDF server-side e nível jurídico de assinatura.
 
 ## Gate 4 — Processos e contratos
+
 - [ ] Testar processo/checklist atômico.
 - [ ] Testar itens e três cotações, frete, seleção de referência e dotações.
 - [ ] Testar contrato, aditivos de prazo/valor, limites e autorização.
 - [ ] Validar auditoria, isolamento e desempenho com carga representativa.
 
 ## Gate 5 — Alertas e Drive
+
 - [x] Integrar PR #9 de alertas visuais — concluído; não equivale ao envio programado de e-mails.
 - [ ] Definir regras, antecedência, destinatários, frequência, fuso e idempotência.
 - [x] Código da Edge Function de alertas e workflow agendado existem. [ ] Configurar secrets e regras; comprovar envio idempotente antes de habilitar o schedule.
@@ -205,6 +208,7 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 - [ ] Manter GED Supabase como fallback até homologação do Drive.
 
 ## Gate 6 — Backup e continuidade
+
 - [ ] Gerar chave age e manter a chave privada offline.
 - [ ] Configurar GitHub Secrets e variables exigidas pelo workflow.
 - [ ] Executar backup manual, conferir dump, Storage, hash e criptografia.
@@ -216,6 +220,7 @@ Os números e versões deste bloco são uma fotografia anterior. Para o estado a
 O backup lógico não é backup integral: não inclui senhas/identidades Auth, configuração completa do projeto, secrets das Edge Functions e SMTP.
 
 ## Gate 7 — Comercial e produção
+
 - [ ] Escolher gateway, conta comercial, planos, preço, trial, limites, tributos, inadimplência e cancelamento.
 - [ ] Implementar adaptador e webhooks assinados/idempotentes.
 - [ ] Testar em Sandbox; manter pagamento real desativado até aprovação.
@@ -225,6 +230,7 @@ O backup lógico não é backup integral: não inclui senhas/identidades Auth, c
 - [ ] Publicar frontend no domínio oficial, testar E2E e obter aceite do piloto.
 
 ## Critério
+
 **NO-GO** enquanto SMTP, isolamento entre duas Secretarias, GED autenticado, backup restaurado, E2E, domínio, cobrança e jurídico estiverem sem evidência.  
 **GO controlado** somente após os gates concluídos e aceite formal do piloto.
 
@@ -238,18 +244,17 @@ Esta atualização prevalece sobre os retratos anteriores deste documento.
 - O Supabase atribuiu versões de execução diferentes das versões dos arquivos. A reconciliação do histórico foi bloqueada pela revisão automática e NÃO foi executada. Não executar db push indiscriminadamente.
 
 | Versão do arquivo | Versão registrada no SMS2 |
-| --- | --- |
-| 20261110143000 | 20261110180336 |
-| 20261110144000 | 20261110180349 |
-| 20261110150000 | 20261110180400 |
-| 20261110151000 | 20261110180414 |
+| ----------------- | ------------------------- |
+| 20261110143000    | 20261110180336            |
+| 20261110144000    | 20261110180349            |
+| 20261110150000    | 20261110180400            |
+| 20261110151000    | 20261110180414            |
 
 A baseline 20261106194000 também continua sem versão correspondente no histórico remoto; avaliar equivalência antes de qualquer reparo.
 
 Cinco Edge Functions estavam ativas na auditoria, incluindo send-expiry-notifications. Sua dependência de banco foi implantada nesta etapa; envio efetivo, secrets e scheduler ainda não foram homologados. O CI do commit 9dbf29f passou build, testes, tipos, lint e regressões de banco local. A verificação desta implantação foi de catálogo/permissões; não substitui E2E autenticado.
 
 Continuam pendentes: reconciliação do histórico, configuração e entrega de e-mail, homologação com duas Secretarias, GED no navegador, backup/restauração em ambiente separado, domínio/publicação e requisitos comerciais. Nenhum e-mail foi enviado nem dado operacional de teste persistido nesta etapa. NO-GO comercial permanece.
-
 
 ## Atualização de código — 12/11/2026
 
@@ -258,7 +263,6 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - [x] CI do commit `9f2dc56` aplicou migrations em banco descartável e passou pgTAP.
 - [ ] Homologar rascunhos Word/PDF no navegador e a fidelidade dos modelos DOCX importados.
 
-
 ## Modelos Word privados — 12/11/2026
 
 - [x] Código e migration versionada para DOCX original por versão, guardado no bucket privado e protegido por RLS/Storage.
@@ -266,13 +270,11 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - [ ] Confirmar com perfis reais: MASTER, DIRETOR, membro sem permissão e duas Secretarias; importar, editar, exportar Word, baixar PDF e verificar a aparência.
 - [ ] Configurar brasão/timbre oficial e validar documento final com equipe jurídica. PDF gerado no navegador ainda não reproduz imagens e tabelas complexas do DOCX original.
 
-
 ## Bloqueio de implantação de migrations — 12/11/2026
 
 - [x] Comparadas 68 versões remotas e 75 migrations da `main`; sete aliases mapeados e SQL confrontado.
 - [ ] Comprovar equivalência completa da baseline sem versão, restaurar backup em projeto isolado e simular reparo de histórico. Ver `docs/RECONCILIACAO-MIGRATIONS-SMS2.md`.
 - [ ] Só depois de revisão e autorização, publicar as seis migrations pendentes no SMS2 e homologar por perfil e Secretaria.
-
 
 ## Atualização do motor documental — 12/11/2026
 
@@ -280,7 +282,6 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 - Migrations futuras no repositório: `20261112124000`, `20261112124500` e `20261112125000`. Todas passaram por aplicação e testes SQL em banco descartável; nenhuma foi aplicada ao SMS2.
 - O editor ainda é textual. A edição do texto descarta o DOCX original; editor visual rico, E2E autenticado, homologação visual de modelos reais e restauração de backup continuam pendentes.
 - **NO-GO** permanece até concluir o Gate 3 e os demais gates.
-
 
 ## Atualização de validação — 12/11/2026, commit `49dd493e6be34b8e143831b46c17861045474d76`
 
@@ -293,7 +294,6 @@ Continuam pendentes: reconciliação do histórico, configuração e entrega de 
 
 A execução anterior que falhou ocorreu antes do commit corretivo; não deve ser confundida com o CI posterior aprovado. Nenhuma migration foi aplicada ao SMS2 nesta validação. O estado comercial continua **NO-GO**.
 
-
 ## Atualização de validação — 12/11/2026, commit `4e79bf6accf1f5b50b4c648233bfcfdb4e84d108`
 
 - [x] Testes do fluxo de aprovação documental ampliados de 4 para 13 verificações.
@@ -304,7 +304,6 @@ A execução anterior que falhou ocorreu antes do commit corretivo; não deve se
 - [ ] Backup/restauração em projeto isolado e reconciliação do histórico de migrations SMS2.
 
 Os novos testes ampliam a proteção contra regressões, mas não substituem o cenário completo com dados sintéticos de duas Secretarias. SMS2 permanece intacto e a comercialização continua bloqueada.
-
 
 ## Atualização de validação — 12/11/2026, commit `a7bcd6073e7d960b99e54e1f694eccf9c0bae741`
 
@@ -324,7 +323,6 @@ O resultado verde da CI comprova validação automatizada do commit e aplicaçã
 
 **Estado final desta verificação: NO-GO para produção/venda.**
 
-
 ## Atualização de validação — 12/11/2026, commit `7a4fdaedfd61c0df305236332921ae844bb9aff6`
 
 - [x] CI completo aprovado no run [43290173715](https://github.com/artemiosds/supabase-connected-app/actions/runs/43290173715): jobs `validate` e `database-security` verdes.
@@ -337,7 +335,6 @@ O resultado verde da CI comprova validação automatizada do commit e aplicaçã
 - [ ] Concluir todos os demais gates antes de produção ou venda.
 
 A CI comprova testes automatizados em banco descartável, não homologação visual/autenticada nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2 nesta atualização. **NO-GO comercial permanece.**
-
 
 ## Atualização de validação — 12/11/2026, commit `cc4441c720c2cd73dd958d97d62717c19e899022`
 
@@ -355,7 +352,6 @@ A CI comprova testes automatizados em banco descartável, não homologação vis
 
 A CI verde comprova a suíte automatizada e migrations em ambiente descartável, não comprova E2E visual/autenticado nem recuperação de backup. Nenhuma migration foi aplicada ao SMS2. **NO-GO comercial permanece.**
 
-
 ## Atualização de validação — 12/11/2026, commit `2a3570daef8d931f6bcf2a9e5c4e7ab033c9d51b`
 
 - [x] Importador DOCX agora valida CRC-32 do XML principal e consistência do cabeçalho local com o diretório central do ZIP; testes cobrem conteúdo corrompido e cabeçalho divergente.
@@ -370,7 +366,6 @@ A CI verde comprova a suíte automatizada e migrations em ambiente descartável,
 
 **NO-GO para produção/venda permanece.** CI verde não substitui E2E, aceite visual, isolamento real ou teste de recuperação.
 
-
 ## Atualização de regressão comportamental — 12/11/2026, commit `44862e0749f52e70b7bf111b1dd611dc5593c094`
 
 - [x] `procurement_process_workflow.test.sql` ampliado para 33 assertions: 24 verificações anteriores e 9 verificações comportamentais novas.
@@ -382,7 +377,6 @@ A CI verde comprova a suíte automatizada e migrations em ambiente descartável,
 
 As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamental não substitui a homologação autenticada entre duas Secretarias. SMS2 não foi alterado; NO-GO comercial permanece.
 
-
 ## Atualização de status — 13/11/2026
 
 - [x] Commit `01d35ab49fe6750175b18ae2d5186c5fe2a460a6` corrige a corrida que poderia iniciar upload de DOCX após troca da Secretaria durante a consulta da origem existente.
@@ -392,7 +386,6 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] Aceite formal da Secretaria e auditoria funcional final continuam pendentes.
 
 **NO-GO para produção/venda permanece.** SMS2 não recebeu migrations nem dados de teste nesta atualização.
-
 
 ## Registro histórico do Advisor remoto SMS2 — leitura de 13/11/2026 (antes das verificações mais recentes)
 
@@ -406,7 +399,6 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 
 **Decisão:** findings foram registrados como itens de revisão e rollout, não como autorização para alterar o SMS2. Nenhuma migration, configuração Auth ou dado remoto foi alterado durante esta auditoria.
 
-
 ## Atualização de segurança e CI — 13/11/2026, commit `d2ce13fe2c9990d96a151d3d49e4ba660dac057d`
 
 - [x] CI completo aprovado: validação [run 43417500383](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500383) — jobs `validate` e `database-security` concluídos com sucesso; formatação [run 43417500282](https://github.com/artemiosds/supabase-connected-app/actions/runs/43417500282) aprovada.
@@ -419,7 +411,6 @@ As fixtures são exclusivamente sintéticas e revertidas. A suíte comportamenta
 - [ ] E2E autenticado, recuperação de upload DOCX, homologação visual e backup/restore em projeto isolado continuam pendentes.
 
 Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 nesta etapa. Os avisos do Advisor não foram tratados como vulnerabilidades automáticas nem removidos em massa. Estado comercial permanece **NO-GO**.
-
 
 ## Homologação — teste individual de e-mail institucional (18/11/2026)
 
@@ -437,7 +428,6 @@ Nenhuma migration, configuração Auth ou dado operacional foi alterado no SMS2 
 - [ ] Verificar com perfis distintos a visibilidade por Secretaria e as permissões para cadastrar, aprovar e abrir o processo.
 - [ ] Após aprovação, criar o processo, conferir seus itens e abrir o DFD vinculado. Repetir a conversão e verificar que o processo é o mesmo.
 - [ ] Registrar aceite e reconciliar o histórico antes de uma implantação controlada no SMS2. Consolidação entre Secretarias, classificação de catálogo e publicação externa pertencem a etapas posteriores.
-
 
 ## IA multiprovedor — implantação no SMS2 (23/11/2026)
 

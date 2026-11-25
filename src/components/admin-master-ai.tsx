@@ -49,12 +49,7 @@ import {
 } from "@/lib/ai-capabilities";
 import { db } from "@/lib/db";
 
-type AiProviderKind =
-  | "openai"
-  | "gemini"
-  | "anthropic"
-  | "azure_openai"
-  | "openai_compatible";
+type AiProviderKind = "openai" | "gemini" | "anthropic" | "azure_openai" | "openai_compatible";
 
 type AiProvider = {
   id: string;
@@ -290,10 +285,7 @@ export function AdminMasterAi() {
       setSelectedTenantId((current) => current || data.tenants?.[0]?.id || "");
     } catch (cause) {
       setError(
-        await getFunctionErrorMessage(
-          cause,
-          "Não foi possível carregar as configurações de IA.",
-        ),
+        await getFunctionErrorMessage(cause, "Não foi possível carregar as configurações de IA."),
       );
     } finally {
       setLoading(false);
@@ -317,10 +309,9 @@ export function AdminMasterAi() {
   }, [selectedTenant]);
 
   async function invokeAction<T>(action: string, values: Record<string, unknown> = {}) {
-    const { data, error: invokeError } = await db.functions.invoke<T>(
-      "platform-ai-configuration",
-      { body: { action, ...values } },
-    );
+    const { data, error: invokeError } = await db.functions.invoke<T>("platform-ai-configuration", {
+      body: { action, ...values },
+    });
     if (invokeError) {
       throw new Error(
         await getFunctionErrorMessage(invokeError, "Falha na solicitação de configuração."),
@@ -344,13 +335,9 @@ export function AdminMasterAi() {
       api_base_url: provider.api_base_url ?? "",
       api_version: provider.api_version ?? "2024-10-21",
       input_cost_per_million:
-        provider.input_cost_per_million === null
-          ? ""
-          : String(provider.input_cost_per_million),
+        provider.input_cost_per_million === null ? "" : String(provider.input_cost_per_million),
       output_cost_per_million:
-        provider.output_cost_per_million === null
-          ? ""
-          : String(provider.output_cost_per_million),
+        provider.output_cost_per_million === null ? "" : String(provider.output_cost_per_million),
       fallback_priority: String(provider.fallback_priority),
     });
   }
@@ -419,9 +406,7 @@ export function AdminMasterAi() {
       await load();
     } catch (cause) {
       toast.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível definir o provedor principal.",
+        cause instanceof Error ? cause.message : "Não foi possível definir o provedor principal.",
       );
     } finally {
       setChangingProviderId(null);
@@ -551,7 +536,9 @@ export function AdminMasterAi() {
       toast.success(
         tenantEnabled
           ? "IA e recursos habilitados para " + selectedTenant.name + "."
-          : "Recursos preparados e salvos para " + selectedTenant.name + ". A IA continua desligada.",
+          : "Recursos preparados e salvos para " +
+              selectedTenant.name +
+              ". A IA continua desligada.",
       );
       await load();
     } catch (cause) {
@@ -577,9 +564,7 @@ export function AdminMasterAi() {
 
   function toggleTenantProvider(providerId: string, enabled: boolean) {
     setAllowedProviderIds((current) =>
-      enabled
-        ? [...new Set([...current, providerId])]
-        : current.filter((id) => id !== providerId),
+      enabled ? [...new Set([...current, providerId])] : current.filter((id) => id !== providerId),
     );
   }
 
@@ -616,8 +601,8 @@ export function AdminMasterAi() {
         <AlertTitle>Credenciais protegidas no servidor</AlertTitle>
         <AlertDescription>
           As chaves ficam no Supabase Vault e nunca retornam ao navegador. As solicitações enviam
-          somente o contexto necessário ao provedor escolhido. Antes de liberar dados institucionais,
-          valide contrato, privacidade e retenção de cada serviço externo.
+          somente o contexto necessário ao provedor escolhido. Antes de liberar dados
+          institucionais, valide contrato, privacidade e retenção de cada serviço externo.
         </AlertDescription>
       </Alert>
 
@@ -816,7 +801,8 @@ export function AdminMasterAi() {
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Os valores são informados pelo Administrador Master e não são atualizados
-              automaticamente. O custo exibido é uma estimativa baseada nos tokens retornados pela API.
+              automaticamente. O custo exibido é uma estimativa baseada nos tokens retornados pela
+              API.
             </p>
           </div>
 
@@ -856,8 +842,8 @@ export function AdminMasterAi() {
         <CardHeader>
           <CardTitle>Provedores cadastrados</CardTitle>
           <CardDescription>
-            Defina o provedor principal. Os demais provedores habilitados funcionam como alternativas
-            na ordem de prioridade configurada.
+            Defina o provedor principal. Os demais provedores habilitados funcionam como
+            alternativas na ordem de prioridade configurada.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -982,15 +968,15 @@ export function AdminMasterAi() {
                     {!provider.is_primary &&
                       provider.status === "connected" &&
                       provider.is_enabled && (
-                      <Button
-                        size="sm"
-                        onClick={() => void setPrimaryProvider(provider)}
-                        disabled={changingProviderId === provider.id}
-                      >
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Tornar principal
-                      </Button>
-                    )}
+                        <Button
+                          size="sm"
+                          onClick={() => void setPrimaryProvider(provider)}
+                          disabled={changingProviderId === provider.id}
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Tornar principal
+                        </Button>
+                      )}
                     {!provider.is_primary && provider.status === "connected" && (
                       <Button
                         size="sm"
@@ -1049,12 +1035,11 @@ export function AdminMasterAi() {
             <AlertDialogDescription>
               {providerPendingDeletion && (
                 <>
-                  Você está prestes a excluir{" "}
-                  <strong>{providerPendingDeletion.name}</strong> (
+                  Você está prestes a excluir <strong>{providerPendingDeletion.name}</strong> (
                   {providerPendingDeletion.model}).
                 </>
-              )}
-              {" "}A credencial correspondente também será removida do Supabase Vault. Os registros
+              )}{" "}
+              A credencial correspondente também será removida do Supabase Vault. Os registros
               históricos de consumo serão preservados, mas deixarão de estar vinculados a este
               cadastro.
               {providerPendingDeletion?.is_primary
@@ -1103,9 +1088,10 @@ export function AdminMasterAi() {
               {configuration?.enabled ? "IA global ligada" : "IA global desligada"}
             </p>
             <p className="text-sm text-muted-foreground">
-              Principal atual: {primaryProvider
-                  ? primaryProvider.name + " · " + primaryProvider.model
-                  : "Nenhum provedor principal. Clique em Tornar principal na lista acima."}
+              Principal atual:{" "}
+              {primaryProvider
+                ? primaryProvider.name + " · " + primaryProvider.model
+                : "Nenhum provedor principal. Clique em Tornar principal na lista acima."}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -1221,11 +1207,14 @@ export function AdminMasterAi() {
                     ))}
                     {(hasUnsavedProviders || hasUnsavedTenantSettings) && (
                       <p className="text-xs font-medium text-amber-700">
-                        Existem alterações ainda não salvas. Elas só passam a valer depois de salvar.
+                        Existem alterações ainda não salvas. Elas só passam a valer depois de
+                        salvar.
                       </p>
                     )}
                     <Badge variant={assistantReady ? "default" : "secondary"}>
-                      {assistantReady ? "IA pronta para uso nesta Secretaria" : "Ativação incompleta"}
+                      {assistantReady
+                        ? "IA pronta para uso nesta Secretaria"
+                        : "Ativação incompleta"}
                     </Badge>
                   </div>
                   {!selectedTenantOperational && (
@@ -1242,7 +1231,8 @@ export function AdminMasterAi() {
                     <div>
                       <p className="font-medium">Provedores autorizados</p>
                       <p className="text-sm text-muted-foreground">
-                        Marque pelo menos um provedor conectado para permitir o uso nesta Secretaria.
+                        Marque pelo menos um provedor conectado para permitir o uso nesta
+                        Secretaria.
                       </p>
                     </div>
                     {providers.length === 0 ? (
@@ -1251,8 +1241,7 @@ export function AdminMasterAi() {
                       </p>
                     ) : (
                       providers.map((provider) => {
-                        const available =
-                          provider.status === "connected" && provider.is_enabled;
+                        const available = provider.status === "connected" && provider.is_enabled;
                         return (
                           <div
                             key={provider.id}
@@ -1326,8 +1315,8 @@ export function AdminMasterAi() {
                       <div>
                         <p className="font-medium">Recursos da IA</p>
                         <p className="text-xs text-muted-foreground">
-                          É possível selecionar e salvar os recursos mesmo com a IA desligada.
-                          Eles só serão utilizados após a ativação da Secretaria.
+                          É possível selecionar e salvar os recursos mesmo com a IA desligada. Eles
+                          só serão utilizados após a ativação da Secretaria.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1350,23 +1339,23 @@ export function AdminMasterAi() {
                       </div>
                     </div>
                     <div className="divide-y rounded-lg border">
-                    {AI_FEATURES.map((feature) => (
-                      <div
-                        key={feature.key}
-                        className="flex items-center justify-between gap-4 p-4"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium">{feature.label}</p>
-                          <p className="text-sm text-muted-foreground">{feature.description}</p>
+                      {AI_FEATURES.map((feature) => (
+                        <div
+                          key={feature.key}
+                          className="flex items-center justify-between gap-4 p-4"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium">{feature.label}</p>
+                            <p className="text-sm text-muted-foreground">{feature.description}</p>
+                          </div>
+                          <Switch
+                            checked={features[feature.key]}
+                            disabled={savingTenant}
+                            onCheckedChange={(checked) => updateFeature(feature.key, checked)}
+                            aria-label={"Habilitar " + feature.label}
+                          />
                         </div>
-                        <Switch
-                          checked={features[feature.key]}
-                          disabled={savingTenant}
-                          onCheckedChange={(checked) => updateFeature(feature.key, checked)}
-                          aria-label={"Habilitar " + feature.label}
-                        />
-                      </div>
-                    ))}
+                      ))}
                     </div>
                   </div>
                   <Button
@@ -1405,8 +1394,8 @@ export function AdminMasterAi() {
             Consumo e custos por Secretaria
           </CardTitle>
           <CardDescription>
-            Últimos 30 dias. Custos são estimativas em USD calculadas com as tarifas cadastradas para
-            cada provedor.
+            Últimos 30 dias. Custos são estimativas em USD calculadas com as tarifas cadastradas
+            para cada provedor.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

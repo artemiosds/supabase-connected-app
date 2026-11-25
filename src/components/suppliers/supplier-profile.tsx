@@ -96,7 +96,11 @@ type Sancao = Pick<
 >;
 
 type HomologacaoResumo = HomologacaoPerfil & { id: string; category?: string };
-type RegularidadeResumo = RegularidadePerfil & { id: string; source_label?: string; requires_action: boolean };
+type RegularidadeResumo = RegularidadePerfil & {
+  id: string;
+  source_label?: string;
+  requires_action: boolean;
+};
 type TarefaResumo = TarefaPerfil & { id: string; title?: string };
 
 type EstadoSecao<T> = {
@@ -353,9 +357,7 @@ export function FichaFornecedor({
                 .range(start, end),
             )
           : Promise.resolve(null),
-        processosEnabled
-          ? buscarCotacoesVinculadas(tenantId, supplierId!)
-          : Promise.resolve(null),
+        processosEnabled ? buscarCotacoesVinculadas(tenantId, supplierId!) : Promise.resolve(null),
         contratosEnabled
           ? carregarTodasAsPaginas<Instrumento>((start, end) =>
               db
@@ -514,10 +516,18 @@ export function FichaFornecedor({
                     className={`flex items-center gap-1.5 font-medium ${rotuloStatusConsolidado360(resumo.statusConsolidado360).corBadge}`}
                     title={rotuloStatusConsolidado360(resumo.statusConsolidado360).descricao}
                   >
-                    {resumo.statusConsolidado360 === "apto" && <ShieldCheck className="h-3.5 w-3.5" />}
-                    {resumo.statusConsolidado360 === "atencao" && <AlertTriangle className="h-3.5 w-3.5" />}
-                    {resumo.statusConsolidado360 === "inapto" && <ShieldAlert className="h-3.5 w-3.5" />}
-                    {resumo.statusConsolidado360 === "em_homologacao" && <FileBadge className="h-3.5 w-3.5" />}
+                    {resumo.statusConsolidado360 === "apto" && (
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    )}
+                    {resumo.statusConsolidado360 === "atencao" && (
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    )}
+                    {resumo.statusConsolidado360 === "inapto" && (
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                    )}
+                    {resumo.statusConsolidado360 === "em_homologacao" && (
+                      <FileBadge className="h-3.5 w-3.5" />
+                    )}
                     {rotuloStatusConsolidado360(resumo.statusConsolidado360).label}
                   </Badge>
                 )}
@@ -570,7 +580,11 @@ export function FichaFornecedor({
                     value={
                       dados.homologacoes.status === "ready"
                         ? resumo?.ultimaHomologacao
-                          ? rotuloStatusHomologacao(resumo.ultimaHomologacao.status as any)
+                          ? rotuloStatusHomologacao(
+                              resumo.ultimaHomologacao.status as Parameters<
+                                typeof rotuloStatusHomologacao
+                              >[0],
+                            )
                           : "Não iniciada"
                         : null
                     }
@@ -578,8 +592,8 @@ export function FichaFornecedor({
                       resumo?.ultimaHomologacao?.concluded_at
                         ? `Concluída em ${formatarData(resumo.ultimaHomologacao.concluded_at)}`
                         : resumo?.ultimaHomologacao
-                        ? "Processo em aberto"
-                        : "Sem processo anterior"
+                          ? "Processo em aberto"
+                          : "Sem processo anterior"
                     }
                   />
                   <Metrica
@@ -594,22 +608,20 @@ export function FichaFornecedor({
                         ? (resumo?.regularidade.irregulares ?? 0) > 0
                           ? `${resumo?.regularidade.irregulares} irregularidade(s)`
                           : (resumo?.regularidade.total ?? 0) > 0
-                          ? "Fontes oficiais regulares"
-                          : "Nenhuma consulta registrada"
+                            ? "Fontes oficiais regulares"
+                            : "Nenhuma consulta registrada"
                         : undefined
                     }
                   />
                   <Metrica
                     label="Pendências Ativas"
-                    value={
-                      dados.tarefas.status === "ready" ? (resumo?.tarefas.abertas ?? 0) : null
-                    }
+                    value={dados.tarefas.status === "ready" ? (resumo?.tarefas.abertas ?? 0) : null}
                     detail={
                       (resumo?.tarefas.criticas ?? 0) > 0
                         ? `${resumo?.tarefas.criticas} crítica(s) imediata(s)`
                         : (resumo?.tarefas.vencidas ?? 0) > 0
-                        ? `${resumo?.tarefas.vencidas} com prazo expirado`
-                        : "Nenhuma pendência crítica"
+                          ? `${resumo?.tarefas.vencidas} com prazo expirado`
+                          : "Nenhuma pendência crítica"
                     }
                   />
                   <Metrica
@@ -632,8 +644,8 @@ export function FichaFornecedor({
                       dados.sancoes.status !== "ready"
                         ? "Situação não verificada"
                         : (resumo?.sancoesVigentes ?? 0) > 0
-                        ? "Restrição de fornecimento"
-                        : "Sem sanções vigentes"
+                          ? "Restrição de fornecimento"
+                          : "Sem sanções vigentes"
                     }
                   />
                 </div>

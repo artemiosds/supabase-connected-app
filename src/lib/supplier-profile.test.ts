@@ -207,7 +207,13 @@ describe("Ficha 360º Consolidada: Status e Indicadores Integrados (Entrega 5)",
     ];
 
     const tarefas = [
-      { id: "t-1", task_type: "document_expiring", priority: "low", status: "open", due_date: "2026-12-15" },
+      {
+        id: "t-1",
+        task_type: "document_expiring",
+        priority: "low",
+        status: "open",
+        due_date: "2026-12-15",
+      },
       { id: "t-2", task_type: "manual", priority: "medium", status: "resolved", due_date: null },
     ];
 

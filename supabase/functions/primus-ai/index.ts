@@ -249,7 +249,8 @@ async function collectContext(
         .limit(30),
     ]);
 
-    if (docsResult.error) throw new Error("Documentos do fornecedor indisponíveis para esta sessão.");
+    if (docsResult.error)
+      throw new Error("Documentos do fornecedor indisponíveis para esta sessão.");
 
     return {
       supplier,
@@ -460,19 +461,21 @@ Deno.serve(async (request: Request) => {
         ? (tenantConfig.features as Record<string, unknown>)
         : {};
     const enabled = configured && tenantConfig?.enabled === true;
-    const features = enabled
-      ? FEATURES.filter((feature) => flags[feature] === true)
-      : [];
+    const features = enabled ? FEATURES.filter((feature) => flags[feature] === true) : [];
 
     let reason: string | null = null;
     if (platformConfig?.enabled !== true || platformConfig.status !== "connected") {
-      reason = "A IA global ainda não está ativa. Solicite ao Administrador Master que defina a IA principal e ative a IA global.";
+      reason =
+        "A IA global ainda não está ativa. Solicite ao Administrador Master que defina a IA principal e ative a IA global.";
     } else if (providerCandidates.length === 0) {
-      reason = "Nenhum provedor conectado está autorizado para esta Secretaria. Solicite liberação ao Administrador Master.";
+      reason =
+        "Nenhum provedor conectado está autorizado para esta Secretaria. Solicite liberação ao Administrador Master.";
     } else if (tenantConfig?.enabled !== true) {
-      reason = "A IA desta Secretaria ainda está desligada. O Administrador Master precisa ativá-la e salvar as configurações.";
+      reason =
+        "A IA desta Secretaria ainda está desligada. O Administrador Master precisa ativá-la e salvar as configurações.";
     } else if (features.length === 0) {
-      reason = "Nenhum recurso de IA foi habilitado nesta Secretaria. Solicite ao Administrador Master que selecione e salve os recursos.";
+      reason =
+        "Nenhum recurso de IA foi habilitado nesta Secretaria. Solicite ao Administrador Master que selecione e salve os recursos.";
     }
 
     return response({ enabled, features, reason }, 200, origin);

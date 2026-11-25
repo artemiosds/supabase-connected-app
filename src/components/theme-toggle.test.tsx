@@ -41,7 +41,7 @@ describe("ThemeToggle: preferência visual do Primus", () => {
     render(<ThemeToggle />);
     const trigger = screen.getByRole("button", { name: /Selecionar tema/ });
 
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
 
     const light = await screen.findByRole("menuitem", { name: "Claro" });
     const dark = screen.getByRole("menuitem", { name: "Escuro" });

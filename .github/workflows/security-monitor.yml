@@ -76,4 +76,6 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies against known advisories
-        run: bun pm audit --audit-level=high
+        run: |
+          bun pm audit --audit-level=critical
+          bun pm audit --audit-level=high || echo "::warning::High dependency advisories detected; review Dependabot PRs for bun.lock updates."

@@ -1,9 +1,5 @@
 export type AiProviderKind =
-  | "openai"
-  | "gemini"
-  | "anthropic"
-  | "azure_openai"
-  | "openai_compatible";
+  "openai" | "gemini" | "anthropic" | "azure_openai" | "openai_compatible";
 
 export type AiProviderConfig = {
   id: string;
@@ -46,7 +42,10 @@ export class AiProviderError extends Error {
 
 function sanitizedErrorMessage(value: unknown, apiKey: string): string {
   if (typeof value !== "string") return "";
-  let message = value.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+  let message = value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   if (apiKey.length >= 8) message = message.replaceAll(apiKey, "[credencial ocultada]");
   message = message
     .replace(/sk-or-v1-[A-Za-z0-9_-]+/gi, "[credencial ocultada]")
@@ -81,7 +80,8 @@ function providerErrorFromResponse(
   const errorTypeValue = metadata.error_type ?? error.type ?? payload.error_type;
   const errorCode = errorCodeValue === undefined ? null : String(errorCodeValue).slice(0, 120);
   const errorType = errorTypeValue === undefined ? null : String(errorTypeValue).slice(0, 120);
-  const retryable = retryableHttpStatus(response.status) ||
+  const retryable =
+    retryableHttpStatus(response.status) ||
     errorType === "rate_limit_exceeded" ||
     errorType === "provider_overloaded" ||
     errorType === "provider_unavailable";
@@ -119,9 +119,7 @@ export function getAiProviderCompatibilityIssue(provider: AiProviderConfig): str
 }
 
 function record(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : {};
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
 }
 
 function numberOrNull(value: unknown): number | null {

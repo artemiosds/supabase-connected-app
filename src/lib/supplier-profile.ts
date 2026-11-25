@@ -35,11 +35,7 @@ export type TarefaPerfil = {
 };
 
 export type StatusConsolidado360 =
-  | "apto"
-  | "atencao"
-  | "inapto"
-  | "em_homologacao"
-  | "sem_historico";
+  "apto" | "atencao" | "inapto" | "em_homologacao" | "sem_historico";
 
 export function dataLocalIso(data = new Date()): string {
   return [
@@ -58,12 +54,7 @@ export function diasAteDataIso(data: string | null, hoje: string): number | null
 }
 
 export type SituacaoDocumentoPerfil =
-  | "arquivado"
-  | "sem_vencimento"
-  | "vencido"
-  | "vence_hoje"
-  | "a_vencer"
-  | "em_dia";
+  "arquivado" | "sem_vencimento" | "vencido" | "vence_hoje" | "a_vencer" | "em_dia";
 
 export function situacaoDocumentoPerfil(
   documento: DocumentoPerfil,
@@ -154,7 +145,8 @@ export function rotuloStatusConsolidado360(status: StatusConsolidado360): {
     case "inapto":
       return {
         label: "Inapto / Impedimento",
-        descricao: "Fornecedor com sanção vigente, certidão irregular ou pendência crítica impeditiva.",
+        descricao:
+          "Fornecedor com sanção vigente, certidão irregular ou pendência crítica impeditiva.",
         variante: "destructive",
         corBadge: "bg-destructive text-destructive-foreground",
       };
@@ -215,7 +207,9 @@ export function resumirFichaFornecedor(
   const pendentesRegularidade = regularidades.filter((r) => r.status === "pending_review").length;
 
   // Entrega 4: Fila de Tarefas
-  const tarefasAbertas = tarefas.filter((t) => t.status === "open" || t.status === "in_progress").length;
+  const tarefasAbertas = tarefas.filter(
+    (t) => t.status === "open" || t.status === "in_progress",
+  ).length;
   const tarefasCriticas = tarefas.filter(
     (t) => (t.status === "open" || t.status === "in_progress") && t.priority === "critical",
   ).length;
