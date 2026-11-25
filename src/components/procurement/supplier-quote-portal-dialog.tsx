@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CheckCircle2, Copy, FileDown, Link2, Loader2, Send, XCircle } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  Copy,
+  FileDown,
+  Link2,
+  Loader2,
+  Mail,
+  Send,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { SupplierSelect, type SupplierOption } from "@/components/supplier-select";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +36,7 @@ import {
   buildQuotePortalUrl,
   cancelarSolicitacaoCotacaoPortal,
   criarSolicitacaoCotacaoPortal,
+  enviarConviteCotacaoEmail,
   marcarSolicitacaoCotacaoImportada,
   rotuloStatusSolicitacaoCotacao,
   type ProcurementQuoteRequestRow,
@@ -34,6 +45,8 @@ import {
 
 type SupplierInfo = SupplierOption & {
   status?: string;
+  contact_email?: string | null;
+  contact_name?: string | null;
 };
 
 type Props = {
@@ -79,8 +92,16 @@ export function SupplierQuotePortalDialog({
   const [creating, setCreating] = useState(false);
   const [busyRequestId, setBusyRequestId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const activeSuppliers = suppliers.filter((s) => !s.status || s.status === "active");
+
+  // pré-preenche e-mail ao trocar fornecedor
+  useEffect(() => {
+    const found = suppliers.find((s) => s.id === supplierId);
+    setEmailRecipient(found?.contact_email?.trim() ?? "");
+  }, [supplierId, suppliers]);
 
   const carregarSolicitacoes = useCallback(async () => {
     if (!tenantId || !processId) return;
@@ -166,6 +187,49 @@ export function SupplierQuotePortalDialog({
       toast.error(err instanceof Error ? err.message : "Erro ao gerar solicitação de cotação.");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleEnviarEmail(req: ProcurementQuoteRequestRow, recipient: string) {
+    if (!inScope()) {
+      toast.error("A sessão ou a Secretaria mudou. Reabra o processo.");
+      return;
+    }
+    const normalizedRecipient = recipient.trim().toLowerCase();
+    if (!normalizedRecipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedRecipient)) {
+      toast.error("Informe um endereço de e-mail válido do fornecedor.");
+      return;
+    }
+    const token = session?.access_token;
+    if (!token) {
+      toast.error("Sessão expirada. Recarregue a página.");
+      return;
+    }
+
+    setSendingEmailId(req.id);
+    try {
+      const result = await enviarConviteCotacaoEmail({
+        tenantId,
+        quoteRequestId: req.id,
+        recipientEmail: normalizedRecipient,
+        accessToken: token,
+      });
+      if (result.success) {
+        toast.success(
+          `Convite de cotação enviado para ${normalizedRecipient}${result.outcome === "accepted" ? " ✔" : ""}.`,
+        );
+        await carregarSolicitacoes();
+      } else if (result.outcome === "uncertain") {
+        toast.warning(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível enviar o convite por e-mail.",
+      );
+    } finally {
+      setSendingEmailId(null);
     }
   }
 
@@ -502,6 +566,57 @@ export function SupplierQuotePortalDialog({
                                 <Send className="mr-1 h-3.5 w-3.5" />
                                 Copiar Convite (E-mail/WhatsApp)
                               </Button>
+
+                              {/* ── ENVIO INSTITUCIONAL POR E-MAIL ── */}
+                              <div className="flex w-full items-center gap-1.5 rounded-md border bg-muted/30 px-2.5 py-1.5">
+                                <Mail
+                                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                                  aria-hidden
+                                />
+                                <Input
+                                  type="email"
+                                  aria-label={`E-mail do fornecedor para enviar convite — ${supplier?.trade_name || supplier?.legal_name || "fornecedor"}`}
+                                  placeholder="e-mail do fornecedor"
+                                  className="h-7 flex-1 border-0 bg-transparent px-0 text-xs shadow-none focus-visible:ring-0"
+                                  value={
+                                    req.id === sendingEmailId || req.email_sent_at
+                                      ? (req.email_sent_to ?? emailRecipient)
+                                      : emailRecipient
+                                  }
+                                  onChange={(e) => setEmailRecipient(e.target.value)}
+                                  disabled={sendingEmailId === req.id}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="default"
+                                  className="h-7 shrink-0 px-2 text-xs"
+                                  disabled={sendingEmailId === req.id}
+                                  onClick={() => void handleEnviarEmail(req, emailRecipient)}
+                                >
+                                  {sendingEmailId === req.id ? (
+                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Mail className="mr-1 h-3.5 w-3.5" />
+                                  )}
+                                  Enviar por E-mail Institucional
+                                </Button>
+                              </div>
+                              {req.email_sent_at && req.email_sent_to && (
+                                <p className="w-full text-[11px] text-muted-foreground">
+                                  ✔ Convite enviado em{" "}
+                                  {new Date(req.email_sent_at).toLocaleString("pt-BR", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}{" "}
+                                  para <span className="font-medium">{req.email_sent_to}</span>
+                                  {req.email_provider ? ` (${req.email_provider})` : ""}
+                                </p>
+                              )}
+
                               <Button
                                 type="button"
                                 size="sm"

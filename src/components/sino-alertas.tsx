@@ -6,6 +6,7 @@ import {
   Bell,
   CalendarClock,
   CheckCircle2,
+  ClipboardCheck,
   Loader2,
   PackagePlus,
 } from "lucide-react";
@@ -58,6 +59,16 @@ type ProrrogacaoAlvo = {
   supplierName: string | undefined;
 };
 
+type CotacaoRecebidaAlerta = {
+  id: string;
+  processId: string;
+  processNumber: string;
+  processTitle: string;
+  supplierName: string;
+  protocol: string;
+  submittedAt: string;
+};
+
 export function SinoAlertas() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
@@ -68,6 +79,7 @@ export function SinoAlertas() {
   const [popoverAberto, setPopoverAberto] = useState(false);
   const [avisos, setAvisos] = useState<AvisoVencimento[]>([]);
   const [alertasSaldo, setAlertasSaldo] = useState<ContratoComSaldoCritico[]>([]);
+  const [cotacoesRecebidas, setCotacoesRecebidas] = useState<CotacaoRecebidaAlerta[]>([]);
   const [contratosPorId, setContratosPorId] = useState<Record<string, ContratoAlertaRegistro>>({});
   const [carregando, setCarregando] = useState(false);
   const [falhaParcial, setFalhaParcial] = useState(false);
@@ -111,6 +123,7 @@ export function SinoAlertas() {
     setAvisos([]);
     setAlertasSaldo([]);
     setContratosPorId({});
+    setCotacoesRecebidas([]);
     setFalhaParcial(false);
     setAndamento({ tenantId: "", ids: [], canEdit: false, canCreate: false });
     setProrrogacaoAlvo(null);
@@ -165,6 +178,19 @@ export function SinoAlertas() {
         db.rpc("get_document_capabilities", { p_tenant_id: tenantId }),
       ]);
 
+      // Carrega propostas eletrônicas recebidas (status = submitted) concorrentemente
+      const cotacoesFetch = db
+        .from("procurement_quote_requests")
+        .select(
+          "id,process_id,supplier_id,submission_protocol,submitted_at,suppliers(legal_name,trade_name),procurement_processes(number,title)",
+        )
+        .eq("tenant_id", tenantId)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false })
+        .limit(20)
+        .then(({ data, error }) => ({ data: data ?? [], falhou: !!error }))
+        .then(undefined, () => ({ data: [] as unknown[], falhou: true }));
+
       const contractIds = contratos.data.map((contract) => contract.id);
       const [itensContratos, movimentacoes] =
         contractIds.length > 0
@@ -201,10 +227,24 @@ export function SinoAlertas() {
 
       if (!ativo) return;
 
-      const mapaContratos: Record<string, ContratoAlertaRegistro> = {};
-      for (const contract of contratos.data) {
-        mapaContratos[contract.id] = contract;
-      }
+      type CotacaoRow = {
+        id: string;
+        process_id: string;
+        submission_protocol: string | null;
+        submitted_at: string | null;
+        suppliers: { legal_name: string | null; trade_name: string | null } | null;
+        procurement_processes: { number: string; title: string } | null;
+      };
+
+      const [cotacoesResult, mapaContratos] = await Promise.all([
+        cotacoesFetch,
+        Promise.resolve(
+          Object.fromEntries(contratos.data.map((c) => [c.id, c])) as Record<
+            string,
+            ContratoAlertaRegistro
+          >,
+        ),
+      ]);
 
       const contratosVencendo = contratos.data.filter((contract) => contract.end_date <= limite);
       setContratosPorId(mapaContratos);
@@ -223,6 +263,22 @@ export function SinoAlertas() {
           })),
         }),
       );
+
+      setCotacoesRecebidas(
+        (cotacoesResult.data as CotacaoRow[])
+          .filter((r) => r.submission_protocol && r.submitted_at && r.procurement_processes)
+          .map((r) => ({
+            id: r.id,
+            processId: r.process_id,
+            processNumber: r.procurement_processes!.number,
+            processTitle: r.procurement_processes!.title,
+            supplierName:
+              r.suppliers?.trade_name?.trim() || r.suppliers?.legal_name?.trim() || "Fornecedor",
+            protocol: r.submission_protocol!,
+            submittedAt: r.submitted_at!,
+          })),
+      );
+
       setFalhaParcial(
         contratos.falhou ||
           documentos.falhou ||
@@ -313,11 +369,11 @@ export function SinoAlertas() {
     setPopoverAberto(false);
   }
 
-  const totalAlertas = avisos.length + alertasSaldo.length;
+  const totalAlertas = avisos.length + alertasSaldo.length + cotacoesRecebidas.length;
   const ariaLabel = carregando
     ? "Carregando alertas de vencimento"
     : falhaParcial
-      ? `Alertas de vencimento e saldo parcialmente carregados: ${totalAlertas}`
+      ? `Alertas de vencimento, saldo e cotações parcialmente carregados: ${totalAlertas}`
       : `Alertas de vencimento e saldo: ${totalAlertas}`;
 
   return (
@@ -389,6 +445,59 @@ export function SinoAlertas() {
                   </div>
                 ) : (
                   <ul className="max-h-[430px] space-y-2.5 overflow-y-auto pr-1">
+                    {cotacoesRecebidas.map((cot) => {
+                      const processHref = `/processos?processo=${encodeURIComponent(cot.processId)}`;
+                      const submittedLabel = new Date(cot.submittedAt).toLocaleString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <li
+                          key={`cotacao-${cot.id}`}
+                          className="rounded-xl border border-l-[3px] border-l-emerald-500 bg-card p-3.5 text-sm transition-colors hover:bg-muted/30"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-400/40 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            >
+                              Proposta recebida
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{submittedLabel}</span>
+                          </div>
+                          <p className="mt-2 text-sm font-semibold leading-snug">
+                            {cot.supplierName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Processo nº {cot.processNumber} · Protocolo {cot.protocol}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="rounded-lg"
+                              asChild
+                              onClick={() => setPopoverAberto(false)}
+                            >
+                              <a href={processHref}>
+                                <ClipboardCheck className="mr-1 size-3.5" aria-hidden="true" />
+                                Importar na Matriz
+                              </a>
+                            </Button>
+                            <Button size="sm" variant="outline" className="rounded-lg" asChild>
+                              <a href={processHref}>
+                                Abrir processo
+                                <ArrowUpRight className="ml-1 size-3.5" aria-hidden="true" />
+                              </a>
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+
                     {alertasSaldo.map((alerta) => {
                       const detailHref = `/contratos?contrato=${encodeURIComponent(alerta.contractId)}`;
                       const temEsgotado = alerta.esgotadosCount > 0;

@@ -51,6 +51,7 @@ describe("invariantes automatizadas de cibersegurança", () => {
       "platform-ai-configuration",
       "platform-billing-config",
       "primus-ai",
+      "send-quote-request-email",
       "sign-generated-document",
       "tenant-integration-settings",
     ];
@@ -76,6 +77,7 @@ describe("invariantes automatizadas de cibersegurança", () => {
       "platform-ai-configuration",
       "primus-ai",
       "lookup-cnpj",
+      "send-quote-request-email",
     ];
 
     for (const fn of jwtRequired) {

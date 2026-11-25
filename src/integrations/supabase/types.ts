@@ -1,5176 +1,5201 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.18";
-  };
+    PostgrestVersion: "14.18"
+  }
   public: {
     Tables: {
       annual_procurement_demands: {
         Row: {
-          approved_at: string | null;
-          approved_by: string | null;
-          id: string;
-          items: Json;
-          justification: string;
-          plan_year: number;
-          process_id: string | null;
-          submitted_at: string;
-          submitted_by: string;
-          tenant_id: string;
-          title: string;
-        };
+          approved_at: string | null
+          approved_by: string | null
+          id: string
+          items: Json
+          justification: string
+          plan_year: number
+          process_id: string | null
+          submitted_at: string
+          submitted_by: string
+          tenant_id: string
+          title: string
+        }
         Insert: {
-          approved_at?: string | null;
-          approved_by?: string | null;
-          id: string;
-          items: Json;
-          justification: string;
-          plan_year: number;
-          process_id?: string | null;
-          submitted_at?: string;
-          submitted_by: string;
-          tenant_id: string;
-          title: string;
-        };
+          approved_at?: string | null
+          approved_by?: string | null
+          id: string
+          items: Json
+          justification: string
+          plan_year: number
+          process_id?: string | null
+          submitted_at?: string
+          submitted_by: string
+          tenant_id: string
+          title: string
+        }
         Update: {
-          approved_at?: string | null;
-          approved_by?: string | null;
-          id?: string;
-          items?: Json;
-          justification?: string;
-          plan_year?: number;
-          process_id?: string | null;
-          submitted_at?: string;
-          submitted_by?: string;
-          tenant_id?: string;
-          title?: string;
-        };
+          approved_at?: string | null
+          approved_by?: string | null
+          id?: string
+          items?: Json
+          justification?: string
+          plan_year?: number
+          process_id?: string | null
+          submitted_at?: string
+          submitted_by?: string
+          tenant_id?: string
+          title?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "annual_procurement_demands_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "annual_procurement_demands_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "annual_procurement_demands_tenant_id_process_id_fkey";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "annual_procurement_demands_tenant_id_process_id_fkey"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       audit_events: {
         Row: {
-          action: string;
-          actor_id: string | null;
-          created_at: string;
-          details: Json;
-          entity: string;
-          entity_id: string | null;
-          id: string;
-          tenant_id: string | null;
-        };
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          entity: string
+          entity_id: string | null
+          id: string
+          tenant_id: string | null
+        }
         Insert: {
-          action: string;
-          actor_id?: string | null;
-          created_at?: string;
-          details?: Json;
-          entity: string;
-          entity_id?: string | null;
-          id?: string;
-          tenant_id?: string | null;
-        };
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity: string
+          entity_id?: string | null
+          id?: string
+          tenant_id?: string | null
+        }
         Update: {
-          action?: string;
-          actor_id?: string | null;
-          created_at?: string;
-          details?: Json;
-          entity?: string;
-          entity_id?: string | null;
-          id?: string;
-          tenant_id?: string | null;
-        };
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          tenant_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "audit_events_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "audit_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       contract_amendments: {
         Row: {
-          contract_id: string;
-          created_at: string;
-          created_by: string;
-          id: string;
-          kind: string;
-          new_end_date: string | null;
-          notes: string | null;
-          number: string;
-          signed_at: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-          value_change: number;
-        };
+          contract_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          new_end_date: string | null
+          notes: string | null
+          number: string
+          signed_at: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+          value_change: number
+        }
         Insert: {
-          contract_id: string;
-          created_at?: string;
-          created_by: string;
-          id?: string;
-          kind: string;
-          new_end_date?: string | null;
-          notes?: string | null;
-          number: string;
-          signed_at?: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by: string;
-          value_change?: number;
-        };
+          contract_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          new_end_date?: string | null
+          notes?: string | null
+          number: string
+          signed_at?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+          value_change?: number
+        }
         Update: {
-          contract_id?: string;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          kind?: string;
-          new_end_date?: string | null;
-          notes?: string | null;
-          number?: string;
-          signed_at?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-          value_change?: number;
-        };
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          new_end_date?: string | null
+          notes?: string | null
+          number?: string
+          signed_at?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+          value_change?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_amendment_contract";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: false;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_amendment_contract"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       contract_item_movements: {
         Row: {
-          contract_item_id: string;
-          created_at: string;
-          created_by: string;
-          id: string;
-          movement_type: string;
-          quantity: number;
-          reason: string;
-          reference_number: string | null;
-          reverses_movement_id: string | null;
-          tenant_id: string;
-          unit_value_snapshot: number;
-        };
+          contract_item_id: string
+          created_at: string
+          created_by: string
+          id: string
+          movement_type: string
+          quantity: number
+          reason: string
+          reference_number: string | null
+          reverses_movement_id: string | null
+          tenant_id: string
+          unit_value_snapshot: number
+        }
         Insert: {
-          contract_item_id: string;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          movement_type: string;
-          quantity: number;
-          reason: string;
-          reference_number?: string | null;
-          reverses_movement_id?: string | null;
-          tenant_id: string;
-          unit_value_snapshot: number;
-        };
+          contract_item_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          movement_type: string
+          quantity: number
+          reason: string
+          reference_number?: string | null
+          reverses_movement_id?: string | null
+          tenant_id: string
+          unit_value_snapshot: number
+        }
         Update: {
-          contract_item_id?: string;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          movement_type?: string;
-          quantity?: number;
-          reason?: string;
-          reference_number?: string | null;
-          reverses_movement_id?: string | null;
-          tenant_id?: string;
-          unit_value_snapshot?: number;
-        };
+          contract_item_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          movement_type?: string
+          quantity?: number
+          reason?: string
+          reference_number?: string | null
+          reverses_movement_id?: string | null
+          tenant_id?: string
+          unit_value_snapshot?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "contract_item_movements_item_fk";
-            columns: ["tenant_id", "contract_item_id"];
-            isOneToOne: false;
-            referencedRelation: "contract_items";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_item_movements_item_fk"
+            columns: ["tenant_id", "contract_item_id"]
+            isOneToOne: false
+            referencedRelation: "contract_items"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "contract_item_movements_reversal_fk";
-            columns: ["tenant_id", "reverses_movement_id"];
-            isOneToOne: false;
-            referencedRelation: "contract_item_movements";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_item_movements_reversal_fk"
+            columns: ["tenant_id", "reverses_movement_id"]
+            isOneToOne: false
+            referencedRelation: "contract_item_movements"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "contract_item_movements_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "contract_item_movements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       contract_items: {
         Row: {
-          contract_id: string;
-          created_at: string;
-          created_by: string;
-          description: string;
-          id: string;
-          line_number: number;
-          notes: string | null;
-          quantity_total: number;
-          specification: string | null;
-          tenant_id: string;
-          total_value: number | null;
-          unit: string;
-          unit_value: number;
-          updated_at: string;
-          updated_by: string;
-        };
+          contract_id: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          line_number: number
+          notes: string | null
+          quantity_total: number
+          specification: string | null
+          tenant_id: string
+          total_value: number | null
+          unit: string
+          unit_value: number
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          contract_id: string;
-          created_at?: string;
-          created_by?: string;
-          description: string;
-          id?: string;
-          line_number: number;
-          notes?: string | null;
-          quantity_total: number;
-          specification?: string | null;
-          tenant_id: string;
-          total_value?: number | null;
-          unit: string;
-          unit_value: number;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          contract_id: string
+          created_at?: string
+          created_by?: string
+          description: string
+          id?: string
+          line_number: number
+          notes?: string | null
+          quantity_total: number
+          specification?: string | null
+          tenant_id: string
+          total_value?: number | null
+          unit: string
+          unit_value: number
+          updated_at?: string
+          updated_by?: string
+        }
         Update: {
-          contract_id?: string;
-          created_at?: string;
-          created_by?: string;
-          description?: string;
-          id?: string;
-          line_number?: number;
-          notes?: string | null;
-          quantity_total?: number;
-          specification?: string | null;
-          tenant_id?: string;
-          total_value?: number | null;
-          unit?: string;
-          unit_value?: number;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          line_number?: number
+          notes?: string | null
+          quantity_total?: number
+          specification?: string | null
+          tenant_id?: string
+          total_value?: number | null
+          unit?: string
+          unit_value?: number
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "contract_items_contract_fk";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: false;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_items_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "contract_items_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "contract_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       contract_renewal_assessments: {
         Row: {
-          accumulated_months: number | null;
-          authority_approved: boolean;
-          budget_confirmed: boolean;
-          comparison_basis: string | null;
-          continuity_justification: string | null;
-          contract_allows_extension: boolean;
-          contract_id: string;
-          contract_nature: string;
-          created_at: string;
-          created_by: string;
-          current_period_value: number | null;
-          edital_allows_extension: boolean;
-          execution_report: string | null;
-          habilitation_confirmed: boolean;
-          id: string;
-          legal_basis: string | null;
-          legal_regime: string;
-          legal_review_reference: string | null;
-          legal_review_status: string;
-          market_reference_value: number | null;
-          notes: string | null;
-          price_advantage_attested: boolean;
-          price_analysis: string | null;
-          proposed_end_date: string | null;
-          proposed_months: number | null;
-          proposed_start_date: string | null;
-          public_interest_justification: string | null;
-          reference_date: string | null;
-          reference_source: string | null;
-          supplier_agreed: boolean;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-          vantajosidade_method: string | null;
-        };
+          accumulated_months: number | null
+          authority_approved: boolean
+          budget_confirmed: boolean
+          comparison_basis: string | null
+          continuity_justification: string | null
+          contract_allows_extension: boolean
+          contract_id: string
+          contract_nature: string
+          created_at: string
+          created_by: string
+          current_period_value: number | null
+          edital_allows_extension: boolean
+          execution_report: string | null
+          habilitation_confirmed: boolean
+          id: string
+          legal_basis: string | null
+          legal_regime: string
+          legal_review_reference: string | null
+          legal_review_status: string
+          market_reference_value: number | null
+          notes: string | null
+          price_advantage_attested: boolean
+          price_analysis: string | null
+          proposed_end_date: string | null
+          proposed_months: number | null
+          proposed_start_date: string | null
+          public_interest_justification: string | null
+          reference_date: string | null
+          reference_source: string | null
+          supplier_agreed: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+          vantajosidade_method: string | null
+        }
         Insert: {
-          accumulated_months?: number | null;
-          authority_approved?: boolean;
-          budget_confirmed?: boolean;
-          comparison_basis?: string | null;
-          continuity_justification?: string | null;
-          contract_allows_extension?: boolean;
-          contract_id: string;
-          contract_nature?: string;
-          created_at?: string;
-          created_by?: string;
-          current_period_value?: number | null;
-          edital_allows_extension?: boolean;
-          execution_report?: string | null;
-          habilitation_confirmed?: boolean;
-          id?: string;
-          legal_basis?: string | null;
-          legal_regime?: string;
-          legal_review_reference?: string | null;
-          legal_review_status?: string;
-          market_reference_value?: number | null;
-          notes?: string | null;
-          price_advantage_attested?: boolean;
-          price_analysis?: string | null;
-          proposed_end_date?: string | null;
-          proposed_months?: number | null;
-          proposed_start_date?: string | null;
-          public_interest_justification?: string | null;
-          reference_date?: string | null;
-          reference_source?: string | null;
-          supplier_agreed?: boolean;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string;
-          vantajosidade_method?: string | null;
-        };
+          accumulated_months?: number | null
+          authority_approved?: boolean
+          budget_confirmed?: boolean
+          comparison_basis?: string | null
+          continuity_justification?: string | null
+          contract_allows_extension?: boolean
+          contract_id: string
+          contract_nature?: string
+          created_at?: string
+          created_by?: string
+          current_period_value?: number | null
+          edital_allows_extension?: boolean
+          execution_report?: string | null
+          habilitation_confirmed?: boolean
+          id?: string
+          legal_basis?: string | null
+          legal_regime?: string
+          legal_review_reference?: string | null
+          legal_review_status?: string
+          market_reference_value?: number | null
+          notes?: string | null
+          price_advantage_attested?: boolean
+          price_analysis?: string | null
+          proposed_end_date?: string | null
+          proposed_months?: number | null
+          proposed_start_date?: string | null
+          public_interest_justification?: string | null
+          reference_date?: string | null
+          reference_source?: string | null
+          supplier_agreed?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string
+          vantajosidade_method?: string | null
+        }
         Update: {
-          accumulated_months?: number | null;
-          authority_approved?: boolean;
-          budget_confirmed?: boolean;
-          comparison_basis?: string | null;
-          continuity_justification?: string | null;
-          contract_allows_extension?: boolean;
-          contract_id?: string;
-          contract_nature?: string;
-          created_at?: string;
-          created_by?: string;
-          current_period_value?: number | null;
-          edital_allows_extension?: boolean;
-          execution_report?: string | null;
-          habilitation_confirmed?: boolean;
-          id?: string;
-          legal_basis?: string | null;
-          legal_regime?: string;
-          legal_review_reference?: string | null;
-          legal_review_status?: string;
-          market_reference_value?: number | null;
-          notes?: string | null;
-          price_advantage_attested?: boolean;
-          price_analysis?: string | null;
-          proposed_end_date?: string | null;
-          proposed_months?: number | null;
-          proposed_start_date?: string | null;
-          public_interest_justification?: string | null;
-          reference_date?: string | null;
-          reference_source?: string | null;
-          supplier_agreed?: boolean;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-          vantajosidade_method?: string | null;
-        };
+          accumulated_months?: number | null
+          authority_approved?: boolean
+          budget_confirmed?: boolean
+          comparison_basis?: string | null
+          continuity_justification?: string | null
+          contract_allows_extension?: boolean
+          contract_id?: string
+          contract_nature?: string
+          created_at?: string
+          created_by?: string
+          current_period_value?: number | null
+          edital_allows_extension?: boolean
+          execution_report?: string | null
+          habilitation_confirmed?: boolean
+          id?: string
+          legal_basis?: string | null
+          legal_regime?: string
+          legal_review_reference?: string | null
+          legal_review_status?: string
+          market_reference_value?: number | null
+          notes?: string | null
+          price_advantage_attested?: boolean
+          price_analysis?: string | null
+          proposed_end_date?: string | null
+          proposed_months?: number | null
+          proposed_start_date?: string | null
+          public_interest_justification?: string | null
+          reference_date?: string | null
+          reference_source?: string | null
+          supplier_agreed?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+          vantajosidade_method?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "contract_renewal_assessments_contract_fk";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: true;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_renewal_assessments_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "contract_renewal_assessments_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "contract_renewal_assessments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       contract_renewal_checklist_items: {
         Row: {
-          assessment_id: string;
-          assigned_user_id: string | null;
-          contract_id: string;
-          created_at: string;
-          created_by: string;
-          due_date: string | null;
-          evidence_reference: string | null;
-          id: string;
-          is_required: boolean;
-          item_key: string;
-          notes: string | null;
-          status: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          assessment_id: string
+          assigned_user_id: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          due_date: string | null
+          evidence_reference: string | null
+          id: string
+          is_required: boolean
+          item_key: string
+          notes: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          assessment_id: string;
-          assigned_user_id?: string | null;
-          contract_id: string;
-          created_at?: string;
-          created_by: string;
-          due_date?: string | null;
-          evidence_reference?: string | null;
-          id?: string;
-          is_required?: boolean;
-          item_key: string;
-          notes?: string | null;
-          status?: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          assessment_id: string
+          assigned_user_id?: string | null
+          contract_id: string
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          evidence_reference?: string | null
+          id?: string
+          is_required?: boolean
+          item_key: string
+          notes?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          assessment_id?: string;
-          assigned_user_id?: string | null;
-          contract_id?: string;
-          created_at?: string;
-          created_by?: string;
-          due_date?: string | null;
-          evidence_reference?: string | null;
-          id?: string;
-          is_required?: boolean;
-          item_key?: string;
-          notes?: string | null;
-          status?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          assessment_id?: string
+          assigned_user_id?: string | null
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          evidence_reference?: string | null
+          id?: string
+          is_required?: boolean
+          item_key?: string
+          notes?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "contract_renewal_checklist_assessment_fk";
-            columns: ["tenant_id", "assessment_id"];
-            isOneToOne: false;
-            referencedRelation: "contract_renewal_assessments";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_renewal_checklist_assessment_fk"
+            columns: ["tenant_id", "assessment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_renewal_assessments"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "contract_renewal_checklist_assignee_fk";
-            columns: ["tenant_id", "assigned_user_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["tenant_id", "user_id"];
+            foreignKeyName: "contract_renewal_checklist_assignee_fk"
+            columns: ["tenant_id", "assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
           {
-            foreignKeyName: "contract_renewal_checklist_contract_fk";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: false;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_renewal_checklist_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       contract_renewal_followups: {
         Row: {
-          contract_id: string;
-          started_at: string;
-          started_by: string;
-          status: string;
-          tenant_id: string;
-        };
+          contract_id: string
+          started_at: string
+          started_by: string
+          status: string
+          tenant_id: string
+        }
         Insert: {
-          contract_id: string;
-          started_at?: string;
-          started_by: string;
-          status?: string;
-          tenant_id: string;
-        };
+          contract_id: string
+          started_at?: string
+          started_by: string
+          status?: string
+          tenant_id: string
+        }
         Update: {
-          contract_id?: string;
-          started_at?: string;
-          started_by?: string;
-          status?: string;
-          tenant_id?: string;
-        };
+          contract_id?: string
+          started_at?: string
+          started_by?: string
+          status?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "contract_renewal_followups_contract_fk";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: true;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "contract_renewal_followups_contract_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       contracts: {
         Row: {
-          created_at: string;
-          created_by: string;
-          end_date: string;
-          id: string;
-          inspector_name: string | null;
-          inspector_user_id: string | null;
-          instrument_type: string;
-          manager_name: string | null;
-          manager_user_id: string | null;
-          modality: string;
-          notes: string | null;
-          number: string;
-          object: string;
-          ordinance: string | null;
-          process_id: string | null;
-          start_date: string;
-          status: string;
-          supplier_id: string | null;
-          tenant_id: string;
-          total_value: number;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          inspector_name: string | null
+          inspector_user_id: string | null
+          instrument_type: string
+          manager_name: string | null
+          manager_user_id: string | null
+          modality: string
+          notes: string | null
+          number: string
+          object: string
+          ordinance: string | null
+          process_id: string | null
+          start_date: string
+          status: string
+          supplier_id: string | null
+          tenant_id: string
+          total_value: number
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          end_date: string;
-          id?: string;
-          inspector_name?: string | null;
-          inspector_user_id?: string | null;
-          instrument_type?: string;
-          manager_name?: string | null;
-          manager_user_id?: string | null;
-          modality?: string;
-          notes?: string | null;
-          number: string;
-          object: string;
-          ordinance?: string | null;
-          process_id?: string | null;
-          start_date: string;
-          status?: string;
-          supplier_id?: string | null;
-          tenant_id: string;
-          total_value?: number;
-          updated_at?: string;
-          updated_by: string;
-        };
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          inspector_name?: string | null
+          inspector_user_id?: string | null
+          instrument_type?: string
+          manager_name?: string | null
+          manager_user_id?: string | null
+          modality?: string
+          notes?: string | null
+          number: string
+          object: string
+          ordinance?: string | null
+          process_id?: string | null
+          start_date: string
+          status?: string
+          supplier_id?: string | null
+          tenant_id: string
+          total_value?: number
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          end_date?: string;
-          id?: string;
-          inspector_name?: string | null;
-          inspector_user_id?: string | null;
-          instrument_type?: string;
-          manager_name?: string | null;
-          manager_user_id?: string | null;
-          modality?: string;
-          notes?: string | null;
-          number?: string;
-          object?: string;
-          ordinance?: string | null;
-          process_id?: string | null;
-          start_date?: string;
-          status?: string;
-          supplier_id?: string | null;
-          tenant_id?: string;
-          total_value?: number;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          inspector_name?: string | null
+          inspector_user_id?: string | null
+          instrument_type?: string
+          manager_name?: string | null
+          manager_user_id?: string | null
+          modality?: string
+          notes?: string | null
+          number?: string
+          object?: string
+          ordinance?: string | null
+          process_id?: string | null
+          start_date?: string
+          status?: string
+          supplier_id?: string | null
+          tenant_id?: string
+          total_value?: number
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "contracts_inspector_user_id_fk";
-            columns: ["tenant_id", "inspector_user_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["tenant_id", "user_id"];
+            foreignKeyName: "contracts_inspector_user_id_fk"
+            columns: ["tenant_id", "inspector_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
           {
-            foreignKeyName: "contracts_manager_user_id_fk";
-            columns: ["tenant_id", "manager_user_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["tenant_id", "user_id"];
+            foreignKeyName: "contracts_manager_user_id_fk"
+            columns: ["tenant_id", "manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
           {
-            foreignKeyName: "contracts_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_contract_process";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_contract_process"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "fk_contract_supplier";
-            columns: ["tenant_id", "supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_contract_supplier"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       document_template_catalog: {
         Row: {
-          content: string;
-          created_at: string;
-          description: string | null;
-          id: string;
-          is_active: boolean;
-          legal_basis: string;
-          source_reference: string;
-          template_code: string;
-          template_type: string;
-          title: string;
-          updated_at: string;
-          variables_schema: Json;
-          version: number;
-        };
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          legal_basis: string
+          source_reference: string
+          template_code: string
+          template_type: string
+          title: string
+          updated_at: string
+          variables_schema: Json
+          version: number
+        }
         Insert: {
-          content: string;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          legal_basis: string;
-          source_reference: string;
-          template_code: string;
-          template_type: string;
-          title: string;
-          updated_at?: string;
-          variables_schema?: Json;
-          version?: number;
-        };
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          legal_basis: string
+          source_reference: string
+          template_code: string
+          template_type: string
+          title: string
+          updated_at?: string
+          variables_schema?: Json
+          version?: number
+        }
         Update: {
-          content?: string;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          legal_basis?: string;
-          source_reference?: string;
-          template_code?: string;
-          template_type?: string;
-          title?: string;
-          updated_at?: string;
-          variables_schema?: Json;
-          version?: number;
-        };
-        Relationships: [];
-      };
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          legal_basis?: string
+          source_reference?: string
+          template_code?: string
+          template_type?: string
+          title?: string
+          updated_at?: string
+          variables_schema?: Json
+          version?: number
+        }
+        Relationships: []
+      }
       document_template_sources: {
         Row: {
-          created_at: string;
-          created_by: string;
-          file_name: string;
-          file_size: number;
-          storage_path: string;
-          template_id: string;
-          tenant_id: string;
-          version: number;
-        };
+          created_at: string
+          created_by: string
+          file_name: string
+          file_size: number
+          storage_path: string
+          template_id: string
+          tenant_id: string
+          version: number
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          file_name: string;
-          file_size: number;
-          storage_path: string;
-          template_id: string;
-          tenant_id: string;
-          version: number;
-        };
+          created_at?: string
+          created_by?: string
+          file_name: string
+          file_size: number
+          storage_path: string
+          template_id: string
+          tenant_id: string
+          version: number
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          file_name?: string;
-          file_size?: number;
-          storage_path?: string;
-          template_id?: string;
-          tenant_id?: string;
-          version?: number;
-        };
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          file_size?: number
+          storage_path?: string
+          template_id?: string
+          tenant_id?: string
+          version?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "document_template_sources_template_id_tenant_id_fkey";
-            columns: ["template_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "document_template_sources_template_id_tenant_id_fkey"
+            columns: ["template_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "document_template_sources_template_id_version_fkey";
-            columns: ["template_id", "version"];
-            isOneToOne: true;
-            referencedRelation: "document_template_versions";
-            referencedColumns: ["template_id", "version"];
+            foreignKeyName: "document_template_sources_template_id_version_fkey"
+            columns: ["template_id", "version"]
+            isOneToOne: true
+            referencedRelation: "document_template_versions"
+            referencedColumns: ["template_id", "version"]
           },
-        ];
-      };
+        ]
+      }
       document_template_versions: {
         Row: {
-          change_summary: string | null;
-          content: string;
-          created_at: string;
-          created_by: string | null;
-          description: string | null;
-          id: string;
-          legal_basis: string | null;
-          source_reference: string | null;
-          template_code: string | null;
-          template_id: string;
-          template_type: string;
-          tenant_id: string;
-          title: string;
-          variables_schema: Json;
-          version: number;
-        };
+          change_summary: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          legal_basis: string | null
+          source_reference: string | null
+          template_code: string | null
+          template_id: string
+          template_type: string
+          tenant_id: string
+          title: string
+          variables_schema: Json
+          version: number
+        }
         Insert: {
-          change_summary?: string | null;
-          content: string;
-          created_at?: string;
-          created_by?: string | null;
-          description?: string | null;
-          id?: string;
-          legal_basis?: string | null;
-          source_reference?: string | null;
-          template_code?: string | null;
-          template_id: string;
-          template_type: string;
-          tenant_id: string;
-          title: string;
-          variables_schema?: Json;
-          version: number;
-        };
+          change_summary?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          legal_basis?: string | null
+          source_reference?: string | null
+          template_code?: string | null
+          template_id: string
+          template_type: string
+          tenant_id: string
+          title: string
+          variables_schema?: Json
+          version: number
+        }
         Update: {
-          change_summary?: string | null;
-          content?: string;
-          created_at?: string;
-          created_by?: string | null;
-          description?: string | null;
-          id?: string;
-          legal_basis?: string | null;
-          source_reference?: string | null;
-          template_code?: string | null;
-          template_id?: string;
-          template_type?: string;
-          tenant_id?: string;
-          title?: string;
-          variables_schema?: Json;
-          version?: number;
-        };
+          change_summary?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          legal_basis?: string | null
+          source_reference?: string | null
+          template_code?: string | null
+          template_id?: string
+          template_type?: string
+          tenant_id?: string
+          title?: string
+          variables_schema?: Json
+          version?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "document_template_versions_template_id_tenant_id_fkey";
-            columns: ["template_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "document_template_versions_template_id_tenant_id_fkey"
+            columns: ["template_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "document_template_versions_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "document_template_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       document_templates: {
         Row: {
-          catalog_template_id: string | null;
-          change_summary: string | null;
-          content: string;
-          created_at: string;
-          created_by: string;
-          description: string | null;
-          id: string;
-          is_active: boolean;
-          is_base_template: boolean;
-          legal_basis: string | null;
-          source_reference: string | null;
-          template_code: string | null;
-          template_type: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-          variables_schema: Json;
-          version: number;
-        };
+          catalog_template_id: string | null
+          change_summary: string | null
+          content: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_base_template: boolean
+          legal_basis: string | null
+          source_reference: string | null
+          template_code: string | null
+          template_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+          variables_schema: Json
+          version: number
+        }
         Insert: {
-          catalog_template_id?: string | null;
-          change_summary?: string | null;
-          content: string;
-          created_at?: string;
-          created_by?: string;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          is_base_template?: boolean;
-          legal_basis?: string | null;
-          source_reference?: string | null;
-          template_code?: string | null;
-          template_type?: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by?: string;
-          variables_schema?: Json;
-          version?: number;
-        };
+          catalog_template_id?: string | null
+          change_summary?: string | null
+          content: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_base_template?: boolean
+          legal_basis?: string | null
+          source_reference?: string | null
+          template_code?: string | null
+          template_type?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+          variables_schema?: Json
+          version?: number
+        }
         Update: {
-          catalog_template_id?: string | null;
-          change_summary?: string | null;
-          content?: string;
-          created_at?: string;
-          created_by?: string;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          is_base_template?: boolean;
-          legal_basis?: string | null;
-          source_reference?: string | null;
-          template_code?: string | null;
-          template_type?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-          variables_schema?: Json;
-          version?: number;
-        };
+          catalog_template_id?: string | null
+          change_summary?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_base_template?: boolean
+          legal_basis?: string | null
+          source_reference?: string | null
+          template_code?: string | null
+          template_type?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+          variables_schema?: Json
+          version?: number
+        }
         Relationships: [
           {
-            foreignKeyName: "document_templates_catalog_template_id_fkey";
-            columns: ["catalog_template_id"];
-            isOneToOne: false;
-            referencedRelation: "document_template_catalog";
-            referencedColumns: ["id"];
+            foreignKeyName: "document_templates_catalog_template_id_fkey"
+            columns: ["catalog_template_id"]
+            isOneToOne: false
+            referencedRelation: "document_template_catalog"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "document_templates_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "document_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       expiry_notification_deliveries: {
         Row: {
-          alert_level: string;
-          attempts: number;
-          created_at: string;
-          due_on: string;
-          entity_id: string;
-          entity_type: string;
-          id: string;
-          last_error_code: string | null;
-          locked_at: string | null;
-          provider_message_id: string | null;
-          recipient_user_id: string;
-          sent_at: string | null;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-        };
+          alert_level: string
+          attempts: number
+          created_at: string
+          due_on: string
+          entity_id: string
+          entity_type: string
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          provider_message_id: string | null
+          recipient_user_id: string
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          alert_level: string;
-          attempts?: number;
-          created_at?: string;
-          due_on: string;
-          entity_id: string;
-          entity_type: string;
-          id?: string;
-          last_error_code?: string | null;
-          locked_at?: string | null;
-          provider_message_id?: string | null;
-          recipient_user_id: string;
-          sent_at?: string | null;
-          status?: string;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          alert_level: string
+          attempts?: number
+          created_at?: string
+          due_on: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          provider_message_id?: string | null
+          recipient_user_id: string
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          alert_level?: string;
-          attempts?: number;
-          created_at?: string;
-          due_on?: string;
-          entity_id?: string;
-          entity_type?: string;
-          id?: string;
-          last_error_code?: string | null;
-          locked_at?: string | null;
-          provider_message_id?: string | null;
-          recipient_user_id?: string;
-          sent_at?: string | null;
-          status?: string;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          alert_level?: string
+          attempts?: number
+          created_at?: string
+          due_on?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          provider_message_id?: string | null
+          recipient_user_id?: string
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "expiry_notification_deliveries_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "expiry_notification_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       generated_document_workflow_events: {
         Row: {
-          action: string;
-          actor_id: string | null;
-          comment: string | null;
-          created_at: string;
-          document_id: string;
-          from_status: string | null;
-          id: string;
-          tenant_id: string;
-          to_status: string;
-        };
+          action: string
+          actor_id: string | null
+          comment: string | null
+          created_at: string
+          document_id: string
+          from_status: string | null
+          id: string
+          tenant_id: string
+          to_status: string
+        }
         Insert: {
-          action: string;
-          actor_id?: string | null;
-          comment?: string | null;
-          created_at?: string;
-          document_id: string;
-          from_status?: string | null;
-          id?: string;
-          tenant_id: string;
-          to_status: string;
-        };
+          action: string
+          actor_id?: string | null
+          comment?: string | null
+          created_at?: string
+          document_id: string
+          from_status?: string | null
+          id?: string
+          tenant_id: string
+          to_status: string
+        }
         Update: {
-          action?: string;
-          actor_id?: string | null;
-          comment?: string | null;
-          created_at?: string;
-          document_id?: string;
-          from_status?: string | null;
-          id?: string;
-          tenant_id?: string;
-          to_status?: string;
-        };
+          action?: string
+          actor_id?: string | null
+          comment?: string | null
+          created_at?: string
+          document_id?: string
+          from_status?: string | null
+          id?: string
+          tenant_id?: string
+          to_status?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_document_workflow_event_workflow";
-            columns: ["tenant_id", "document_id"];
-            isOneToOne: false;
-            referencedRelation: "generated_document_workflows";
-            referencedColumns: ["tenant_id", "document_id"];
+            foreignKeyName: "fk_document_workflow_event_workflow"
+            columns: ["tenant_id", "document_id"]
+            isOneToOne: false
+            referencedRelation: "generated_document_workflows"
+            referencedColumns: ["tenant_id", "document_id"]
           },
-        ];
-      };
+        ]
+      }
       generated_document_workflows: {
         Row: {
-          created_at: string;
-          decided_at: string | null;
-          decided_by: string | null;
-          decision_comment: string | null;
-          document_id: string;
-          status: string;
-          submitted_at: string | null;
-          submitted_by: string | null;
-          tenant_id: string;
-          updated_at: string;
-        };
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_comment: string | null
+          document_id: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          decided_at?: string | null;
-          decided_by?: string | null;
-          decision_comment?: string | null;
-          document_id: string;
-          status?: string;
-          submitted_at?: string | null;
-          submitted_by?: string | null;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_comment?: string | null
+          document_id: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          decided_at?: string | null;
-          decided_by?: string | null;
-          decision_comment?: string | null;
-          document_id?: string;
-          status?: string;
-          submitted_at?: string | null;
-          submitted_by?: string | null;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_comment?: string | null
+          document_id?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_document_workflow_document";
-            columns: ["tenant_id", "document_id"];
-            isOneToOne: true;
-            referencedRelation: "generated_documents";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_document_workflow_document"
+            columns: ["tenant_id", "document_id"]
+            isOneToOne: true
+            referencedRelation: "generated_documents"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "generated_document_workflows_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "generated_document_workflows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       generated_documents: {
         Row: {
-          content_snapshot: string;
-          contract_id: string | null;
-          created_at: string;
-          created_by: string;
-          document_type: string;
-          id: string;
-          process_id: string | null;
-          process_snapshot: Json;
-          signature_statement: string | null;
-          signed_at: string | null;
-          signed_by: string | null;
-          signed_content_sha256: string | null;
-          signed_email: string | null;
-          signed_name: string | null;
-          signed_pdf_mime_type: string | null;
-          signed_pdf_sha256: string | null;
-          signed_pdf_size: number | null;
-          signed_pdf_storage_path: string | null;
-          status: string;
-          supplier_id: string | null;
-          template_id: string | null;
-          template_version: number | null;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-          variables_snapshot: Json;
-        };
+          content_snapshot: string
+          contract_id: string | null
+          created_at: string
+          created_by: string
+          document_type: string
+          id: string
+          process_id: string | null
+          process_snapshot: Json
+          signature_statement: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_content_sha256: string | null
+          signed_email: string | null
+          signed_name: string | null
+          signed_pdf_mime_type: string | null
+          signed_pdf_sha256: string | null
+          signed_pdf_size: number | null
+          signed_pdf_storage_path: string | null
+          status: string
+          supplier_id: string | null
+          template_id: string | null
+          template_version: number | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+          variables_snapshot: Json
+        }
         Insert: {
-          content_snapshot: string;
-          contract_id?: string | null;
-          created_at?: string;
-          created_by?: string;
-          document_type?: string;
-          id?: string;
-          process_id?: string | null;
-          process_snapshot?: Json;
-          signature_statement?: string | null;
-          signed_at?: string | null;
-          signed_by?: string | null;
-          signed_content_sha256?: string | null;
-          signed_email?: string | null;
-          signed_name?: string | null;
-          signed_pdf_mime_type?: string | null;
-          signed_pdf_sha256?: string | null;
-          signed_pdf_size?: number | null;
-          signed_pdf_storage_path?: string | null;
-          status?: string;
-          supplier_id?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by?: string;
-          variables_snapshot?: Json;
-        };
+          content_snapshot: string
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          id?: string
+          process_id?: string | null
+          process_snapshot?: Json
+          signature_statement?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_content_sha256?: string | null
+          signed_email?: string | null
+          signed_name?: string | null
+          signed_pdf_mime_type?: string | null
+          signed_pdf_sha256?: string | null
+          signed_pdf_size?: number | null
+          signed_pdf_storage_path?: string | null
+          status?: string
+          supplier_id?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+          variables_snapshot?: Json
+        }
         Update: {
-          content_snapshot?: string;
-          contract_id?: string | null;
-          created_at?: string;
-          created_by?: string;
-          document_type?: string;
-          id?: string;
-          process_id?: string | null;
-          process_snapshot?: Json;
-          signature_statement?: string | null;
-          signed_at?: string | null;
-          signed_by?: string | null;
-          signed_content_sha256?: string | null;
-          signed_email?: string | null;
-          signed_name?: string | null;
-          signed_pdf_mime_type?: string | null;
-          signed_pdf_sha256?: string | null;
-          signed_pdf_size?: number | null;
-          signed_pdf_storage_path?: string | null;
-          status?: string;
-          supplier_id?: string | null;
-          template_id?: string | null;
-          template_version?: number | null;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-          variables_snapshot?: Json;
-        };
+          content_snapshot?: string
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          id?: string
+          process_id?: string | null
+          process_snapshot?: Json
+          signature_statement?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_content_sha256?: string | null
+          signed_email?: string | null
+          signed_name?: string | null
+          signed_pdf_mime_type?: string | null
+          signed_pdf_sha256?: string | null
+          signed_pdf_size?: number | null
+          signed_pdf_storage_path?: string | null
+          status?: string
+          supplier_id?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+          variables_snapshot?: Json
+        }
         Relationships: [
           {
-            foreignKeyName: "generated_documents_contract_tenant_fk";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: false;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "generated_documents_contract_tenant_fk"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "generated_documents_process_tenant_fk";
-            columns: ["process_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "generated_documents_process_tenant_fk"
+            columns: ["process_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "generated_documents_supplier_tenant_fk";
-            columns: ["tenant_id", "supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "generated_documents_supplier_tenant_fk"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "generated_documents_template_tenant_fk";
-            columns: ["template_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "document_templates";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "generated_documents_template_tenant_fk"
+            columns: ["template_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "generated_documents_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "generated_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       membership_roles: {
         Row: {
-          created_at: string;
-          membership_id: string;
-          role_id: string;
-          tenant_id: string;
-        };
+          created_at: string
+          membership_id: string
+          role_id: string
+          tenant_id: string
+        }
         Insert: {
-          created_at?: string;
-          membership_id: string;
-          role_id: string;
-          tenant_id: string;
-        };
+          created_at?: string
+          membership_id: string
+          role_id: string
+          tenant_id: string
+        }
         Update: {
-          created_at?: string;
-          membership_id?: string;
-          role_id?: string;
-          tenant_id?: string;
-        };
+          created_at?: string
+          membership_id?: string
+          role_id?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_membership_roles_membership_tenant";
-            columns: ["membership_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "fk_membership_roles_membership_tenant"
+            columns: ["membership_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "fk_membership_roles_role_tenant";
-            columns: ["role_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_roles";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "fk_membership_roles_role_tenant"
+            columns: ["role_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "membership_roles_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "membership_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       operational_email_events: {
         Row: {
-          claimed_at: string | null;
-          created_at: string;
-          entity_id: string;
-          event_day: string;
-          id: string;
-          kind: string;
-          reason: string | null;
-          recipient: string | null;
-          stage: string;
-          status: string;
-          tenant_id: string;
-        };
+          claimed_at: string | null
+          created_at: string
+          entity_id: string
+          event_day: string
+          id: string
+          kind: string
+          reason: string | null
+          recipient: string | null
+          stage: string
+          status: string
+          tenant_id: string
+        }
         Insert: {
-          claimed_at?: string | null;
-          created_at?: string;
-          entity_id: string;
-          event_day?: string;
-          id?: string;
-          kind: string;
-          reason?: string | null;
-          recipient?: string | null;
-          stage?: string;
-          status: string;
-          tenant_id: string;
-        };
+          claimed_at?: string | null
+          created_at?: string
+          entity_id: string
+          event_day?: string
+          id?: string
+          kind: string
+          reason?: string | null
+          recipient?: string | null
+          stage?: string
+          status: string
+          tenant_id: string
+        }
         Update: {
-          claimed_at?: string | null;
-          created_at?: string;
-          entity_id?: string;
-          event_day?: string;
-          id?: string;
-          kind?: string;
-          reason?: string | null;
-          recipient?: string | null;
-          stage?: string;
-          status?: string;
-          tenant_id?: string;
-        };
+          claimed_at?: string | null
+          created_at?: string
+          entity_id?: string
+          event_day?: string
+          id?: string
+          kind?: string
+          reason?: string | null
+          recipient?: string | null
+          stage?: string
+          status?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "operational_email_events_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "operational_email_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       permissions: {
         Row: {
-          code: string;
-          created_at: string;
-          description: string;
-          id: string;
-          module: string;
-          name: string;
-        };
+          code: string
+          created_at: string
+          description: string
+          id: string
+          module: string
+          name: string
+        }
         Insert: {
-          code: string;
-          created_at?: string;
-          description: string;
-          id?: string;
-          module: string;
-          name: string;
-        };
+          code: string
+          created_at?: string
+          description: string
+          id?: string
+          module: string
+          name: string
+        }
         Update: {
-          code?: string;
-          created_at?: string;
-          description?: string;
-          id?: string;
-          module?: string;
-          name?: string;
-        };
-        Relationships: [];
-      };
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          module?: string
+          name?: string
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
-          granted_at: string;
-          granted_by: string | null;
-          is_active: boolean;
-          user_id: string;
-        };
+          granted_at: string
+          granted_by: string | null
+          is_active: boolean
+          user_id: string
+        }
         Insert: {
-          granted_at?: string;
-          granted_by?: string | null;
-          is_active?: boolean;
-          user_id: string;
-        };
+          granted_at?: string
+          granted_by?: string | null
+          is_active?: boolean
+          user_id: string
+        }
         Update: {
-          granted_at?: string;
-          granted_by?: string | null;
-          is_active?: boolean;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          granted_at?: string
+          granted_by?: string | null
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_ai_configuration: {
         Row: {
-          enabled: boolean;
-          id: number;
-          last_test_at: string | null;
-          model: string | null;
-          provider: string;
-          status: string;
-          updated_at: string;
-          updated_by: string | null;
-          vault_secret_id: string | null;
-        };
+          enabled: boolean
+          id: number
+          last_test_at: string | null
+          model: string | null
+          provider: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vault_secret_id: string | null
+        }
         Insert: {
-          enabled?: boolean;
-          id?: number;
-          last_test_at?: string | null;
-          model?: string | null;
-          provider?: string;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id?: string | null;
-        };
+          enabled?: boolean
+          id?: number
+          last_test_at?: string | null
+          model?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
         Update: {
-          enabled?: boolean;
-          id?: number;
-          last_test_at?: string | null;
-          model?: string | null;
-          provider?: string;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id?: string | null;
-        };
-        Relationships: [];
-      };
+          enabled?: boolean
+          id?: number
+          last_test_at?: string | null
+          model?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
+        Relationships: []
+      }
       platform_ai_providers: {
         Row: {
-          api_base_url: string | null;
-          api_version: string | null;
-          created_at: string;
-          created_by: string | null;
-          fallback_priority: number;
-          id: string;
-          input_cost_per_million: number | null;
-          is_enabled: boolean;
-          is_primary: boolean;
-          last_test_at: string | null;
-          last_test_error: string | null;
-          last_test_error_code: string | null;
-          last_test_error_type: string | null;
-          last_test_http_status: number | null;
-          last_test_retry_after: string | null;
-          last_test_retryable: boolean;
-          model: string;
-          name: string;
-          output_cost_per_million: number | null;
-          provider: string;
-          status: string;
-          updated_at: string;
-          updated_by: string | null;
-          vault_secret_id: string;
-        };
+          api_base_url: string | null
+          api_version: string | null
+          created_at: string
+          created_by: string | null
+          fallback_priority: number
+          id: string
+          input_cost_per_million: number | null
+          is_enabled: boolean
+          is_primary: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_error_code: string | null
+          last_test_error_type: string | null
+          last_test_http_status: number | null
+          last_test_retry_after: string | null
+          last_test_retryable: boolean
+          model: string
+          name: string
+          output_cost_per_million: number | null
+          provider: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vault_secret_id: string
+        }
         Insert: {
-          api_base_url?: string | null;
-          api_version?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          fallback_priority?: number;
-          id?: string;
-          input_cost_per_million?: number | null;
-          is_enabled?: boolean;
-          is_primary?: boolean;
-          last_test_at?: string | null;
-          last_test_error?: string | null;
-          last_test_error_code?: string | null;
-          last_test_error_type?: string | null;
-          last_test_http_status?: number | null;
-          last_test_retry_after?: string | null;
-          last_test_retryable?: boolean;
-          model: string;
-          name: string;
-          output_cost_per_million?: number | null;
-          provider: string;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id: string;
-        };
+          api_base_url?: string | null
+          api_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          fallback_priority?: number
+          id?: string
+          input_cost_per_million?: number | null
+          is_enabled?: boolean
+          is_primary?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_error_code?: string | null
+          last_test_error_type?: string | null
+          last_test_http_status?: number | null
+          last_test_retry_after?: string | null
+          last_test_retryable?: boolean
+          model: string
+          name: string
+          output_cost_per_million?: number | null
+          provider: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id: string
+        }
         Update: {
-          api_base_url?: string | null;
-          api_version?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          fallback_priority?: number;
-          id?: string;
-          input_cost_per_million?: number | null;
-          is_enabled?: boolean;
-          is_primary?: boolean;
-          last_test_at?: string | null;
-          last_test_error?: string | null;
-          last_test_error_code?: string | null;
-          last_test_error_type?: string | null;
-          last_test_http_status?: number | null;
-          last_test_retry_after?: string | null;
-          last_test_retryable?: boolean;
-          model?: string;
-          name?: string;
-          output_cost_per_million?: number | null;
-          provider?: string;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id?: string;
-        };
-        Relationships: [];
-      };
+          api_base_url?: string | null
+          api_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          fallback_priority?: number
+          id?: string
+          input_cost_per_million?: number | null
+          is_enabled?: boolean
+          is_primary?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_error_code?: string | null
+          last_test_error_type?: string | null
+          last_test_http_status?: number | null
+          last_test_retry_after?: string | null
+          last_test_retryable?: boolean
+          model?: string
+          name?: string
+          output_cost_per_million?: number | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string
+        }
+        Relationships: []
+      }
       platform_ai_tenant_provider_access: {
         Row: {
-          is_allowed: boolean;
-          provider_id: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          is_allowed: boolean
+          provider_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          is_allowed?: boolean;
-          provider_id: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          is_allowed?: boolean
+          provider_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          is_allowed?: boolean;
-          provider_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          is_allowed?: boolean
+          provider_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_ai_tenant_provider_access_provider_id_fkey";
-            columns: ["provider_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_ai_providers";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_ai_tenant_provider_access_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "platform_ai_providers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "platform_ai_tenant_provider_access_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_ai_tenant_provider_access_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_ai_usage: {
         Row: {
-          actor_id: string | null;
-          created_at: string;
-          estimated_cost_usd: number | null;
-          feature: string;
-          id: string;
-          input_tokens: number | null;
-          model: string;
-          output_tokens: number | null;
-          provider_http_status: number | null;
-          provider_id: string | null;
-          status: string;
-          tenant_id: string;
-        };
+          actor_id: string | null
+          created_at: string
+          estimated_cost_usd: number | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          provider_http_status: number | null
+          provider_id: string | null
+          status: string
+          tenant_id: string
+        }
         Insert: {
-          actor_id?: string | null;
-          created_at?: string;
-          estimated_cost_usd?: number | null;
-          feature: string;
-          id?: string;
-          input_tokens?: number | null;
-          model: string;
-          output_tokens?: number | null;
-          provider_http_status?: number | null;
-          provider_id?: string | null;
-          status: string;
-          tenant_id: string;
-        };
+          actor_id?: string | null
+          created_at?: string
+          estimated_cost_usd?: number | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          provider_http_status?: number | null
+          provider_id?: string | null
+          status: string
+          tenant_id: string
+        }
         Update: {
-          actor_id?: string | null;
-          created_at?: string;
-          estimated_cost_usd?: number | null;
-          feature?: string;
-          id?: string;
-          input_tokens?: number | null;
-          model?: string;
-          output_tokens?: number | null;
-          provider_http_status?: number | null;
-          provider_id?: string | null;
-          status?: string;
-          tenant_id?: string;
-        };
+          actor_id?: string | null
+          created_at?: string
+          estimated_cost_usd?: number | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          provider_http_status?: number | null
+          provider_id?: string | null
+          status?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_ai_usage_provider_id_fkey";
-            columns: ["provider_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_ai_providers";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_ai_usage_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "platform_ai_providers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "platform_ai_usage_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_ai_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_commercial_alerts: {
         Row: {
-          alert_kind: string;
-          created_at: string;
-          dedupe_key: string;
-          id: string;
-          invoice_id: string | null;
-          metadata: Json;
-          reason: string | null;
-          recipient_email: string;
-          recipient_scope: string;
-          sent_at: string | null;
-          severity: string;
-          status: string;
-          tenant_id: string;
-        };
+          alert_kind: string
+          created_at: string
+          dedupe_key: string
+          id: string
+          invoice_id: string | null
+          metadata: Json
+          reason: string | null
+          recipient_email: string
+          recipient_scope: string
+          sent_at: string | null
+          severity: string
+          status: string
+          tenant_id: string
+        }
         Insert: {
-          alert_kind: string;
-          created_at?: string;
-          dedupe_key: string;
-          id?: string;
-          invoice_id?: string | null;
-          metadata?: Json;
-          reason?: string | null;
-          recipient_email: string;
-          recipient_scope: string;
-          sent_at?: string | null;
-          severity: string;
-          status: string;
-          tenant_id: string;
-        };
+          alert_kind: string
+          created_at?: string
+          dedupe_key: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json
+          reason?: string | null
+          recipient_email: string
+          recipient_scope: string
+          sent_at?: string | null
+          severity: string
+          status: string
+          tenant_id: string
+        }
         Update: {
-          alert_kind?: string;
-          created_at?: string;
-          dedupe_key?: string;
-          id?: string;
-          invoice_id?: string | null;
-          metadata?: Json;
-          reason?: string | null;
-          recipient_email?: string;
-          recipient_scope?: string;
-          sent_at?: string | null;
-          severity?: string;
-          status?: string;
-          tenant_id?: string;
-        };
+          alert_kind?: string
+          created_at?: string
+          dedupe_key?: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json
+          reason?: string | null
+          recipient_email?: string
+          recipient_scope?: string
+          sent_at?: string | null
+          severity?: string
+          status?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_commercial_alerts_invoice_id_fkey";
-            columns: ["invoice_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_invoices";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_commercial_alerts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "platform_invoices"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "platform_commercial_alerts_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_commercial_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_invoices: {
         Row: {
-          amount: number;
-          created_at: string;
-          created_by: string | null;
-          due_date: string;
-          external_reference: string | null;
-          id: string;
-          notes: string | null;
-          paid_at: string | null;
-          payment_method: string;
-          payment_url: string | null;
-          plan_tier: string;
-          reference_month: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          external_reference: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_url: string | null
+          plan_tier: string
+          reference_month: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          amount: number;
-          created_at?: string;
-          created_by?: string | null;
-          due_date: string;
-          external_reference?: string | null;
-          id?: string;
-          notes?: string | null;
-          paid_at?: string | null;
-          payment_method?: string;
-          payment_url?: string | null;
-          plan_tier: string;
-          reference_month: string;
-          status?: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_url?: string | null
+          plan_tier: string
+          reference_month: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          amount?: number;
-          created_at?: string;
-          created_by?: string | null;
-          due_date?: string;
-          external_reference?: string | null;
-          id?: string;
-          notes?: string | null;
-          paid_at?: string | null;
-          payment_method?: string;
-          payment_url?: string | null;
-          plan_tier?: string;
-          reference_month?: string;
-          status?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          external_reference?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          payment_url?: string | null
+          plan_tier?: string
+          reference_month?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_invoices_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_payment_integrations: {
         Row: {
-          account_email: string | null;
-          account_name: string;
-          account_reference: string | null;
-          client_id: string | null;
-          created_at: string;
-          created_by: string | null;
-          environment: string;
-          id: number;
-          payments_enabled: boolean;
-          provider: string;
-          provider_other_name: string | null;
-          public_key: string | null;
-          status: string;
-          updated_at: string;
-          updated_by: string | null;
-          vault_secret_id: string | null;
-        };
+          account_email: string | null
+          account_name: string
+          account_reference: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          environment: string
+          id: number
+          payments_enabled: boolean
+          provider: string
+          provider_other_name: string | null
+          public_key: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vault_secret_id: string | null
+        }
         Insert: {
-          account_email?: string | null;
-          account_name: string;
-          account_reference?: string | null;
-          client_id?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          environment: string;
-          id?: number;
-          payments_enabled?: boolean;
-          provider: string;
-          provider_other_name?: string | null;
-          public_key?: string | null;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id?: string | null;
-        };
+          account_email?: string | null
+          account_name: string
+          account_reference?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          environment: string
+          id?: number
+          payments_enabled?: boolean
+          provider: string
+          provider_other_name?: string | null
+          public_key?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
         Update: {
-          account_email?: string | null;
-          account_name?: string;
-          account_reference?: string | null;
-          client_id?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          environment?: string;
-          id?: number;
-          payments_enabled?: boolean;
-          provider?: string;
-          provider_other_name?: string | null;
-          public_key?: string | null;
-          status?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          vault_secret_id?: string | null;
-        };
-        Relationships: [];
-      };
+          account_email?: string | null
+          account_name?: string
+          account_reference?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          id?: number
+          payments_enabled?: boolean
+          provider?: string
+          provider_other_name?: string | null
+          public_key?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vault_secret_id?: string | null
+        }
+        Relationships: []
+      }
       platform_plans: {
         Row: {
-          default_ai_monthly_budget_usd: number | null;
-          default_ai_monthly_token_limit: number | null;
-          default_max_users: number;
-          default_modules: Json;
-          default_monthly_fee: number;
-          description: string;
-          id: string;
-          is_active: boolean;
-          name: string;
-          sort_order: number;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          default_ai_monthly_budget_usd: number | null
+          default_ai_monthly_token_limit: number | null
+          default_max_users: number
+          default_modules: Json
+          default_monthly_fee: number
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          default_ai_monthly_budget_usd?: number | null;
-          default_ai_monthly_token_limit?: number | null;
-          default_max_users?: number;
-          default_modules: Json;
-          default_monthly_fee?: number;
-          description?: string;
-          id: string;
-          is_active?: boolean;
-          name: string;
-          sort_order?: number;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          default_ai_monthly_budget_usd?: number | null
+          default_ai_monthly_token_limit?: number | null
+          default_max_users?: number
+          default_modules: Json
+          default_monthly_fee?: number
+          description?: string
+          id: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          default_ai_monthly_budget_usd?: number | null;
-          default_ai_monthly_token_limit?: number | null;
-          default_max_users?: number;
-          default_modules?: Json;
-          default_monthly_fee?: number;
-          description?: string;
-          id?: string;
-          is_active?: boolean;
-          name?: string;
-          sort_order?: number;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Relationships: [];
-      };
+          default_ai_monthly_budget_usd?: number | null
+          default_ai_monthly_token_limit?: number | null
+          default_max_users?: number
+          default_modules?: Json
+          default_monthly_fee?: number
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       platform_staff: {
         Row: {
-          activated_at: string | null;
-          created_at: string;
-          display_name: string;
-          email: string;
-          invited_by: string;
-          status: string;
-          suspended_at: string | null;
-          updated_at: string;
-          user_id: string;
-        };
+          activated_at: string | null
+          created_at: string
+          display_name: string
+          email: string
+          invited_by: string
+          status: string
+          suspended_at: string | null
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          activated_at?: string | null;
-          created_at?: string;
-          display_name: string;
-          email: string;
-          invited_by: string;
-          status?: string;
-          suspended_at?: string | null;
-          updated_at?: string;
-          user_id: string;
-        };
+          activated_at?: string | null
+          created_at?: string
+          display_name: string
+          email: string
+          invited_by: string
+          status?: string
+          suspended_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          activated_at?: string | null;
-          created_at?: string;
-          display_name?: string;
-          email?: string;
-          invited_by?: string;
-          status?: string;
-          suspended_at?: string | null;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          activated_at?: string | null
+          created_at?: string
+          display_name?: string
+          email?: string
+          invited_by?: string
+          status?: string
+          suspended_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_staff_permissions: {
         Row: {
-          category: string;
-          code: string;
-          created_at: string;
-          description: string;
-          name: string;
-        };
+          category: string
+          code: string
+          created_at: string
+          description: string
+          name: string
+        }
         Insert: {
-          category: string;
-          code: string;
-          created_at?: string;
-          description: string;
-          name: string;
-        };
+          category: string
+          code: string
+          created_at?: string
+          description: string
+          name: string
+        }
         Update: {
-          category?: string;
-          code?: string;
-          created_at?: string;
-          description?: string;
-          name?: string;
-        };
-        Relationships: [];
-      };
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string
+          name?: string
+        }
+        Relationships: []
+      }
       platform_staff_role_assignments: {
         Row: {
-          assigned_at: string;
-          assigned_by: string;
-          role_id: string;
-          user_id: string;
-        };
+          assigned_at: string
+          assigned_by: string
+          role_id: string
+          user_id: string
+        }
         Insert: {
-          assigned_at?: string;
-          assigned_by: string;
-          role_id: string;
-          user_id: string;
-        };
+          assigned_at?: string
+          assigned_by: string
+          role_id: string
+          user_id: string
+        }
         Update: {
-          assigned_at?: string;
-          assigned_by?: string;
-          role_id?: string;
-          user_id?: string;
-        };
+          assigned_at?: string
+          assigned_by?: string
+          role_id?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_staff_role_assignments_role_id_fkey";
-            columns: ["role_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_staff_roles";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_staff_role_assignments_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "platform_staff_roles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "platform_staff_role_assignments_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_staff";
-            referencedColumns: ["user_id"];
+            foreignKeyName: "platform_staff_role_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "platform_staff"
+            referencedColumns: ["user_id"]
           },
-        ];
-      };
+        ]
+      }
       platform_staff_role_permissions: {
         Row: {
-          created_at: string;
-          permission_code: string;
-          role_id: string;
-        };
+          created_at: string
+          permission_code: string
+          role_id: string
+        }
         Insert: {
-          created_at?: string;
-          permission_code: string;
-          role_id: string;
-        };
+          created_at?: string
+          permission_code: string
+          role_id: string
+        }
         Update: {
-          created_at?: string;
-          permission_code?: string;
-          role_id?: string;
-        };
+          created_at?: string
+          permission_code?: string
+          role_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_staff_role_permissions_permission_code_fkey";
-            columns: ["permission_code"];
-            isOneToOne: false;
-            referencedRelation: "platform_staff_permissions";
-            referencedColumns: ["code"];
+            foreignKeyName: "platform_staff_role_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "platform_staff_permissions"
+            referencedColumns: ["code"]
           },
           {
-            foreignKeyName: "platform_staff_role_permissions_role_id_fkey";
-            columns: ["role_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_staff_roles";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_staff_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "platform_staff_roles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_staff_roles: {
         Row: {
-          created_at: string;
-          created_by: string | null;
-          description: string | null;
-          id: string;
-          is_active: boolean;
-          is_system: boolean;
-          name: string;
-          slug: string;
-          updated_at: string;
-        };
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string | null;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          is_system?: boolean;
-          name: string;
-          slug: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string | null;
-          description?: string | null;
-          id?: string;
-          is_active?: boolean;
-          is_system?: boolean;
-          name?: string;
-          slug?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_support_agents: {
         Row: {
-          created_at: string;
-          created_by: string;
-          display_name: string;
-          status: string;
-          updated_at: string;
-          user_id: string;
-        };
+          created_at: string
+          created_by: string
+          display_name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          display_name: string;
-          status?: string;
-          updated_at?: string;
-          user_id: string;
-        };
+          created_at?: string
+          created_by: string
+          display_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          display_name?: string;
-          status?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_support_assignments: {
         Row: {
-          agent_user_id: string;
-          can_create_suppliers: boolean;
-          can_update_suppliers: boolean;
-          can_view_suppliers: boolean;
-          created_at: string;
-          created_by: string;
-          id: string;
-          is_active: boolean;
-          tenant_id: string;
-          updated_at: string;
-        };
+          agent_user_id: string
+          can_create_suppliers: boolean
+          can_update_suppliers: boolean
+          can_view_suppliers: boolean
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          agent_user_id: string;
-          can_create_suppliers?: boolean;
-          can_update_suppliers?: boolean;
-          can_view_suppliers?: boolean;
-          created_at?: string;
-          created_by: string;
-          id?: string;
-          is_active?: boolean;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          agent_user_id: string
+          can_create_suppliers?: boolean
+          can_update_suppliers?: boolean
+          can_view_suppliers?: boolean
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          agent_user_id?: string;
-          can_create_suppliers?: boolean;
-          can_update_suppliers?: boolean;
-          can_view_suppliers?: boolean;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          is_active?: boolean;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          agent_user_id?: string
+          can_create_suppliers?: boolean
+          can_update_suppliers?: boolean
+          can_view_suppliers?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_support_assignments_agent_user_id_fkey";
-            columns: ["agent_user_id"];
-            isOneToOne: false;
-            referencedRelation: "platform_support_agents";
-            referencedColumns: ["user_id"];
+            foreignKeyName: "platform_support_assignments_agent_user_id_fkey"
+            columns: ["agent_user_id"]
+            isOneToOne: false
+            referencedRelation: "platform_support_agents"
+            referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "platform_support_assignments_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_support_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       platform_support_sessions: {
         Row: {
-          actor_id: string;
-          allowed_actions: string[];
-          ended_at: string | null;
-          ended_by: string | null;
-          expires_at: string;
-          id: string;
-          reason: string;
-          started_at: string;
-          tenant_id: string;
-        };
+          actor_id: string
+          allowed_actions: string[]
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          id: string
+          reason: string
+          started_at: string
+          tenant_id: string
+        }
         Insert: {
-          actor_id: string;
-          allowed_actions?: string[];
-          ended_at?: string | null;
-          ended_by?: string | null;
-          expires_at?: string;
-          id?: string;
-          reason: string;
-          started_at?: string;
-          tenant_id: string;
-        };
+          actor_id: string
+          allowed_actions?: string[]
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          reason: string
+          started_at?: string
+          tenant_id: string
+        }
         Update: {
-          actor_id?: string;
-          allowed_actions?: string[];
-          ended_at?: string | null;
-          ended_by?: string | null;
-          expires_at?: string;
-          id?: string;
-          reason?: string;
-          started_at?: string;
-          tenant_id?: string;
-        };
+          actor_id?: string
+          allowed_actions?: string[]
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string
+          started_at?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "platform_support_sessions_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "platform_support_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       process_items: {
         Row: {
-          created_at: string;
-          created_by: string;
-          document_url: string | null;
-          due_date: string | null;
-          id: string;
-          is_done: boolean;
-          process_id: string;
-          responsible_name: string | null;
-          responsible_user_id: string | null;
-          sort_order: number;
-          stage: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          document_url: string | null
+          due_date: string | null
+          id: string
+          is_done: boolean
+          process_id: string
+          responsible_name: string | null
+          responsible_user_id: string | null
+          sort_order: number
+          stage: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          document_url?: string | null;
-          due_date?: string | null;
-          id?: string;
-          is_done?: boolean;
-          process_id: string;
-          responsible_name?: string | null;
-          responsible_user_id?: string | null;
-          sort_order?: number;
-          stage: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          created_at?: string
+          created_by: string
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          process_id: string
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          sort_order?: number
+          stage: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          document_url?: string | null;
-          due_date?: string | null;
-          id?: string;
-          is_done?: boolean;
-          process_id?: string;
-          responsible_name?: string | null;
-          responsible_user_id?: string | null;
-          sort_order?: number;
-          stage?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          process_id?: string
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          sort_order?: number
+          stage?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_item_process";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_item_process"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "process_items_responsible_user_id_fk";
-            columns: ["tenant_id", "responsible_user_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["tenant_id", "user_id"];
+            foreignKeyName: "process_items_responsible_user_id_fk"
+            columns: ["tenant_id", "responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_budget_allocations: {
         Row: {
-          allocated_amount: number;
-          budget_action: string | null;
-          budget_unit: string;
-          created_at: string;
-          created_by: string;
-          expense_nature: string | null;
-          fiscal_year: number;
-          functional_program: string | null;
-          funding_source: string | null;
-          id: string;
-          is_active: boolean;
-          notes: string | null;
-          process_id: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          allocated_amount: number
+          budget_action: string | null
+          budget_unit: string
+          created_at: string
+          created_by: string
+          expense_nature: string | null
+          fiscal_year: number
+          functional_program: string | null
+          funding_source: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          process_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          allocated_amount: number;
-          budget_action?: string | null;
-          budget_unit: string;
-          created_at?: string;
-          created_by: string;
-          expense_nature?: string | null;
-          fiscal_year: number;
-          functional_program?: string | null;
-          funding_source?: string | null;
-          id?: string;
-          is_active?: boolean;
-          notes?: string | null;
-          process_id: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          allocated_amount: number
+          budget_action?: string | null
+          budget_unit: string
+          created_at?: string
+          created_by: string
+          expense_nature?: string | null
+          fiscal_year: number
+          functional_program?: string | null
+          funding_source?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          process_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          allocated_amount?: number;
-          budget_action?: string | null;
-          budget_unit?: string;
-          created_at?: string;
-          created_by?: string;
-          expense_nature?: string | null;
-          fiscal_year?: number;
-          functional_program?: string | null;
-          funding_source?: string | null;
-          id?: string;
-          is_active?: boolean;
-          notes?: string | null;
-          process_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          allocated_amount?: number
+          budget_action?: string | null
+          budget_unit?: string
+          created_at?: string
+          created_by?: string
+          expense_nature?: string | null
+          fiscal_year?: number
+          functional_program?: string | null
+          funding_source?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          process_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "procurement_budget_allocations_process_tenant_fk";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "procurement_budget_allocations_process_tenant_fk"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_items: {
         Row: {
-          created_at: string;
-          created_by: string;
-          delivery_location: string | null;
-          description: string;
-          estimated_price_source: string;
-          estimated_total: number | null;
-          estimated_unit_price: number | null;
-          id: string;
-          is_active: boolean;
-          line_number: number;
-          process_id: string;
-          quantity: number;
-          technical_specification: string | null;
-          tenant_id: string;
-          unit: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          delivery_location: string | null
+          description: string
+          estimated_price_source: string
+          estimated_total: number | null
+          estimated_unit_price: number | null
+          id: string
+          is_active: boolean
+          line_number: number
+          process_id: string
+          quantity: number
+          technical_specification: string | null
+          tenant_id: string
+          unit: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          delivery_location?: string | null;
-          description: string;
-          estimated_price_source?: string;
-          estimated_total?: number | null;
-          estimated_unit_price?: number | null;
-          id?: string;
-          is_active?: boolean;
-          line_number: number;
-          process_id: string;
-          quantity: number;
-          technical_specification?: string | null;
-          tenant_id: string;
-          unit: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          created_at?: string
+          created_by: string
+          delivery_location?: string | null
+          description: string
+          estimated_price_source?: string
+          estimated_total?: number | null
+          estimated_unit_price?: number | null
+          id?: string
+          is_active?: boolean
+          line_number: number
+          process_id: string
+          quantity: number
+          technical_specification?: string | null
+          tenant_id: string
+          unit: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          delivery_location?: string | null;
-          description?: string;
-          estimated_price_source?: string;
-          estimated_total?: number | null;
-          estimated_unit_price?: number | null;
-          id?: string;
-          is_active?: boolean;
-          line_number?: number;
-          process_id?: string;
-          quantity?: number;
-          technical_specification?: string | null;
-          tenant_id?: string;
-          unit?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          delivery_location?: string | null
+          description?: string
+          estimated_price_source?: string
+          estimated_total?: number | null
+          estimated_unit_price?: number | null
+          id?: string
+          is_active?: boolean
+          line_number?: number
+          process_id?: string
+          quantity?: number
+          technical_specification?: string | null
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "procurement_items_process_tenant_fk";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "procurement_items_process_tenant_fk"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_price_approvals: {
         Row: {
-          approved_at: string;
-          approved_by: string;
-          approved_total_price: number;
-          approved_unit_price: number;
-          calculation_snapshot: Json;
-          exceptional_justification: string | null;
-          id: string;
-          method: string;
-          method_justification: string;
-          process_id: string;
-          procurement_item_id: string;
-          sample_count: number;
-          source_snapshot: Json;
-          status: string;
-          superseded_at: string | null;
-          tenant_id: string;
-        };
+          approved_at: string
+          approved_by: string
+          approved_total_price: number
+          approved_unit_price: number
+          calculation_snapshot: Json
+          exceptional_justification: string | null
+          id: string
+          method: string
+          method_justification: string
+          process_id: string
+          procurement_item_id: string
+          sample_count: number
+          source_snapshot: Json
+          status: string
+          superseded_at: string | null
+          tenant_id: string
+        }
         Insert: {
-          approved_at?: string;
-          approved_by: string;
-          approved_total_price: number;
-          approved_unit_price: number;
-          calculation_snapshot?: Json;
-          exceptional_justification?: string | null;
-          id?: string;
-          method: string;
-          method_justification: string;
-          process_id: string;
-          procurement_item_id: string;
-          sample_count: number;
-          source_snapshot?: Json;
-          status?: string;
-          superseded_at?: string | null;
-          tenant_id: string;
-        };
+          approved_at?: string
+          approved_by: string
+          approved_total_price: number
+          approved_unit_price: number
+          calculation_snapshot?: Json
+          exceptional_justification?: string | null
+          id?: string
+          method: string
+          method_justification: string
+          process_id: string
+          procurement_item_id: string
+          sample_count: number
+          source_snapshot?: Json
+          status?: string
+          superseded_at?: string | null
+          tenant_id: string
+        }
         Update: {
-          approved_at?: string;
-          approved_by?: string;
-          approved_total_price?: number;
-          approved_unit_price?: number;
-          calculation_snapshot?: Json;
-          exceptional_justification?: string | null;
-          id?: string;
-          method?: string;
-          method_justification?: string;
-          process_id?: string;
-          procurement_item_id?: string;
-          sample_count?: number;
-          source_snapshot?: Json;
-          status?: string;
-          superseded_at?: string | null;
-          tenant_id?: string;
-        };
+          approved_at?: string
+          approved_by?: string
+          approved_total_price?: number
+          approved_unit_price?: number
+          calculation_snapshot?: Json
+          exceptional_justification?: string | null
+          id?: string
+          method?: string
+          method_justification?: string
+          process_id?: string
+          procurement_item_id?: string
+          sample_count?: number
+          source_snapshot?: Json
+          status?: string
+          superseded_at?: string | null
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "procurement_price_approvals_item_process_fk";
-            columns: ["tenant_id", "process_id", "procurement_item_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_items";
-            referencedColumns: ["tenant_id", "process_id", "id"];
+            foreignKeyName: "procurement_price_approvals_item_process_fk"
+            columns: ["tenant_id", "process_id", "procurement_item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_items"
+            referencedColumns: ["tenant_id", "process_id", "id"]
           },
           {
-            foreignKeyName: "procurement_price_approvals_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "procurement_price_approvals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_price_quotes: {
         Row: {
-          accessed_at: string | null;
-          brand_model: string | null;
-          contract_id: string | null;
-          created_at: string;
-          created_by: string;
-          delivery_cost: number;
-          delivery_term: string | null;
-          evidence_file_name: string | null;
-          evidence_file_size: number | null;
-          evidence_mime_type: string | null;
-          evidence_storage_path: string | null;
-          id: string;
-          is_active: boolean;
-          justificativa_expurgo: string | null;
-          notes: string | null;
-          payment_terms: string | null;
-          procurement_item_id: string;
-          quantity: number;
-          quoted_at: string;
-          reference_identifier: string | null;
-          reference_url: string | null;
-          selected_for_estimate: boolean;
-          source_address: string | null;
-          source_contact_email: string | null;
-          source_contact_name: string | null;
-          source_contact_phone: string | null;
-          source_name: string;
-          source_tax_id: string | null;
-          source_type: string;
-          supplier_consultation_response_deadline: string | null;
-          supplier_consultation_sent_at: string | null;
-          supplier_id: string | null;
-          supplier_response_deadline: string | null;
-          supplier_selection_justification: string | null;
-          tenant_id: string;
-          total_price: number | null;
-          unit_price: number;
-          updated_at: string;
-          updated_by: string;
-          warranty_terms: string | null;
-        };
+          accessed_at: string | null
+          brand_model: string | null
+          contract_id: string | null
+          created_at: string
+          created_by: string
+          delivery_cost: number
+          delivery_term: string | null
+          evidence_file_name: string | null
+          evidence_file_size: number | null
+          evidence_mime_type: string | null
+          evidence_storage_path: string | null
+          id: string
+          is_active: boolean
+          justificativa_expurgo: string | null
+          notes: string | null
+          payment_terms: string | null
+          procurement_item_id: string
+          quantity: number
+          quoted_at: string
+          reference_identifier: string | null
+          reference_url: string | null
+          selected_for_estimate: boolean
+          source_address: string | null
+          source_contact_email: string | null
+          source_contact_name: string | null
+          source_contact_phone: string | null
+          source_name: string
+          source_tax_id: string | null
+          source_type: string
+          supplier_consultation_response_deadline: string | null
+          supplier_consultation_sent_at: string | null
+          supplier_id: string | null
+          supplier_response_deadline: string | null
+          supplier_selection_justification: string | null
+          tenant_id: string
+          total_price: number | null
+          unit_price: number
+          updated_at: string
+          updated_by: string
+          warranty_terms: string | null
+        }
         Insert: {
-          accessed_at?: string | null;
-          brand_model?: string | null;
-          contract_id?: string | null;
-          created_at?: string;
-          created_by: string;
-          delivery_cost?: number;
-          delivery_term?: string | null;
-          evidence_file_name?: string | null;
-          evidence_file_size?: number | null;
-          evidence_mime_type?: string | null;
-          evidence_storage_path?: string | null;
-          id?: string;
-          is_active?: boolean;
-          justificativa_expurgo?: string | null;
-          notes?: string | null;
-          payment_terms?: string | null;
-          procurement_item_id: string;
-          quantity: number;
-          quoted_at?: string;
-          reference_identifier?: string | null;
-          reference_url?: string | null;
-          selected_for_estimate?: boolean;
-          source_address?: string | null;
-          source_contact_email?: string | null;
-          source_contact_name?: string | null;
-          source_contact_phone?: string | null;
-          source_name: string;
-          source_tax_id?: string | null;
-          source_type?: string;
-          supplier_consultation_response_deadline?: string | null;
-          supplier_consultation_sent_at?: string | null;
-          supplier_id?: string | null;
-          supplier_response_deadline?: string | null;
-          supplier_selection_justification?: string | null;
-          tenant_id: string;
-          total_price?: number | null;
-          unit_price: number;
-          updated_at?: string;
-          updated_by: string;
-          warranty_terms?: string | null;
-        };
+          accessed_at?: string | null
+          brand_model?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by: string
+          delivery_cost?: number
+          delivery_term?: string | null
+          evidence_file_name?: string | null
+          evidence_file_size?: number | null
+          evidence_mime_type?: string | null
+          evidence_storage_path?: string | null
+          id?: string
+          is_active?: boolean
+          justificativa_expurgo?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          procurement_item_id: string
+          quantity: number
+          quoted_at?: string
+          reference_identifier?: string | null
+          reference_url?: string | null
+          selected_for_estimate?: boolean
+          source_address?: string | null
+          source_contact_email?: string | null
+          source_contact_name?: string | null
+          source_contact_phone?: string | null
+          source_name: string
+          source_tax_id?: string | null
+          source_type?: string
+          supplier_consultation_response_deadline?: string | null
+          supplier_consultation_sent_at?: string | null
+          supplier_id?: string | null
+          supplier_response_deadline?: string | null
+          supplier_selection_justification?: string | null
+          tenant_id: string
+          total_price?: number | null
+          unit_price: number
+          updated_at?: string
+          updated_by: string
+          warranty_terms?: string | null
+        }
         Update: {
-          accessed_at?: string | null;
-          brand_model?: string | null;
-          contract_id?: string | null;
-          created_at?: string;
-          created_by?: string;
-          delivery_cost?: number;
-          delivery_term?: string | null;
-          evidence_file_name?: string | null;
-          evidence_file_size?: number | null;
-          evidence_mime_type?: string | null;
-          evidence_storage_path?: string | null;
-          id?: string;
-          is_active?: boolean;
-          justificativa_expurgo?: string | null;
-          notes?: string | null;
-          payment_terms?: string | null;
-          procurement_item_id?: string;
-          quantity?: number;
-          quoted_at?: string;
-          reference_identifier?: string | null;
-          reference_url?: string | null;
-          selected_for_estimate?: boolean;
-          source_address?: string | null;
-          source_contact_email?: string | null;
-          source_contact_name?: string | null;
-          source_contact_phone?: string | null;
-          source_name?: string;
-          source_tax_id?: string | null;
-          source_type?: string;
-          supplier_consultation_response_deadline?: string | null;
-          supplier_consultation_sent_at?: string | null;
-          supplier_id?: string | null;
-          supplier_response_deadline?: string | null;
-          supplier_selection_justification?: string | null;
-          tenant_id?: string;
-          total_price?: number | null;
-          unit_price?: number;
-          updated_at?: string;
-          updated_by?: string;
-          warranty_terms?: string | null;
-        };
+          accessed_at?: string | null
+          brand_model?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string
+          delivery_cost?: number
+          delivery_term?: string | null
+          evidence_file_name?: string | null
+          evidence_file_size?: number | null
+          evidence_mime_type?: string | null
+          evidence_storage_path?: string | null
+          id?: string
+          is_active?: boolean
+          justificativa_expurgo?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          procurement_item_id?: string
+          quantity?: number
+          quoted_at?: string
+          reference_identifier?: string | null
+          reference_url?: string | null
+          selected_for_estimate?: boolean
+          source_address?: string | null
+          source_contact_email?: string | null
+          source_contact_name?: string | null
+          source_contact_phone?: string | null
+          source_name?: string
+          source_tax_id?: string | null
+          source_type?: string
+          supplier_consultation_response_deadline?: string | null
+          supplier_consultation_sent_at?: string | null
+          supplier_id?: string | null
+          supplier_response_deadline?: string | null
+          supplier_selection_justification?: string | null
+          tenant_id?: string
+          total_price?: number | null
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string
+          warranty_terms?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_price_quote_contract_same_tenant";
-            columns: ["tenant_id", "contract_id"];
-            isOneToOne: false;
-            referencedRelation: "contracts";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_price_quote_contract_same_tenant"
+            columns: ["tenant_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "procurement_price_quotes_item_tenant_fk";
-            columns: ["tenant_id", "procurement_item_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_items";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "procurement_price_quotes_item_tenant_fk"
+            columns: ["tenant_id", "procurement_item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_items"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "procurement_price_quotes_supplier_tenant_fk";
-            columns: ["tenant_id", "supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "procurement_price_quotes_supplier_tenant_fk"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_process_compliance: {
         Row: {
-          funding_source_description: string | null;
-          funding_source_type: string;
-          in65_applicability: string;
-          legal_review_notes: string | null;
-          legal_review_status: string;
-          local_regulation_name: string | null;
-          local_regulation_reference: string | null;
-          normative_basis: string;
-          priority_sources_justification: string | null;
-          process_id: string;
-          supplier_non_response_record: string | null;
-          tenant_id: string;
-          transfer_agreement_number: string | null;
-          updated_at: string;
-          updated_by: string | null;
-          validated_at: string | null;
-          validated_by: string | null;
-        };
+          funding_source_description: string | null
+          funding_source_type: string
+          in65_applicability: string
+          legal_review_notes: string | null
+          legal_review_status: string
+          local_regulation_name: string | null
+          local_regulation_reference: string | null
+          normative_basis: string
+          priority_sources_justification: string | null
+          process_id: string
+          supplier_non_response_record: string | null
+          tenant_id: string
+          transfer_agreement_number: string | null
+          updated_at: string
+          updated_by: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
         Insert: {
-          funding_source_description?: string | null;
-          funding_source_type?: string;
-          in65_applicability?: string;
-          legal_review_notes?: string | null;
-          legal_review_status?: string;
-          local_regulation_name?: string | null;
-          local_regulation_reference?: string | null;
-          normative_basis?: string;
-          priority_sources_justification?: string | null;
-          process_id: string;
-          supplier_non_response_record?: string | null;
-          tenant_id: string;
-          transfer_agreement_number?: string | null;
-          updated_at?: string;
-          updated_by?: string | null;
-          validated_at?: string | null;
-          validated_by?: string | null;
-        };
+          funding_source_description?: string | null
+          funding_source_type?: string
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          priority_sources_justification?: string | null
+          process_id: string
+          supplier_non_response_record?: string | null
+          tenant_id: string
+          transfer_agreement_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
         Update: {
-          funding_source_description?: string | null;
-          funding_source_type?: string;
-          in65_applicability?: string;
-          legal_review_notes?: string | null;
-          legal_review_status?: string;
-          local_regulation_name?: string | null;
-          local_regulation_reference?: string | null;
-          normative_basis?: string;
-          priority_sources_justification?: string | null;
-          process_id?: string;
-          supplier_non_response_record?: string | null;
-          tenant_id?: string;
-          transfer_agreement_number?: string | null;
-          updated_at?: string;
-          updated_by?: string | null;
-          validated_at?: string | null;
-          validated_by?: string | null;
-        };
+          funding_source_description?: string | null
+          funding_source_type?: string
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          priority_sources_justification?: string | null
+          process_id?: string
+          supplier_non_response_record?: string | null
+          tenant_id?: string
+          transfer_agreement_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "procurement_process_compliance_process_fk";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: true;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "procurement_process_compliance_process_fk"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: true
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_processes: {
         Row: {
-          created_at: string;
-          created_by: string;
-          description: string | null;
-          due_date: string | null;
-          estimated_value: number | null;
-          estimated_value_source: string;
-          id: string;
-          modality: string;
-          number: string;
-          priority: string;
-          requesting_unit: string | null;
-          responsible_name: string | null;
-          responsible_user_id: string | null;
-          stage: string;
-          status: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          estimated_value: number | null
+          estimated_value_source: string
+          id: string
+          modality: string
+          number: string
+          priority: string
+          requesting_unit: string | null
+          responsible_name: string | null
+          responsible_user_id: string | null
+          stage: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          description?: string | null;
-          due_date?: string | null;
-          estimated_value?: number | null;
-          estimated_value_source?: string;
-          id?: string;
-          modality?: string;
-          number: string;
-          priority?: string;
-          requesting_unit?: string | null;
-          responsible_name?: string | null;
-          responsible_user_id?: string | null;
-          stage?: string;
-          status?: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          estimated_value?: number | null
+          estimated_value_source?: string
+          id?: string
+          modality?: string
+          number: string
+          priority?: string
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          stage?: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          description?: string | null;
-          due_date?: string | null;
-          estimated_value?: number | null;
-          estimated_value_source?: string;
-          id?: string;
-          modality?: string;
-          number?: string;
-          priority?: string;
-          requesting_unit?: string | null;
-          responsible_name?: string | null;
-          responsible_user_id?: string | null;
-          stage?: string;
-          status?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_value?: number | null
+          estimated_value_source?: string
+          id?: string
+          modality?: string
+          number?: string
+          priority?: string
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          stage?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "procurement_processes_responsible_user_id_fk";
-            columns: ["tenant_id", "responsible_user_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_memberships";
-            referencedColumns: ["tenant_id", "user_id"];
+            foreignKeyName: "procurement_processes_responsible_user_id_fk"
+            columns: ["tenant_id", "responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_memberships"
+            referencedColumns: ["tenant_id", "user_id"]
           },
           {
-            foreignKeyName: "procurement_processes_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "procurement_processes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       procurement_quote_requests: {
         Row: {
-          created_at: string;
-          created_by: string;
-          expires_at: string;
-          id: string;
-          imported_at: string | null;
-          imported_by: string | null;
-          notes: string | null;
-          process_id: string;
-          response_deadline: string;
-          selection_justification: string;
-          sent_at: string;
-          status: string;
-          submission_protocol: string | null;
-          submission_sha256: string | null;
-          submitted_at: string | null;
-          submitted_payload: Json | null;
-          supplier_id: string;
-          tenant_id: string;
-          token: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          email_provider: string | null
+          email_sent_at: string | null
+          email_sent_to: string | null
+          expires_at: string
+          id: string
+          imported_at: string | null
+          imported_by: string | null
+          notes: string | null
+          process_id: string
+          response_deadline: string
+          selection_justification: string
+          sent_at: string
+          status: string
+          submission_protocol: string | null
+          submission_sha256: string | null
+          submitted_at: string | null
+          submitted_payload: Json | null
+          supplier_id: string
+          tenant_id: string
+          token: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          expires_at?: string;
-          id?: string;
-          imported_at?: string | null;
-          imported_by?: string | null;
-          notes?: string | null;
-          process_id: string;
-          response_deadline: string;
-          selection_justification: string;
-          sent_at?: string;
-          status?: string;
-          submission_protocol?: string | null;
-          submission_sha256?: string | null;
-          submitted_at?: string | null;
-          submitted_payload?: Json | null;
-          supplier_id: string;
-          tenant_id: string;
-          token?: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          created_at?: string
+          created_by: string
+          email_provider?: string | null
+          email_sent_at?: string | null
+          email_sent_to?: string | null
+          expires_at?: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          notes?: string | null
+          process_id: string
+          response_deadline: string
+          selection_justification: string
+          sent_at?: string
+          status?: string
+          submission_protocol?: string | null
+          submission_sha256?: string | null
+          submitted_at?: string | null
+          submitted_payload?: Json | null
+          supplier_id: string
+          tenant_id: string
+          token?: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          expires_at?: string;
-          id?: string;
-          imported_at?: string | null;
-          imported_by?: string | null;
-          notes?: string | null;
-          process_id?: string;
-          response_deadline?: string;
-          selection_justification?: string;
-          sent_at?: string;
-          status?: string;
-          submission_protocol?: string | null;
-          submission_sha256?: string | null;
-          submitted_at?: string | null;
-          submitted_payload?: Json | null;
-          supplier_id?: string;
-          tenant_id?: string;
-          token?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          email_provider?: string | null
+          email_sent_at?: string | null
+          email_sent_to?: string | null
+          expires_at?: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          notes?: string | null
+          process_id?: string
+          response_deadline?: string
+          selection_justification?: string
+          sent_at?: string
+          status?: string
+          submission_protocol?: string | null
+          submission_sha256?: string | null
+          submitted_at?: string | null
+          submitted_payload?: Json | null
+          supplier_id?: string
+          tenant_id?: string
+          token?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_quote_req_process_tenant";
-            columns: ["tenant_id", "process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_quote_req_process_tenant"
+            columns: ["tenant_id", "process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "fk_quote_req_supplier_tenant";
-            columns: ["tenant_id", "supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "fk_quote_req_supplier_tenant"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
-            foreignKeyName: "procurement_quote_requests_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "procurement_quote_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       profiles: {
         Row: {
-          created_at: string;
-          full_name: string;
-          id: string;
-          updated_at: string;
-        };
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          full_name: string;
-          id: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          full_name: string
+          id: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          full_name?: string;
-          id?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       supplier_documents: {
         Row: {
-          created_at: string;
-          created_by: string;
-          document_type: string;
-          drive_file_id: string | null;
-          expires_at: string | null;
-          external_url: string | null;
-          file_name: string | null;
-          file_size: number | null;
-          id: string;
-          issue_date: string | null;
-          mime_type: string | null;
-          notes: string | null;
-          status: string;
-          storage_path: string | null;
-          storage_provider: string;
-          supplier_id: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          document_type: string
+          drive_file_id: string | null
+          expires_at: string | null
+          external_url: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          issue_date: string | null
+          mime_type: string | null
+          notes: string | null
+          status: string
+          storage_path: string | null
+          storage_provider: string
+          supplier_id: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          document_type?: string;
-          drive_file_id?: string | null;
-          expires_at?: string | null;
-          external_url?: string | null;
-          file_name?: string | null;
-          file_size?: number | null;
-          id?: string;
-          issue_date?: string | null;
-          mime_type?: string | null;
-          notes?: string | null;
-          status?: string;
-          storage_path?: string | null;
-          storage_provider?: string;
-          supplier_id: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          drive_file_id?: string | null
+          expires_at?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          issue_date?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          status?: string
+          storage_path?: string | null
+          storage_provider?: string
+          supplier_id: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          document_type?: string;
-          drive_file_id?: string | null;
-          expires_at?: string | null;
-          external_url?: string | null;
-          file_name?: string | null;
-          file_size?: number | null;
-          id?: string;
-          issue_date?: string | null;
-          mime_type?: string | null;
-          notes?: string | null;
-          status?: string;
-          storage_path?: string | null;
-          storage_provider?: string;
-          supplier_id?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          document_type?: string
+          drive_file_id?: string | null
+          expires_at?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          issue_date?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          status?: string
+          storage_path?: string | null
+          storage_provider?: string
+          supplier_id?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_documents_supplier_id_fkey";
-            columns: ["supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_documents_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_homologation_checklist_items: {
         Row: {
-          created_at: string;
-          document_id: string | null;
-          document_type: string;
-          homologation_id: string;
-          id: string;
-          is_mandatory: boolean;
-          is_sanitary: boolean;
-          notes: string | null;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-          verification_status: string;
-          verified_at: string | null;
-          verified_by: string | null;
-        };
+          created_at: string
+          document_id: string | null
+          document_type: string
+          homologation_id: string
+          id: string
+          is_mandatory: boolean
+          is_sanitary: boolean
+          notes: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
         Insert: {
-          created_at?: string;
-          document_id?: string | null;
-          document_type: string;
-          homologation_id: string;
-          id?: string;
-          is_mandatory?: boolean;
-          is_sanitary?: boolean;
-          notes?: string | null;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-          verification_status?: string;
-          verified_at?: string | null;
-          verified_by?: string | null;
-        };
+          created_at?: string
+          document_id?: string | null
+          document_type: string
+          homologation_id: string
+          id?: string
+          is_mandatory?: boolean
+          is_sanitary?: boolean
+          notes?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
         Update: {
-          created_at?: string;
-          document_id?: string | null;
-          document_type?: string;
-          homologation_id?: string;
-          id?: string;
-          is_mandatory?: boolean;
-          is_sanitary?: boolean;
-          notes?: string | null;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-          verification_status?: string;
-          verified_at?: string | null;
-          verified_by?: string | null;
-        };
+          created_at?: string
+          document_id?: string | null
+          document_type?: string
+          homologation_id?: string
+          id?: string
+          is_mandatory?: boolean
+          is_sanitary?: boolean
+          notes?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_homologation_checklist_items_document_id_fkey";
-            columns: ["document_id"];
-            isOneToOne: false;
-            referencedRelation: "supplier_documents";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_checklist_items_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_documents"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologation_checklist_items_homologation_id_fkey";
-            columns: ["homologation_id"];
-            isOneToOne: false;
-            referencedRelation: "supplier_homologations";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_checklist_items_homologation_id_fkey"
+            columns: ["homologation_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_homologations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologation_checklist_items_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_checklist_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologation_checklist_items_verified_by_fkey";
-            columns: ["verified_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_checklist_items_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_homologation_events: {
         Row: {
-          created_at: string;
-          created_by: string;
-          description: string;
-          event_type: string;
-          evidence_url: string | null;
-          from_status: string | null;
-          homologation_id: string;
-          id: string;
-          tenant_id: string;
-          to_status: string | null;
-        };
+          created_at: string
+          created_by: string
+          description: string
+          event_type: string
+          evidence_url: string | null
+          from_status: string | null
+          homologation_id: string
+          id: string
+          tenant_id: string
+          to_status: string | null
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          description: string;
-          event_type: string;
-          evidence_url?: string | null;
-          from_status?: string | null;
-          homologation_id: string;
-          id?: string;
-          tenant_id: string;
-          to_status?: string | null;
-        };
+          created_at?: string
+          created_by: string
+          description: string
+          event_type: string
+          evidence_url?: string | null
+          from_status?: string | null
+          homologation_id: string
+          id?: string
+          tenant_id: string
+          to_status?: string | null
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          description?: string;
-          event_type?: string;
-          evidence_url?: string | null;
-          from_status?: string | null;
-          homologation_id?: string;
-          id?: string;
-          tenant_id?: string;
-          to_status?: string | null;
-        };
+          created_at?: string
+          created_by?: string
+          description?: string
+          event_type?: string
+          evidence_url?: string | null
+          from_status?: string | null
+          homologation_id?: string
+          id?: string
+          tenant_id?: string
+          to_status?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_homologation_events_homologation_id_fkey";
-            columns: ["homologation_id"];
-            isOneToOne: false;
-            referencedRelation: "supplier_homologations";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_events_homologation_id_fkey"
+            columns: ["homologation_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_homologations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologation_events_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologation_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_homologations: {
         Row: {
-          assigned_to: string | null;
-          category: string;
-          concluded_at: string | null;
-          concluded_by: string | null;
-          conclusion_notes: string | null;
-          conclusion_status: string | null;
-          created_at: string;
-          created_by: string;
-          id: string;
-          opened_at: string;
-          process_id: string | null;
-          scope_description: string | null;
-          status: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          assigned_to: string | null
+          category: string
+          concluded_at: string | null
+          concluded_by: string | null
+          conclusion_notes: string | null
+          conclusion_status: string | null
+          created_at: string
+          created_by: string
+          id: string
+          opened_at: string
+          process_id: string | null
+          scope_description: string | null
+          status: string
+          supplier_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          assigned_to?: string | null;
-          category?: string;
-          concluded_at?: string | null;
-          concluded_by?: string | null;
-          conclusion_notes?: string | null;
-          conclusion_status?: string | null;
-          created_at?: string;
-          created_by: string;
-          id?: string;
-          opened_at?: string;
-          process_id?: string | null;
-          scope_description?: string | null;
-          status?: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by: string;
-        };
+          assigned_to?: string | null
+          category?: string
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion_notes?: string | null
+          conclusion_status?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          opened_at?: string
+          process_id?: string | null
+          scope_description?: string | null
+          status?: string
+          supplier_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
         Update: {
-          assigned_to?: string | null;
-          category?: string;
-          concluded_at?: string | null;
-          concluded_by?: string | null;
-          conclusion_notes?: string | null;
-          conclusion_status?: string | null;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          opened_at?: string;
-          process_id?: string | null;
-          scope_description?: string | null;
-          status?: string;
-          supplier_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          assigned_to?: string | null
+          category?: string
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion_notes?: string | null
+          conclusion_status?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          opened_at?: string
+          process_id?: string | null
+          scope_description?: string | null
+          status?: string
+          supplier_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_homologations_assigned_to_fkey";
-            columns: ["assigned_to"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologations_concluded_by_fkey";
-            columns: ["concluded_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologations_concluded_by_fkey"
+            columns: ["concluded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologations_process_id_fkey";
-            columns: ["process_id"];
-            isOneToOne: false;
-            referencedRelation: "procurement_processes";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologations_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_processes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologations_supplier_id_fkey";
-            columns: ["supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologations_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_homologations_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_homologations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_pending_tasks: {
         Row: {
-          assigned_to: string | null;
-          auto_generated: boolean;
-          created_at: string;
-          created_by: string;
-          description: string | null;
-          due_date: string | null;
-          id: string;
-          priority: string;
-          reference_id: string | null;
-          reference_table: string | null;
-          resolution_notes: string | null;
-          resolved_at: string | null;
-          resolved_by: string | null;
-          status: string;
-          supplier_id: string;
-          task_type: string;
-          tenant_id: string;
-          title: string;
-          updated_at: string;
-        };
+          assigned_to: string | null
+          auto_generated: boolean
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          reference_id: string | null
+          reference_table: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          supplier_id: string
+          task_type: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
         Insert: {
-          assigned_to?: string | null;
-          auto_generated?: boolean;
-          created_at?: string;
-          created_by: string;
-          description?: string | null;
-          due_date?: string | null;
-          id?: string;
-          priority?: string;
-          reference_id?: string | null;
-          reference_table?: string | null;
-          resolution_notes?: string | null;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          status?: string;
-          supplier_id: string;
-          task_type: string;
-          tenant_id: string;
-          title: string;
-          updated_at?: string;
-        };
+          assigned_to?: string | null
+          auto_generated?: boolean
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          reference_id?: string | null
+          reference_table?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          supplier_id: string
+          task_type: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
         Update: {
-          assigned_to?: string | null;
-          auto_generated?: boolean;
-          created_at?: string;
-          created_by?: string;
-          description?: string | null;
-          due_date?: string | null;
-          id?: string;
-          priority?: string;
-          reference_id?: string | null;
-          reference_table?: string | null;
-          resolution_notes?: string | null;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          status?: string;
-          supplier_id?: string;
-          task_type?: string;
-          tenant_id?: string;
-          title?: string;
-          updated_at?: string;
-        };
+          assigned_to?: string | null
+          auto_generated?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          reference_id?: string | null
+          reference_table?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          supplier_id?: string
+          task_type?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_pending_tasks_assigned_to_fkey";
-            columns: ["assigned_to"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_pending_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_pending_tasks_supplier_id_fkey";
-            columns: ["supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_pending_tasks_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_pending_tasks_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_pending_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_portal_tokens: {
         Row: {
-          created_at: string;
-          created_by: string;
-          expires_at: string;
-          homologation_id: string | null;
-          id: string;
-          is_revoked: boolean;
-          supplier_id: string;
-          tenant_id: string;
-          token: string;
-          updated_at: string;
-        };
+          created_at: string
+          created_by: string
+          expires_at: string
+          homologation_id: string | null
+          id: string
+          is_revoked: boolean
+          supplier_id: string
+          tenant_id: string
+          token: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          created_by: string;
-          expires_at?: string;
-          homologation_id?: string | null;
-          id?: string;
-          is_revoked?: boolean;
-          supplier_id: string;
-          tenant_id: string;
-          token?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          homologation_id?: string | null
+          id?: string
+          is_revoked?: boolean
+          supplier_id: string
+          tenant_id: string
+          token?: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          expires_at?: string;
-          homologation_id?: string | null;
-          id?: string;
-          is_revoked?: boolean;
-          supplier_id?: string;
-          tenant_id?: string;
-          token?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          homologation_id?: string | null
+          id?: string
+          is_revoked?: boolean
+          supplier_id?: string
+          tenant_id?: string
+          token?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_portal_tokens_homologation_id_fkey";
-            columns: ["homologation_id"];
-            isOneToOne: false;
-            referencedRelation: "supplier_homologations";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_portal_tokens_homologation_id_fkey"
+            columns: ["homologation_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_homologations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_portal_tokens_supplier_id_fkey";
-            columns: ["supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_portal_tokens_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_portal_tokens_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_portal_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_regularity_checks: {
         Row: {
-          certificate_number: string | null;
-          checked_at: string;
-          created_at: string;
-          created_by: string;
-          evidence_storage_path: string | null;
-          evidence_url: string | null;
-          id: string;
-          notes: string | null;
-          requires_action: boolean;
-          source: string;
-          source_label: string;
-          status: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at: string;
-          valid_until: string | null;
-        };
+          certificate_number: string | null
+          checked_at: string
+          created_at: string
+          created_by: string
+          evidence_storage_path: string | null
+          evidence_url: string | null
+          id: string
+          notes: string | null
+          requires_action: boolean
+          source: string
+          source_label: string
+          status: string
+          supplier_id: string
+          tenant_id: string
+          updated_at: string
+          valid_until: string | null
+        }
         Insert: {
-          certificate_number?: string | null;
-          checked_at?: string;
-          created_at?: string;
-          created_by: string;
-          evidence_storage_path?: string | null;
-          evidence_url?: string | null;
-          id?: string;
-          notes?: string | null;
-          requires_action?: boolean;
-          source: string;
-          source_label: string;
-          status?: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at?: string;
-          valid_until?: string | null;
-        };
+          certificate_number?: string | null
+          checked_at?: string
+          created_at?: string
+          created_by: string
+          evidence_storage_path?: string | null
+          evidence_url?: string | null
+          id?: string
+          notes?: string | null
+          requires_action?: boolean
+          source: string
+          source_label: string
+          status?: string
+          supplier_id: string
+          tenant_id: string
+          updated_at?: string
+          valid_until?: string | null
+        }
         Update: {
-          certificate_number?: string | null;
-          checked_at?: string;
-          created_at?: string;
-          created_by?: string;
-          evidence_storage_path?: string | null;
-          evidence_url?: string | null;
-          id?: string;
-          notes?: string | null;
-          requires_action?: boolean;
-          source?: string;
-          source_label?: string;
-          status?: string;
-          supplier_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          valid_until?: string | null;
-        };
+          certificate_number?: string | null
+          checked_at?: string
+          created_at?: string
+          created_by?: string
+          evidence_storage_path?: string | null
+          evidence_url?: string | null
+          id?: string
+          notes?: string | null
+          requires_action?: boolean
+          source?: string
+          source_label?: string
+          status?: string
+          supplier_id?: string
+          tenant_id?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_regularity_checks_supplier_id_fkey";
-            columns: ["supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_regularity_checks_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_regularity_checks_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_regularity_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       supplier_sanctions: {
         Row: {
-          created_at: string;
-          created_by: string;
-          end_date: string | null;
-          id: string;
-          legal_basis: string | null;
-          measure: string;
-          reason: string;
-          reference_number: string | null;
-          start_date: string;
-          status: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          legal_basis: string | null
+          measure: string
+          reason: string
+          reference_number: string | null
+          start_date: string
+          status: string
+          supplier_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          end_date?: string | null;
-          id?: string;
-          legal_basis?: string | null;
-          measure: string;
-          reason: string;
-          reference_number?: string | null;
-          start_date: string;
-          status?: string;
-          supplier_id: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          legal_basis?: string | null
+          measure: string
+          reason: string
+          reference_number?: string | null
+          start_date: string
+          status?: string
+          supplier_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          end_date?: string | null;
-          id?: string;
-          legal_basis?: string | null;
-          measure?: string;
-          reason?: string;
-          reference_number?: string | null;
-          start_date?: string;
-          status?: string;
-          supplier_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          legal_basis?: string | null
+          measure?: string
+          reason?: string
+          reference_number?: string | null
+          start_date?: string
+          status?: string
+          supplier_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "supplier_sanctions_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "supplier_sanctions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supplier_sanctions_tenant_supplier_fk";
-            columns: ["tenant_id", "supplier_id"];
-            isOneToOne: false;
-            referencedRelation: "suppliers";
-            referencedColumns: ["tenant_id", "id"];
+            foreignKeyName: "supplier_sanctions_tenant_supplier_fk"
+            columns: ["tenant_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["tenant_id", "id"]
           },
-        ];
-      };
+        ]
+      }
       suppliers: {
         Row: {
-          category: string;
-          city: string | null;
-          cnpj: string;
-          complement: string | null;
-          contact_email: string | null;
-          contact_name: string | null;
-          contact_phone: string | null;
-          created_at: string;
-          created_by: string;
-          id: string;
-          legal_name: string;
-          neighborhood: string | null;
-          notes: string | null;
-          postal_code: string | null;
-          state: string | null;
-          status: string;
-          street: string | null;
-          street_number: string | null;
-          tenant_id: string;
-          trade_name: string | null;
-          updated_at: string;
-          updated_by: string;
-          website: string | null;
-        };
+          category: string
+          city: string | null
+          cnpj: string
+          complement: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          id: string
+          legal_name: string
+          neighborhood: string | null
+          notes: string | null
+          postal_code: string | null
+          state: string | null
+          status: string
+          street: string | null
+          street_number: string | null
+          tenant_id: string
+          trade_name: string | null
+          updated_at: string
+          updated_by: string
+          website: string | null
+        }
         Insert: {
-          category?: string;
-          city?: string | null;
-          cnpj: string;
-          complement?: string | null;
-          contact_email?: string | null;
-          contact_name?: string | null;
-          contact_phone?: string | null;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          legal_name: string;
-          neighborhood?: string | null;
-          notes?: string | null;
-          postal_code?: string | null;
-          state?: string | null;
-          status?: string;
-          street?: string | null;
-          street_number?: string | null;
-          tenant_id: string;
-          trade_name?: string | null;
-          updated_at?: string;
-          updated_by?: string;
-          website?: string | null;
-        };
+          category?: string
+          city?: string | null
+          cnpj: string
+          complement?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          legal_name: string
+          neighborhood?: string | null
+          notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          tenant_id: string
+          trade_name?: string | null
+          updated_at?: string
+          updated_by?: string
+          website?: string | null
+        }
         Update: {
-          category?: string;
-          city?: string | null;
-          cnpj?: string;
-          complement?: string | null;
-          contact_email?: string | null;
-          contact_name?: string | null;
-          contact_phone?: string | null;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          legal_name?: string;
-          neighborhood?: string | null;
-          notes?: string | null;
-          postal_code?: string | null;
-          state?: string | null;
-          status?: string;
-          street?: string | null;
-          street_number?: string | null;
-          tenant_id?: string;
-          trade_name?: string | null;
-          updated_at?: string;
-          updated_by?: string;
-          website?: string | null;
-        };
+          category?: string
+          city?: string | null
+          cnpj?: string
+          complement?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          legal_name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          tenant_id?: string
+          trade_name?: string | null
+          updated_at?: string
+          updated_by?: string
+          website?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "suppliers_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "suppliers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_ai_settings: {
         Row: {
-          enabled: boolean;
-          features: Json;
-          monthly_budget_usd: number | null;
-          monthly_token_limit: number | null;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          enabled: boolean
+          features: Json
+          monthly_budget_usd: number | null
+          monthly_token_limit: number | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          enabled?: boolean;
-          features?: Json;
-          monthly_budget_usd?: number | null;
-          monthly_token_limit?: number | null;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          enabled?: boolean
+          features?: Json
+          monthly_budget_usd?: number | null
+          monthly_token_limit?: number | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          enabled?: boolean;
-          features?: Json;
-          monthly_budget_usd?: number | null;
-          monthly_token_limit?: number | null;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          enabled?: boolean
+          features?: Json
+          monthly_budget_usd?: number | null
+          monthly_token_limit?: number | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_ai_settings_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_ai_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_document_branding: {
         Row: {
-          created_at: string;
-          created_by: string;
-          footer_text: string;
-          header_subtitle: string;
-          header_title: string;
-          logo_file_name: string | null;
-          logo_file_size: number | null;
-          logo_mime: string | null;
-          logo_storage_path: string | null;
-          margin_bottom_mm: number;
-          margin_left_mm: number;
-          margin_right_mm: number;
-          margin_top_mm: number;
-          show_page_numbers: boolean;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string;
-        };
+          created_at: string
+          created_by: string
+          footer_text: string
+          header_subtitle: string
+          header_title: string
+          logo_file_name: string | null
+          logo_file_size: number | null
+          logo_mime: string | null
+          logo_storage_path: string | null
+          margin_bottom_mm: number
+          margin_left_mm: number
+          margin_right_mm: number
+          margin_top_mm: number
+          show_page_numbers: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          footer_text?: string;
-          header_subtitle?: string;
-          header_title?: string;
-          logo_file_name?: string | null;
-          logo_file_size?: number | null;
-          logo_mime?: string | null;
-          logo_storage_path?: string | null;
-          margin_bottom_mm?: number;
-          margin_left_mm?: number;
-          margin_right_mm?: number;
-          margin_top_mm?: number;
-          show_page_numbers?: boolean;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          footer_text?: string
+          header_subtitle?: string
+          header_title?: string
+          logo_file_name?: string | null
+          logo_file_size?: number | null
+          logo_mime?: string | null
+          logo_storage_path?: string | null
+          margin_bottom_mm?: number
+          margin_left_mm?: number
+          margin_right_mm?: number
+          margin_top_mm?: number
+          show_page_numbers?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          footer_text?: string;
-          header_subtitle?: string;
-          header_title?: string;
-          logo_file_name?: string | null;
-          logo_file_size?: number | null;
-          logo_mime?: string | null;
-          logo_storage_path?: string | null;
-          margin_bottom_mm?: number;
-          margin_left_mm?: number;
-          margin_right_mm?: number;
-          margin_top_mm?: number;
-          show_page_numbers?: boolean;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string;
-        };
+          created_at?: string
+          created_by?: string
+          footer_text?: string
+          header_subtitle?: string
+          header_title?: string
+          logo_file_name?: string | null
+          logo_file_size?: number | null
+          logo_mime?: string | null
+          logo_storage_path?: string | null
+          margin_bottom_mm?: number
+          margin_left_mm?: number
+          margin_right_mm?: number
+          margin_top_mm?: number
+          show_page_numbers?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_document_branding_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_document_branding_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_drive_oauth_states: {
         Row: {
-          actor_id: string;
-          code_verifier_ciphertext: string;
-          created_at: string;
-          expires_at: string;
-          state_hash: string;
-          tenant_id: string;
-        };
+          actor_id: string
+          code_verifier_ciphertext: string
+          created_at: string
+          expires_at: string
+          state_hash: string
+          tenant_id: string
+        }
         Insert: {
-          actor_id: string;
-          code_verifier_ciphertext: string;
-          created_at?: string;
-          expires_at: string;
-          state_hash: string;
-          tenant_id: string;
-        };
+          actor_id: string
+          code_verifier_ciphertext: string
+          created_at?: string
+          expires_at: string
+          state_hash: string
+          tenant_id: string
+        }
         Update: {
-          actor_id?: string;
-          code_verifier_ciphertext?: string;
-          created_at?: string;
-          expires_at?: string;
-          state_hash?: string;
-          tenant_id?: string;
-        };
+          actor_id?: string
+          code_verifier_ciphertext?: string
+          created_at?: string
+          expires_at?: string
+          state_hash?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_drive_oauth_states_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_drive_oauth_states_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_drive_sync_jobs: {
         Row: {
-          attempts: number;
-          created_at: string;
-          created_by: string | null;
-          drive_file_id: string | null;
-          file_name: string;
-          id: string;
-          idempotency_key: string;
-          last_error_code: string | null;
-          source_id: string;
-          source_type: string;
-          source_version: number;
-          status: string;
-          storage_path: string;
-          synced_at: string | null;
-          tenant_id: string;
-          updated_at: string;
-        };
+          attempts: number
+          created_at: string
+          created_by: string | null
+          drive_file_id: string | null
+          file_name: string
+          id: string
+          idempotency_key: string
+          last_error_code: string | null
+          source_id: string
+          source_type: string
+          source_version: number
+          status: string
+          storage_path: string
+          synced_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          attempts?: number;
-          created_at?: string;
-          created_by?: string | null;
-          drive_file_id?: string | null;
-          file_name: string;
-          id?: string;
-          idempotency_key: string;
-          last_error_code?: string | null;
-          source_id: string;
-          source_type: string;
-          source_version?: number;
-          status?: string;
-          storage_path: string;
-          synced_at?: string | null;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          file_name: string
+          id?: string
+          idempotency_key: string
+          last_error_code?: string | null
+          source_id: string
+          source_type: string
+          source_version?: number
+          status?: string
+          storage_path: string
+          synced_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          attempts?: number;
-          created_at?: string;
-          created_by?: string | null;
-          drive_file_id?: string | null;
-          file_name?: string;
-          id?: string;
-          idempotency_key?: string;
-          last_error_code?: string | null;
-          source_id?: string;
-          source_type?: string;
-          source_version?: number;
-          status?: string;
-          storage_path?: string;
-          synced_at?: string | null;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          file_name?: string
+          id?: string
+          idempotency_key?: string
+          last_error_code?: string | null
+          source_id?: string
+          source_type?: string
+          source_version?: number
+          status?: string
+          storage_path?: string
+          synced_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_drive_sync_jobs_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_drive_sync_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_integration_settings: {
         Row: {
-          drive_client_id: string | null;
-          drive_client_secret_ciphertext: string | null;
-          drive_connected_at: string | null;
-          drive_enabled: boolean;
-          drive_last_sync_at: string | null;
-          drive_refresh_token_ciphertext: string | null;
-          drive_root_folder_id: string | null;
-          email_api_secret_ciphertext: string | null;
-          email_domain: string | null;
-          email_domain_verified_at: string | null;
-          email_from_address: string | null;
-          email_from_name: string | null;
-          email_last_test_at: string | null;
-          email_last_test_status: string | null;
-          email_provider: string;
-          email_reply_to: string | null;
-          email_smtp_host: string | null;
-          email_smtp_port: number | null;
-          email_smtp_secret_ciphertext: string | null;
-          email_smtp_security: string;
-          email_smtp_username: string | null;
-          retention_approved_at: string | null;
-          retention_approved_by: string | null;
-          retention_days: number | null;
-          retention_policy_text: string | null;
-          retention_policy_version: string | null;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          drive_client_id: string | null
+          drive_client_secret_ciphertext: string | null
+          drive_connected_at: string | null
+          drive_enabled: boolean
+          drive_last_sync_at: string | null
+          drive_refresh_token_ciphertext: string | null
+          drive_root_folder_id: string | null
+          email_api_secret_ciphertext: string | null
+          email_domain: string | null
+          email_domain_verified_at: string | null
+          email_from_address: string | null
+          email_from_name: string | null
+          email_last_test_at: string | null
+          email_last_test_status: string | null
+          email_provider: string
+          email_reply_to: string | null
+          email_smtp_host: string | null
+          email_smtp_port: number | null
+          email_smtp_secret_ciphertext: string | null
+          email_smtp_security: string
+          email_smtp_username: string | null
+          retention_approved_at: string | null
+          retention_approved_by: string | null
+          retention_days: number | null
+          retention_policy_text: string | null
+          retention_policy_version: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          drive_client_id?: string | null;
-          drive_client_secret_ciphertext?: string | null;
-          drive_connected_at?: string | null;
-          drive_enabled?: boolean;
-          drive_last_sync_at?: string | null;
-          drive_refresh_token_ciphertext?: string | null;
-          drive_root_folder_id?: string | null;
-          email_api_secret_ciphertext?: string | null;
-          email_domain?: string | null;
-          email_domain_verified_at?: string | null;
-          email_from_address?: string | null;
-          email_from_name?: string | null;
-          email_last_test_at?: string | null;
-          email_last_test_status?: string | null;
-          email_provider?: string;
-          email_reply_to?: string | null;
-          email_smtp_host?: string | null;
-          email_smtp_port?: number | null;
-          email_smtp_secret_ciphertext?: string | null;
-          email_smtp_security?: string;
-          email_smtp_username?: string | null;
-          retention_approved_at?: string | null;
-          retention_approved_by?: string | null;
-          retention_days?: number | null;
-          retention_policy_text?: string | null;
-          retention_policy_version?: string | null;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          drive_client_id?: string | null
+          drive_client_secret_ciphertext?: string | null
+          drive_connected_at?: string | null
+          drive_enabled?: boolean
+          drive_last_sync_at?: string | null
+          drive_refresh_token_ciphertext?: string | null
+          drive_root_folder_id?: string | null
+          email_api_secret_ciphertext?: string | null
+          email_domain?: string | null
+          email_domain_verified_at?: string | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_last_test_at?: string | null
+          email_last_test_status?: string | null
+          email_provider?: string
+          email_reply_to?: string | null
+          email_smtp_host?: string | null
+          email_smtp_port?: number | null
+          email_smtp_secret_ciphertext?: string | null
+          email_smtp_security?: string
+          email_smtp_username?: string | null
+          retention_approved_at?: string | null
+          retention_approved_by?: string | null
+          retention_days?: number | null
+          retention_policy_text?: string | null
+          retention_policy_version?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          drive_client_id?: string | null;
-          drive_client_secret_ciphertext?: string | null;
-          drive_connected_at?: string | null;
-          drive_enabled?: boolean;
-          drive_last_sync_at?: string | null;
-          drive_refresh_token_ciphertext?: string | null;
-          drive_root_folder_id?: string | null;
-          email_api_secret_ciphertext?: string | null;
-          email_domain?: string | null;
-          email_domain_verified_at?: string | null;
-          email_from_address?: string | null;
-          email_from_name?: string | null;
-          email_last_test_at?: string | null;
-          email_last_test_status?: string | null;
-          email_provider?: string;
-          email_reply_to?: string | null;
-          email_smtp_host?: string | null;
-          email_smtp_port?: number | null;
-          email_smtp_secret_ciphertext?: string | null;
-          email_smtp_security?: string;
-          email_smtp_username?: string | null;
-          retention_approved_at?: string | null;
-          retention_approved_by?: string | null;
-          retention_days?: number | null;
-          retention_policy_text?: string | null;
-          retention_policy_version?: string | null;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          drive_client_id?: string | null
+          drive_client_secret_ciphertext?: string | null
+          drive_connected_at?: string | null
+          drive_enabled?: boolean
+          drive_last_sync_at?: string | null
+          drive_refresh_token_ciphertext?: string | null
+          drive_root_folder_id?: string | null
+          email_api_secret_ciphertext?: string | null
+          email_domain?: string | null
+          email_domain_verified_at?: string | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_last_test_at?: string | null
+          email_last_test_status?: string | null
+          email_provider?: string
+          email_reply_to?: string | null
+          email_smtp_host?: string | null
+          email_smtp_port?: number | null
+          email_smtp_secret_ciphertext?: string | null
+          email_smtp_security?: string
+          email_smtp_username?: string | null
+          retention_approved_at?: string | null
+          retention_approved_by?: string | null
+          retention_days?: number | null
+          retention_policy_text?: string | null
+          retention_policy_version?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_integration_settings_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_integration_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_invitations: {
         Row: {
-          accepted_at: string | null;
-          accepted_by: string | null;
-          created_at: string;
-          expires_at: string;
-          id: string;
-          invited_by: string;
-          invited_email: string;
-          invited_user_id: string | null;
-          revoked_at: string | null;
-          revoked_by: string | null;
-          role_id: string;
-          status: string;
-          tenant_id: string;
-        };
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          invited_by: string
+          invited_email: string
+          invited_user_id: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role_id: string
+          status: string
+          tenant_id: string
+        }
         Insert: {
-          accepted_at?: string | null;
-          accepted_by?: string | null;
-          created_at?: string;
-          expires_at?: string;
-          id?: string;
-          invited_by: string;
-          invited_email: string;
-          invited_user_id?: string | null;
-          revoked_at?: string | null;
-          revoked_by?: string | null;
-          role_id: string;
-          status?: string;
-          tenant_id: string;
-        };
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          invited_email: string
+          invited_user_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id: string
+          status?: string
+          tenant_id: string
+        }
         Update: {
-          accepted_at?: string | null;
-          accepted_by?: string | null;
-          created_at?: string;
-          expires_at?: string;
-          id?: string;
-          invited_by?: string;
-          invited_email?: string;
-          invited_user_id?: string | null;
-          revoked_at?: string | null;
-          revoked_by?: string | null;
-          role_id?: string;
-          status?: string;
-          tenant_id?: string;
-        };
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          invited_email?: string
+          invited_user_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id?: string
+          status?: string
+          tenant_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_invitations_role_tenant_fk";
-            columns: ["role_id", "tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_roles";
-            referencedColumns: ["id", "tenant_id"];
+            foreignKeyName: "tenant_invitations_role_tenant_fk"
+            columns: ["role_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
+            referencedColumns: ["id", "tenant_id"]
           },
           {
-            foreignKeyName: "tenant_invitations_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_memberships: {
         Row: {
-          created_at: string;
-          id: string;
-          status: Database["public"]["Enums"]["membership_status"];
-          tenant_id: string;
-          updated_at: string;
-          user_id: string;
-        };
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["membership_status"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          created_at?: string;
-          id?: string;
-          status?: Database["public"]["Enums"]["membership_status"];
-          tenant_id: string;
-          updated_at?: string;
-          user_id: string;
-        };
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          created_at?: string;
-          id?: string;
-          status?: Database["public"]["Enums"]["membership_status"];
-          tenant_id?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_memberships_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tenant_memberships_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_privacy_requests: {
         Row: {
-          completed_at: string | null;
-          created_at: string;
-          decision_notes: string | null;
-          id: string;
-          legal_basis_review: string | null;
-          request_type: string;
-          requester_email: string | null;
-          requester_user_id: string | null;
-          reviewed_at: string | null;
-          reviewed_by: string | null;
-          status: string;
-          subject_description: string;
-          tenant_id: string;
-          updated_at: string;
-        };
+          completed_at: string | null
+          created_at: string
+          decision_notes: string | null
+          id: string
+          legal_basis_review: string | null
+          request_type: string
+          requester_email: string | null
+          requester_user_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subject_description: string
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          completed_at?: string | null;
-          created_at?: string;
-          decision_notes?: string | null;
-          id?: string;
-          legal_basis_review?: string | null;
-          request_type: string;
-          requester_email?: string | null;
-          requester_user_id?: string | null;
-          reviewed_at?: string | null;
-          reviewed_by?: string | null;
-          status?: string;
-          subject_description: string;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          completed_at?: string | null
+          created_at?: string
+          decision_notes?: string | null
+          id?: string
+          legal_basis_review?: string | null
+          request_type: string
+          requester_email?: string | null
+          requester_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject_description: string
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          completed_at?: string | null;
-          created_at?: string;
-          decision_notes?: string | null;
-          id?: string;
-          legal_basis_review?: string | null;
-          request_type?: string;
-          requester_email?: string | null;
-          requester_user_id?: string | null;
-          reviewed_at?: string | null;
-          reviewed_by?: string | null;
-          status?: string;
-          subject_description?: string;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          completed_at?: string | null
+          created_at?: string
+          decision_notes?: string | null
+          id?: string
+          legal_basis_review?: string | null
+          request_type?: string
+          requester_email?: string | null
+          requester_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject_description?: string
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_privacy_requests_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_privacy_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_procurement_compliance: {
         Row: {
-          in65_applicability: string;
-          legal_review_notes: string | null;
-          legal_review_status: string;
-          local_regulation_name: string | null;
-          local_regulation_reference: string | null;
-          normative_basis: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-          validated_at: string | null;
-          validated_by: string | null;
-        };
+          in65_applicability: string
+          legal_review_notes: string | null
+          legal_review_status: string
+          local_regulation_name: string | null
+          local_regulation_reference: string | null
+          normative_basis: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
         Insert: {
-          in65_applicability?: string;
-          legal_review_notes?: string | null;
-          legal_review_status?: string;
-          local_regulation_name?: string | null;
-          local_regulation_reference?: string | null;
-          normative_basis?: string;
-          tenant_id: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          validated_at?: string | null;
-          validated_by?: string | null;
-        };
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
         Update: {
-          in65_applicability?: string;
-          legal_review_notes?: string | null;
-          legal_review_status?: string;
-          local_regulation_name?: string | null;
-          local_regulation_reference?: string | null;
-          normative_basis?: string;
-          tenant_id?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-          validated_at?: string | null;
-          validated_by?: string | null;
-        };
+          in65_applicability?: string
+          legal_review_notes?: string | null
+          legal_review_status?: string
+          local_regulation_name?: string | null
+          local_regulation_reference?: string | null
+          normative_basis?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_procurement_compliance_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: true;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_procurement_compliance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_role_permissions: {
         Row: {
-          created_at: string;
-          permission_id: string;
-          role_id: string;
-        };
+          created_at: string
+          permission_id: string
+          role_id: string
+        }
         Insert: {
-          created_at?: string;
-          permission_id: string;
-          role_id: string;
-        };
+          created_at?: string
+          permission_id: string
+          role_id: string
+        }
         Update: {
-          created_at?: string;
-          permission_id?: string;
-          role_id?: string;
-        };
+          created_at?: string
+          permission_id?: string
+          role_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_role_permissions_permission_id_fkey";
-            columns: ["permission_id"];
-            isOneToOne: false;
-            referencedRelation: "permissions";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tenant_role_permissions_role_id_fkey";
-            columns: ["role_id"];
-            isOneToOne: false;
-            referencedRelation: "tenant_roles";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_roles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenant_roles: {
         Row: {
-          created_at: string;
-          description: string | null;
-          id: string;
-          is_system: boolean;
-          name: string;
-          slug: string;
-          tenant_id: string;
-          updated_at: string;
-        };
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          is_system?: boolean;
-          name: string;
-          slug: string;
-          tenant_id: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          is_system?: boolean;
-          name?: string;
-          slug?: string;
-          tenant_id?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          slug?: string
+          tenant_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tenant_roles_tenant_id_fkey";
-            columns: ["tenant_id"];
-            isOneToOne: false;
-            referencedRelation: "tenants";
-            referencedColumns: ["id"];
+            foreignKeyName: "tenant_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       tenants: {
         Row: {
-          billing_contact: string | null;
-          billing_day: number;
-          billing_email: string | null;
-          cnpj: string | null;
-          commercial_notes: string | null;
-          commercial_status: string;
-          contact_email: string | null;
-          contact_phone: string | null;
-          created_at: string;
-          created_by: string;
-          enabled_modules: Json;
-          ibge_code: string | null;
-          id: string;
-          manager_name: string | null;
-          max_users: number;
-          monthly_fee: number;
-          municipality: string | null;
-          name: string;
-          plan_tier: string;
-          slug: string;
-          state: string | null;
-          status: Database["public"]["Enums"]["tenant_status"];
-          street: string | null;
-          trade_name: string | null;
-          trial_ends_at: string | null;
-          trial_starts_at: string | null;
-          updated_at: string;
-        };
+          billing_contact: string | null
+          billing_day: number
+          billing_email: string | null
+          cnpj: string | null
+          commercial_notes: string | null
+          commercial_status: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          enabled_modules: Json
+          ibge_code: string | null
+          id: string
+          manager_name: string | null
+          max_users: number
+          monthly_fee: number
+          municipality: string | null
+          name: string
+          plan_tier: string
+          slug: string
+          state: string | null
+          status: Database["public"]["Enums"]["tenant_status"]
+          street: string | null
+          trade_name: string | null
+          trial_ends_at: string | null
+          trial_starts_at: string | null
+          updated_at: string
+        }
         Insert: {
-          billing_contact?: string | null;
-          billing_day?: number;
-          billing_email?: string | null;
-          cnpj?: string | null;
-          commercial_notes?: string | null;
-          commercial_status?: string;
-          contact_email?: string | null;
-          contact_phone?: string | null;
-          created_at?: string;
-          created_by: string;
-          enabled_modules?: Json;
-          ibge_code?: string | null;
-          id?: string;
-          manager_name?: string | null;
-          max_users?: number;
-          monthly_fee?: number;
-          municipality?: string | null;
-          name: string;
-          plan_tier?: string;
-          slug: string;
-          state?: string | null;
-          status?: Database["public"]["Enums"]["tenant_status"];
-          street?: string | null;
-          trade_name?: string | null;
-          trial_ends_at?: string | null;
-          trial_starts_at?: string | null;
-          updated_at?: string;
-        };
+          billing_contact?: string | null
+          billing_day?: number
+          billing_email?: string | null
+          cnpj?: string | null
+          commercial_notes?: string | null
+          commercial_status?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by: string
+          enabled_modules?: Json
+          ibge_code?: string | null
+          id?: string
+          manager_name?: string | null
+          max_users?: number
+          monthly_fee?: number
+          municipality?: string | null
+          name: string
+          plan_tier?: string
+          slug: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["tenant_status"]
+          street?: string | null
+          trade_name?: string | null
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
+          updated_at?: string
+        }
         Update: {
-          billing_contact?: string | null;
-          billing_day?: number;
-          billing_email?: string | null;
-          cnpj?: string | null;
-          commercial_notes?: string | null;
-          commercial_status?: string;
-          contact_email?: string | null;
-          contact_phone?: string | null;
-          created_at?: string;
-          created_by?: string;
-          enabled_modules?: Json;
-          ibge_code?: string | null;
-          id?: string;
-          manager_name?: string | null;
-          max_users?: number;
-          monthly_fee?: number;
-          municipality?: string | null;
-          name?: string;
-          plan_tier?: string;
-          slug?: string;
-          state?: string | null;
-          status?: Database["public"]["Enums"]["tenant_status"];
-          street?: string | null;
-          trade_name?: string | null;
-          trial_ends_at?: string | null;
-          trial_starts_at?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-    };
+          billing_contact?: string | null
+          billing_day?: number
+          billing_email?: string | null
+          cnpj?: string | null
+          commercial_notes?: string | null
+          commercial_status?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string
+          enabled_modules?: Json
+          ibge_code?: string | null
+          id?: string
+          manager_name?: string | null
+          max_users?: number
+          monthly_fee?: number
+          municipality?: string | null
+          name?: string
+          plan_tier?: string
+          slug?: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["tenant_status"]
+          street?: string | null
+          trade_name?: string | null
+          trial_ends_at?: string | null
+          trial_starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      accept_my_tenant_invitations: { Args: never; Returns: number };
-      activate_my_platform_staff: { Args: never; Returns: boolean };
-      activate_my_platform_support_agent: { Args: never; Returns: boolean };
+      accept_my_tenant_invitations: { Args: never; Returns: number }
+      activate_my_platform_staff: { Args: never; Returns: boolean }
+      activate_my_platform_support_agent: { Args: never; Returns: boolean }
       add_platform_support_agent: {
-        Args: { p_display_name: string; p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_display_name: string; p_user_id: string }
+        Returns: undefined
+      }
       add_tenant_member: {
-        Args: { p_role_id: string; p_tenant_id: string; p_user_id: string };
-        Returns: string;
-      };
+        Args: { p_role_id: string; p_tenant_id: string; p_user_id: string }
+        Returns: string
+      }
       annual_demand_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_approve: boolean;
-          can_create: boolean;
-        }[];
-      };
+          can_approve: boolean
+          can_create: boolean
+        }[]
+      }
       approve_procurement_item_price: {
         Args: {
-          p_exceptional_justification?: string;
-          p_item_id: string;
-          p_method: string;
-          p_method_justification: string;
-          p_other_unit_price?: number;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
-      can_invite_platform_staff: { Args: { p_email: string }; Returns: boolean };
-      can_manage_platform_staff: { Args: never; Returns: boolean };
-      can_manage_platform_support_team: { Args: never; Returns: boolean };
+          p_exceptional_justification?: string
+          p_item_id: string
+          p_method: string
+          p_method_justification: string
+          p_other_unit_price?: number
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      can_dispatch_procurement_quote_email: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      can_invite_platform_staff: { Args: { p_email: string }; Returns: boolean }
+      can_manage_platform_staff: { Args: never; Returns: boolean }
+      can_manage_platform_support_team: { Args: never; Returns: boolean }
       cancel_generated_document_workflow: {
-        Args: { p_comment?: string; p_document_id: string; p_tenant_id: string };
-        Returns: string;
-      };
+        Args: { p_comment?: string; p_document_id: string; p_tenant_id: string }
+        Returns: string
+      }
       cancel_procurement_quote_request: {
-        Args: { p_request_id: string; p_tenant_id: string };
-        Returns: undefined;
-      };
+        Args: { p_request_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       claim_expiry_notification_delivery: {
-        Args: { p_delivery_id: string };
+        Args: { p_delivery_id: string }
         Returns: {
-          alert_level: string;
-          attempts: number;
-          due_on: string;
-          entity_id: string;
-          entity_type: string;
-          id: string;
-          recipient_user_id: string;
-          tenant_id: string;
-        }[];
-      };
+          alert_level: string
+          attempts: number
+          due_on: string
+          entity_id: string
+          entity_type: string
+          id: string
+          recipient_user_id: string
+          tenant_id: string
+        }[]
+      }
       conclude_supplier_homologation: {
         Args: {
-          p_conclusion_notes: string;
-          p_conclusion_status: string;
-          p_homologation_id: string;
-          p_tenant_id: string;
-        };
-        Returns: boolean;
-      };
+          p_conclusion_notes: string
+          p_conclusion_status: string
+          p_homologation_id: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
       create_platform_invoice: {
         Args: {
-          p_amount: number;
-          p_due_date: string;
-          p_notes?: string;
-          p_payment_method?: string;
-          p_reference_month: string;
-          p_tenant_id: string;
-        };
+          p_amount: number
+          p_due_date: string
+          p_notes?: string
+          p_payment_method?: string
+          p_reference_month: string
+          p_tenant_id: string
+        }
         Returns: {
-          amount: number;
-          created_at: string;
-          created_by: string | null;
-          due_date: string;
-          external_reference: string | null;
-          id: string;
-          notes: string | null;
-          paid_at: string | null;
-          payment_method: string;
-          payment_url: string | null;
-          plan_tier: string;
-          reference_month: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          external_reference: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_url: string | null
+          plan_tier: string
+          reference_month: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         SetofOptions: {
-          from: "*";
-          to: "platform_invoices";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
+          from: "*"
+          to: "platform_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_procurement_process_with_checklist: {
         Args: {
-          p_description?: string;
-          p_due_date?: string;
-          p_estimated_value?: number;
-          p_modality?: string;
-          p_number: string;
-          p_priority?: string;
-          p_requesting_unit?: string;
-          p_responsible_name?: string;
-          p_tenant_id: string;
-          p_title: string;
-        };
-        Returns: string;
-      };
+          p_description?: string
+          p_due_date?: string
+          p_estimated_value?: number
+          p_modality?: string
+          p_number: string
+          p_priority?: string
+          p_requesting_unit?: string
+          p_responsible_name?: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_procurement_quote_request: {
         Args: {
-          p_notes?: string;
-          p_process_id: string;
-          p_response_deadline: string;
-          p_selection_justification: string;
-          p_supplier_id: string;
-          p_tenant_id: string;
-        };
-        Returns: Json;
-      };
+          p_notes?: string
+          p_process_id: string
+          p_response_deadline: string
+          p_selection_justification: string
+          p_supplier_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       create_supplier_task: {
         Args: {
-          p_assigned_to?: string;
-          p_description?: string;
-          p_due_date?: string;
-          p_priority?: string;
-          p_reference_id?: string;
-          p_reference_table?: string;
-          p_supplier_id: string;
-          p_task_type: string;
-          p_tenant_id: string;
-          p_title: string;
-        };
-        Returns: string;
-      };
+          p_assigned_to?: string
+          p_description?: string
+          p_due_date?: string
+          p_priority?: string
+          p_reference_id?: string
+          p_reference_table?: string
+          p_supplier_id: string
+          p_task_type: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_tenant_invitation: {
-        Args: { p_email: string; p_role_id: string; p_tenant_id: string };
-        Returns: string;
-      };
+        Args: { p_email: string; p_role_id: string; p_tenant_id: string }
+        Returns: string
+      }
       create_tenant_with_admin: {
-        Args: { p_admin_user_id: string; p_name: string; p_slug: string };
-        Returns: Json;
-      };
+        Args: { p_admin_user_id: string; p_name: string; p_slug: string }
+        Returns: Json
+      }
       create_tenant_with_admin_commercial: {
         Args: {
-          p_admin_user_id: string;
-          p_details: Json;
-          p_name: string;
-          p_slug: string;
-        };
-        Returns: Json;
-      };
+          p_admin_user_id: string
+          p_details: Json
+          p_name: string
+          p_slug: string
+        }
+        Returns: Json
+      }
       end_platform_support_session: {
-        Args: { p_session_id: string };
-        Returns: undefined;
-      };
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       finalize_generated_document_signature: {
         Args: {
-          p_actor_id: string;
-          p_content_sha256: string;
-          p_document_id: string;
-          p_file_sha256: string;
-          p_file_size: number;
-          p_storage_path: string;
-          p_tenant_id: string;
-        };
-        Returns: Json;
-      };
+          p_actor_id: string
+          p_content_sha256: string
+          p_document_id: string
+          p_file_sha256: string
+          p_file_size: number
+          p_storage_path: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       find_tenant_user_by_email: {
-        Args: { p_email: string; p_tenant_id: string };
+        Args: { p_email: string; p_tenant_id: string }
         Returns: {
-          full_name: string;
-          user_id: string;
-        }[];
-      };
+          full_name: string
+          user_id: string
+        }[]
+      }
       finish_expiry_notification_delivery: {
         Args: {
-          p_delivery_id: string;
-          p_error_code?: string;
-          p_provider_message_id?: string;
-          p_status: string;
-        };
-        Returns: boolean;
-      };
+          p_delivery_id: string
+          p_error_code?: string
+          p_provider_message_id?: string
+          p_status: string
+        }
+        Returns: boolean
+      }
       generate_document_from_process: {
         Args: {
-          p_overrides?: Json;
-          p_process_id: string;
-          p_template_id: string;
-        };
-        Returns: string;
-      };
+          p_overrides?: Json
+          p_process_id: string
+          p_template_id: string
+        }
+        Returns: string
+      }
       generate_monthly_platform_invoices: {
-        Args: { p_reference_month?: string };
-        Returns: Json;
-      };
+        Args: { p_reference_month?: string }
+        Returns: Json
+      }
       generate_supplier_portal_token: {
         Args: {
-          p_days_valid?: number;
-          p_homologation_id?: string;
-          p_supplier_id: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_days_valid?: number
+          p_homologation_id?: string
+          p_supplier_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       get_document_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_create: boolean;
-          can_manage_templates: boolean;
-          can_sign: boolean;
-          can_update: boolean;
-          can_view: boolean;
-        }[];
-      };
+          can_create: boolean
+          can_manage_templates: boolean
+          can_sign: boolean
+          can_update: boolean
+          can_view: boolean
+        }[]
+      }
       get_document_workflow_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_approve: boolean;
-          can_submit: boolean;
-        }[];
-      };
+          can_approve: boolean
+          can_submit: boolean
+        }[]
+      }
       get_my_platform_staff_access: {
-        Args: never;
+        Args: never
         Returns: {
-          display_name: string;
-          is_staff: boolean;
-          permission_codes: string[];
-          role_names: string[];
-          staff_status: string;
-        }[];
-      };
+          display_name: string
+          is_staff: boolean
+          permission_codes: string[]
+          role_names: string[]
+          staff_status: string
+        }[]
+      }
       get_my_platform_support_status: {
-        Args: never;
+        Args: never
         Returns: {
-          agent_status: string;
-          allowed_actions: string[];
-          expires_at: string;
-          is_agent: boolean;
-          is_platform_admin: boolean;
-          reason: string;
-          session_id: string;
-          tenant_id: string;
-          tenant_name: string;
-        }[];
-      };
-      get_platform_master_metrics: { Args: never; Returns: Json };
-      get_platform_security_signals: { Args: never; Returns: Json };
-      get_platform_staff_metrics: { Args: never; Returns: Json };
+          agent_status: string
+          allowed_actions: string[]
+          expires_at: string
+          is_agent: boolean
+          is_platform_admin: boolean
+          reason: string
+          session_id: string
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
+      get_platform_master_metrics: { Args: never; Returns: Json }
+      get_platform_security_signals: { Args: never; Returns: Json }
+      get_platform_staff_metrics: { Args: never; Returns: Json }
       get_platform_tenant_usage_ranking: {
-        Args: never;
+        Args: never
         Returns: {
-          contracts_count: number;
-          documents_count: number;
-          processes_count: number;
-          suppliers_count: number;
-          tenant_id: string;
-        }[];
-      };
+          contracts_count: number
+          documents_count: number
+          processes_count: number
+          suppliers_count: number
+          tenant_id: string
+        }[]
+      }
       get_procurement_price_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_approve_price: boolean;
-          can_validate_normative_basis: boolean;
-        }[];
-      };
+          can_approve_price: boolean
+          can_validate_normative_basis: boolean
+        }[]
+      }
       get_procurement_quote_portal_data: {
-        Args: { p_token: string };
-        Returns: Json;
-      };
+        Args: { p_token: string }
+        Returns: Json
+      }
       get_supplier_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_create: boolean;
-          can_deactivate: boolean;
-          can_update: boolean;
-          can_view: boolean;
-        }[];
-      };
+          can_create: boolean
+          can_deactivate: boolean
+          can_update: boolean
+          can_view: boolean
+        }[]
+      }
       get_supplier_pending_tasks_summary: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          critical_count: number;
-          high_count: number;
-          open_count: number;
-          overdue_count: number;
-        }[];
-      };
-      get_supplier_portal_data: { Args: { p_token: string }; Returns: Json };
+          critical_count: number
+          high_count: number
+          open_count: number
+          overdue_count: number
+        }[]
+      }
+      get_supplier_portal_data: { Args: { p_token: string }; Returns: Json }
       get_tenant_role_management_capability: {
-        Args: { p_tenant_id: string };
-        Returns: boolean;
-      };
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       get_tenant_settings_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_edit: boolean;
-          can_view: boolean;
-        }[];
-      };
+          can_edit: boolean
+          can_view: boolean
+        }[]
+      }
       get_tenant_user_capabilities: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          can_assign_role: boolean;
-          can_create: boolean;
-          can_edit: boolean;
-          can_suspend: boolean;
-          can_view: boolean;
-        }[];
-      };
+          can_assign_role: boolean
+          can_create: boolean
+          can_edit: boolean
+          can_suspend: boolean
+          can_view: boolean
+        }[]
+      }
       install_document_template: {
-        Args: { p_catalog_template_id: string; p_tenant_id: string };
-        Returns: string;
-      };
-      is_valid_cnpj: { Args: { p_cnpj: string }; Returns: boolean };
+        Args: { p_catalog_template_id: string; p_tenant_id: string }
+        Returns: string
+      }
+      is_valid_cnpj: { Args: { p_cnpj: string }; Returns: boolean }
       list_generated_document_workflows: {
-        Args: { p_tenant_id: string };
+        Args: { p_tenant_id: string }
         Returns: {
-          decided_at: string;
-          decided_by: string;
-          decision_comment: string;
-          document_id: string;
-          events: Json;
-          status: string;
-          submitted_at: string;
-          submitted_by: string;
-        }[];
-      };
+          decided_at: string
+          decided_by: string
+          decision_comment: string
+          document_id: string
+          events: Json
+          status: string
+          submitted_at: string
+          submitted_by: string
+        }[]
+      }
       list_my_platform_support_tenants: {
-        Args: never;
+        Args: never
         Returns: {
-          commercial_status: string;
-          enabled_modules: Json;
-          id: string;
-          monthly_fee: number;
-          name: string;
-          plan_tier: string;
-          slug: string;
-          status: string;
-          trial_ends_at: string;
-          trial_starts_at: string;
-        }[];
-      };
+          commercial_status: string
+          enabled_modules: Json
+          id: string
+          monthly_fee: number
+          name: string
+          plan_tier: string
+          slug: string
+          status: string
+          trial_ends_at: string
+          trial_starts_at: string
+        }[]
+      }
       list_my_platform_support_tenants_safe: {
-        Args: never;
+        Args: never
         Returns: {
-          id: string;
-          name: string;
-          slug: string;
-          status: string;
-        }[];
-      };
+          id: string
+          name: string
+          slug: string
+          status: string
+        }[]
+      }
       list_platform_commercial_alert_candidates: {
-        Args: { p_today?: string };
-        Returns: Json;
-      };
+        Args: { p_today?: string }
+        Returns: Json
+      }
       list_platform_staff: {
-        Args: never;
+        Args: never
         Returns: {
-          activated_at: string;
-          created_at: string;
-          display_name: string;
-          email: string;
-          role_ids: string[];
-          role_names: string[];
-          status: string;
-          user_id: string;
-        }[];
-      };
+          activated_at: string
+          created_at: string
+          display_name: string
+          email: string
+          role_ids: string[]
+          role_names: string[]
+          status: string
+          user_id: string
+        }[]
+      }
       list_platform_staff_audit_events: {
-        Args: { p_limit?: number };
+        Args: { p_limit?: number }
         Returns: {
-          action: string;
-          actor_email: string;
-          created_at: string;
-          entity: string;
-          entity_id: string;
-          id: string;
-          tenant_name: string;
-        }[];
-      };
+          action: string
+          actor_email: string
+          created_at: string
+          entity: string
+          entity_id: string
+          id: string
+          tenant_name: string
+        }[]
+      }
       list_platform_staff_roles: {
-        Args: never;
+        Args: never
         Returns: {
-          description: string;
-          id: string;
-          is_active: boolean;
-          is_system: boolean;
-          name: string;
-          permission_codes: string[];
-          slug: string;
-          staff_count: number;
-        }[];
-      };
+          description: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          permission_codes: string[]
+          slug: string
+          staff_count: number
+        }[]
+      }
       list_platform_staff_tenants: {
-        Args: never;
+        Args: never
         Returns: {
-          commercial_status: string;
-          created_at: string;
-          id: string;
-          monthly_fee: number;
-          municipality: string;
-          name: string;
-          plan_tier: string;
-          slug: string;
-          state: string;
-          status: string;
-        }[];
-      };
+          commercial_status: string
+          created_at: string
+          id: string
+          monthly_fee: number
+          municipality: string
+          name: string
+          plan_tier: string
+          slug: string
+          state: string
+          status: string
+        }[]
+      }
       list_platform_support_assignments: {
-        Args: { p_agent_user_id: string };
+        Args: { p_agent_user_id: string }
         Returns: {
-          can_create_suppliers: boolean;
-          can_update_suppliers: boolean;
-          can_view_suppliers: boolean;
-          is_active: boolean;
-          tenant_id: string;
-          tenant_name: string;
-        }[];
-      };
+          can_create_suppliers: boolean
+          can_update_suppliers: boolean
+          can_view_suppliers: boolean
+          is_active: boolean
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
       list_platform_support_candidates: {
-        Args: never;
+        Args: never
         Returns: {
-          display_name: string;
-          email: string;
-          user_id: string;
-        }[];
-      };
+          display_name: string
+          email: string
+          user_id: string
+        }[]
+      }
       list_platform_support_team: {
-        Args: never;
+        Args: never
         Returns: {
-          assignment_count: number;
-          display_name: string;
-          email: string;
-          status: string;
-          user_id: string;
-        }[];
-      };
+          assignment_count: number
+          display_name: string
+          email: string
+          status: string
+          user_id: string
+        }[]
+      }
       list_platform_tenant_ai_limits: {
-        Args: never;
+        Args: never
         Returns: {
-          monthly_budget_usd: number;
-          monthly_token_limit: number;
-          tenant_id: string;
-        }[];
-      };
+          monthly_budget_usd: number
+          monthly_token_limit: number
+          tenant_id: string
+        }[]
+      }
       list_supplier_pending_tasks: {
         Args: {
-          p_limit?: number;
-          p_offset?: number;
-          p_priority?: string;
-          p_status?: string;
-          p_supplier_id?: string;
-          p_task_type?: string;
-          p_tenant_id: string;
-        };
+          p_limit?: number
+          p_offset?: number
+          p_priority?: string
+          p_status?: string
+          p_supplier_id?: string
+          p_task_type?: string
+          p_tenant_id: string
+        }
         Returns: {
-          assigned_name: string;
-          assigned_to: string;
-          auto_generated: boolean;
-          created_at: string;
-          description: string;
-          due_date: string;
-          id: string;
-          priority: string;
-          resolved_at: string;
-          status: string;
-          supplier_id: string;
-          supplier_name: string;
-          task_type: string;
-          title: string;
-        }[];
-      };
+          assigned_name: string
+          assigned_to: string
+          auto_generated: boolean
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          priority: string
+          resolved_at: string
+          status: string
+          supplier_id: string
+          supplier_name: string
+          task_type: string
+          title: string
+        }[]
+      }
       list_tenant_admin_candidates: {
-        Args: never;
+        Args: never
         Returns: {
-          email: string;
-          full_name: string;
-          user_id: string;
-        }[];
-      };
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       log_platform_admin_access_attempt: {
-        Args: { p_route: string };
-        Returns: undefined;
-      };
+        Args: { p_route: string }
+        Returns: undefined
+      }
       manage_annual_demand: {
         Args: {
-          p_action: string;
-          p_data: Json;
-          p_id: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_action: string
+          p_data: Json
+          p_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       mark_procurement_quote_request_imported: {
-        Args: { p_request_id: string; p_tenant_id: string };
-        Returns: undefined;
-      };
-      normalize_cnpj: { Args: { p_cnpj: string }; Returns: string };
+        Args: { p_request_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      normalize_cnpj: { Args: { p_cnpj: string }; Returns: string }
       platform_ai_claim_usage: {
-        Args: { p_actor_id: string; p_feature: string; p_tenant_id: string };
-        Returns: boolean;
-      };
+        Args: { p_actor_id: string; p_feature: string; p_tenant_id: string }
+        Returns: boolean
+      }
       platform_ai_delete_provider: {
-        Args: { p_actor_id: string; p_provider_id: string };
-        Returns: Json;
-      };
-      platform_ai_get_api_key: { Args: never; Returns: string };
+        Args: { p_actor_id: string; p_provider_id: string }
+        Returns: Json
+      }
+      platform_ai_get_api_key: { Args: never; Returns: string }
       platform_ai_get_provider_api_key: {
-        Args: { p_provider_id: string };
-        Returns: string;
-      };
+        Args: { p_provider_id: string }
+        Returns: string
+      }
       platform_ai_record_provider_test_result: {
         Args: {
-          p_actor_id: string;
-          p_error_code?: string;
-          p_error_message?: string;
-          p_error_type?: string;
-          p_http_status?: number;
-          p_provider_id: string;
-          p_retry_after?: string;
-          p_retryable?: boolean;
-          p_status: string;
-        };
-        Returns: Json;
-      };
+          p_actor_id: string
+          p_error_code?: string
+          p_error_message?: string
+          p_error_type?: string
+          p_http_status?: number
+          p_provider_id: string
+          p_retry_after?: string
+          p_retryable?: boolean
+          p_status: string
+        }
+        Returns: Json
+      }
       platform_ai_save_configuration: {
-        Args: { p_actor_id: string; p_api_key: string; p_model: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_api_key: string; p_model: string }
+        Returns: Json
+      }
       platform_ai_save_provider: {
         Args: {
-          p_actor_id: string;
-          p_api_base_url: string;
-          p_api_key: string;
-          p_api_version: string;
-          p_fallback_priority: number;
-          p_input_cost_per_million: number;
-          p_model: string;
-          p_name: string;
-          p_output_cost_per_million: number;
-          p_provider: string;
-          p_provider_id: string;
-        };
-        Returns: Json;
-      };
+          p_actor_id: string
+          p_api_base_url: string
+          p_api_key: string
+          p_api_version: string
+          p_fallback_priority: number
+          p_input_cost_per_million: number
+          p_model: string
+          p_name: string
+          p_output_cost_per_million: number
+          p_provider: string
+          p_provider_id: string
+        }
+        Returns: Json
+      }
       platform_ai_set_connection_status: {
-        Args: { p_actor_id: string; p_status: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_status: string }
+        Returns: Json
+      }
       platform_ai_set_global_enabled: {
-        Args: { p_actor_id: string; p_enabled: boolean };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_enabled: boolean }
+        Returns: Json
+      }
       platform_ai_set_primary_provider: {
-        Args: { p_actor_id: string; p_provider_id: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_provider_id: string }
+        Returns: Json
+      }
       platform_ai_set_provider_enabled: {
-        Args: { p_actor_id: string; p_enabled: boolean; p_provider_id: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_enabled: boolean; p_provider_id: string }
+        Returns: Json
+      }
       platform_ai_set_provider_priority: {
-        Args: { p_actor_id: string; p_priority: number; p_provider_id: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_priority: number; p_provider_id: string }
+        Returns: Json
+      }
       platform_ai_set_tenant_providers: {
         Args: {
-          p_actor_id: string;
-          p_provider_ids: string[];
-          p_tenant_id: string;
-        };
-        Returns: Json;
-      };
+          p_actor_id: string
+          p_provider_ids: string[]
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       platform_ai_set_tenant_settings: {
         Args: {
-          p_actor_id: string;
-          p_enabled: boolean;
-          p_features: Json;
-          p_tenant_id: string;
-        };
-        Returns: Json;
-      };
+          p_actor_id: string
+          p_enabled: boolean
+          p_features: Json
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       platform_ai_update_provider_test_status: {
-        Args: { p_actor_id: string; p_provider_id: string; p_status: string };
-        Returns: Json;
-      };
+        Args: { p_actor_id: string; p_provider_id: string; p_status: string }
+        Returns: Json
+      }
       platform_billing_attach_payment_link: {
         Args: {
-          p_actor_id: string;
-          p_external_reference: string;
-          p_invoice_id: string;
-          p_payment_url: string;
-        };
+          p_actor_id: string
+          p_external_reference: string
+          p_invoice_id: string
+          p_payment_url: string
+        }
         Returns: {
-          amount: number;
-          created_at: string;
-          created_by: string | null;
-          due_date: string;
-          external_reference: string | null;
-          id: string;
-          notes: string | null;
-          paid_at: string | null;
-          payment_method: string;
-          payment_url: string | null;
-          plan_tier: string;
-          reference_month: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          external_reference: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_url: string | null
+          plan_tier: string
+          reference_month: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         SetofOptions: {
-          from: "*";
-          to: "platform_invoices";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
+          from: "*"
+          to: "platform_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       platform_billing_confirm_webhook_payment: {
         Args: {
-          p_event_id?: string;
-          p_external_reference: string;
-          p_invoice_id?: string;
-          p_provider?: string;
-        };
-        Returns: Json;
-      };
+          p_event_id?: string
+          p_external_reference: string
+          p_invoice_id?: string
+          p_provider?: string
+        }
+        Returns: Json
+      }
       platform_billing_disconnect: {
-        Args: { p_actor_id: string };
-        Returns: Json;
-      };
-      platform_billing_get_credentials: { Args: never; Returns: Json };
+        Args: { p_actor_id: string }
+        Returns: Json
+      }
+      platform_billing_get_credentials: { Args: never; Returns: Json }
       platform_billing_save_credentials: {
         Args: {
-          p_account_email: string;
-          p_account_name: string;
-          p_account_reference: string;
-          p_actor_id: string;
-          p_client_id: string;
-          p_environment: string;
-          p_provider: string;
-          p_provider_other_name: string;
-          p_public_key: string;
-          p_secret_bundle: Json;
-        };
-        Returns: Json;
-      };
+          p_account_email: string
+          p_account_name: string
+          p_account_reference: string
+          p_actor_id: string
+          p_client_id: string
+          p_environment: string
+          p_provider: string
+          p_provider_other_name: string
+          p_public_key: string
+          p_secret_bundle: Json
+        }
+        Returns: Json
+      }
       platform_billing_set_payments_enabled: {
-        Args: { p_actor_id: string; p_enabled: boolean };
-        Returns: Json;
-      };
-      queue_idle_process_emails: { Args: never; Returns: undefined };
+        Args: { p_actor_id: string; p_enabled: boolean }
+        Returns: Json
+      }
+      queue_idle_process_emails: { Args: never; Returns: undefined }
       record_contract_item_consumption: {
         Args: {
-          p_contract_item_id: string;
-          p_quantity: number;
-          p_reason: string;
-          p_reference_number?: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_contract_item_id: string
+          p_quantity: number
+          p_reason: string
+          p_reference_number?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       record_supplier_regularity_check: {
         Args: {
-          p_certificate_number?: string;
-          p_evidence_url?: string;
-          p_notes?: string;
-          p_requires_action?: boolean;
-          p_source: string;
-          p_source_label: string;
-          p_status: string;
-          p_supplier_id: string;
-          p_tenant_id: string;
-          p_valid_until?: string;
-        };
-        Returns: string;
-      };
+          p_certificate_number?: string
+          p_evidence_url?: string
+          p_notes?: string
+          p_requires_action?: boolean
+          p_source: string
+          p_source_label: string
+          p_status: string
+          p_supplier_id: string
+          p_tenant_id: string
+          p_valid_until?: string
+        }
+        Returns: string
+      }
       register_platform_staff: {
         Args: {
-          p_display_name: string;
-          p_email: string;
-          p_role_ids: string[];
-          p_user_id: string;
-        };
-        Returns: undefined;
-      };
+          p_display_name: string
+          p_email: string
+          p_role_ids: string[]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       register_platform_support_agent: {
         Args: {
-          p_can_create_suppliers?: boolean;
-          p_can_update_suppliers?: boolean;
-          p_can_view_suppliers?: boolean;
-          p_display_name: string;
-          p_email: string;
-          p_tenant_id: string;
-          p_user_id: string;
-        };
-        Returns: undefined;
-      };
+          p_can_create_suppliers?: boolean
+          p_can_update_suppliers?: boolean
+          p_can_view_suppliers?: boolean
+          p_display_name: string
+          p_email: string
+          p_tenant_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       resolve_supplier_task: {
         Args: {
-          p_action?: string;
-          p_resolution_notes?: string;
-          p_task_id: string;
-          p_tenant_id: string;
-        };
-        Returns: boolean;
-      };
+          p_action?: string
+          p_resolution_notes?: string
+          p_task_id: string
+          p_tenant_id: string
+        }
+        Returns: boolean
+      }
       reverse_contract_item_consumption: {
-        Args: { p_movement_id: string; p_reason: string; p_tenant_id: string };
-        Returns: string;
-      };
+        Args: { p_movement_id: string; p_reason: string; p_tenant_id: string }
+        Returns: string
+      }
       revoke_platform_staff_invitation: {
-        Args: { p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       revoke_platform_support_invitation: {
-        Args: { p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       revoke_tenant_invitation: {
-        Args: { p_invitation_id: string };
-        Returns: undefined;
-      };
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       save_contract_renewal_assessment: {
-        Args: { p_contract_id: string; p_payload: Json; p_tenant_id: string };
-        Returns: string;
-      };
+        Args: { p_contract_id: string; p_payload: Json; p_tenant_id: string }
+        Returns: string
+      }
       save_contract_renewal_checklist_item: {
         Args: {
-          p_assigned_user_id?: string;
-          p_contract_id: string;
-          p_due_date?: string;
-          p_evidence_reference?: string;
-          p_item_key: string;
-          p_notes?: string;
-          p_status?: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_assigned_user_id?: string
+          p_contract_id: string
+          p_due_date?: string
+          p_evidence_reference?: string
+          p_item_key: string
+          p_notes?: string
+          p_status?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       save_platform_plan: {
         Args: {
-          p_default_ai_monthly_budget_usd: number;
-          p_default_ai_monthly_token_limit: number;
-          p_default_max_users: number;
-          p_default_modules: Json;
-          p_default_monthly_fee: number;
-          p_description: string;
-          p_is_active?: boolean;
-          p_name: string;
-          p_plan_id: string;
-        };
+          p_default_ai_monthly_budget_usd: number
+          p_default_ai_monthly_token_limit: number
+          p_default_max_users: number
+          p_default_modules: Json
+          p_default_monthly_fee: number
+          p_description: string
+          p_is_active?: boolean
+          p_name: string
+          p_plan_id: string
+        }
         Returns: {
-          default_ai_monthly_budget_usd: number | null;
-          default_ai_monthly_token_limit: number | null;
-          default_max_users: number;
-          default_modules: Json;
-          default_monthly_fee: number;
-          description: string;
-          id: string;
-          is_active: boolean;
-          name: string;
-          sort_order: number;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          default_ai_monthly_budget_usd: number | null
+          default_ai_monthly_token_limit: number | null
+          default_max_users: number
+          default_modules: Json
+          default_monthly_fee: number
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
         SetofOptions: {
-          from: "*";
-          to: "platform_plans";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
+          from: "*"
+          to: "platform_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_platform_staff_role: {
         Args: {
-          p_description: string;
-          p_name: string;
-          p_permission_codes: string[];
-          p_role_id: string;
-          p_slug: string;
-        };
-        Returns: string;
-      };
+          p_description: string
+          p_name: string
+          p_permission_codes: string[]
+          p_role_id: string
+          p_slug: string
+        }
+        Returns: string
+      }
       save_tenant_role_with_permissions: {
         Args: {
-          p_description: string;
-          p_name: string;
-          p_permission_ids: string[];
-          p_role_id: string;
-          p_slug: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_description: string
+          p_name: string
+          p_permission_ids: string[]
+          p_role_id: string
+          p_slug: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       select_procurement_price_quote: {
-        Args: { p_item_id: string; p_quote_id: string; p_tenant_id: string };
-        Returns: undefined;
-      };
+        Args: { p_item_id: string; p_quote_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       set_platform_staff_roles: {
-        Args: { p_role_ids: string[]; p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_role_ids: string[]; p_user_id: string }
+        Returns: undefined
+      }
       set_platform_staff_status: {
-        Args: { p_status: string; p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_status: string; p_user_id: string }
+        Returns: undefined
+      }
       set_platform_support_agent_status: {
-        Args: { p_status: string; p_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_status: string; p_user_id: string }
+        Returns: undefined
+      }
       set_platform_support_assignment: {
         Args: {
-          p_agent_user_id: string;
-          p_can_create_suppliers?: boolean;
-          p_can_update_suppliers?: boolean;
-          p_can_view_suppliers?: boolean;
-          p_is_active: boolean;
-          p_tenant_id: string;
-        };
-        Returns: undefined;
-      };
+          p_agent_user_id: string
+          p_can_create_suppliers?: boolean
+          p_can_update_suppliers?: boolean
+          p_can_view_suppliers?: boolean
+          p_is_active: boolean
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
       set_tenant_ai_limits: {
         Args: {
-          p_monthly_budget_usd?: number;
-          p_monthly_token_limit?: number;
-          p_tenant_id: string;
-        };
-        Returns: Json;
-      };
+          p_monthly_budget_usd?: number
+          p_monthly_token_limit?: number
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       set_tenant_invitation_auth_user: {
-        Args: { p_invitation_id: string; p_invited_user_id: string };
-        Returns: undefined;
-      };
+        Args: { p_invitation_id: string; p_invited_user_id: string }
+        Returns: undefined
+      }
       set_tenant_member_role: {
-        Args: { p_membership_id: string; p_role_id: string };
-        Returns: undefined;
-      };
+        Args: { p_membership_id: string; p_role_id: string }
+        Returns: undefined
+      }
       start_platform_support_session: {
-        Args: { p_reason: string; p_tenant_id: string };
+        Args: { p_reason: string; p_tenant_id: string }
         Returns: {
-          expires_at: string;
-          session_id: string;
-        }[];
-      };
+          expires_at: string
+          session_id: string
+        }[]
+      }
       start_supplier_homologation: {
         Args: {
-          p_assigned_to?: string;
-          p_category: string;
-          p_process_id?: string;
-          p_scope_description: string;
-          p_supplier_id: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_assigned_to?: string
+          p_category: string
+          p_process_id?: string
+          p_scope_description: string
+          p_supplier_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       submit_procurement_quote_portal: {
-        Args: { p_payload: Json; p_token: string };
-        Returns: Json;
-      };
+        Args: { p_payload: Json; p_token: string }
+        Returns: Json
+      }
       submit_supplier_portal_document: {
         Args: {
-          p_checklist_item_id?: string;
-          p_document_type?: string;
-          p_expires_at?: string;
-          p_external_url?: string;
-          p_file_name?: string;
-          p_storage_path?: string;
-          p_title?: string;
-          p_token: string;
-        };
-        Returns: Json;
-      };
+          p_checklist_item_id?: string
+          p_document_type?: string
+          p_expires_at?: string
+          p_external_url?: string
+          p_file_name?: string
+          p_storage_path?: string
+          p_title?: string
+          p_token: string
+        }
+        Returns: Json
+      }
       sync_overdue_platform_invoices: {
-        Args: { p_block_delinquent_tenants?: boolean };
-        Returns: Json;
-      };
+        Args: { p_block_delinquent_tenants?: boolean }
+        Returns: Json
+      }
       transition_generated_document_workflow: {
         Args: {
-          p_action: string;
-          p_comment?: string;
-          p_document_id: string;
-          p_tenant_id: string;
-        };
-        Returns: string;
-      };
+          p_action: string
+          p_comment?: string
+          p_document_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       update_platform_invoice_status: {
         Args: {
-          p_external_reference?: string;
-          p_invoice_id: string;
-          p_notes?: string;
-          p_payment_method?: string;
-          p_status: string;
-          p_sync_tenant_status?: boolean;
-        };
+          p_external_reference?: string
+          p_invoice_id: string
+          p_notes?: string
+          p_payment_method?: string
+          p_status: string
+          p_sync_tenant_status?: boolean
+        }
         Returns: {
-          amount: number;
-          created_at: string;
-          created_by: string | null;
-          due_date: string;
-          external_reference: string | null;
-          id: string;
-          notes: string | null;
-          paid_at: string | null;
-          payment_method: string;
-          payment_url: string | null;
-          plan_tier: string;
-          reference_month: string;
-          status: string;
-          tenant_id: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          external_reference: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string
+          payment_url: string | null
+          plan_tier: string
+          reference_month: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
         SetofOptions: {
-          from: "*";
-          to: "platform_invoices";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
+          from: "*"
+          to: "platform_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       validate_contract_renewal_addendum: {
-        Args: { p_contract_id: string; p_tenant_id: string };
+        Args: { p_contract_id: string; p_tenant_id: string }
         Returns: {
-          blockers: string[];
-          can_generate: boolean;
-        }[];
-      };
-    };
+          blockers: string[]
+          can_generate: boolean
+        }[]
+      }
+    }
     Enums: {
-      membership_status: "active" | "inactive" | "suspended" | "invited";
-      tenant_status: "active" | "suspended" | "closed";
-    };
+      membership_status: "active" | "inactive" | "suspended" | "invited"
+      tenant_status: "active" | "suspended" | "closed"
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+      Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+      Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+      Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never;
+    : never
 
 export const Constants = {
   public: {
@@ -5179,4 +5204,4 @@ export const Constants = {
       tenant_status: ["active", "suspended", "closed"],
     },
   },
-} as const;
+} as const

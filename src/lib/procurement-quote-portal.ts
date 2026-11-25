@@ -202,10 +202,10 @@ export function buildFormalQuotePdfText(params: {
   for (const item of quotedItems) {
     lines.push(
       `Item ${item.line_number}: ${item.description} (${item.quantity} ${item.unit})` +
-        ` | Unitário: ${formatarMoeda(Number(item.unit_price))}` +
-        ` | Frete: ${formatarMoeda(Number(item.delivery_cost))}` +
-        ` | Subtotal: ${formatarMoeda(Number(item.total_price))}` +
-        (item.brand_model ? ` | Marca/Modelo: ${item.brand_model}` : ""),
+      ` | Unitário: ${formatarMoeda(Number(item.unit_price))}` +
+      ` | Frete: ${formatarMoeda(Number(item.delivery_cost))}` +
+      ` | Subtotal: ${formatarMoeda(Number(item.total_price))}` +
+      (item.brand_model ? ` | Marca/Modelo: ${item.brand_model}` : ""),
     );
   }
 
@@ -268,6 +268,54 @@ export async function cancelarSolicitacaoCotacaoPortal(
     p_request_id: requestId,
   });
   if (error) throw error;
+}
+
+export type EnviarConviteEmailResult = {
+  success: boolean;
+  outcome: "accepted" | "rejected" | "uncertain";
+  email_sent_at?: string;
+  email_sent_to?: string;
+  email_provider?: string;
+  message: string;
+};
+
+export async function enviarConviteCotacaoEmail(params: {
+  tenantId: string;
+  quoteRequestId: string;
+  recipientEmail: string;
+  accessToken?: string;
+}): Promise<EnviarConviteEmailResult> {
+  const { data, error } = await supabase.functions.invoke<
+    EnviarConviteEmailResult & { error?: string }
+  >("send-quote-request-email", {
+    body: {
+      tenant_id: params.tenantId,
+      quote_request_id: params.quoteRequestId,
+      recipient_email: params.recipientEmail,
+    },
+    ...(params.accessToken
+      ? { headers: { Authorization: `Bearer ${params.accessToken}` } }
+      : {}),
+  });
+
+  if (error) {
+    let message = error.message || "Falha no envio do e-mail.";
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      const errBody = (await ctx.json().catch(() => null)) as Record<string, unknown> | null;
+      if (errBody && typeof errBody["error"] === "string") {
+        message = errBody["error"];
+      }
+    }
+    throw new Error(message);
+  }
+  if (!data || typeof data !== "object") {
+    throw new Error("Resposta inválida do serviço de envio de e-mail.");
+  }
+  if (data.error) {
+    throw new Error(data.error);
+  }
+  return data;
 }
 
 export async function marcarSolicitacaoCotacaoImportada(

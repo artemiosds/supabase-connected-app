@@ -39,6 +39,9 @@ verify_jwt = true
 [functions.lookup-cnpj]
 verify_jwt = true
 
+[functions.send-quote-request-email]
+verify_jwt = true
+
 [functions.platform-commercial-alerts]
 # Aceita chamada agendada via x-expiry-alert-secret ou sessão Master verificada internamente.
 verify_jwt = false

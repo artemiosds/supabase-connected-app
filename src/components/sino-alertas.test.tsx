@@ -50,6 +50,7 @@ const { mockExtensionOpen, mockReplenishmentOpen, mockDbState } = vi.hoisted(() 
         new_end_date: "2026-12-01",
       },
     ],
+    quoteRequests: [] as unknown[],
   },
 }));
 
@@ -105,10 +106,11 @@ function buildTableChain(table: string) {
     contract_items: mockDbState.items,
     contract_item_movements: mockDbState.movements,
     contract_amendments: mockDbState.amendments,
+    procurement_quote_requests: mockDbState.quoteRequests,
   };
   const payload = { data: resultMap[table] ?? [], error: null };
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "not", "lte", "in", "order", "range", "insert"]) {
+  for (const method of ["select", "eq", "not", "lte", "in", "order", "range", "insert", "limit"]) {
     chain[method] = vi.fn(() => chain);
   }
   chain["then"] = (resolve: (val: unknown) => unknown) => Promise.resolve(payload).then(resolve);
@@ -136,6 +138,7 @@ describe("SinoAlertas: ações diretas de prorrogação e reposição", () => {
   beforeEach(() => {
     mockExtensionOpen.mockClear();
     mockReplenishmentOpen.mockClear();
+    mockDbState.quoteRequests = [];
   });
 
   afterEach(() => {
@@ -174,5 +177,61 @@ describe("SinoAlertas: ações diretas de prorrogação e reposição", () => {
         amendmentsCount: 1,
       });
     });
+  });
+
+  it("exibe alerta de proposta eletrônica recebida no sino com link de importação", async () => {
+    // Adiciona proposta recebida no estado do mock
+    const quoteRequests = [
+      {
+        id: "qr-1",
+        process_id: "proc-1",
+        supplier_id: "sup-1",
+        submission_protocol: "COT-2026-0001",
+        submitted_at: "2026-11-25T10:00:00Z",
+        suppliers: { legal_name: "Farmácia Central Ltda", trade_name: "FarmaC" },
+        procurement_processes: { number: "PRC-001/2026", title: "Aquisição de medicamentos" },
+      },
+    ];
+    // Injeta dinamicamente no buildTableChain via mockDbState extension
+    // O mock de db.from ja retorna por tabela — precisamos que procurement_quote_requests retorne quoteRequests
+    // Isso é feito sobrescrevendo o mock de db dinamicamente para esta suite
+    const { db: mockDb } = await import("@/lib/db");
+    const originalFrom = (mockDb as { from: (t: string) => unknown }).from;
+    const patchedFrom = (table: string) => {
+      if (table === "procurement_quote_requests") {
+        const payload = { data: quoteRequests, error: null };
+        const chain: Record<string, unknown> = {};
+        for (const method of ["select", "eq", "not", "lte", "in", "order", "range", "insert", "limit"]) {
+          chain[method] = vi.fn(() => chain);
+        }
+        chain["then"] = (resolve: (val: unknown) => unknown) =>
+          Promise.resolve(payload).then(resolve);
+        return chain;
+      }
+      return originalFrom(table);
+    };
+    (mockDb as { from: (t: string) => unknown }).from = patchedFrom;
+
+    render(<SinoAlertas />);
+
+    const trigger = await waitFor(() => {
+      // totalAlertas agora inclui 1 cotação + 2 de saldo/contrato = 3
+      const btn = screen.getByRole("button", { name: /Alertas de vencimento/i });
+      expect(btn).not.toBeDisabled();
+      return btn;
+    });
+
+    fireEvent.click(trigger);
+
+    expect(await screen.findByText("Proposta recebida")).toBeInTheDocument();
+    expect(screen.getByText("FarmaC")).toBeInTheDocument();
+    expect(screen.getByText(/PRC-001\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/COT-2026-0001/)).toBeInTheDocument();
+
+    const importBtn = screen.getByRole("link", { name: /Importar na Matriz/i });
+    expect(importBtn).toHaveAttribute("href", "/processos?processo=proc-1");
+
+    // Restaura
+    (mockDb as { from: (t: string) => unknown }).from = originalFrom;
   });
 });
