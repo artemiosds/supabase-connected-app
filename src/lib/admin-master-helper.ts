@@ -66,7 +66,9 @@ export function filtrarClientesMaster<T extends MasterTenantLike>(
       .join(" ")
       .toLowerCase();
 
-    return matchText.includes(termo) || (termoDigits.length >= 3 && cnpjDigits.includes(termoDigits));
+    return (
+      matchText.includes(termo) || (termoDigits.length >= 3 && cnpjDigits.includes(termoDigits))
+    );
   });
 }
 
@@ -111,18 +113,23 @@ export function agruparClientesPorPlano(
 
   for (const tenant of tenants) {
     const key = tenant.plan_tier in map ? tenant.plan_tier : "profissional";
-    map[key].clientes += 1;
+    const bucket = map[key];
+    if (!bucket) continue;
+    bucket.clientes += 1;
     if (tenant.commercial_status === "active") {
-      map[key].mrr += Number(tenant.monthly_fee ?? 0) || 0;
+      bucket.mrr += Number(tenant.monthly_fee ?? 0) || 0;
     }
   }
 
-  return order.map((plano) => ({
-    plano,
-    nome: planLabels[plano] ?? plano,
-    clientes: map[plano].clientes,
-    mrr: map[plano].mrr,
-  }));
+  return order.map((plano) => {
+    const bucket = map[plano];
+    return {
+      plano,
+      nome: planLabels[plano] ?? plano,
+      clientes: bucket?.clientes ?? 0,
+      mrr: bucket?.mrr ?? 0,
+    };
+  });
 }
 
 export function agruparClientesPorStatus(
@@ -150,13 +157,10 @@ export function resumirUsoIaPorTenant(
   const resumo: Record<string, AiTenantUsageSummary> = {};
   for (const row of usageRows) {
     if (!row.tenant_id) continue;
-    if (!resumo[row.tenant_id]) {
-      resumo[row.tenant_id] = { requests: 0, tokens: 0, costUsd: 0 };
-    }
-    resumo[row.tenant_id].requests += Number(row.requests) || 0;
-    resumo[row.tenant_id].tokens +=
-      (Number(row.input_tokens) || 0) + (Number(row.output_tokens) || 0);
-    resumo[row.tenant_id].costUsd += Number(row.estimated_cost_usd) || 0;
+    const item = (resumo[row.tenant_id] ??= { requests: 0, tokens: 0, costUsd: 0 });
+    item.requests += Number(row.requests) || 0;
+    item.tokens += (Number(row.input_tokens) || 0) + (Number(row.output_tokens) || 0);
+    item.costUsd += Number(row.estimated_cost_usd) || 0;
   }
   return resumo;
 }
@@ -225,7 +229,8 @@ export const DEFAULT_PLATFORM_PLANS: PlatformPlanTemplate[] = [
   {
     id: "enterprise",
     name: "Enterprise",
-    description: "Operação avançada com GED completo, maior limite de usuários e cota ampliada de IA.",
+    description:
+      "Operação avançada com GED completo, maior limite de usuários e cota ampliada de IA.",
     default_monthly_fee: 3990,
     default_max_users: 80,
     default_ai_monthly_budget_usd: 100,
@@ -316,8 +321,7 @@ export function avaliarCotaIa(
     tokenLimit != null && tokenLimit > 0
       ? Math.min(999, Math.round((tokens / tokenLimit) * 100))
       : null;
-  const exceeded =
-    (costPct !== null && costPct >= 100) || (tokenPct !== null && tokenPct >= 100);
+  const exceeded = (costPct !== null && costPct >= 100) || (tokenPct !== null && tokenPct >= 100);
   const nearLimit =
     !exceeded && ((costPct !== null && costPct >= 80) || (tokenPct !== null && tokenPct >= 80));
   return { costPct, tokenPct, exceeded, nearLimit };

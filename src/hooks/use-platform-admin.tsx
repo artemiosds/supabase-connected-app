@@ -308,7 +308,9 @@ export function usePlatformAdmin() {
               ? null
               : Number(row.default_ai_monthly_token_limit),
           default_modules:
-            row.default_modules && typeof row.default_modules === "object" && !Array.isArray(row.default_modules)
+            row.default_modules &&
+            typeof row.default_modules === "object" &&
+            !Array.isArray(row.default_modules)
               ? (row.default_modules as Record<string, boolean>)
               : {},
           sort_order: Number(row.sort_order ?? 1),
@@ -426,11 +428,7 @@ export function usePlatformAdmin() {
   );
 
   const saveTenantAiLimits = useCallback(
-    async (
-      tenantId: string,
-      monthlyBudgetUsd: number | null,
-      monthlyTokenLimit: number | null,
-    ) => {
+    async (tenantId: string, monthlyBudgetUsd: number | null, monthlyTokenLimit: number | null) => {
       const { error: limitsError } = await db.rpc("set_tenant_ai_limits", {
         p_tenant_id: tenantId,
         p_monthly_budget_usd: monthlyBudgetUsd,

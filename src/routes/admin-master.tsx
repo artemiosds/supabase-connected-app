@@ -409,10 +409,7 @@ function AdminMaster() {
     [auditEvents, auditoriaBusca, auditoriaAcaoFiltro, auditoriaEntidadeFiltro],
   );
 
-  const dadosGraficoPlano = useMemo(
-    () => agruparClientesPorPlano(tenants, PLAN_LABELS),
-    [tenants],
-  );
+  const dadosGraficoPlano = useMemo(() => agruparClientesPorPlano(tenants, PLAN_LABELS), [tenants]);
 
   const dadosGraficoStatus = useMemo(
     () => agruparClientesPorStatus(tenants, STATUS_LABELS),
@@ -560,10 +557,8 @@ function AdminMaster() {
       commercial_notes: tenant.commercial_notes ?? "",
       street: tenant.street ?? "",
       adminUserId: "",
-      aiBudgetUsd:
-        aiQuota?.monthly_budget_usd != null ? String(aiQuota.monthly_budget_usd) : "",
-      aiTokenLimit:
-        aiQuota?.monthly_token_limit != null ? String(aiQuota.monthly_token_limit) : "",
+      aiBudgetUsd: aiQuota?.monthly_budget_usd != null ? String(aiQuota.monthly_budget_usd) : "",
+      aiTokenLimit: aiQuota?.monthly_token_limit != null ? String(aiQuota.monthly_token_limit) : "",
     });
     setDialogOpen(true);
   }
@@ -711,7 +706,10 @@ function AdminMaster() {
         (parsedBudget ?? null) !== (previousQuota?.monthly_budget_usd ?? null) ||
         (parsedTokens ?? null) !== (previousQuota?.monthly_token_limit ?? null);
 
-      if (targetTenantId && (quotaChanged || (!editing && (parsedBudget !== null || parsedTokens !== null)))) {
+      if (
+        targetTenantId &&
+        (quotaChanged || (!editing && (parsedBudget !== null || parsedTokens !== null)))
+      ) {
         try {
           await saveTenantAiLimits(targetTenantId, parsedBudget, parsedTokens);
         } catch {
@@ -1144,9 +1142,24 @@ function AdminMaster() {
                                 borderRadius: "8px",
                               }}
                             />
-                            <Bar dataKey="recebido" name="Recebido" fill="#10b981" radius={[3, 3, 0, 0]} />
-                            <Bar dataKey="pendente" name="A receber" fill="#0284c7" radius={[3, 3, 0, 0]} />
-                            <Bar dataKey="atrasado" name="Em atraso" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                            <Bar
+                              dataKey="recebido"
+                              name="Recebido"
+                              fill="#10b981"
+                              radius={[3, 3, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="pendente"
+                              name="A receber"
+                              fill="#0284c7"
+                              radius={[3, 3, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="atrasado"
+                              name="Em atraso"
+                              fill="#ef4444"
+                              radius={[3, 3, 0, 0]}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -1425,7 +1438,10 @@ function AdminMaster() {
                     <TableBody>
                       {clientesFiltrados.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                          <TableCell
+                            colSpan={8}
+                            className="py-10 text-center text-muted-foreground"
+                          >
                             {tenants.length === 0
                               ? "Nenhum cliente cadastrado. Cadastre a primeira Secretaria para iniciar a operação comercial."
                               : "Nenhuma Secretaria encontrada para os filtros aplicados."}
@@ -1435,8 +1451,7 @@ function AdminMaster() {
                         clientesFiltrados.map((tenant) => {
                           const activeCount = activeUsersByTenant[tenant.id] ?? 0;
                           const aiStatus = aiEnabledByTenant[tenant.id];
-                          const nearLimit =
-                            tenant.max_users > 0 && activeCount >= tenant.max_users;
+                          const nearLimit = tenant.max_users > 0 && activeCount >= tenant.max_users;
 
                           return (
                             <TableRow key={tenant.id}>
@@ -1458,7 +1473,10 @@ function AdminMaster() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
-                                <Badge variant={nearLimit ? "destructive" : "outline"} className="tabular-nums">
+                                <Badge
+                                  variant={nearLimit ? "destructive" : "outline"}
+                                  className="tabular-nums"
+                                >
                                   {activeCount} / {tenant.max_users}
                                 </Badge>
                               </TableCell>
@@ -1480,12 +1498,15 @@ function AdminMaster() {
                                         title="Gerenciar Inteligência Artificial"
                                         className="inline-flex items-center"
                                       >
-                                        <Badge variant={aiStatus?.enabled ? "default" : "secondary"}>
+                                        <Badge
+                                          variant={aiStatus?.enabled ? "default" : "secondary"}
+                                        >
                                           <Sparkles className="mr-1 h-3 w-3" aria-hidden />
                                           {aiStatus?.enabled ? "Ativa" : "Inativa"}
                                         </Badge>
                                       </button>
-                                      {(aiUsage?.requests || aiQuota?.monthly_budget_usd != null) && (
+                                      {(aiUsage?.requests ||
+                                        aiQuota?.monthly_budget_usd != null) && (
                                         <p className="text-[11px] tabular-nums text-muted-foreground">
                                           US$ {(aiUsage?.costUsd ?? 0).toFixed(2)}
                                           {aiQuota?.monthly_budget_usd != null
@@ -1703,7 +1724,8 @@ function AdminMaster() {
                 <div>
                   <h2 className="text-2xl font-semibold tracking-tight">Auditoria global</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Eventos recentes registrados pela plataforma ({auditoriaFiltrada.length} exibidos).
+                    Eventos recentes registrados pela plataforma ({auditoriaFiltrada.length}{" "}
+                    exibidos).
                   </p>
                 </div>
                 <Button
@@ -1771,7 +1793,10 @@ function AdminMaster() {
                     <TableBody>
                       {auditoriaFiltrada.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                          <TableCell
+                            colSpan={6}
+                            className="py-10 text-center text-muted-foreground"
+                          >
                             Nenhum evento encontrado para os filtros aplicados.
                           </TableCell>
                         </TableRow>
@@ -1786,7 +1811,9 @@ function AdminMaster() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={event.action === "ACCESS_DENIED" ? "destructive" : "outline"}
+                                variant={
+                                  event.action === "ACCESS_DENIED" ? "destructive" : "outline"
+                                }
                               >
                                 {event.action}
                               </Badge>
@@ -1854,8 +1881,8 @@ function AdminMaster() {
                   </Badge>
                   {aiUsageByTenant[editing.id] && (
                     <span className="text-muted-foreground tabular-nums">
-                      ({aiUsageByTenant[editing.id].requests} req ·{" "}
-                      {aiUsageByTenant[editing.id].tokens.toLocaleString("pt-BR")} tokens)
+                      ({aiUsageByTenant[editing.id]?.requests ?? 0} req ·{" "}
+                      {(aiUsageByTenant[editing.id]?.tokens ?? 0).toLocaleString("pt-BR")} tokens)
                     </span>
                   )}
                 </div>

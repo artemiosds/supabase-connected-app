@@ -95,6 +95,6 @@ describe("process-dossier-pdf-helper", () => {
     expect(text).toContain("6. TERMO DE AUTESTAÇÃO E CONFORMIDADE PARA O TRIBUNAL DE CONTAS");
     expect(text).toContain("PROC-2026/042");
     expect(text).toContain("Soro Fisiológico 0,9% 500ml");
-    expect(text).toContain("R$ 2.100,00");
+    expect(text.replace(/\u00a0/g, " ")).toContain("R$ 2.100,00");
   });
 });

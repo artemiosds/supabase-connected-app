@@ -6,6 +6,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/tests/**"
+      - ".github/workflows/deploy-migrations.yml"
   workflow_dispatch:
 
 permissions:
@@ -16,11 +17,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate-and-push:
+  push-migrations:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      SUPABASE_DB_PORT: 55434
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,32 +39,12 @@ jobs:
         with:
           version: v2.stable
 
-      - name: Start disposable local Supabase
-        shell: bash
+      - name: Dry-run pending migrations against SMS2
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            if supabase start -x inbucket; then
-              exit 0
-            fi
-            supabase stop --no-backup || true
-            if [ "$attempt" -lt 3 ]; then
-              echo "Supabase local startup failed; retrying in 20 seconds (attempt $((attempt + 1))/3)."
-              sleep 20
-            fi
-          done
-          echo "::error::Supabase could not start after three isolated attempts."
-          exit 1
-
-      - name: Validate all migrations and pgTAP security tests locally
-        run: |
-          set -euo pipefail
-          supabase db reset --local
-          supabase test db
-
-      - name: Stop disposable local Supabase
-        if: always()
-        run: supabase stop --no-backup || true
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
 
       - name: Push pending migrations to SMS2
         env:

@@ -1,9 +1,10 @@
+// @vitest-environment jsdom
 // =============================================================================
 // offline-draft-helper.test.ts — Testes unitários de Rascunho Offline
 // Primus Gestão — Fase 4
 // =============================================================================
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildDraftKey,
   clearDraft,
@@ -12,9 +13,33 @@ import {
   saveDraft,
 } from "./offline-draft-helper";
 
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>();
+  return {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, String(value));
+    },
+  };
+}
+
 describe("offline-draft-helper", () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.stubGlobal("localStorage", createMemoryStorage());
   });
 
   it("gera chaves com isolamento rigoroso por tenant e usuário", () => {

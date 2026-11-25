@@ -129,8 +129,20 @@ describe("admin-master-helper", () => {
 
   it("resume corretamente uso de IA e tokens por tenant", () => {
     const resumo = resumirUsoIaPorTenant([
-      { tenant_id: "t1", requests: 10, input_tokens: 1000, output_tokens: 500, estimated_cost_usd: 0.02 },
-      { tenant_id: "t1", requests: 5, input_tokens: 300, output_tokens: 200, estimated_cost_usd: 0.01 },
+      {
+        tenant_id: "t1",
+        requests: 10,
+        input_tokens: 1000,
+        output_tokens: 500,
+        estimated_cost_usd: 0.02,
+      },
+      {
+        tenant_id: "t1",
+        requests: 5,
+        input_tokens: 300,
+        output_tokens: 200,
+        estimated_cost_usd: 0.01,
+      },
     ]);
 
     expect(resumo["t1"]).toEqual({
@@ -147,7 +159,7 @@ describe("admin-master-helper", () => {
         plan_tier: "profissional",
         monthly_fee: 1990,
         max_users: 25,
-        enabled_modules: { fornecedores: true, pca: true },
+        enabled_modules: { fornecedores: true, pca: true } as Record<string, boolean>,
         ai_monthly_budget_usd: 30,
         ai_monthly_token_limit: 8_000_000,
       },
@@ -291,7 +303,7 @@ describe("admin-master-helper", () => {
         t1: { suppliers_count: 15, processes_count: 10, contracts_count: 5, documents_count: 8 },
       },
     });
-    expect(ranking[0].tenantId).toBe("t1");
-    expect(ranking[0].processes).toBe(10);
+    expect(ranking[0]?.tenantId).toBe("t1");
+    expect(ranking[0]?.processes).toBe(10);
   });
 });

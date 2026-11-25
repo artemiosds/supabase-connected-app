@@ -179,8 +179,8 @@ export function MasterBillingSettings({
   const [newInvoiceTenantId, setNewInvoiceTenantId] = useState("");
   const [newInvoiceMonth, setNewInvoiceMonth] = useState(currentYearMonth);
   const [newInvoiceAmount, setNewInvoiceAmount] = useState("");
-  const [newInvoiceDueDate, setNewInvoiceDueDate] = useState(
-    () => new Date().toISOString().slice(0, 10),
+  const [newInvoiceDueDate, setNewInvoiceDueDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
   );
   const [newInvoiceMethod, setNewInvoiceMethod] = useState("pix");
   const [newInvoiceNotes, setNewInvoiceNotes] = useState("");
@@ -287,11 +287,7 @@ export function MasterBillingSettings({
   const resumoFaturas = useMemo(() => resumirFinanceiroFaturas(invoices), [invoices]);
   const faturasFiltradas = useMemo(
     () =>
-      filtrarFaturasMaster(
-        invoices,
-        { status: statusFiltro, busca: buscaFatura },
-        tenantNameById,
-      ),
+      filtrarFaturasMaster(invoices, { status: statusFiltro, busca: buscaFatura }, tenantNameById),
     [invoices, statusFiltro, buscaFatura, tenantNameById],
   );
   const blockedCount = useMemo(
@@ -331,9 +327,10 @@ export function MasterBillingSettings({
       toast.error(error.message || "Não foi possível sincronizar faturas vencidas.");
       return;
     }
-    const payload = (data && typeof data === "object" && !Array.isArray(data)
-      ? data
-      : {}) as { overdue_marked?: number; tenants_blocked?: number };
+    const payload = (data && typeof data === "object" && !Array.isArray(data) ? data : {}) as {
+      overdue_marked?: number;
+      tenants_blocked?: number;
+    };
     toast.success(
       `Sincronização concluída: ${payload.overdue_marked ?? 0} fatura(s) em atraso` +
         (bloquearInadimplentes
@@ -416,7 +413,10 @@ export function MasterBillingSettings({
     await onBillingChanged?.();
   }
 
-  async function alterarStatusFatura(invoice: PlatformInvoice, nextStatus: "overdue" | "cancelled") {
+  async function alterarStatusFatura(
+    invoice: PlatformInvoice,
+    nextStatus: "overdue" | "cancelled",
+  ) {
     setUpdatingInvoiceId(invoice.id);
     const { error } = await supabase.rpc("update_platform_invoice_status", {
       p_invoice_id: invoice.id,
@@ -762,7 +762,9 @@ export function MasterBillingSettings({
                           {tenantNameById.get(inv.tenant_id) ?? inv.tenant_id}
                         </TableCell>
                         <TableCell className="tabular-nums">{inv.reference_month}</TableCell>
-                        <TableCell className="tabular-nums">{formatShortDate(inv.due_date)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatShortDate(inv.due_date)}
+                        </TableCell>
                         <TableCell className="tabular-nums font-medium">
                           {formatMoney(inv.amount)}
                         </TableCell>
@@ -846,316 +848,322 @@ export function MasterBillingSettings({
             </Button>
           </div>
 
-      <Alert>
-        <LockKeyhole className="h-4 w-4" />
-        <AlertTitle>Cobranças desativadas nesta etapa</AlertTitle>
-        <AlertDescription>
-          Este cadastro guarda as credenciais com criptografia no Supabase Vault. Ele ainda não cria
-          cobranças, assinaturas, links de pagamento ou webhooks. A ativação ficará para uma etapa
-          própria, depois da escolha e homologação do provedor.
-        </AlertDescription>
-      </Alert>
+          <Alert>
+            <LockKeyhole className="h-4 w-4" />
+            <AlertTitle>Cobranças desativadas nesta etapa</AlertTitle>
+            <AlertDescription>
+              Este cadastro guarda as credenciais com criptografia no Supabase Vault. Ele ainda não
+              cria cobranças, assinaturas, links de pagamento ou webhooks. A ativação ficará para
+              uma etapa própria, depois da escolha e homologação do provedor.
+            </AlertDescription>
+          </Alert>
 
-      {loadError && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Configuração indisponível</AlertTitle>
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      )}
+          {loadError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Configuração indisponível</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          )}
 
-      {configuration && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CreditCard className="h-4 w-4" />
-                  Conta cadastrada
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  {providerLabel(configuration.provider, configuration.provider_other_name)} ·{" "}
-                  {configuration.environment === "sandbox" ? "Ambiente de teste" : "Produção"}
-                </CardDescription>
-              </div>
-              <Badge variant={configuration.has_credentials ? "secondary" : "outline"}>
-                {configuration.has_credentials ? "Credenciais guardadas" : "Desconectada"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-muted-foreground">Conta</p>
-              <p className="font-medium">{configuration.account_name}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Identificador</p>
-              <p className="font-medium">{configuration.account_reference || "Não informado"}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">E-mail</p>
-              <p className="font-medium">{configuration.account_email || "Não informado"}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Última atualização</p>
-              <p className="font-medium">{formatDate(configuration.updated_at)}</p>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-2 text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              Nenhuma chave privada é exibida novamente depois de salva.
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {configuration ? "Editar ou substituir credenciais" : "Cadastrar conta"}
-          </CardTitle>
-          <CardDescription>
-            Você poderá retornar a esta tela para trocar o provedor ou atualizar os tokens sem
-            precisar enviá-los pelo chat.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando configuração...
-            </div>
-          ) : (
-            <form onSubmit={saveConfiguration} className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Provedor de pagamento</Label>
-                  <Select
-                    value={form.provider}
-                    onValueChange={(value) => setField("provider", value as Provider)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione quando decidir" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
-                      <SelectItem value="stripe">Stripe</SelectItem>
-                      <SelectItem value="other">Outro provedor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Ambiente</Label>
-                  <Select
-                    value={form.environment}
-                    onValueChange={(value) => setField("environment", value as Environment)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o ambiente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sandbox">Teste / Sandbox</SelectItem>
-                      <SelectItem value="production">Produção</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.provider === "other" && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="billing-provider-other">Nome do provedor</Label>
-                    <Input
-                      id="billing-provider-other"
-                      value={form.provider_other_name}
-                      maxLength={100}
-                      onChange={(event) => setField("provider_other_name", event.target.value)}
-                      required
-                    />
+          {configuration && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CreditCard className="h-4 w-4" />
+                      Conta cadastrada
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      {providerLabel(configuration.provider, configuration.provider_other_name)} ·{" "}
+                      {configuration.environment === "sandbox" ? "Ambiente de teste" : "Produção"}
+                    </CardDescription>
                   </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="billing-account-name">Nome da conta / titular</Label>
-                  <Input
-                    id="billing-account-name"
-                    value={form.account_name}
-                    maxLength={160}
-                    onChange={(event) => setField("account_name", event.target.value)}
-                    placeholder="Nome cadastrado no provedor"
-                    required
-                  />
+                  <Badge variant={configuration.has_credentials ? "secondary" : "outline"}>
+                    {configuration.has_credentials ? "Credenciais guardadas" : "Desconectada"}
+                  </Badge>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billing-account-reference">ID da conta / Merchant ID</Label>
-                  <Input
-                    id="billing-account-reference"
-                    value={form.account_reference}
-                    maxLength={160}
-                    onChange={(event) => setField("account_reference", event.target.value)}
-                    placeholder="Identificador da conta no gateway"
-                  />
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-muted-foreground">Conta</p>
+                  <p className="font-medium">{configuration.account_name}</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billing-account-email">E-mail da conta</Label>
-                  <Input
-                    id="billing-account-email"
-                    type="email"
-                    value={form.account_email}
-                    onChange={(event) => setField("account_email", event.target.value)}
-                    placeholder="financeiro@empresa.com.br"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billing-client-id">Client ID (quando aplicável)</Label>
-                  <Input
-                    id="billing-client-id"
-                    value={form.client_id}
-                    maxLength={512}
-                    onChange={(event) => setField("client_id", event.target.value)}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="billing-public-key">
-                    {form.provider === "stripe" ? "Publishable Key" : "Public Key"}
-                  </Label>
-                  <Input
-                    id="billing-public-key"
-                    value={form.public_key}
-                    maxLength={1024}
-                    onChange={(event) => setField("public_key", event.target.value)}
-                    autoComplete="off"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Campo público do provedor. Nunca coloque aqui tokens privados ou chaves
-                    secretas.
+                <div>
+                  <p className="text-muted-foreground">Identificador</p>
+                  <p className="font-medium">
+                    {configuration.account_reference || "Não informado"}
                   </p>
                 </div>
-              </div>
-
-              <div className="space-y-3 rounded-lg border p-4">
-                <div className="flex items-start gap-2">
-                  <LockKeyhole className="mt-0.5 h-4 w-4 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-semibold">Credenciais privadas</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {configuration?.has_credentials
-                        ? "Já existem credenciais no cofre. Deixe os campos vazios para manter as atuais; preencha somente o que deseja substituir."
-                        : "Preencha o token ou a chave privada disponibilizada pelo seu provedor."}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-muted-foreground">E-mail</p>
+                  <p className="font-medium">{configuration.account_email || "Não informado"}</p>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="billing-access-token">{credentialLabels.access_token}</Label>
-                    <Input
-                      id="billing-access-token"
-                      type="password"
-                      value={form.access_token}
-                      onChange={(event) => setField("access_token", event.target.value)}
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="billing-secret-key">{credentialLabels.secret_key}</Label>
-                    <Input
-                      id="billing-secret-key"
-                      type="password"
-                      value={form.secret_key}
-                      onChange={(event) => setField("secret_key", event.target.value)}
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="billing-client-secret">{credentialLabels.client_secret}</Label>
-                    <Input
-                      id="billing-client-secret"
-                      type="password"
-                      value={form.client_secret}
-                      onChange={(event) => setField("client_secret", event.target.value)}
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="billing-webhook-secret">
-                      {credentialLabels.webhook_secret}
-                    </Label>
-                    <Input
-                      id="billing-webhook-secret"
-                      type="password"
-                      value={form.webhook_secret}
-                      onChange={(event) => setField("webhook_secret", event.target.value)}
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
-                  </div>
+                <div>
+                  <p className="text-muted-foreground">Última atualização</p>
+                  <p className="font-medium">{formatDate(configuration.updated_at)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Os valores privados são enviados diretamente à função administrativa e armazenados
-                  no Vault criptografado. Não são gravados no perfil, no cadastro da Secretaria, no
-                  log de auditoria ou no navegador após salvar.
-                </p>
-              </div>
+                <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-2 text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Nenhuma chave privada é exibida novamente depois de salva.
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                {configuration?.has_credentials && (
-                  <div className="space-y-2">
-                    {!confirmDisconnect ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setConfirmDisconnect(true)}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {configuration ? "Editar ou substituir credenciais" : "Cadastrar conta"}
+              </CardTitle>
+              <CardDescription>
+                Você poderá retornar a esta tela para trocar o provedor ou atualizar os tokens sem
+                precisar enviá-los pelo chat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando configuração...
+                </div>
+              ) : (
+                <form onSubmit={saveConfiguration} className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Provedor de pagamento</Label>
+                      <Select
+                        value={form.provider}
+                        onValueChange={(value) => setField("provider", value as Provider)}
                       >
-                        <Unplug className="mr-2 h-4 w-4" /> Desconectar conta
-                      </Button>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Remover as credenciais do Vault?
-                        </span>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => void disconnect()}
-                          disabled={disconnecting}
-                        >
-                          {disconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Confirmar remoção
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setConfirmDisconnect(false)}
-                          disabled={disconnecting}
-                        >
-                          Cancelar
-                        </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione quando decidir" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mercado_pago">Mercado Pago</SelectItem>
+                          <SelectItem value="stripe">Stripe</SelectItem>
+                          <SelectItem value="other">Outro provedor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ambiente</Label>
+                      <Select
+                        value={form.environment}
+                        onValueChange={(value) => setField("environment", value as Environment)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o ambiente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sandbox">Teste / Sandbox</SelectItem>
+                          <SelectItem value="production">Produção</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {form.provider === "other" && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="billing-provider-other">Nome do provedor</Label>
+                        <Input
+                          id="billing-provider-other"
+                          value={form.provider_other_name}
+                          maxLength={100}
+                          onChange={(event) => setField("provider_other_name", event.target.value)}
+                          required
+                        />
                       </div>
                     )}
+                    <div className="space-y-2">
+                      <Label htmlFor="billing-account-name">Nome da conta / titular</Label>
+                      <Input
+                        id="billing-account-name"
+                        value={form.account_name}
+                        maxLength={160}
+                        onChange={(event) => setField("account_name", event.target.value)}
+                        placeholder="Nome cadastrado no provedor"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="billing-account-reference">ID da conta / Merchant ID</Label>
+                      <Input
+                        id="billing-account-reference"
+                        value={form.account_reference}
+                        maxLength={160}
+                        onChange={(event) => setField("account_reference", event.target.value)}
+                        placeholder="Identificador da conta no gateway"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="billing-account-email">E-mail da conta</Label>
+                      <Input
+                        id="billing-account-email"
+                        type="email"
+                        value={form.account_email}
+                        onChange={(event) => setField("account_email", event.target.value)}
+                        placeholder="financeiro@empresa.com.br"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="billing-client-id">Client ID (quando aplicável)</Label>
+                      <Input
+                        id="billing-client-id"
+                        value={form.client_id}
+                        maxLength={512}
+                        onChange={(event) => setField("client_id", event.target.value)}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="billing-public-key">
+                        {form.provider === "stripe" ? "Publishable Key" : "Public Key"}
+                      </Label>
+                      <Input
+                        id="billing-public-key"
+                        value={form.public_key}
+                        maxLength={1024}
+                        onChange={(event) => setField("public_key", event.target.value)}
+                        autoComplete="off"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Campo público do provedor. Nunca coloque aqui tokens privados ou chaves
+                        secretas.
+                      </p>
+                    </div>
                   </div>
-                )}
-                <Button type="submit" disabled={saving || loading} className="ml-auto">
-                  {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  {configuration ? "Salvar configuração" : "Cadastrar conta"}
-                </Button>
-              </div>
-            </form>
-          )}
-        </CardContent>
-      </Card>
 
-      <Alert>
-        <CheckCircle2 className="h-4 w-4" />
-        <AlertTitle>Pronto para a escolha futura do gateway</AlertTitle>
-        <AlertDescription>
-          O cadastro aceita Mercado Pago, Stripe ou outro provedor. A integração de API, validação
-          de credenciais, webhooks, planos, assinaturas e recebimento de mensalidades será feita
-          depois que você escolher o serviço. Até lá, você já pode controlar faturas e baixas na
-          aba Faturas e inadimplência.
-        </AlertDescription>
-      </Alert>
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div className="flex items-start gap-2">
+                      <LockKeyhole className="mt-0.5 h-4 w-4 text-primary" />
+                      <div>
+                        <h3 className="text-sm font-semibold">Credenciais privadas</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {configuration?.has_credentials
+                            ? "Já existem credenciais no cofre. Deixe os campos vazios para manter as atuais; preencha somente o que deseja substituir."
+                            : "Preencha o token ou a chave privada disponibilizada pelo seu provedor."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="billing-access-token">
+                          {credentialLabels.access_token}
+                        </Label>
+                        <Input
+                          id="billing-access-token"
+                          type="password"
+                          value={form.access_token}
+                          onChange={(event) => setField("access_token", event.target.value)}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="billing-secret-key">{credentialLabels.secret_key}</Label>
+                        <Input
+                          id="billing-secret-key"
+                          type="password"
+                          value={form.secret_key}
+                          onChange={(event) => setField("secret_key", event.target.value)}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="billing-client-secret">
+                          {credentialLabels.client_secret}
+                        </Label>
+                        <Input
+                          id="billing-client-secret"
+                          type="password"
+                          value={form.client_secret}
+                          onChange={(event) => setField("client_secret", event.target.value)}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="billing-webhook-secret">
+                          {credentialLabels.webhook_secret}
+                        </Label>
+                        <Input
+                          id="billing-webhook-secret"
+                          type="password"
+                          value={form.webhook_secret}
+                          onChange={(event) => setField("webhook_secret", event.target.value)}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Os valores privados são enviados diretamente à função administrativa e
+                      armazenados no Vault criptografado. Não são gravados no perfil, no cadastro da
+                      Secretaria, no log de auditoria ou no navegador após salvar.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    {configuration?.has_credentials && (
+                      <div className="space-y-2">
+                        {!confirmDisconnect ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setConfirmDisconnect(true)}
+                          >
+                            <Unplug className="mr-2 h-4 w-4" /> Desconectar conta
+                          </Button>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              Remover as credenciais do Vault?
+                            </span>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() => void disconnect()}
+                              disabled={disconnecting}
+                            >
+                              {disconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Confirmar remoção
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setConfirmDisconnect(false)}
+                              disabled={disconnecting}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <Button type="submit" disabled={saving || loading} className="ml-auto">
+                      {saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {configuration ? "Salvar configuração" : "Cadastrar conta"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertTitle>Pronto para a escolha futura do gateway</AlertTitle>
+            <AlertDescription>
+              O cadastro aceita Mercado Pago, Stripe ou outro provedor. A integração de API,
+              validação de credenciais, webhooks, planos, assinaturas e recebimento de mensalidades
+              será feita depois que você escolher o serviço. Até lá, você já pode controlar faturas
+              e baixas na aba Faturas e inadimplência.
+            </AlertDescription>
+          </Alert>
         </TabsContent>
       </Tabs>
 
@@ -1262,7 +1270,10 @@ export function MasterBillingSettings({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(settleInvoice)} onOpenChange={(open) => !open && setSettleInvoice(null)}>
+      <Dialog
+        open={Boolean(settleInvoice)}
+        onOpenChange={(open) => !open && setSettleInvoice(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar recebimento</DialogTitle>
