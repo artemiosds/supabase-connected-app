@@ -25,6 +25,8 @@ import { ContractExtensionDialog } from "@/components/contracts/contract-extensi
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import {
   diasAte,
   formatarData,
@@ -984,6 +986,18 @@ function NovoContrato(props: {
   const members = useAssignees(props.aberto ? props.tenantId : undefined);
   const [f, setF] = useState<ContratoForm>(CONTRATO_FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const formId = props.contrato ? `editar_contrato_${props.contrato.id}` : "novo_contrato";
+  const { isOnline, draftAvailable, lastSavedAt, restoreDraft, discardDraft, clearDraft } =
+    useFormDraft({
+      tenantId: props.aberto ? props.tenantId : "",
+      userId: props.aberto ? props.userId : "",
+      formId,
+      currentData: f,
+      onRestore: (recuperado) => {
+        setF(recuperado);
+        toast.info("Rascunho de contrato recuperado com sucesso.");
+      },
+    });
   const set = (k: keyof ContratoForm) => (v: string) => setF((current) => ({ ...current, [k]: v }));
 
   useEffect(() => {
@@ -1082,6 +1096,7 @@ function NovoContrato(props: {
         return;
       }
       toast.success("Contrato atualizado. As alterações foram registradas no histórico.");
+      clearDraft();
       props.onFechar();
       props.onSalvo();
       return;
@@ -1131,6 +1146,7 @@ function NovoContrato(props: {
           );
       }
     }
+    clearDraft();
     setSalvando(false);
     toast.success(
       linkedQuotes
@@ -1147,6 +1163,15 @@ function NovoContrato(props: {
         <DialogHeader>
           <DialogTitle>{props.contrato ? "Editar contrato" : "Novo contrato"}</DialogTitle>
         </DialogHeader>
+
+        <OfflineDraftBanner
+          isOnline={isOnline}
+          draftDate={draftAvailable?.savedAt ?? null}
+          lastSavedAt={lastSavedAt}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
+
         <form onSubmit={salvar} className="grid gap-4 sm:grid-cols-2">
           <Campo label="Número/ano *">
             <Input
