@@ -32,10 +32,8 @@ describe("invariantes automatizadas de cibersegurança", () => {
 
     for (const fn of functionDirs) {
       const source = readFileSync(join(functionsRoot, fn, "index.ts"), "utf8");
-      expect(source, `${fn} não deve expor CORS wildcard *`).not.toMatch(
-        /Access-Control-Allow-Origin["']?\s*:\s*["']\*/,
-      );
-      expect(source, `${fn} precisa enviar X-Content-Type-Options: nosniff`).toContain("nosniff");
+      expect(source).not.toMatch(/Access-Control-Allow-Origin["']?\s*:\s*["']\*/);
+      expect(source).toContain("nosniff");
     }
   });
 
@@ -55,10 +53,8 @@ describe("invariantes automatizadas de cibersegurança", () => {
 
     for (const fn of browserFunctions) {
       const source = readText(`supabase/functions/${fn}/index.ts`);
-      expect(source, `${fn} deve validar Origin com getAllowedOrigins`).toContain(
-        "getAllowedOrigins",
-      );
-      expect(source, `${fn} deve rejeitar origem desconhecida com 403`).toContain("403");
+      expect(source).toContain("getAllowedOrigins");
+      expect(source).toContain("403");
     }
   });
 
@@ -80,7 +76,7 @@ describe("invariantes automatizadas de cibersegurança", () => {
 
     for (const fn of jwtRequired) {
       const section = new RegExp(`\\[functions\\.${fn}\\]\\s*\\r?\\nverify_jwt\\s*=\\s*true`);
-      expect(config, `${fn} deve exigir verify_jwt = true`).toMatch(section);
+      expect(config).toMatch(section);
     }
 
     expect(readText("supabase/functions/lookup-cnpj/index.ts")).toContain("email_confirmed_at");
@@ -137,17 +133,13 @@ describe("invariantes automatizadas de cibersegurança", () => {
       const content = readFileSync(file, "utf8");
       const isServerOnly = file.endsWith(".server.ts") || file.endsWith(".server.tsx");
       if (!isServerOnly && !file.endsWith("admin-master-configuration.tsx")) {
-        expect(content, `SUPABASE_SERVICE_ROLE_KEY não deve aparecer em ${file}`).not.toContain(
-          "SUPABASE_SERVICE_ROLE_KEY",
-        );
+        expect(content).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
       }
       if (!isServerOnly) {
-        expect(content, `client.server não deve ser importado no cliente (${file})`).not.toContain(
-          "client.server",
-        );
+        expect(content).not.toContain("client.server");
       }
       for (const pattern of forbiddenPatterns) {
-        expect(content, `Padrão proibido ${pattern} encontrado em ${file}`).not.toMatch(pattern);
+        expect(content).not.toMatch(pattern);
       }
     }
   });

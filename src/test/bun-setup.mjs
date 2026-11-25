@@ -12,6 +12,7 @@ for (const key of [
   "XMLSerializer",
   "Event",
   "MouseEvent",
+  "KeyboardEvent",
 ]) {
   Object.defineProperty(globalThis, key, {
     configurable: true,

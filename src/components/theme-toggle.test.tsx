@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ThemeToggle } from "./theme-toggle";
 
-const mockTheme = vi.hoisted(() => ({
+const mockTheme = {
   value: "system",
   setTheme: vi.fn(),
-}));
+};
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({
