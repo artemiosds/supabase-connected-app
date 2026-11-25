@@ -176,4 +176,24 @@ describe("DocumentViewerSheet", () => {
       expect(mockToastSuccess).toHaveBeenCalledWith("Texto do documento copiado!");
     });
   });
+
+  it("aceita objeto leve DocumentoParaVisualizar com propriedade content", () => {
+    render(
+      <DocumentViewerSheet
+        documento={{
+          id: "dossie-tce-1",
+          title: "Dossiê TCE - Contrato nº 001/2026",
+          status: "signed",
+          content: "Relatório resumido de execução contratual.",
+          created_at: "2026-11-25T15:00:00.000Z",
+        }}
+        aberto
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Dossiê TCE - Contrato nº 001/2026")).toBeInTheDocument();
+    expect(screen.getByText("Relatório resumido de execução contratual.")).toBeInTheDocument();
+    expect(screen.queryByText("Dados da assinatura eletrônica")).not.toBeInTheDocument();
+  });
 });

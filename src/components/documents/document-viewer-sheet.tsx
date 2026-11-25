@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, Download, FileText, Printer, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import type { Tables } from "@/integrations/supabase/types";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +12,30 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-export interface DocumentViewerSheetProps {
-  documento: Tables<"generated_documents"> | null;
+export interface DocumentoParaVisualizar {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  document_type?: string | null | undefined;
+  content?: string | null | undefined;
+  content_snapshot?: string | null | undefined;
+  signed_name?: string | null | undefined;
+  signed_email?: string | null | undefined;
+  signed_at?: string | null | undefined;
+  signed_pdf_sha256?: string | null | undefined;
+}
+
+export interface DocumentViewerSheetProps<
+  T extends DocumentoParaVisualizar = DocumentoParaVisualizar,
+> {
+  documento: T | null;
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
-  onImprimir?: (documento: Tables<"generated_documents">) => void;
-  onBaixarDocx?: (documento: Tables<"generated_documents">) => void;
-  onBaixarPdf?: (documento: Tables<"generated_documents">) => void;
-  baixando?: boolean;
+  onImprimir?: ((documento: T) => void) | undefined;
+  onBaixarDocx?: ((documento: T) => void) | undefined;
+  onBaixarPdf?: ((documento: T) => void) | undefined;
+  baixando?: boolean | undefined;
 }
 
 type StatusVisualConfig = {
@@ -68,7 +83,7 @@ function getStatusVisual(status: string): StatusVisualConfig {
  * Gaveta lateral para leitura rápida, cópia de conteúdo e conferência de metadados
  * de assinatura eletrônica sem tirar o servidor da página atual.
  */
-export function DocumentViewerSheet({
+export function DocumentViewerSheet<T extends DocumentoParaVisualizar = DocumentoParaVisualizar>({
   documento,
   aberto,
   onOpenChange,
@@ -76,7 +91,7 @@ export function DocumentViewerSheet({
   onBaixarDocx,
   onBaixarPdf,
   baixando = false,
-}: DocumentViewerSheetProps) {
+}: DocumentViewerSheetProps<T>) {
   const [copiadoCampo, setCopiadoCampo] = useState<"conteudo" | "sha256" | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -118,8 +133,14 @@ export function DocumentViewerSheet({
   );
 
   const statusConfig = documento ? getStatusVisual(documento.status) : null;
-  const conteudoTexto = documento?.content_snapshot ?? "";
+  const conteudoTexto = documento?.content_snapshot ?? documento?.content ?? "";
   const possuiConteudo = conteudoTexto.trim().length > 0;
+  const possuiMetadadosAssinatura = Boolean(
+    documento?.signed_name ||
+    documento?.signed_email ||
+    documento?.signed_at ||
+    documento?.signed_pdf_sha256,
+  );
 
   return (
     <Sheet open={aberto && Boolean(documento)} onOpenChange={onOpenChange}>
@@ -145,7 +166,7 @@ export function DocumentViewerSheet({
               </SheetDescription>
             </div>
 
-            {documento.status === "signed" && (
+            {documento.status === "signed" && possuiMetadadosAssinatura && (
               <div className="space-y-1 rounded-lg border bg-muted/50 p-3 text-xs">
                 <div className="flex items-center gap-1.5 font-medium text-foreground">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
