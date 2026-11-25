@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AdminMasterRouteImport } from './routes/admin-master'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as PortalFornecedorRouteImport } from './routes/portal-fornecedor'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
@@ -53,6 +54,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const EntrarRoute = EntrarRouteImport.update({
   id: '/entrar',
   path: '/entrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalFornecedorRoute = PortalFornecedorRouteImport.update({
+  id: '/portal-fornecedor',
+  path: '/portal-fornecedor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/portal-fornecedor': typeof PortalFornecedorRoute
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/portal-fornecedor': typeof PortalFornecedorRoute
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/admin-master': typeof AdminMasterRoute
   '/cadastro': typeof CadastroRoute
   '/entrar': typeof EntrarRoute
+  '/portal-fornecedor': typeof PortalFornecedorRoute
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -205,6 +214,8 @@ export interface FileRoutesById {
   '/_authenticated/processos': typeof AuthenticatedProcessosRoute
   '/_authenticated/suporte': typeof AuthenticatedSuporteRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/pca': typeof AuthenticatedPcaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/portal-fornecedor'
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
@@ -227,12 +239,15 @@ export interface FileRouteTypes {
     | '/processos'
     | '/suporte'
     | '/usuarios'
+    | '/relatorios'
+    | '/pca'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/portal-fornecedor'
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
@@ -247,6 +262,8 @@ export interface FileRouteTypes {
     | '/processos'
     | '/suporte'
     | '/usuarios'
+    | '/relatorios'
+    | '/pca'
   id:
     | '__root__'
     | '/'
@@ -254,6 +271,7 @@ export interface FileRouteTypes {
     | '/admin-master'
     | '/cadastro'
     | '/entrar'
+    | '/portal-fornecedor'
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
@@ -268,6 +286,8 @@ export interface FileRouteTypes {
     | '/_authenticated/processos'
     | '/_authenticated/suporte'
     | '/_authenticated/usuarios'
+    | '/_authenticated/relatorios'
+    | '/_authenticated/pca'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,6 +296,7 @@ export interface RootRouteChildren {
   AdminMasterRoute: typeof AdminMasterRoute
   CadastroRoute: typeof CadastroRoute
   EntrarRoute: typeof EntrarRoute
+  PortalFornecedorRoute: typeof PortalFornecedorRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
@@ -317,6 +338,13 @@ declare module '@tanstack/react-router' {
       path: '/entrar'
       fullPath: '/entrar'
       preLoaderRoute: typeof EntrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal-fornecedor': {
+      id: '/portal-fornecedor'
+      path: '/portal-fornecedor'
+      fullPath: '/portal-fornecedor'
+      preLoaderRoute: typeof PortalFornecedorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -474,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMasterRoute: AdminMasterRoute,
   CadastroRoute: CadastroRoute,
   EntrarRoute: EntrarRoute,
+  PortalFornecedorRoute: PortalFornecedorRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,

@@ -1,16 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Building2,
-  FileText,
-  Upload,
-  CheckCircle2,
   AlertCircle,
-  Clock,
-  ShieldCheck,
-  ExternalLink,
+  Building2,
+  CheckCircle2,
+  FileText,
   Loader2,
-  Calendar,
+  ShieldCheck,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,24 +27,26 @@ import { toast } from "sonner";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData } from "@/lib/contratacao";
 import {
-  obterDadosPortalFornecedor,
   enviarDocumentoPortal,
+  obterDadosPortalFornecedor,
   rotuloChecklistPortal,
-  type PortalResponseData,
   type PortalChecklistItem,
+  type PortalResponseData,
 } from "@/lib/supplier-portal";
-import { rotuloStatusHomologacao } from "@/lib/supplier-homologation";
+import { rotuloStatusHomologacao, type HomologationStatus } from "@/lib/supplier-homologation";
+import { QuotePortalView } from "@/components/suppliers/quote-portal-view";
 
 export const Route = createFileRoute("/portal-fornecedor")({
   validateSearch: (search: Record<string, unknown>) => ({
     token: (search["token"] as string) || "",
+    cotacao: (search["cotacao"] as string) || "",
   }),
   head: () => ({
     meta: [
       { title: "Portal de Autoatendimento do Fornecedor — Primus Gestão" },
       {
         name: "description",
-        content: "Envio de certidões e acompanhamento de homologação cadastral.",
+        content: "Envio de certidões, homologação cadastral e cotações eletrônicas.",
       },
     ],
   }),
@@ -55,13 +54,20 @@ export const Route = createFileRoute("/portal-fornecedor")({
 });
 
 function PortalFornecedorPage() {
-  const { token } = Route.useSearch();
+  const { token, cotacao } = Route.useSearch();
 
+  if (cotacao) {
+    return <QuotePortalView token={cotacao} />;
+  }
+
+  return <PortalHomologacaoView token={token} />;
+}
+
+function PortalHomologacaoView({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PortalResponseData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Modal de envio
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PortalChecklistItem | null>(null);
   const [docTitle, setDocTitle] = useState("");
@@ -95,7 +101,7 @@ function PortalFornecedorPage() {
   }, [token]);
 
   useEffect(() => {
-    carregarDados();
+    void carregarDados();
   }, [carregarDados]);
 
   const handleOpenUpload = (item: PortalChecklistItem) => {
@@ -118,11 +124,11 @@ function PortalFornecedorPage() {
       setSubmitting(true);
       const res = await enviarDocumentoPortal({
         token,
-        checklist_item_id: selectedItem?.id,
+        ...(selectedItem?.id ? { checklist_item_id: selectedItem.id } : {}),
         title: docTitle.trim(),
         document_type: selectedItem?.document_type || "outros",
-        external_url: docUrl.trim() || undefined,
-        expires_at: docExpiresAt || undefined,
+        ...(docUrl.trim() ? { external_url: docUrl.trim() } : {}),
+        ...(docExpiresAt ? { expires_at: docExpiresAt } : {}),
       });
 
       if (!res.success) {
@@ -138,9 +144,7 @@ function PortalFornecedorPage() {
       await carregarDados();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro no envio";
-      toast.error("Falha ao enviar", {
-        description: msg,
-      });
+      toast.error("Erro ao enviar documento", { description: msg });
     } finally {
       setSubmitting(false);
     }
@@ -149,8 +153,8 @@ function PortalFornecedorPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-        <div className="text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Validando credencial do fornecedor…</p>
         </div>
       </div>
@@ -164,11 +168,14 @@ function PortalFornecedorPage() {
           <CardHeader className="text-center">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-2" />
             <CardTitle className="text-lg">Acesso Indisponível</CardTitle>
-            <CardDescription>{errorMsg || "Não foi possível carregar as informações."}</CardDescription>
+            <CardDescription>
+              {errorMsg || "Não foi possível carregar as informações."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-xs text-muted-foreground">
-              Por favor, entre em contato com a equipe de compras e contratos da Secretaria Municipal de Saúde para solicitar um novo link de acesso.
+              Por favor, entre em contato com a equipe de compras e contratos da Secretaria
+              Municipal de Saúde para solicitar um novo link de acesso.
             </p>
           </CardContent>
         </Card>
@@ -177,11 +184,13 @@ function PortalFornecedorPage() {
   }
 
   const { supplier, tenant, homologation, checklist_items = [], documents = [] } = data;
+  const homologStatus = homologation
+    ? rotuloStatusHomologacao(homologation.status as HomologationStatus)
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-foreground py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Cabeçalho da Secretaria */}
         <div className="bg-card border rounded-lg p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -192,12 +201,14 @@ function PortalFornecedorPage() {
               Envio seguro de documentos, certidões e acompanhamento de homologação cadastral.
             </p>
           </div>
-          <Badge variant="outline" className="self-start sm:self-auto py-1 px-3 text-xs border-primary/30">
+          <Badge
+            variant="outline"
+            className="self-start sm:self-auto py-1 px-3 text-xs border-primary/30"
+          >
             Ambiente Seguro · Lei nº 14.133/2021
           </Badge>
         </div>
 
-        {/* Protocolo de sucesso recente */}
         {lastProtocol && (
           <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 rounded-lg p-4 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -206,13 +217,13 @@ function PortalFornecedorPage() {
                 Documento recebido com fé pública!
               </p>
               <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                Comprovante / Protocolo: <strong>{lastProtocol}</strong>. O documento foi anexado à fila de conferência dos servidores responsáveis.
+                Comprovante / Protocolo: <strong>{lastProtocol}</strong>. O documento foi anexado à
+                fila de conferência dos servidores responsáveis.
               </p>
             </div>
           </div>
         )}
 
-        {/* Identificação da Empresa */}
         <Card className="border-border shadow-sm">
           <CardHeader className="py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -225,15 +236,17 @@ function PortalFornecedorPage() {
                   CNPJ: {formatarCnpj(supplier?.cnpj || "")} · Ramo: {supplier?.category || "Geral"}
                 </CardDescription>
               </div>
-              <Badge variant={supplier?.status === "active" ? "secondary" : "outline"} className="self-start">
+              <Badge
+                variant={supplier?.status === "active" ? "secondary" : "outline"}
+                className="self-start"
+              >
                 {supplier?.status === "active" ? "Cadastro Ativo" : "Cadastro Pendente"}
               </Badge>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Status da Homologação */}
-        {homologation && (
+        {homologation && homologStatus && (
           <Card className="border-border shadow-sm bg-muted/20">
             <CardHeader className="py-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -246,8 +259,8 @@ function PortalFornecedorPage() {
                     Iniciado em {formatarData(homologation.created_at)}
                   </CardDescription>
                 </div>
-                <Badge variant="default" className="self-start sm:self-auto">
-                  {rotuloStatusHomologacao(homologation.status as any)}
+                <Badge variant={homologStatus.variant} className="self-start sm:self-auto">
+                  {homologStatus.label}
                 </Badge>
               </div>
               {homologation.conclusion_notes && (
@@ -259,7 +272,6 @@ function PortalFornecedorPage() {
           </Card>
         )}
 
-        {/* Checklist de Documentos Exigidos */}
         <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -267,7 +279,8 @@ function PortalFornecedorPage() {
               Documentos e Certidões Solicitadas
             </CardTitle>
             <CardDescription className="text-xs">
-              Envie ou atualize os documentos abaixo para manter a habilitação regular na Secretaria.
+              Envie ou atualize os documentos abaixo para manter a habilitação regular na
+              Secretaria.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -278,7 +291,10 @@ function PortalFornecedorPage() {
             ) : (
               checklist_items.map((item) => {
                 const statusMeta = rotuloChecklistPortal(item.verification_status);
-                const pendente = item.verification_status === "not_submitted" || item.verification_status === "pending_issue" || item.verification_status === "expired";
+                const pendente =
+                  item.verification_status === "not_submitted" ||
+                  item.verification_status === "pending_issue" ||
+                  item.verification_status === "expired";
 
                 return (
                   <div
@@ -322,7 +338,6 @@ function PortalFornecedorPage() {
           </CardContent>
         </Card>
 
-        {/* Histórico de Documentos Já Enviados */}
         {documents.length > 0 && (
           <Card className="border-border shadow-sm">
             <CardHeader className="py-4">
@@ -334,7 +349,9 @@ function PortalFornecedorPage() {
                   <div key={doc.id} className="py-2.5 flex items-center justify-between text-xs">
                     <div>
                       <p className="font-medium text-foreground">{doc.title}</p>
-                      <p className="text-muted-foreground">{doc.document_type.replaceAll("_", " ")}</p>
+                      <p className="text-muted-foreground">
+                        {doc.document_type.replaceAll("_", " ")}
+                      </p>
                     </div>
                     <div className="text-right text-muted-foreground">
                       {doc.expires_at ? (
@@ -355,7 +372,6 @@ function PortalFornecedorPage() {
         </div>
       </div>
 
-      {/* Modal de Envio de Documento */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
         <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
@@ -418,7 +434,7 @@ function PortalFornecedorPage() {
             >
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleEnviarDocumento} disabled={submitting}>
+            <Button size="sm" onClick={() => void handleEnviarDocumento()} disabled={submitting}>
               {submitting ? "Transmitindo..." : "Confirmar Envio"}
             </Button>
           </DialogFooter>

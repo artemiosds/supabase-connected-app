@@ -1,6 +1,7 @@
 import { PriceMatrixView } from "@/components/procurement/price-matrix-view";
 import { BatchPriceApprovalDialog } from "@/components/procurement/batch-price-approval-dialog";
 import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
+import { SupplierQuotePortalDialog } from "@/components/procurement/supplier-quote-portal-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
 import { StageTransitionDialog } from "@/components/procurement/stage-transition-dialog";
 import { useFormDraft } from "@/hooks/use-form-draft";
@@ -2664,6 +2665,17 @@ function DadosEstruturados(props: {
                   processId={props.processId}
                   userId={props.userId}
                   items={items}
+                  suppliers={suppliers}
+                  onSaved={carregarDados}
+                />
+                <SupplierQuotePortalDialog
+                  key={`${props.tenantId}-${props.processId}-portal`}
+                  tenantId={props.tenantId}
+                  processId={props.processId}
+                  processNumber={props.processNumber}
+                  processTitle={`Processo nº ${props.processNumber}`}
+                  userId={props.userId}
+                  itemsCount={items.filter((item) => item.is_active).length}
                   suppliers={suppliers}
                   onSaved={carregarDados}
                 />
