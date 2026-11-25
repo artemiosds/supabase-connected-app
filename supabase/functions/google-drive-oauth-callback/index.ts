@@ -51,15 +51,40 @@ function redirect(status: "connected" | "error", reason?: string): Response {
     if (target.protocol !== "https:" || target.username || target.password)
       throw new Error("invalid");
   } catch {
-    return new Response("Configuração APP_URL inválida.", { status: 503 });
+    return new Response("Configuração APP_URL inválida.", {
+      status: 503,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   }
   target.searchParams.set("drive", status);
   if (reason) target.searchParams.set("drive_error", reason);
-  return Response.redirect(target.toString(), 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: target.toString(),
+      "Cache-Control": "no-store, max-age=0",
+      Pragma: "no-cache",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method !== "GET") return new Response("Método não permitido.", { status: 405 });
+  if (request.method !== "GET") {
+    return new Response("Método não permitido.", {
+      status: 405,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const redirectUri = Deno.env.get("GOOGLE_DRIVE_REDIRECT_URI") ?? "";
@@ -69,7 +94,12 @@ Deno.serve(async (request: Request) => {
   const url = new URL(request.url);
   const code = url.searchParams.get("code") ?? "";
   const state = url.searchParams.get("state") ?? "";
-  if (url.searchParams.has("error") || !code || state.length < 32 || state.length > 256) {
+  if (
+    url.searchParams.has("error") ||
+    code.length < 8 ||
+    code.length > 2048 ||
+    !/^[A-Za-z0-9._~-]{32,256}$/.test(state)
+  ) {
     return redirect("error", "authorization_denied");
   }
 

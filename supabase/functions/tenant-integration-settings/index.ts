@@ -20,6 +20,7 @@ function response(payload: JsonObject, status: number, origin: string) {
       "Content-Type": "application/json",
       "Cache-Control": "no-store, max-age=0",
       Pragma: "no-cache",
+      "X-Content-Type-Options": "nosniff",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",

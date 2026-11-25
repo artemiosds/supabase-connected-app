@@ -24,6 +24,17 @@ describe("origens permitidas das Edge Functions", () => {
     expect(allowed.has("http://localhost:5173")).toBe(false);
   });
 
+  it("permite bloquear PREVIEW_ORIGIN em produção estrita com DISABLE_PREVIEW_ORIGIN=true", () => {
+    const env = (name: string) => {
+      if (name === "APP_URL") return "https://app.exemplo.gov.br";
+      if (name === "DISABLE_PREVIEW_ORIGIN") return "true";
+      return undefined;
+    };
+    const allowed = getAllowedOrigins(env);
+    expect(allowed.has("https://app.exemplo.gov.br")).toBe(true);
+    expect(allowed.has(PREVIEW_ORIGIN)).toBe(false);
+  });
+
   it("falha fechada se APP_URL estiver inválida", () => {
     const allowed = getAllowedOrigins((name) =>
       name === "APP_URL" ? "javascript:alert(1)" : undefined,

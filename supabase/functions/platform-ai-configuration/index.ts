@@ -35,12 +35,24 @@ function response(payload: JsonObject, status: number, origin: string) {
       "Content-Type": "application/json",
       "Cache-Control": "no-store, max-age=0",
       Pragma: "no-cache",
+      "X-Content-Type-Options": "nosniff",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       Vary: "Origin",
     },
   });
+}
+
+function safeAiRpcError(
+  error: { code?: string | null; message?: string | null },
+  fallback: string,
+) {
+  console.error("Erro em RPC de IA:", error.code ?? "UNKNOWN", error.message ?? "");
+  if (error.code === "42501") {
+    return "Você não possui permissão para executar esta alteração de IA.";
+  }
+  return fallback;
 }
 
 function validFeatures(value: unknown): value is Record<string, boolean> {
@@ -101,9 +113,7 @@ function aggregateUsage(
   const providerNames = new Map(
     providers.map((provider) => [String(provider.id), provider] as const),
   );
-  const tenantNames = new Map(
-    tenants.map((tenant) => [String(tenant.id), tenant] as const),
-  );
+  const tenantNames = new Map(tenants.map((tenant) => [String(tenant.id), tenant] as const));
   const grouped = new Map<string, Record<string, unknown>>();
 
   for (const row of rows) {
@@ -177,7 +187,10 @@ Deno.serve(async (request: Request) => {
   if (!supabaseUrl || !anonKey || !serviceRoleKey)
     return response({ error: "O serviço de configuração de IA está incompleto." }, 503, origin);
 
-  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
+  const token = request.headers
+    .get("Authorization")
+    ?.replace(/^Bearer\s+/i, "")
+    .trim();
   if (!token) return response({ error: "Sessão autenticada obrigatória." }, 401, origin);
 
   const userClient = createClient(supabaseUrl, anonKey, {
@@ -247,70 +260,68 @@ Deno.serve(async (request: Request) => {
       accessResult,
       usageResult,
     ] = await Promise.all([
-        adminClient
-          .from("platform_ai_configuration")
-          .select("provider,enabled,status,last_test_at,updated_at")
-          .eq("id", 1)
-          .maybeSingle(),
-        adminClient
-          .from("platform_ai_providers")
-          .select(
-            [
-              "id",
-              "name",
-              "provider",
-              "model",
-              "api_base_url",
-              "api_version",
-              "status",
-              "is_enabled",
-              "is_primary",
-              "fallback_priority",
-              "input_cost_per_million",
-              "output_cost_per_million",
-              "last_test_at",
-              "last_test_error",
-              "last_test_http_status",
-              "last_test_error_code",
-              "last_test_error_type",
-              "last_test_retryable",
-              "last_test_retry_after",
-              "updated_at",
-              "vault_secret_id",
-            ].join(","),
-          )
-          .order("is_primary", { ascending: false })
-          .order("fallback_priority", { ascending: true })
-          .order("created_at", { ascending: true }),
-        adminClient
-          .from("tenants")
-          .select("id,name,status,commercial_status,trial_starts_at,trial_ends_at")
-          .order("name", { ascending: true }),
-        adminClient
-          .from("tenant_ai_settings")
-          .select("tenant_id,enabled,features,updated_at"),
-        adminClient
-          .from("platform_ai_tenant_provider_access")
-          .select("tenant_id,provider_id")
-          .eq("is_allowed", true),
-        adminClient
-          .from("platform_ai_usage")
-          .select(
-            [
-              "tenant_id",
-              "provider_id",
-              "model",
-              "status",
-              "input_tokens",
-              "output_tokens",
-              "estimated_cost_usd",
-              "created_at",
-            ].join(","),
-          )
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(10000),
-      ]);
+      adminClient
+        .from("platform_ai_configuration")
+        .select("provider,enabled,status,last_test_at,updated_at")
+        .eq("id", 1)
+        .maybeSingle(),
+      adminClient
+        .from("platform_ai_providers")
+        .select(
+          [
+            "id",
+            "name",
+            "provider",
+            "model",
+            "api_base_url",
+            "api_version",
+            "status",
+            "is_enabled",
+            "is_primary",
+            "fallback_priority",
+            "input_cost_per_million",
+            "output_cost_per_million",
+            "last_test_at",
+            "last_test_error",
+            "last_test_http_status",
+            "last_test_error_code",
+            "last_test_error_type",
+            "last_test_retryable",
+            "last_test_retry_after",
+            "updated_at",
+            "vault_secret_id",
+          ].join(","),
+        )
+        .order("is_primary", { ascending: false })
+        .order("fallback_priority", { ascending: true })
+        .order("created_at", { ascending: true }),
+      adminClient
+        .from("tenants")
+        .select("id,name,status,commercial_status,trial_starts_at,trial_ends_at")
+        .order("name", { ascending: true }),
+      adminClient.from("tenant_ai_settings").select("tenant_id,enabled,features,updated_at"),
+      adminClient
+        .from("platform_ai_tenant_provider_access")
+        .select("tenant_id,provider_id")
+        .eq("is_allowed", true),
+      adminClient
+        .from("platform_ai_usage")
+        .select(
+          [
+            "tenant_id",
+            "provider_id",
+            "model",
+            "status",
+            "input_tokens",
+            "output_tokens",
+            "estimated_cost_usd",
+            "created_at",
+          ].join(","),
+        )
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(10000),
+    ]);
 
     const failure =
       configurationResult.error ||
@@ -462,8 +473,7 @@ Deno.serve(async (request: Request) => {
       api_base_url: apiBaseUrl,
       api_version: apiVersion,
     });
-    if (compatibilityIssue)
-      return response({ error: compatibilityIssue }, 400, origin);
+    if (compatibilityIssue) return response({ error: compatibilityIssue }, 400, origin);
 
     if (
       provider === "azure_openai" &&
@@ -485,10 +495,9 @@ Deno.serve(async (request: Request) => {
       p_fallback_priority: fallbackPriority,
     });
     if (error) {
-      console.error("Falha ao salvar provedor de IA:", error.message);
       return response(
-        { error: error.message || "Não foi possível salvar o provedor." },
-        400,
+        { error: safeAiRpcError(error, "Não foi possível salvar o provedor.") },
+        error.code === "42501" ? 403 : 400,
         origin,
       );
     }
@@ -618,10 +627,9 @@ Deno.serve(async (request: Request) => {
       p_provider_id: providerId,
     });
     if (error) {
-      console.error("Falha ao excluir provedor de IA:", error.message);
       return response(
-        { error: error.message || "Não foi possível excluir o provedor." },
-        400,
+        { error: safeAiRpcError(error, "Não foi possível excluir o provedor.") },
+        error.code === "42501" ? 403 : 400,
         origin,
       );
     }
@@ -636,7 +644,13 @@ Deno.serve(async (request: Request) => {
       p_actor_id: authData.user.id,
       p_provider_id: providerId,
     });
-    if (error) return response({ error: error.message }, 400, origin);
+    if (error) {
+      return response(
+        { error: safeAiRpcError(error, "Não foi possível definir o provedor principal.") },
+        error.code === "42501" ? 403 : 400,
+        origin,
+      );
+    }
     return response({ result: data }, 200, origin);
   }
 
@@ -649,7 +663,13 @@ Deno.serve(async (request: Request) => {
       p_provider_id: providerId,
       p_enabled: body.enabled,
     });
-    if (error) return response({ error: error.message }, 400, origin);
+    if (error) {
+      return response(
+        { error: safeAiRpcError(error, "Não foi possível atualizar o status do provedor.") },
+        error.code === "42501" ? 403 : 400,
+        origin,
+      );
+    }
     return response({ result: data }, 200, origin);
   }
 
@@ -663,7 +683,13 @@ Deno.serve(async (request: Request) => {
       p_provider_id: providerId,
       p_priority: priority,
     });
-    if (error) return response({ error: error.message }, 400, origin);
+    if (error) {
+      return response(
+        { error: safeAiRpcError(error, "Não foi possível atualizar a prioridade do provedor.") },
+        error.code === "42501" ? 403 : 400,
+        origin,
+      );
+    }
     return response({ result: data }, 200, origin);
   }
 
@@ -681,7 +707,13 @@ Deno.serve(async (request: Request) => {
       p_tenant_id: tenantId,
       p_provider_ids: providerIds,
     });
-    if (error) return response({ error: error.message }, 400, origin);
+    if (error) {
+      return response(
+        { error: safeAiRpcError(error, "Não foi possível vincular os provedores à Secretaria.") },
+        error.code === "42501" ? 403 : 400,
+        origin,
+      );
+    }
     return response({ result: data }, 200, origin);
   }
 
@@ -692,17 +724,19 @@ Deno.serve(async (request: Request) => {
       p_actor_id: authData.user.id,
       p_enabled: body.enabled,
     });
-    if (error) return response({ error: error.message }, 400, origin);
+    if (error) {
+      return response(
+        { error: safeAiRpcError(error, "Não foi possível alterar o estado global da IA.") },
+        error.code === "42501" ? 403 : 400,
+        origin,
+      );
+    }
     return response({ result: data }, 200, origin);
   }
 
   if (action === "save_tenant") {
     const tenantId = typeof body.tenant_id === "string" ? body.tenant_id : "";
-    if (
-      !UUID.test(tenantId) ||
-      typeof body.enabled !== "boolean" ||
-      !validFeatures(body.features)
-    )
+    if (!UUID.test(tenantId) || typeof body.enabled !== "boolean" || !validFeatures(body.features))
       return response({ error: "Configuração da Secretaria inválida." }, 400, origin);
     if (
       body.enabled === true &&

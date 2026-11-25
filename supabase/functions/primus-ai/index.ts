@@ -51,6 +51,7 @@ function response(payload: JsonObject, status: number, origin: string) {
       "Content-Type": "application/json",
       "Cache-Control": "no-store, max-age=0",
       Pragma: "no-cache",
+      "X-Content-Type-Options": "nosniff",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -239,7 +240,9 @@ async function collectContext(
         .limit(10),
       userClient
         .from("supplier_regularity_checks")
-        .select("source_label,status,certificate_number,valid_until,notes,requires_action,checked_at")
+        .select(
+          "source_label,status,certificate_number,valid_until,notes,requires_action,checked_at",
+        )
         .eq("tenant_id", tenantId)
         .eq("supplier_id", recordId)
         .order("checked_at", { ascending: false })
@@ -472,11 +475,7 @@ Deno.serve(async (request: Request) => {
       reason = "Nenhum recurso de IA foi habilitado nesta Secretaria. Solicite ao Administrador Master que selecione e salve os recursos.";
     }
 
-    return response(
-      { enabled, features, reason },
-      200,
-      origin,
-    );
+    return response({ enabled, features, reason }, 200, origin);
   }
   if (body.action !== "assist") return response({ error: "Ação não reconhecida." }, 400, origin);
 
@@ -571,8 +570,7 @@ Deno.serve(async (request: Request) => {
           45_000,
         );
         const inputRate =
-          provider.input_cost_per_million === null ||
-          provider.input_cost_per_million === undefined
+          provider.input_cost_per_million === null || provider.input_cost_per_million === undefined
             ? null
             : Number(provider.input_cost_per_million);
         const outputRate =
@@ -654,9 +652,26 @@ Deno.serve(async (request: Request) => {
       origin,
     );
   } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : "";
+    const safeDomainMessages = new Set([
+      "Registro selecionado inválido.",
+      "Processo indisponível para esta sessão ou Secretaria.",
+      "Itens do processo indisponíveis para esta sessão.",
+      "Cotações indisponíveis para esta sessão.",
+      "Contrato indisponível para esta sessão ou Secretaria.",
+      "Contrato inválido para esta Secretaria.",
+      "Itens do contrato indisponíveis para esta sessão.",
+      "Fornecedor indisponível para esta sessão ou Secretaria.",
+      "Documentos do fornecedor indisponíveis para esta sessão.",
+    ]);
+    if (!safeDomainMessages.has(rawMessage)) {
+      console.error("primus-ai: solicitação rejeitada:", rawMessage);
+    }
     return response(
       {
-        error: error instanceof Error ? error.message : "Não foi possível processar a solicitação.",
+        error: safeDomainMessages.has(rawMessage)
+          ? rawMessage
+          : "Não foi possível processar a solicitação.",
       },
       400,
       origin,

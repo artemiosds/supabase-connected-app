@@ -40,7 +40,7 @@ describe("security-headers", () => {
 
     expect(headers["Strict-Transport-Security"]).toBeUndefined();
     expect(buildContentSecurityPolicy("localhost")).toContain(
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://brasilapi.com.br https://minhareceita.org",
     );
   });
 

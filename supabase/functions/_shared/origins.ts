@@ -26,6 +26,8 @@ function normalizeWebOrigin(value: string | null | undefined): string | null {
  */
 export function getAllowedOrigins(readEnv: EnvironmentReader): Set<string> {
   const appUrl = readEnv("APP_URL")?.trim() ?? "";
+  const disablePreviewRaw = (readEnv("DISABLE_PREVIEW_ORIGIN") ?? "").trim().toLowerCase();
+  const disablePreview = disablePreviewRaw === "true" || disablePreviewRaw === "1";
   const configuredOrigins = (readEnv("INVITE_ALLOWED_ORIGINS") ?? "")
     .split(",")
     .map((value) => value.trim())
@@ -34,10 +36,11 @@ export function getAllowedOrigins(readEnv: EnvironmentReader): Set<string> {
   if (appUrl) {
     const appOrigin = normalizeWebOrigin(appUrl);
     if (!appOrigin) return new Set();
+    const candidates = disablePreview
+      ? [appOrigin, ...configuredOrigins]
+      : [appOrigin, PREVIEW_ORIGIN, ...configuredOrigins];
     return new Set(
-      [appOrigin, PREVIEW_ORIGIN, ...configuredOrigins]
-        .map(normalizeWebOrigin)
-        .filter((origin): origin is string => Boolean(origin)),
+      candidates.map(normalizeWebOrigin).filter((origin): origin is string => Boolean(origin)),
     );
   }
 

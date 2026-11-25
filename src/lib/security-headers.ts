@@ -53,7 +53,7 @@ export function buildContentSecurityPolicy(hostname: string): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https://*.supabase.co",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://brasilapi.com.br https://minhareceita.org",
     "frame-src 'self' blob:",
     "worker-src 'self' blob:",
     "object-src 'none'",
