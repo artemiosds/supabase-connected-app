@@ -384,3 +384,205 @@ export function filtrarFaturasMaster<T extends PlatformInvoiceLike>(
     return tenantName.includes(busca) || ref.includes(busca) || inv.reference_month.includes(busca);
   });
 }
+
+export function agruparFaturasPorMes(
+  invoices: PlatformInvoiceLike[],
+): { mes: string; recebido: number; pendente: number; atrasado: number }[] {
+  const map = new Map<string, { recebido: number; pendente: number; atrasado: number }>();
+
+  for (const inv of invoices) {
+    if (!inv.reference_month || inv.status === "cancelled") continue;
+    const current = map.get(inv.reference_month) ?? { recebido: 0, pendente: 0, atrasado: 0 };
+    const amount = Number(inv.amount ?? 0) || 0;
+    if (inv.status === "paid") current.recebido += amount;
+    else if (inv.status === "overdue") current.atrasado += amount;
+    else if (inv.status === "pending") current.pendente += amount;
+    map.set(inv.reference_month, current);
+  }
+
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12)
+    .map(([mes, values]) => ({ mes, ...values }));
+}
+
+export interface TenantHealthAlert {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  kind: "overdue_invoice" | "trial_expiring" | "user_limit" | "ai_quota";
+  severity: "high" | "medium";
+  title: string;
+  detail: string;
+  targetTab: "cobranca" | "clientes" | "ia";
+}
+
+export function gerarAlertasSaudePlataforma(params: {
+  tenants: Array<
+    MasterTenantLike & {
+      max_users: number;
+      trial_ends_at?: string | null;
+    }
+  >;
+  activeUsersByTenant: Record<string, number>;
+  aiUsageByTenant: Record<string, AiTenantUsageSummary>;
+  aiLimitsByTenant: Record<
+    string,
+    { monthly_budget_usd?: number | null; monthly_token_limit?: number | null }
+  >;
+  invoices: PlatformInvoiceLike[];
+  nowMs?: number;
+}): TenantHealthAlert[] {
+  const now = params.nowMs ?? Date.now();
+  const alerts: TenantHealthAlert[] = [];
+
+  const overdueByTenant = new Map<string, { count: number; total: number }>();
+  for (const inv of params.invoices) {
+    if (inv.status !== "overdue") continue;
+    const prev = overdueByTenant.get(inv.tenant_id) ?? { count: 0, total: 0 };
+    prev.count += 1;
+    prev.total += Number(inv.amount ?? 0) || 0;
+    overdueByTenant.set(inv.tenant_id, prev);
+  }
+
+  for (const tenant of params.tenants) {
+    const tenantName = tenant.trade_name || tenant.name;
+    const overdue = overdueByTenant.get(tenant.id);
+    if (overdue) {
+      alerts.push({
+        id: `overdue:${tenant.id}`,
+        tenantId: tenant.id,
+        tenantName,
+        kind: "overdue_invoice",
+        severity: "high",
+        title: `${overdue.count} fatura(s) em atraso`,
+        detail: `Total vencido de R$ ${overdue.total.toFixed(2).replace(".", ",")}`,
+        targetTab: "cobranca",
+      });
+    }
+
+    if (tenant.commercial_status === "trial" && tenant.trial_ends_at) {
+      const diffMs = new Date(tenant.trial_ends_at).getTime() - now;
+      if (diffMs > 0 && diffMs <= 7 * 86_400_000) {
+        const days = Math.ceil(diffMs / 86_400_000);
+        alerts.push({
+          id: `trial:${tenant.id}`,
+          tenantId: tenant.id,
+          tenantName,
+          kind: "trial_expiring",
+          severity: days <= 2 ? "high" : "medium",
+          title: `Trial vence em ${days} dia(s)`,
+          detail: "Acompanhar conversão para plano pago",
+          targetTab: "clientes",
+        });
+      }
+    }
+
+    const activeUsers = params.activeUsersByTenant[tenant.id] ?? 0;
+    if (tenant.max_users > 0 && activeUsers / tenant.max_users >= 0.8) {
+      const pct = Math.round((activeUsers / tenant.max_users) * 100);
+      alerts.push({
+        id: `users:${tenant.id}`,
+        tenantId: tenant.id,
+        tenantName,
+        kind: "user_limit",
+        severity: activeUsers >= tenant.max_users ? "high" : "medium",
+        title: `Usuários em ${pct}% do limite (${activeUsers}/${tenant.max_users})`,
+        detail: "Oportunidade de upgrade de plano",
+        targetTab: "clientes",
+      });
+    }
+
+    const aiUsage = params.aiUsageByTenant[tenant.id];
+    const aiQuota = params.aiLimitsByTenant[tenant.id];
+    const quota = avaliarCotaIa(
+      aiUsage?.costUsd ?? 0,
+      aiUsage?.tokens ?? 0,
+      aiQuota?.monthly_budget_usd,
+      aiQuota?.monthly_token_limit,
+    );
+    if (quota.exceeded || quota.nearLimit) {
+      alerts.push({
+        id: `ai:${tenant.id}`,
+        tenantId: tenant.id,
+        tenantName,
+        kind: "ai_quota",
+        severity: quota.exceeded ? "high" : "medium",
+        title: quota.exceeded ? "Cota mensal de IA atingida" : "Consumo de IA acima de 80%",
+        detail: `US$ ${(aiUsage?.costUsd ?? 0).toFixed(2)} · ${(aiUsage?.tokens ?? 0).toLocaleString("pt-BR")} tokens`,
+        targetTab: "ia",
+      });
+    }
+  }
+
+  return alerts.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
+    return a.tenantName.localeCompare(b.tenantName);
+  });
+}
+
+export interface TenantUsageCounts {
+  suppliers_count: number;
+  processes_count: number;
+  contracts_count: number;
+  documents_count: number;
+}
+
+export interface TenantRankingRow {
+  tenantId: string;
+  tenantName: string;
+  planTier: string;
+  commercialStatus: string;
+  activeUsers: number;
+  maxUsers: number;
+  processes: number;
+  contracts: number;
+  suppliers: number;
+  documents: number;
+  aiRequests: number;
+  aiCostUsd: number;
+  score: number;
+}
+
+export function montarRankingSecretarias(params: {
+  tenants: Array<MasterTenantLike & { max_users: number }>;
+  activeUsersByTenant: Record<string, number>;
+  aiUsageByTenant: Record<string, AiTenantUsageSummary>;
+  usageByTenant: Record<string, TenantUsageCounts>;
+}): TenantRankingRow[] {
+  return params.tenants
+    .map((tenant) => {
+      const usage = params.usageByTenant[tenant.id] ?? {
+        suppliers_count: 0,
+        processes_count: 0,
+        contracts_count: 0,
+        documents_count: 0,
+      };
+      const ai = params.aiUsageByTenant[tenant.id] ?? { requests: 0, tokens: 0, costUsd: 0 };
+      const activeUsers = params.activeUsersByTenant[tenant.id] ?? 0;
+      const score =
+        usage.processes_count * 3 +
+        usage.contracts_count * 3 +
+        usage.documents_count * 2 +
+        usage.suppliers_count +
+        activeUsers * 2 +
+        ai.requests;
+
+      return {
+        tenantId: tenant.id,
+        tenantName: tenant.trade_name || tenant.name,
+        planTier: tenant.plan_tier,
+        commercialStatus: tenant.commercial_status,
+        activeUsers,
+        maxUsers: tenant.max_users,
+        processes: usage.processes_count,
+        contracts: usage.contracts_count,
+        suppliers: usage.suppliers_count,
+        documents: usage.documents_count,
+        aiRequests: ai.requests,
+        aiCostUsd: ai.costUsd,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.tenantName.localeCompare(b.tenantName));
+}

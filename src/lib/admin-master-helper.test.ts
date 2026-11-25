@@ -8,11 +8,14 @@ import {
   DEFAULT_PLATFORM_PLANS,
   agruparClientesPorPlano,
   agruparClientesPorStatus,
+  agruparFaturasPorMes,
   aplicarTemplatePlanoNoDraft,
   avaliarCotaIa,
   filtrarAuditoriaMaster,
   filtrarClientesMaster,
   filtrarFaturasMaster,
+  gerarAlertasSaudePlataforma,
+  montarRankingSecretarias,
   resumirFinanceiroFaturas,
   resumirUsoIaPorTenant,
 } from "./admin-master-helper";
@@ -232,5 +235,63 @@ describe("admin-master-helper", () => {
     expect(filtrarFaturasMaster(faturas, { status: "overdue" }, nomes)).toHaveLength(1);
     expect(filtrarFaturasMaster(faturas, { busca: "oriximiná" }, nomes)).toHaveLength(1);
     expect(filtrarFaturasMaster(faturas, { competencia: "2026-12" }, nomes)).toHaveLength(1);
+  });
+
+  it("agrupa faturas por mês para gráfico financeiro e gera alertas/ranking de saúde", () => {
+    const faturas = [
+      {
+        id: "f1",
+        tenant_id: "t1",
+        reference_month: "2026-11",
+        amount: 1990,
+        due_date: "2026-11-10",
+        status: "paid",
+        payment_method: "pix",
+        external_reference: null,
+      },
+      {
+        id: "f2",
+        tenant_id: "t2",
+        reference_month: "2026-11",
+        amount: 3000,
+        due_date: "2026-11-05",
+        status: "overdue",
+        payment_method: "boleto",
+        external_reference: null,
+      },
+    ];
+
+    expect(agruparFaturasPorMes(faturas)).toEqual([
+      { mes: "2026-11", recebido: 1990, pendente: 0, atrasado: 3000 },
+    ]);
+
+    const alerts = gerarAlertasSaudePlataforma({
+      tenants: tenants.map((t) => ({
+        ...t,
+        max_users: 10,
+        trial_ends_at: t.id === "t2" ? "2026-11-26T00:00:00Z" : null,
+      })),
+      activeUsersByTenant: { t1: 9, t2: 2, t3: 1 },
+      aiUsageByTenant: { t1: { requests: 20, tokens: 1000, costUsd: 25 } },
+      aiLimitsByTenant: { t1: { monthly_budget_usd: 30, monthly_token_limit: null } },
+      invoices: faturas,
+      nowMs: new Date("2026-11-24T12:00:00Z").getTime(),
+    });
+
+    expect(alerts.some((a) => a.kind === "overdue_invoice" && a.tenantId === "t2")).toBe(true);
+    expect(alerts.some((a) => a.kind === "trial_expiring" && a.tenantId === "t2")).toBe(true);
+    expect(alerts.some((a) => a.kind === "user_limit" && a.tenantId === "t1")).toBe(true);
+    expect(alerts.some((a) => a.kind === "ai_quota" && a.tenantId === "t1")).toBe(true);
+
+    const ranking = montarRankingSecretarias({
+      tenants: tenants.map((t) => ({ ...t, max_users: 10 })),
+      activeUsersByTenant: { t1: 9, t2: 2, t3: 1 },
+      aiUsageByTenant: { t1: { requests: 20, tokens: 1000, costUsd: 1.5 } },
+      usageByTenant: {
+        t1: { suppliers_count: 15, processes_count: 10, contracts_count: 5, documents_count: 8 },
+      },
+    });
+    expect(ranking[0].tenantId).toBe("t1");
+    expect(ranking[0].processes).toBe(10);
   });
 });

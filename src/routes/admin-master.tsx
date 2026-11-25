@@ -41,10 +41,13 @@ import { exportToXlsx } from "@/lib/xlsx-export";
 import {
   agruparClientesPorPlano,
   agruparClientesPorStatus,
+  agruparFaturasPorMes,
   aplicarTemplatePlanoNoDraft,
   avaliarCotaIa,
   filtrarAuditoriaMaster,
   filtrarClientesMaster,
+  gerarAlertasSaudePlataforma,
+  montarRankingSecretarias,
   type PlatformPlanTemplate,
 } from "@/lib/admin-master-helper";
 import { MasterBillingSettings } from "@/components/admin-master-billing";
@@ -304,6 +307,8 @@ function AdminMaster() {
     plans,
     plansBackedByDatabase,
     aiLimitsByTenant,
+    invoices,
+    usageByTenant,
     refresh,
     createTenant,
     updateTenant,
@@ -412,6 +417,31 @@ function AdminMaster() {
   const dadosGraficoStatus = useMemo(
     () => agruparClientesPorStatus(tenants, STATUS_LABELS),
     [tenants],
+  );
+
+  const dadosGraficoFaturamento = useMemo(() => agruparFaturasPorMes(invoices), [invoices]);
+
+  const alertasSaude = useMemo(
+    () =>
+      gerarAlertasSaudePlataforma({
+        tenants,
+        activeUsersByTenant,
+        aiUsageByTenant,
+        aiLimitsByTenant,
+        invoices,
+      }),
+    [tenants, activeUsersByTenant, aiUsageByTenant, aiLimitsByTenant, invoices],
+  );
+
+  const rankingSecretarias = useMemo(
+    () =>
+      montarRankingSecretarias({
+        tenants,
+        activeUsersByTenant,
+        aiUsageByTenant,
+        usageByTenant,
+      }),
+    [tenants, activeUsersByTenant, aiUsageByTenant, usageByTenant],
   );
 
   async function exportarAuditoriaXlsx() {
@@ -1079,6 +1109,168 @@ function AdminMaster() {
                   </CardContent>
                 </Card>
               </div>
+
+              <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CircleDollarSign className="h-4 w-4 text-primary" />
+                      Faturamento Mensal Real (Recebido × A Receber × Em Atraso)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {dadosGraficoFaturamento.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Nenhuma fatura emitida ainda para exibir a evolução financeira.
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => setTab("cobranca")}>
+                          Ir para Cobrança e Faturas
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="h-60 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={dadosGraficoFaturamento}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                            <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip
+                              formatter={(val: unknown) => money(Number(val ?? 0))}
+                              contentStyle={{
+                                backgroundColor: "var(--background)",
+                                borderColor: "var(--border)",
+                                fontSize: "12px",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="recebido" name="Recebido" fill="#10b981" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="pendente" name="A receber" fill="#0284c7" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="atrasado" name="Em atraso" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <AlertCircle className="h-4 w-4 text-primary" />
+                        Alertas de Saúde da Conta
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        Inadimplência, trials vencendo, limite de usuários e cotas de IA.
+                      </p>
+                    </div>
+                    <Badge variant={alertasSaude.length ? "destructive" : "secondary"}>
+                      {alertasSaude.length}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5">
+                    {alertasSaude.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-muted-foreground">
+                        Todas as Secretarias estão saudáveis dentro dos limites contratados.
+                      </p>
+                    ) : (
+                      alertasSaude.slice(0, 6).map((alerta) => (
+                        <div
+                          key={alerta.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={alerta.severity === "high" ? "destructive" : "secondary"}
+                                className="text-[10px]"
+                              >
+                                {alerta.severity === "high" ? "Crítico" : "Atenção"}
+                              </Badge>
+                              <p className="truncate text-sm font-medium">{alerta.tenantName}</p>
+                            </div>
+                            <p className="mt-1 text-xs font-medium">{alerta.title}</p>
+                            <p className="text-[11px] text-muted-foreground">{alerta.detail}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTab(alerta.targetTab)}
+                          >
+                            Ver
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Activity className="h-4 w-4 text-primary" />
+                      Ranking de Uso Operacional das Secretarias
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Engajamento por Secretaria considerando usuários ativos, processos, contratos,
+                      documentos gerados e requisições de IA.
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Secretaria</TableHead>
+                        <TableHead>Plano</TableHead>
+                        <TableHead>Usuários</TableHead>
+                        <TableHead>Processos</TableHead>
+                        <TableHead>Contratos</TableHead>
+                        <TableHead>Documentos</TableHead>
+                        <TableHead>Fornecedores</TableHead>
+                        <TableHead>IA (30d)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rankingSecretarias.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                            Nenhuma Secretaria cadastrada.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        rankingSecretarias.slice(0, 10).map((row, index) => (
+                          <TableRow key={row.tenantId}>
+                            <TableCell className="font-semibold text-muted-foreground">
+                              {index + 1}º
+                            </TableCell>
+                            <TableCell className="font-medium">{row.tenantName}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {PLAN_LABELS[row.planTier as PlanTier] ?? row.planTier}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="tabular-nums">
+                              {row.activeUsers} / {row.maxUsers}
+                            </TableCell>
+                            <TableCell className="tabular-nums">{row.processes}</TableCell>
+                            <TableCell className="tabular-nums">{row.contracts}</TableCell>
+                            <TableCell className="tabular-nums">{row.documents}</TableCell>
+                            <TableCell className="tabular-nums">{row.suppliers}</TableCell>
+                            <TableCell className="tabular-nums text-xs">
+                              {row.aiRequests} reqs · US$ {row.aiCostUsd.toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
 
               <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
                 <Card>

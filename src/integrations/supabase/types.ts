@@ -3624,6 +3624,16 @@ export type Database = {
           can_submit: boolean
         }[]
       }
+      get_platform_tenant_usage_ranking: {
+        Args: never
+        Returns: {
+          contracts_count: number
+          documents_count: number
+          processes_count: number
+          suppliers_count: number
+          tenant_id: string
+        }[]
+      }
       get_my_platform_staff_access: {
         Args: never
         Returns: {

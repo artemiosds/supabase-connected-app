@@ -7,6 +7,7 @@ import {
   type AiTenantUsageSummary,
   type PlatformPlanTemplate,
   type PlatformPlanTier,
+  type TenantUsageCounts,
 } from "@/lib/admin-master-helper";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -127,6 +128,8 @@ export function usePlatformAdmin() {
   const [plans, setPlans] = useState<PlatformPlanTemplate[]>(DEFAULT_PLATFORM_PLANS);
   const [plansBackedByDatabase, setPlansBackedByDatabase] = useState(false);
   const [aiLimitsByTenant, setAiLimitsByTenant] = useState<Record<string, AiTenantQuota>>({});
+  const [invoices, setInvoices] = useState<Tables<"platform_invoices">[]>([]);
+  const [usageByTenant, setUsageByTenant] = useState<Record<string, TenantUsageCounts>>({});
   const userId = session?.user.id;
   const userEmail = session?.user.email;
 
@@ -202,6 +205,8 @@ export function usePlatformAdmin() {
       aiResult,
       plansResult,
       aiLimitsResult,
+      invoicesResult,
+      rankingResult,
     ] = await Promise.all([
       db.from("tenants").select("*").order("name", { ascending: true }),
       db.rpc("get_platform_master_metrics"),
@@ -217,6 +222,8 @@ export function usePlatformAdmin() {
         .catch(() => ({ data: null, error: null })),
       db.from("platform_plans").select("*").order("sort_order", { ascending: true }),
       db.rpc("list_platform_tenant_ai_limits"),
+      db.from("platform_invoices").select("*").order("due_date", { ascending: false }).limit(300),
+      db.rpc("get_platform_tenant_usage_ranking"),
     ]);
 
     if (tenantResult.error || metricsResult.error || candidatesResult.error || auditResult.error) {
@@ -314,6 +321,20 @@ export function usePlatformAdmin() {
       setPlansBackedByDatabase(false);
     }
 
+    const usageMap: Record<string, TenantUsageCounts> = {};
+    if (!rankingResult.error && Array.isArray(rankingResult.data)) {
+      for (const row of rankingResult.data) {
+        if (row.tenant_id) {
+          usageMap[row.tenant_id] = {
+            suppliers_count: Number(row.suppliers_count ?? 0),
+            processes_count: Number(row.processes_count ?? 0),
+            contracts_count: Number(row.contracts_count ?? 0),
+            documents_count: Number(row.documents_count ?? 0),
+          };
+        }
+      }
+    }
+
     setTenants((tenantResult.data ?? []) as MasterTenant[]);
     setMetrics(metricsResult.error ? METRICS_EMPTY : parseMetrics(metricsResult.data));
     setCandidates((candidatesResult.data ?? []) as AdminCandidate[]);
@@ -322,6 +343,12 @@ export function usePlatformAdmin() {
     setAiEnabledByTenant(aiSummaryMap);
     setAiUsageByTenant(aiUsageMap);
     setAiLimitsByTenant(limitsMap);
+    setInvoices(
+      !invoicesResult.error && Array.isArray(invoicesResult.data)
+        ? (invoicesResult.data as Tables<"platform_invoices">[])
+        : [],
+    );
+    setUsageByTenant(usageMap);
     setLoading(false);
   }, [userId, userEmail]);
 
@@ -432,6 +459,8 @@ export function usePlatformAdmin() {
     plans,
     plansBackedByDatabase,
     aiLimitsByTenant,
+    invoices,
+    usageByTenant,
     refresh: load,
     createTenant,
     updateTenant,
