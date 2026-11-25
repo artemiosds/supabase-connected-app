@@ -44,11 +44,11 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+          supabase db push --db-url "$SUPABASE_DB_URL" --include-all --dry-run
 
       - name: Push pending migrations to SMS2
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --yes
+          supabase db push --db-url "$SUPABASE_DB_URL" --include-all --yes
