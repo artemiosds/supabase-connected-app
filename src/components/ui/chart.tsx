@@ -61,30 +61,44 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
-const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color);
+const SAFE_CSS_IDENTIFIER = /^[a-zA-Z0-9_-]+$/;
+const SAFE_CSS_COLOR_VALUE = /^[#a-zA-Z0-9(),.%/\s-]+$/;
 
-  if (!colorConfig.length) {
+export function buildSafeChartStyleCss(id: string, config: ChartConfig): string | null {
+  if (!SAFE_CSS_IDENTIFIER.test(id)) return null;
+
+  const colorConfig = Object.entries(config).filter(
+    ([key, itemConfig]) => SAFE_CSS_IDENTIFIER.test(key) && (itemConfig.theme || itemConfig.color),
+  );
+  if (!colorConfig.length) return null;
+
+  return Object.entries(THEMES)
+    .map(
+      ([theme, prefix]) => `
+${prefix} [data-chart=${id}] {
+${colorConfig
+  .map(([key, itemConfig]) => {
+    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+    return color && SAFE_CSS_COLOR_VALUE.test(color) ? `  --color-${key}: ${color};` : null;
+  })
+  .filter(Boolean)
+  .join("\n")}
+}
+`,
+    )
+    .join("\n");
+}
+
+const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+  const css = buildSafeChartStyleCss(id, config);
+  if (!css) {
     return null;
   }
 
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
+        __html: css,
       }}
     />
   );

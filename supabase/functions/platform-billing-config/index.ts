@@ -8,6 +8,7 @@ function jsonResponse(payload: Record<string, unknown>, status: number, origin: 
       "Content-Type": "application/json",
       "Cache-Control": "no-store, max-age=0",
       Pragma: "no-cache",
+      "X-Content-Type-Options": "nosniff",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -169,7 +170,21 @@ Deno.serve(async (request: Request) => {
       { p_actor_id: authData.user.id, p_enabled: body.enabled },
     );
     if (toggleError) {
-      return jsonResponse({ error: toggleError.message }, 400, origin);
+      console.error(
+        "Falha ao alternar gateway de cobrança:",
+        toggleError.code,
+        toggleError.message,
+      );
+      return jsonResponse(
+        {
+          error:
+            toggleError.code === "42501"
+              ? "Acesso restrito ao Administrador Master ativo."
+              : "Não foi possível alterar o estado do gateway de cobrança.",
+        },
+        toggleError.code === "42501" ? 403 : 400,
+        origin,
+      );
     }
     const { data: row } = await adminClient
       .from("platform_payment_integrations")
@@ -364,7 +379,17 @@ Deno.serve(async (request: Request) => {
       },
     );
     if (attachError) {
-      return jsonResponse({ error: attachError.message }, 400, origin);
+      console.error("Falha ao vincular link de pagamento:", attachError.code, attachError.message);
+      return jsonResponse(
+        {
+          error:
+            attachError.code === "42501"
+              ? "Acesso restrito ao Administrador Master ativo."
+              : "Não foi possível vincular o link de pagamento à fatura.",
+        },
+        attachError.code === "42501" ? 403 : 400,
+        origin,
+      );
     }
 
     return jsonResponse(

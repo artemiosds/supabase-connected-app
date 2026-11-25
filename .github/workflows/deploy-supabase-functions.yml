@@ -89,3 +89,18 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy primus-ai --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy billing webhook function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy platform-billing-webhook --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy verified document signature function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy sign-generated-document --project-ref rwbbznqtocunzrpcvjvk
+
+      - name: Deploy CNPJ lookup function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy lookup-cnpj --project-ref rwbbznqtocunzrpcvjvk
