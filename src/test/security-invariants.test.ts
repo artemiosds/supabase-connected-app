@@ -187,7 +187,7 @@ describe("invariantes automatizadas de cibersegurança", () => {
     expect(monitoringSql).toContain("get_platform_security_signals");
     expect(monitoringSql).toContain("is_platform_admin");
     expect(monitoringTest).toContain("has_function_privilege");
-    expect(dependabot).toContain('package-ecosystem: "npm"');
+    expect(dependabot).toContain('package-ecosystem: "bun"');
     expect(securityWorkflow).toContain("gitleaks/gitleaks-action");
     expect(securityWorkflow).toContain("bun pm audit");
   });

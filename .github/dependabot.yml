@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -8,11 +8,6 @@ updates:
       time: "07:00"
       timezone: "America/Sao_Paulo"
     open-pull-requests-limit: 5
-    groups:
-      security-and-minor:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "security"
       - "dependencies"
