@@ -151,3 +151,80 @@ export function prepararProcurementItemsParaInsercao(params: {
     };
   });
 }
+
+export type ContratoParaSaldoCritico = {
+  id: string;
+  number: string;
+  object?: string | null | undefined;
+};
+
+export type ItemContratoComContratoParaReposicao = ItemContratoParaReposicao & {
+  contract_id: string;
+};
+
+export type MovimentoItemComIdParaReposicao = MovimentoItemParaReposicao & {
+  contract_item_id: string;
+};
+
+export type ContratoComSaldoCritico = {
+  contractId: string;
+  contractNumber: string;
+  contractObject: string | null;
+  itensCriticos: ItemCriticoSugerido[];
+  esgotadosCount: number;
+  criticosCount: number;
+};
+
+/**
+ * Agrupa itens esgotados ou críticos por contrato vigente para exibição em
+ * alertas globais e abertura direta do diálogo de reposição.
+ */
+export function resumirContratosComSaldoCritico(params: {
+  contracts: ContratoParaSaldoCritico[];
+  items: ItemContratoComContratoParaReposicao[];
+  movements: MovimentoItemComIdParaReposicao[];
+}): ContratoComSaldoCritico[] {
+  const movementsByItem: Record<string, MovimentoItemParaReposicao[]> = {};
+  for (const movement of params.movements) {
+    const bucket = movementsByItem[movement.contract_item_id] ?? [];
+    bucket.push({
+      movement_type: movement.movement_type,
+      quantity: Number(movement.quantity),
+    });
+    movementsByItem[movement.contract_item_id] = bucket;
+  }
+
+  const itemsByContract = new Map<string, ItemContratoParaReposicao[]>();
+  for (const item of params.items) {
+    const list = itemsByContract.get(item.contract_id) ?? [];
+    list.push(item);
+    itemsByContract.set(item.contract_id, list);
+  }
+
+  const summaries: ContratoComSaldoCritico[] = [];
+  for (const contract of params.contracts) {
+    const contractItems = itemsByContract.get(contract.id);
+    if (!contractItems?.length) continue;
+
+    const itensCriticos = filtrarItensCriticosParaReposicao(contractItems, movementsByItem);
+    if (itensCriticos.length === 0) continue;
+
+    const esgotadosCount = itensCriticos.filter((entry) => entry.nivel === "esgotado").length;
+    const criticosCount = itensCriticos.length - esgotadosCount;
+    summaries.push({
+      contractId: contract.id,
+      contractNumber: contract.number,
+      contractObject: contract.object ?? null,
+      itensCriticos,
+      esgotadosCount,
+      criticosCount,
+    });
+  }
+
+  return summaries.sort(
+    (a, b) =>
+      b.esgotadosCount - a.esgotadosCount ||
+      b.itensCriticos.length - a.itensCriticos.length ||
+      a.contractNumber.localeCompare(b.contractNumber, "pt-BR"),
+  );
+}

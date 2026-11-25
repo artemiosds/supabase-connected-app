@@ -3,6 +3,7 @@ import {
   filtrarItensCriticosParaReposicao,
   montarSugestaoProcessoReposicao,
   prepararProcurementItemsParaInsercao,
+  resumirContratosComSaldoCritico,
 } from "./stock-replenishment-helper";
 
 const item = (id: string) => ({
@@ -145,5 +146,37 @@ describe("reposição de estoque contratual", () => {
         ],
       }),
     ).toThrow("A quantidade a adquirir deve ser positiva e válida.");
+  });
+
+  it("resume e ordena contratos com itens esgotados ou críticos para alertas globais", () => {
+    const resumo = resumirContratosComSaldoCritico({
+      contracts: [
+        { id: "c1", number: "010/2026", object: "Insumos hospitalares" },
+        { id: "c2", number: "005/2026", object: "Medicamentos essenciais" },
+        { id: "c3", number: "020/2026", object: "Saldo normal" },
+      ],
+      items: [
+        { ...item("i1"), contract_id: "c1" },
+        { ...item("i2"), contract_id: "c2" },
+        { ...item("i3"), contract_id: "c3" },
+      ],
+      movements: [
+        { contract_item_id: "i1", movement_type: "consumption", quantity: 8 },
+        { contract_item_id: "i2", movement_type: "consumption", quantity: 10 },
+        { contract_item_id: "i3", movement_type: "consumption", quantity: 1 },
+      ],
+    });
+
+    expect(resumo.map((entry) => entry.contractId)).toEqual(["c2", "c1"]);
+    expect(resumo[0]).toMatchObject({
+      contractNumber: "005/2026",
+      esgotadosCount: 1,
+      criticosCount: 0,
+    });
+    expect(resumo[1]).toMatchObject({
+      contractNumber: "010/2026",
+      esgotadosCount: 0,
+      criticosCount: 1,
+    });
   });
 });
