@@ -4,8 +4,11 @@ import {
   Ban,
   CalendarClock,
   CheckCircle2,
+  Copy,
   CreditCard,
+  ExternalLink,
   FilePlus2,
+  Link2,
   Loader2,
   LockKeyhole,
   Receipt,
@@ -68,7 +71,7 @@ type BillingConfiguration = {
   client_id: string | null;
   public_key: string | null;
   status: "credentials_saved" | "disabled";
-  payments_enabled: false;
+  payments_enabled: boolean;
   has_credentials: boolean;
   updated_at: string;
 };
@@ -192,6 +195,8 @@ export function MasterBillingSettings({
   const [settleNotes, setSettleNotes] = useState("");
   const [settleSyncTenant, setSettleSyncTenant] = useState(true);
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
+  const [togglingGateway, setTogglingGateway] = useState(false);
+  const [generatingLinkId, setGeneratingLinkId] = useState<string | null>(null);
 
   const [configuration, setConfiguration] = useState<BillingConfiguration | null>(null);
   const [form, setForm] = useState<BillingForm>(EMPTY_FORM);
@@ -435,6 +440,57 @@ export function MasterBillingSettings({
     );
     await loadInvoices();
     if (nextStatus === "overdue") await onBillingChanged?.();
+  }
+
+  async function toggleGatewayPayments(enabled: boolean) {
+    setTogglingGateway(true);
+    const { data, error } = await supabase.functions.invoke("platform-billing-config", {
+      body: { action: "set_payments_enabled", enabled },
+    });
+    setTogglingGateway(false);
+    if (error || data?.error) {
+      toast.error(
+        typeof data?.error === "string"
+          ? data.error
+          : "Não foi possível alterar o estado do gateway.",
+      );
+      return;
+    }
+    if (data?.configuration) {
+      setConfiguration(data.configuration as BillingConfiguration);
+    }
+    toast.success(
+      enabled
+        ? "Processamento automático via gateway ativado."
+        : "Processamento via gateway pausado.",
+    );
+  }
+
+  async function gerarLinkPagamento(invoice: PlatformInvoice) {
+    setGeneratingLinkId(invoice.id);
+    const { data, error } = await supabase.functions.invoke("platform-billing-config", {
+      body: { action: "create_payment_link", invoice_id: invoice.id },
+    });
+    setGeneratingLinkId(null);
+    if (error || data?.error || !data?.payment_url) {
+      toast.error(
+        typeof data?.error === "string"
+          ? data.error
+          : "Não foi possível gerar o link de pagamento no gateway.",
+      );
+      return;
+    }
+    toast.success("Link de pagamento gerado e vinculado à fatura.");
+    await loadInvoices();
+  }
+
+  async function copiarTexto(valor: string, rotulo: string) {
+    try {
+      await navigator.clipboard.writeText(valor);
+      toast.success(`${rotulo} copiado.`);
+    } catch {
+      toast.error("Não foi possível copiar para a área de transferência.");
+    }
   }
 
   const saveConfiguration = async (event: FormEvent<HTMLFormElement>) => {
@@ -781,6 +837,43 @@ export function MasterBillingSettings({
                           <div className="flex justify-end gap-1">
                             {(inv.status === "pending" || inv.status === "overdue") && (
                               <>
+                                {inv.payment_url ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => void copiarTexto(inv.payment_url!, "Link")}
+                                      title="Copiar link de pagamento"
+                                    >
+                                      <Copy className="mr-1 h-3.5 w-3.5" aria-hidden />
+                                      Link
+                                    </Button>
+                                    <Button size="sm" variant="ghost" asChild>
+                                      <a
+                                        href={inv.payment_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title="Abrir checkout"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                      </a>
+                                    </Button>
+                                  </>
+                                ) : configuration?.payments_enabled ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={generatingLinkId === inv.id}
+                                    onClick={() => void gerarLinkPagamento(inv)}
+                                  >
+                                    {generatingLinkId === inv.id ? (
+                                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Link2 className="mr-1 h-3.5 w-3.5" aria-hidden />
+                                    )}
+                                    Gerar link
+                                  </Button>
+                                ) : null}
                                 <Button
                                   size="sm"
                                   disabled={busy}
@@ -848,15 +941,53 @@ export function MasterBillingSettings({
             </Button>
           </div>
 
-          <Alert>
-            <LockKeyhole className="h-4 w-4" />
-            <AlertTitle>Cobranças desativadas nesta etapa</AlertTitle>
-            <AlertDescription>
-              Este cadastro guarda as credenciais com criptografia no Supabase Vault. Ele ainda não
-              cria cobranças, assinaturas, links de pagamento ou webhooks. A ativação ficará para
-              uma etapa própria, depois da escolha e homologação do provedor.
-            </AlertDescription>
-          </Alert>
+          <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <LockKeyhole className="h-4 w-4 text-primary" aria-hidden />
+                  <p className="font-medium">Processamento automático via gateway</p>
+                  <Badge variant={configuration?.payments_enabled ? "default" : "secondary"}>
+                    {configuration?.payments_enabled ? "Ativo" : "Desativado"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Libera o botão <strong>Gerar link</strong> nas faturas (Mercado Pago / Stripe) e a
+                  baixa automática via webhook.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  <span className="text-muted-foreground">URL do Webhook:</span>
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
+                    {`${import.meta.env.VITE_SUPABASE_URL || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() =>
+                      void copiarTexto(
+                        `${import.meta.env.VITE_SUPABASE_URL || "https://rwbbznqtocunzrpcvjvk.supabase.co"}/functions/v1/platform-billing-webhook`,
+                        "URL do webhook",
+                      )
+                    }
+                  >
+                    <Copy className="mr-1 h-3 w-3" aria-hidden />
+                    Copiar
+                  </Button>
+                </div>
+              </div>
+              <Switch
+                checked={Boolean(configuration?.payments_enabled)}
+                disabled={
+                  !configuration?.has_credentials ||
+                  configuration?.provider === "other" ||
+                  togglingGateway
+                }
+                onCheckedChange={(checked) => void toggleGatewayPayments(checked)}
+              />
+            </CardContent>
+          </Card>
 
           {loadError && (
             <Alert variant="destructive">

@@ -8,6 +8,9 @@ verify_jwt = true
 [functions.platform-billing-config]
 verify_jwt = true
 
+[functions.platform-billing-webhook]
+verify_jwt = false
+
 [functions.invite-platform-staff]
 verify_jwt = true
 
