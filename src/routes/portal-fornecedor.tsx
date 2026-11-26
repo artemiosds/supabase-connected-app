@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
+  Plus,
+  Printer,
   ShieldCheck,
   Upload,
 } from "lucide-react";
@@ -22,14 +24,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData } from "@/lib/contratacao";
 import {
   enviarDocumentoPortal,
   obterDadosPortalFornecedor,
+  resumirChecklistPortal,
   rotuloChecklistPortal,
+  validarLinkDocumentoPortal,
   type PortalChecklistItem,
   type PortalResponseData,
 } from "@/lib/supplier-portal";
@@ -71,6 +81,7 @@ function PortalHomologacaoView({ token }: { token: string }) {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PortalChecklistItem | null>(null);
   const [docTitle, setDocTitle] = useState("");
+  const [docType, setDocType] = useState("outros");
   const [docExpiresAt, setDocExpiresAt] = useState("");
   const [docUrl, setDocUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -104,18 +115,27 @@ function PortalHomologacaoView({ token }: { token: string }) {
     void carregarDados();
   }, [carregarDados]);
 
-  const handleOpenUpload = (item: PortalChecklistItem) => {
-    setSelectedItem(item);
-    setDocTitle(item.title);
+  const handleOpenUpload = (item?: PortalChecklistItem) => {
+    setSelectedItem(item ?? null);
+    setDocTitle(item?.title ?? "");
+    setDocType(item?.document_type ?? "outros");
     setDocExpiresAt("");
     setDocUrl("");
     setUploadModalOpen(true);
   };
 
   const handleEnviarDocumento = async () => {
-    if (!docTitle.trim()) {
+    if (docTitle.trim().length < 2) {
       toast.error("Título obrigatório", {
-        description: "Informe o título do documento.",
+        description: "Informe um título com pelo menos 2 caracteres.",
+      });
+      return;
+    }
+
+    const urlCheck = validarLinkDocumentoPortal(docUrl);
+    if (!urlCheck.valid) {
+      toast.error("Link do documento obrigatório", {
+        description: urlCheck.error,
       });
       return;
     }
@@ -126,8 +146,8 @@ function PortalHomologacaoView({ token }: { token: string }) {
         token,
         ...(selectedItem?.id ? { checklist_item_id: selectedItem.id } : {}),
         title: docTitle.trim(),
-        document_type: selectedItem?.document_type || "outros",
-        ...(docUrl.trim() ? { external_url: docUrl.trim() } : {}),
+        document_type: selectedItem?.document_type || docType || "outros",
+        external_url: urlCheck.url,
         ...(docExpiresAt ? { expires_at: docExpiresAt } : {}),
       });
 
@@ -175,7 +195,7 @@ function PortalHomologacaoView({ token }: { token: string }) {
           <CardContent className="text-center">
             <p className="text-xs text-muted-foreground">
               Por favor, entre em contato com a equipe de compras e contratos da Secretaria
-              Municipal de Saúde para solicitar um novo link de acesso.
+              responsável para solicitar um novo link de acesso.
             </p>
           </CardContent>
         </Card>
@@ -187,6 +207,9 @@ function PortalHomologacaoView({ token }: { token: string }) {
   const homologStatus = homologation
     ? rotuloStatusHomologacao(homologation.status as HomologationStatus)
     : null;
+  const homologEncerrada =
+    homologation?.status === "completed" || homologation?.status === "cancelled";
+  const checklistResumo = resumirChecklistPortal(checklist_items);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-foreground py-8 px-4 sm:px-6 lg:px-8">
@@ -194,7 +217,7 @@ function PortalHomologacaoView({ token }: { token: string }) {
         <div className="bg-card border rounded-lg p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-primary">
-              {tenant?.name || "Secretaria Municipal de Saúde"}
+              {tenant?.name || "Secretaria Responsável"}
             </div>
             <h1 className="text-xl font-bold mt-1">Portal de Autoatendimento do Fornecedor</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -210,17 +233,29 @@ function PortalHomologacaoView({ token }: { token: string }) {
         </div>
 
         {lastProtocol && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 rounded-lg p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                Documento recebido com fé pública!
-              </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                Comprovante / Protocolo: <strong>{lastProtocol}</strong>. O documento foi anexado à
-                fila de conferência dos servidores responsáveis.
-              </p>
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                  Documento recebido com fé pública!
+                </p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                  Comprovante / Protocolo: <strong>{lastProtocol}</strong>. O documento foi anexado
+                  à fila de conferência dos servidores responsáveis.
+                </p>
+              </div>
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="print:hidden"
+              onClick={() => window.print()}
+            >
+              <Printer className="w-3.5 h-3.5 mr-1.5" />
+              Imprimir Comprovante
+            </Button>
           </div>
         )}
 
@@ -274,14 +309,47 @@ function PortalHomologacaoView({ token }: { token: string }) {
 
         <Card className="border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              Documentos e Certidões Solicitadas
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Envie ou atualize os documentos abaixo para manter a habilitação regular na
-              Secretaria.
-            </CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Documentos e Certidões Solicitadas
+                </CardTitle>
+                <CardDescription className="text-xs mt-1">
+                  {homologEncerrada
+                    ? "Esta análise de homologação já foi encerrada; os documentos ficam disponíveis apenas para consulta."
+                    : "Envie ou atualize os links oficiais abaixo para manter a habilitação regular na Secretaria."}
+                </CardDescription>
+              </div>
+              {!homologEncerrada && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="print:hidden"
+                  onClick={() => handleOpenUpload()}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Enviar Documento Avulso
+                </Button>
+              )}
+            </div>
+            {checklistResumo.total > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary" className="text-[11px]">
+                  {checklistResumo.aprovados}/{checklistResumo.total} aprovado(s)
+                </Badge>
+                {checklistResumo.recebidos > 0 && (
+                  <Badge variant="outline" className="text-[11px]">
+                    {checklistResumo.recebidos} em conferência
+                  </Badge>
+                )}
+                {checklistResumo.obrigatoriosPendentes > 0 && (
+                  <Badge variant="destructive" className="text-[11px]">
+                    {checklistResumo.obrigatoriosPendentes} obrigatório(s) pendente(s)
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             {checklist_items.length === 0 ? (
@@ -292,9 +360,10 @@ function PortalHomologacaoView({ token }: { token: string }) {
               checklist_items.map((item) => {
                 const statusMeta = rotuloChecklistPortal(item.verification_status);
                 const pendente =
-                  item.verification_status === "not_submitted" ||
-                  item.verification_status === "pending_issue" ||
-                  item.verification_status === "expired";
+                  !homologEncerrada &&
+                  (item.verification_status === "not_submitted" ||
+                    item.verification_status === "pending_issue" ||
+                    item.verification_status === "expired");
 
                 return (
                   <div
@@ -388,6 +457,9 @@ function PortalHomologacaoView({ token }: { token: string }) {
               </Label>
               <Input
                 id="doc-title"
+                required
+                minLength={2}
+                maxLength={180}
                 value={docTitle}
                 onChange={(e) => setDocTitle(e.target.value)}
                 placeholder="Ex: Certidão Negativa de Débitos Relativos a Créditos Tributários"
@@ -395,19 +467,46 @@ function PortalHomologacaoView({ token }: { token: string }) {
               />
             </div>
 
+            {!selectedItem && (
+              <div className="space-y-1.5">
+                <Label htmlFor="doc-type" className="text-xs">
+                  Tipo do Documento
+                </Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger id="doc-type" className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="certidao_federal">Certidão Federal</SelectItem>
+                    <SelectItem value="certidao_estadual">Certidão Estadual</SelectItem>
+                    <SelectItem value="certidao_municipal">Certidão Municipal</SelectItem>
+                    <SelectItem value="fgts">Regularidade FGTS</SelectItem>
+                    <SelectItem value="trabalhista">CNDT / Trabalhista</SelectItem>
+                    <SelectItem value="sanitaria">Licença / Alvará Sanitário</SelectItem>
+                    <SelectItem value="alvara">Alvará de Funcionamento</SelectItem>
+                    <SelectItem value="proposta">Proposta / Catálogo</SelectItem>
+                    <SelectItem value="outros">Outros Comprovantes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="doc-url" className="text-xs">
-                Link Público do Arquivo ou Comprovante (Opcional)
+                Link Oficial da Certidão ou Arquivo (HTTPS) *
               </Label>
               <Input
                 id="doc-url"
+                type="url"
+                required
+                maxLength={2048}
                 value={docUrl}
                 onChange={(e) => setDocUrl(e.target.value)}
                 placeholder="https://..."
                 className="text-xs"
               />
               <p className="text-[11px] text-muted-foreground">
-                Você pode colar o link direto da certidão oficial ou documento armazenado na nuvem.
+                Informe a URL http:// ou https:// do comprovante oficial ou documento em nuvem.
               </p>
             </div>
 

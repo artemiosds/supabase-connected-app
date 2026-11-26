@@ -236,8 +236,8 @@ export function QuotePortalView({ token }: { token: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center text-xs text-muted-foreground">
-            Caso precise responder à pesquisa de preços, solicite um novo link à Secretaria de
-            Saúde.
+            Caso precise responder à pesquisa de preços, solicite um novo link à Secretaria
+            responsável.
           </CardContent>
         </Card>
       </div>

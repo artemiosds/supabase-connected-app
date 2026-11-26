@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeExternalDocumentUrl } from "@/lib/external-document-url";
 
 export interface PortalSupplierData {
   id: string;
@@ -132,6 +133,114 @@ export async function enviarDocumentoPortal(
   return data as unknown as SubmitDocumentResponse;
 }
 
+export type PortalTokenSummary = {
+  id: string;
+  homologation_id: string | null;
+  token: string;
+  expires_at: string;
+  is_revoked: boolean;
+  created_at: string;
+};
+
+/** Valida URL externa para envio no portal de autoatendimento do fornecedor. */
+export function validarLinkDocumentoPortal(
+  rawUrl: string,
+): { valid: true; url: string } | { valid: false; error: string } {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return { valid: false, error: "Informe o link HTTP/HTTPS do documento ou certidão." };
+  }
+  const normalized = normalizeExternalDocumentUrl(trimmed);
+  if (!normalized) {
+    return {
+      valid: false,
+      error: "Informe uma URL http:// ou https:// válida, sem espaços ou credenciais.",
+    };
+  }
+  return { valid: true, url: normalized };
+}
+
+/** Resume o andamento dos itens de checklist exibidos ao fornecedor no portal. */
+export function resumirChecklistPortal(items: ReadonlyArray<PortalChecklistItem>): {
+  total: number;
+  pendentes: number;
+  recebidos: number;
+  aprovados: number;
+  obrigatoriosPendentes: number;
+} {
+  let pendentes = 0;
+  let recebidos = 0;
+  let aprovados = 0;
+  let obrigatoriosPendentes = 0;
+
+  for (const item of items) {
+    if (item.verification_status === "verified") {
+      aprovados += 1;
+    } else if (
+      item.verification_status === "received" ||
+      item.verification_status === "awaiting_review"
+    ) {
+      recebidos += 1;
+    } else {
+      pendentes += 1;
+      if (item.is_mandatory) obrigatoriosPendentes += 1;
+    }
+  }
+
+  return {
+    total: items.length,
+    pendentes,
+    recebidos,
+    aprovados,
+    obrigatoriosPendentes,
+  };
+}
+
+/** Classifica o estado atual de um link emitido para o portal do fornecedor. */
+export function formatarStatusTokenPortal(
+  row: { is_revoked: boolean; expires_at: string },
+  nowMs = Date.now(),
+): { label: string; active: boolean; variant: "secondary" | "destructive" | "outline" } {
+  if (row.is_revoked) {
+    return { label: "Revogado", active: false, variant: "outline" };
+  }
+  if (Date.parse(row.expires_at) <= nowMs) {
+    return { label: "Expirado", active: false, variant: "destructive" };
+  }
+  return { label: "Ativo", active: true, variant: "secondary" };
+}
+
+/** Lista tokens recentes do portal do fornecedor para acompanhamento e revogação. */
+export async function listarTokensPortalFornecedor(
+  tenantId: string,
+  supplierId: string,
+): Promise<PortalTokenSummary[]> {
+  const { data, error } = await supabase
+    .from("supplier_portal_tokens")
+    .select("id, homologation_id, token, expires_at, is_revoked, created_at")
+    .eq("tenant_id", tenantId)
+    .eq("supplier_id", supplierId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) throw error;
+  return (data ?? []) as PortalTokenSummary[];
+}
+
+/** Revoga imediatamente um link emitido do portal do fornecedor. */
+export async function revogarTokenPortalFornecedor(
+  tenantId: string,
+  tokenId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("supplier_portal_tokens")
+    .update({ is_revoked: true })
+    .eq("tenant_id", tenantId)
+    .eq("id", tokenId);
+
+  if (error) throw error;
+}
+
 export function rotuloChecklistPortal(status: string): {
   label: string;
   variante: "default" | "secondary" | "destructive" | "outline";
@@ -142,6 +251,7 @@ export function rotuloChecklistPortal(status: string): {
   > = {
     not_submitted: { label: "Pendente de Envio", variante: "outline" },
     received: { label: "Recebido / Em Análise", variante: "secondary" },
+    awaiting_review: { label: "Aguardando Conferência", variante: "secondary" },
     verified: { label: "Aprovado / Regular", variante: "default" },
     pending_issue: { label: "Inconsistência / Reenviar", variante: "destructive" },
     expired: { label: "Expirado / Renovar", variante: "destructive" },

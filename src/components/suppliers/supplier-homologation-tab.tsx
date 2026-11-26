@@ -14,7 +14,10 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Link2,
+  ShieldOff,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +65,13 @@ import {
   type ChecklistVerificationStatus,
 } from "@/lib/supplier-homologation";
 import { formatarData } from "@/lib/contratacao";
-import { gerarLinkPortalFornecedor } from "@/lib/supplier-portal";
+import {
+  formatarStatusTokenPortal,
+  gerarLinkPortalFornecedor,
+  listarTokensPortalFornecedor,
+  revogarTokenPortalFornecedor,
+  type PortalTokenSummary,
+} from "@/lib/supplier-portal";
 
 interface SupplierHomologationTabProps {
   tenantId: string;
@@ -109,6 +118,17 @@ export function SupplierHomologationTab({
   const [linkGerado, setLinkGerado] = useState<string>("");
   const [gerandoLink, setGerandoLink] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [portalTokens, setPortalTokens] = useState<PortalTokenSummary[]>([]);
+  const [revokingTokenId, setRevokingTokenId] = useState<string | null>(null);
+
+  const carregarTokensPortal = useCallback(async () => {
+    try {
+      const lista = await listarTokensPortalFornecedor(tenantId, supplierId);
+      setPortalTokens(lista);
+    } catch {
+      setPortalTokens([]);
+    }
+  }, [tenantId, supplierId]);
 
   const handleGerarLinkPortal = async (homologId?: string) => {
     try {
@@ -117,11 +137,25 @@ export function SupplierHomologationTab({
       setLinkGerado(url);
       setLinkCopiado(false);
       setModalLinkAberta(true);
+      await carregarTokensPortal();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao gerar link";
       setErro(msg);
     } finally {
       setGerandoLink(false);
+    }
+  };
+
+  const handleRevogarTokenPortal = async (tokenId: string) => {
+    try {
+      setRevokingTokenId(tokenId);
+      await revogarTokenPortalFornecedor(tenantId, tokenId);
+      toast.success("Link do portal revogado com sucesso.");
+      await carregarTokensPortal();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível revogar o link.");
+    } finally {
+      setRevokingTokenId(null);
     }
   };
 
@@ -168,7 +202,8 @@ export function SupplierHomologationTab({
 
   useEffect(() => {
     void carregarLista();
-  }, [carregarLista]);
+    void carregarTokensPortal();
+  }, [carregarLista, carregarTokensPortal]);
 
   useEffect(() => {
     if (selecionadaId) {
@@ -550,6 +585,9 @@ export function SupplierHomologationTab({
                                   {ev.event_type === "checklist_verified" && "Conferência Realizada"}
                                   {ev.event_type === "completion_requested" &&
                                     "Complementação Solicitada"}
+                                  {(ev.event_type === "completion_received" ||
+                                    ev.event_type === "document_received") &&
+                                    "Documento Recebido (Portal)"}
                                   {ev.event_type === "concluded" && "Homologação Concluída"}
                                   {ev.event_type === "cancelled" && "Análise Cancelada"}
                                 </span>
@@ -567,6 +605,78 @@ export function SupplierHomologationTab({
             )}
           </div>
         </div>
+      )}
+
+      {portalTokens.length > 0 && (
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Link2 className="h-4 w-4 text-primary" />
+              Links de Autoatendimento Emitidos
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Acompanhe os links enviados ao fornecedor e revogue o acesso a qualquer momento.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {portalTokens.map((tok) => {
+              const statusMeta = formatarStatusTokenPortal(tok);
+              const origin = typeof window !== "undefined" ? window.location.origin : "";
+              const fullUrl = `${origin}/portal-fornecedor?token=${encodeURIComponent(tok.token)}`;
+              return (
+                <div
+                  key={tok.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={statusMeta.variant} className="text-[10px]">
+                        {statusMeta.label}
+                      </Badge>
+                      <span className="font-mono text-muted-foreground">
+                        …{tok.token.slice(-10)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Emitido em {formatarData(tok.created_at)} · Validade:{" "}
+                      {formatarData(tok.expires_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {statusMeta.active && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(fullUrl);
+                          toast.success("Link do portal copiado.");
+                        }}
+                      >
+                        <Copy className="mr-1 h-3 w-3" />
+                        Copiar
+                      </Button>
+                    )}
+                    {canEdit && statusMeta.active && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        disabled={revokingTokenId === tok.id}
+                        onClick={() => void handleRevogarTokenPortal(tok.id)}
+                      >
+                        <ShieldOff className="mr-1 h-3 w-3" />
+                        {revokingTokenId === tok.id ? "Revogando..." : "Revogar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
       {/* Modal: Iniciar Nova Análise */}
