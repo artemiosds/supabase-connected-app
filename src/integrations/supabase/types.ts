@@ -4930,6 +4930,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_custom_tenant_role: {
+        Args: { p_role_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       save_tenant_role_with_permissions: {
         Args: {
           p_description: string

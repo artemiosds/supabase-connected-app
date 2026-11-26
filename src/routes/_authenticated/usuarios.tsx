@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Copy,
   Ellipsis,
+  Eye,
   Loader2,
   LockKeyhole,
   Pencil,
@@ -9,11 +11,18 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
   UserCheck,
   UserRound,
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  filtrarPermissaoPorTexto,
+  gerarSlugPerfilPersonalizado,
+  selecionarPapelPadraoConvite,
+  traduzirModuloPermissao,
+} from "@/lib/access-profiles";
 import { isInvitationExpired } from "@/lib/invitations";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
@@ -123,11 +132,14 @@ function Usuarios() {
   >([]);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [roleEditing, setRoleEditing] = useState<TenantRole | null>(null);
+  const [roleReadOnly, setRoleReadOnly] = useState(false);
+  const [roleSearch, setRoleSearch] = useState("");
   const [roleName, setRoleName] = useState("");
   const [roleSlug, setRoleSlug] = useState("");
   const [roleDescription, setRoleDescription] = useState("");
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [savingRole, setSavingRole] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
@@ -211,19 +223,12 @@ function Usuarios() {
         setPermissionCatalog([]);
         setRolePermissionRows([]);
       }
+      const defaultRoleId = selecionarPapelPadraoConvite(roleResult.data ?? []);
       setPapelId((current) =>
-        roleResult.data?.some((role) => role.id === current)
-          ? current
-          : (roleResult.data?.find((role) => role.slug === "admin")?.id ??
-            roleResult.data?.[0]?.id ??
-            ""),
+        roleResult.data?.some((role) => role.id === current) ? current : defaultRoleId,
       );
       setPapelConviteId((current) =>
-        roleResult.data?.some((role) => role.id === current)
-          ? current
-          : (roleResult.data?.find((role) => role.slug === "operador")?.id ??
-            roleResult.data?.[0]?.id ??
-            ""),
+        roleResult.data?.some((role) => role.id === current) ? current : defaultRoleId,
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -257,12 +262,14 @@ function Usuarios() {
   });
   const permissoesPorModulo = useMemo(
     () =>
-      permissionCatalog.reduce<Record<string, typeof permissionCatalog>>((groups, permission) => {
-        const moduleName = permission.module?.trim() || "Outros";
-        (groups[moduleName] ??= []).push(permission);
-        return groups;
-      }, {}),
-    [permissionCatalog],
+      permissionCatalog
+        .filter((permission) => filtrarPermissaoPorTexto(permission, roleSearch))
+        .reduce<Record<string, typeof permissionCatalog>>((groups, permission) => {
+          const moduleName = traduzirModuloPermissao(permission.module);
+          (groups[moduleName] ??= []).push(permission);
+          return groups;
+        }, {}),
+    [permissionCatalog, roleSearch],
   );
   const iniciais = (nome: string) =>
     nome
@@ -428,11 +435,25 @@ function Usuarios() {
     }
   }
 
-  function abrirEditorPerfil(role?: TenantRole) {
-    if (!canManageRoles || role?.is_system) return;
-    setRoleEditing(role ?? null);
-    setRoleName(role?.name ?? "");
-    setRoleSlug(role?.slug ?? "");
+  function abrirEditorPerfil(
+    role?: TenantRole,
+    options?: { readOnly?: boolean; duplicate?: boolean },
+  ) {
+    if (!canManageRoles) return;
+    const duplicate = Boolean(options?.duplicate && role);
+    const readOnly = Boolean(options?.readOnly && role && !duplicate);
+    if (role?.is_system && !readOnly && !duplicate) return;
+
+    const existingSlugs = papeis.map((p) => p.slug);
+    setRoleReadOnly(readOnly);
+    setRoleSearch("");
+    setRoleEditing(duplicate ? null : (role ?? null));
+    setRoleName(duplicate && role ? `Cópia de ${role.name}`.slice(0, 80) : (role?.name ?? ""));
+    setRoleSlug(
+      duplicate && role
+        ? gerarSlugPerfilPersonalizado(role.slug, existingSlugs)
+        : (role?.slug ?? ""),
+    );
     setRoleDescription(role?.description ?? "");
     setSelectedPermissionIds(
       role
@@ -442,11 +463,30 @@ function Usuarios() {
     setRoleDialogOpen(true);
   }
 
+  async function excluirPerfil(role: TenantRole) {
+    if (!selecionado || !canManageRoles || role.is_system || deletingRoleId) return;
+    setDeletingRoleId(role.id);
+    try {
+      const { error } = await db.rpc("delete_custom_tenant_role", {
+        p_tenant_id: selecionado.id,
+        p_role_id: role.id,
+      });
+      if (error) throw error;
+      toast.success(`Perfil "${role.name}" excluído.`);
+      await carregar();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir o perfil.");
+    } finally {
+      setDeletingRoleId(null);
+    }
+  }
+
   async function salvarPerfil(event: FormEvent) {
     event.preventDefault();
     if (
       !selecionado ||
       !canManageRoles ||
+      roleReadOnly ||
       roleEditing?.is_system ||
       !selectedPermissionIds.length ||
       savingRole
@@ -933,6 +973,9 @@ function Usuarios() {
                     const count = rolePermissionRows.filter(
                       (row) => row.role_id === role.id,
                     ).length;
+                    const memberCount = membros.filter((m) =>
+                      (m.membership_roles ?? []).some((mr) => mr.role_id === role.id),
+                    ).length;
                     return (
                       <article
                         key={role.id}
@@ -963,17 +1006,58 @@ function Usuarios() {
                             {role.description || role.slug}
                           </p>
                         </div>
-                        <div className="mt-4 flex items-center justify-between border-t pt-3">
-                          <span className="text-xs text-muted-foreground">{count} permissões</span>
-                          {!role.is_system && (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                          <span className="text-xs text-muted-foreground">
+                            {count} permissões · {memberCount} usuário(s)
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {role.is_system ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => abrirEditorPerfil(role, { readOnly: true })}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> Ver permissões
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => abrirEditorPerfil(role)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" /> Editar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive"
+                                  disabled={memberCount > 0 || deletingRoleId === role.id}
+                                  title={
+                                    memberCount > 0
+                                      ? "Reatribua os usuários vinculados antes de excluir este perfil."
+                                      : "Excluir perfil personalizado"
+                                  }
+                                  onClick={() => void excluirPerfil(role)}
+                                >
+                                  {deletingRoleId === role.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => abrirEditorPerfil(role)}
+                              variant="ghost"
+                              title="Duplicar como novo perfil personalizado"
+                              onClick={() => abrirEditorPerfil(role, { duplicate: true })}
                             >
-                              <Pencil /> Editar perfil
+                              <Copy className="h-3.5 w-3.5" />
+                              <span className="sr-only">Duplicar perfil</span>
                             </Button>
-                          )}
+                          </div>
                         </div>
                       </article>
                     );
@@ -988,7 +1072,11 @@ function Usuarios() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              {roleEditing ? "Editar perfil personalizado" : "Criar perfil personalizado"}
+              {roleReadOnly
+                ? "Visualizar permissões do perfil nativo"
+                : roleEditing
+                  ? "Editar perfil personalizado"
+                  : "Criar perfil personalizado"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={salvarPerfil} className="space-y-4">
@@ -997,6 +1085,7 @@ function Usuarios() {
                 <Label>Nome do perfil *</Label>
                 <Input
                   required
+                  disabled={roleReadOnly}
                   minLength={2}
                   maxLength={80}
                   value={roleName}
@@ -1007,6 +1096,7 @@ function Usuarios() {
                 <Label>Identificador *</Label>
                 <Input
                   required
+                  disabled={roleReadOnly}
                   minLength={2}
                   maxLength={60}
                   pattern="[a-z0-9][a-z0-9_-]{1,59}"
@@ -1018,6 +1108,7 @@ function Usuarios() {
               <div className="space-y-1 sm:col-span-2">
                 <Label>Descrição</Label>
                 <Input
+                  disabled={roleReadOnly}
                   maxLength={300}
                   value={roleDescription}
                   onChange={(e) => setRoleDescription(e.target.value)}
@@ -1025,11 +1116,20 @@ function Usuarios() {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label>Permissões disponíveis</Label>
                 <span className="text-xs text-muted-foreground">
                   {selectedPermissionIds.length} selecionada(s)
                 </span>
+              </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={roleSearch}
+                  onChange={(e) => setRoleSearch(e.target.value)}
+                  placeholder="Filtrar permissões por nome, módulo ou código..."
+                />
               </div>
               <div className="space-y-3">
                 {Object.entries(permissoesPorModulo).map(([moduleName, permissions]) => {
@@ -1045,30 +1145,35 @@ function Usuarios() {
                             {count} de {ids.length} permissões selecionadas
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setSelectedPermissionIds((current) =>
-                              allSelected
-                                ? current.filter((id) => !ids.includes(id))
-                                : [...new Set([...current, ...ids])],
-                            )
-                          }
-                        >
-                          {allSelected ? "Desmarcar módulo" : "Marcar módulo"}
-                        </Button>
+                        {!roleReadOnly && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setSelectedPermissionIds((current) =>
+                                allSelected
+                                  ? current.filter((id) => !ids.includes(id))
+                                  : [...new Set([...current, ...ids])],
+                              )
+                            }
+                          >
+                            {allSelected ? "Desmarcar módulo" : "Marcar módulo"}
+                          </Button>
+                        )}
                       </div>
                       <div className="grid gap-2 md:grid-cols-2">
                         {permissions.map((permission) => (
                           <label
                             key={permission.id}
-                            className="flex cursor-pointer items-start gap-2 rounded-md border bg-card p-3 text-sm hover:border-primary/40"
+                            className={`flex items-start gap-2 rounded-md border bg-card p-3 text-sm ${
+                              roleReadOnly ? "opacity-90" : "cursor-pointer hover:border-primary/40"
+                            }`}
                           >
                             <input
                               type="checkbox"
                               className="mt-1"
+                              disabled={roleReadOnly}
                               checked={selectedPermissionIds.includes(permission.id)}
                               onChange={(event) =>
                                 setSelectedPermissionIds((current) =>
@@ -1096,22 +1201,48 @@ function Usuarios() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setRoleDialogOpen(false)}
-                disabled={savingRole}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={savingRole || !selectedPermissionIds.length}>
-                {savingRole ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ShieldCheck className="h-4 w-4" />
-                )}{" "}
-                Salvar perfil
-              </Button>
+              {roleReadOnly ? (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setRoleDialogOpen(false)}>
+                    Fechar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setRoleReadOnly(false);
+                      setRoleEditing(null);
+                      setRoleName((n) => `Cópia de ${n}`.slice(0, 80));
+                      setRoleSlug((s) =>
+                        gerarSlugPerfilPersonalizado(
+                          s,
+                          papeis.map((p) => p.slug),
+                        ),
+                      );
+                    }}
+                  >
+                    <Copy className="h-4 w-4" /> Duplicar como personalizado
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setRoleDialogOpen(false)}
+                    disabled={savingRole}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={savingRole || !selectedPermissionIds.length}>
+                    {savingRole ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="h-4 w-4" />
+                    )}{" "}
+                    Salvar perfil
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
