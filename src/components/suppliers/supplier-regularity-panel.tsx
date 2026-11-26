@@ -8,8 +8,10 @@ import {
   AlertTriangle,
   RefreshCw,
   Search,
+  Sparkles,
   FileBadge,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +50,7 @@ import {
   type RegularitySource,
   type RegularityStatus,
 } from "@/lib/supplier-regularity";
+import { consultarRegularidadeAutomatica } from "@/lib/supplier-regularity-lookup";
 import { formatarData } from "@/lib/contratacao";
 import { formatarCnpj } from "@/lib/cnpj";
 
@@ -78,6 +81,7 @@ export function SupplierRegularityPanel({
   const [observacoes, setObservacoes] = useState("");
   const [exigeProvidencia, setExigeProvidencia] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [consultandoAuto, setConsultandoAuto] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -126,9 +130,59 @@ export function SupplierRegularityPanel({
     }
   };
 
-  const temIrregularidade = verificacoes.some(
-    (v) => v.status === "irregular" || v.requires_action,
-  );
+  const handleConsultaAutomatica = async () => {
+    const cleanCnpj = supplierCnpj.replace(/\D/g, "");
+    if (cleanCnpj.length !== 14) {
+      toast.error("Esta consulta automática exige CNPJ com 14 dígitos.");
+      return;
+    }
+    try {
+      setConsultandoAuto(true);
+      setErro(null);
+      const res = await consultarRegularidadeAutomatica({ tenantId, cnpj: cleanCnpj });
+      if (res.checks.length === 0) {
+        toast.warning(res.warnings[0] || "Nenhum portal respondeu à consulta automática.");
+        return;
+      }
+      await Promise.all(
+        res.checks.map((item) =>
+          registrarVerificacaoRegularidade({
+            tenantId,
+            supplierId,
+            source: item.source,
+            sourceLabel: item.sourceLabel,
+            status: item.status,
+            certificateNumber: item.certificateNumber ?? undefined,
+            evidenceUrl: item.evidenceUrl ?? undefined,
+            notes: item.notes,
+            requiresAction: item.requiresAction,
+          }),
+        ),
+      );
+      await carregar();
+      const irregulares = res.checks.filter((c) => c.status === "irregular").length;
+      if (irregulares > 0) {
+        toast.error(
+          `${res.checks.length} fonte(s) registrada(s): ${irregulares} apontou/apontaram ocorrência ou restrição!`,
+        );
+      } else {
+        toast.success(
+          `${res.checks.length} verificação(ões) oficial(is) registrada(s) automaticamente (TCU/CNJ/CEIS/CNEP/RFB).`,
+        );
+      }
+      if (res.warnings.length > 0) {
+        toast.warning(res.warnings.join(" "));
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha na consulta automática de regularidade.";
+      setErro(msg);
+      toast.error(msg);
+    } finally {
+      setConsultandoAuto(false);
+    }
+  };
+
+  const temIrregularidade = verificacoes.some((v) => v.status === "irregular" || v.requires_action);
 
   return (
     <div className="space-y-4">
@@ -162,14 +216,29 @@ export function SupplierRegularityPanel({
                 <Search className="h-4 w-4" /> Portais Oficiais de Consulta
               </CardTitle>
               <CardDescription className="text-xs">
-                Acesse as fontes oficiais para consulta em tempo real do CNPJ {formatarCnpj(supplierCnpj)}
+                Acesse as fontes oficiais para consulta em tempo real do CNPJ{" "}
+                {formatarCnpj(supplierCnpj)}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={carregar} disabled={loading}>
                 <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 Atualizar
               </Button>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void handleConsultaAutomatica()}
+                  disabled={consultandoAuto}
+                  title="Consulta gratuita em tempo real no TCU (Inidôneos), CNJ (CNIA), CGU (CEIS/CNEP) e Receita Federal"
+                >
+                  <Sparkles
+                    className={`mr-1.5 h-3.5 w-3.5 ${consultandoAuto ? "animate-pulse" : ""}`}
+                  />
+                  {consultandoAuto ? "Consultando portais..." : "Verificar TCU / CEIS / RFB"}
+                </Button>
+              )}
               {canEdit && (
                 <Button size="sm" onClick={() => setModalAberta(true)}>
                   <PlusCircle className="mr-1.5 h-4 w-4" />
@@ -230,7 +299,8 @@ export function SupplierRegularityPanel({
             <FileBadge className="h-4 w-4" /> Histórico de Regularidade e Consultas Registradas
           </CardTitle>
           <CardDescription className="text-xs">
-            Registro auditável de consultas com número da certidão, validade e comprovação de evidências.
+            Registro auditável de consultas com número da certidão, validade e comprovação de
+            evidências.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-2">
@@ -267,10 +337,7 @@ export function SupplierRegularityPanel({
                         <TableCell className="font-medium">
                           {item.source_label}
                           {item.requires_action && (
-                            <Badge
-                              variant="destructive"
-                              className="ml-1.5 text-[9px] px-1 py-0"
-                            >
+                            <Badge variant="destructive" className="ml-1.5 text-[9px] px-1 py-0">
                               Exige Providência
                             </Badge>
                           )}
@@ -300,11 +367,7 @@ export function SupplierRegularityPanel({
                         <TableCell className="text-right">
                           {item.evidence_url ? (
                             <Button size="sm" variant="ghost" className="h-7 text-xs px-2" asChild>
-                              <a
-                                href={item.evidence_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
+                              <a href={item.evidence_url} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-3 w-3 mr-1" />
                                 Abrir
                               </a>
