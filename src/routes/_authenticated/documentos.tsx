@@ -4,21 +4,46 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
+  Archive,
   CheckCircle2,
+  Copy,
   Download,
   ExternalLink,
   Eye,
   FilePlus2,
   FileText,
   History,
+  Layers,
   Loader2,
   Pencil,
   Plus,
   Printer,
+  RotateCcw,
+  Search,
   ShieldCheck,
+  Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ReportExportActions } from "@/components/reports/report-export-actions";
+import type { CsvColumn } from "@/lib/csv-export";
+import { ETAPAS } from "@/lib/contratacao";
+import {
+  buildSamplePreviewContext,
+  defaultTemplateScopeConfig,
+  extractTemplatePlaceholders,
+  filterAndSortTemplatesForContext,
+  renderTemplateSamplePreview,
+  ROTULOS_CATEGORIA_MODELO,
+  ROTULOS_ESCOPO_MODELO,
+  ROTULOS_ETAPA_MODELO,
+  sanitizeAvailabilityScopes,
+  sanitizeProcessStages,
+  TEMPLATE_AVAILABILITY_SCOPES,
+  TEMPLATE_CATEGORY_OPTIONS,
+  type TemplateAvailabilityScope,
+} from "@/lib/document-templates";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -206,16 +231,6 @@ const TIPOS = [
   ["outros", "Outros"],
 ] as const;
 
-const ROTULOS_CATEGORIA_MODELO: Record<string, string> = {
-  dfd: "DFD",
-  etp: "ETP",
-  risk_analysis: "Análise de riscos",
-  risk_matrix: "Matriz contratual de riscos",
-  tr: "Termo de Referência",
-  term_addendum_renewal: "Termo aditivo de prorrogação",
-  custom: "Outro documento",
-};
-
 function dataLocal(data: string | null): string {
   if (!data) return "Sem vencimento";
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
@@ -310,12 +325,50 @@ function Documentos() {
   const [baseLegalModelo, setBaseLegalModelo] = useState("");
   const [fonteModelo, setFonteModelo] = useState("");
   const [resumoModelo, setResumoModelo] = useState("");
+  const [escoposModelo, setEscoposModelo] = useState<TemplateAvailabilityScope[]>([
+    "processos",
+    "contratos",
+    "fornecedores",
+    "avulso",
+  ]);
+  const [etapasModelo, setEtapasModelo] = useState<string[]>([]);
+  const [modeloAtivo, setModeloAtivo] = useState(true);
+  const [abaEditorModelo, setAbaEditorModelo] = useState<"edicao" | "previa">("edicao");
   const [salvandoModelo, setSalvandoModelo] = useState(false);
   const [carregandoOriginalModelo, setCarregandoOriginalModelo] = useState(false);
   const [dialogHistoricoModelo, setDialogHistoricoModelo] = useState(false);
   const [modeloHistorico, setModeloHistorico] = useState<Modelo | null>(null);
   const [versoesModelo, setVersoesModelo] = useState<VersaoModelo[]>([]);
   const [carregandoVersoes, setCarregandoVersoes] = useState(false);
+
+  const [buscaVencimento, setBuscaVencimento] = useState("");
+  const [situacaoVencimentoFiltro, setSituacaoVencimentoFiltro] = useState<
+    "todos" | "vencidos" | "30dias" | "em_dia" | "sem_vencimento"
+  >("todos");
+  const [tipoVencimentoFiltro, setTipoVencimentoFiltro] = useState("todos");
+
+  const [buscaModelo, setBuscaModelo] = useState("");
+  const [categoriaModeloFiltro, setCategoriaModeloFiltro] = useState("todas");
+  const [escopoModeloFiltro, setEscopoModeloFiltro] = useState<TemplateAvailabilityScope | "todos">(
+    "todos",
+  );
+  const [statusModeloFiltro, setStatusModeloFiltro] = useState<"active" | "inactive" | "all">(
+    "active",
+  );
+
+  const [modeloPrevia, setModeloPrevia] = useState<Modelo | null>(null);
+  const [previaModo, setPreviaModo] = useState<"exemplo" | "real">("exemplo");
+  const [previaProcessoId, setPreviaProcessoId] = useState("");
+  const [previaContratoId, setPreviaContratoId] = useState("");
+  const [previaFornecedorId, setPreviaFornecedorId] = useState("");
+
+  const [modeloExcluindo, setModeloExcluindo] = useState<Modelo | null>(null);
+  const [processandoExclusaoModelo, setProcessandoExclusaoModelo] = useState(false);
+  const [processandoToggleModeloId, setProcessandoToggleModeloId] = useState<string | null>(null);
+
+  const [buscaGerado, setBuscaGerado] = useState("");
+  const [statusGeradoFiltro, setStatusGeradoFiltro] = useState("todos");
+  const [mostrarTodosModelosGerador, setMostrarTodosModelosGerador] = useState(false);
 
   const [dialogGerar, setDialogGerar] = useState(false);
   const [modeloSelecionado, setModeloSelecionado] = useState("");
@@ -356,6 +409,8 @@ function Documentos() {
     setDialogGerar(false);
     setDocumentoGeradoEditando(null);
     setDocumentoImpressao(null);
+    setModeloPrevia(null);
+    setModeloExcluindo(null);
     setSalvandoDocumento(false);
     setSalvandoModelo(false);
     setSalvandoGerado(false);
@@ -456,7 +511,6 @@ function Documentos() {
             .from("document_templates")
             .select("*")
             .eq("tenant_id", selecionado.id)
-            .eq("is_active", true)
             .order("title")
             .order("id")
             .range(inicio, fim),
@@ -597,10 +651,6 @@ function Documentos() {
   useEffect(() => {
     setSupplierFilter("");
   }, [selecionado?.id]);
-  const visibleDocuments = documentos.filter(
-    (row) => !supplierFilter || row.supplier_id === supplierFilter,
-  );
-
   const fornecedorPorId = useMemo(
     () => new Map(fornecedores.map((f) => [f.id, f])),
     [fornecedores],
@@ -609,6 +659,59 @@ function Documentos() {
     () => new Map(contratos.map((contrato) => [contrato.id, contrato])),
     [contratos],
   );
+  const visibleDocuments = useMemo(() => {
+    const q = buscaVencimento.trim().toLocaleLowerCase("pt-BR");
+    return documentos.filter((row) => {
+      if (supplierFilter && row.supplier_id !== supplierFilter) return false;
+      if (tipoVencimentoFiltro !== "todos" && row.document_type !== tipoVencimentoFiltro) return false;
+      if (situacaoVencimentoFiltro !== "todos") {
+        const sit = situacaoVencimento(row.expires_at);
+        if (situacaoVencimentoFiltro === "vencidos" && sit.label !== "Vencido") return false;
+        if (situacaoVencimentoFiltro === "30dias" && sit.variant !== "secondary") return false;
+        if (situacaoVencimentoFiltro === "em_dia" && sit.label !== "Em dia") return false;
+        if (situacaoVencimentoFiltro === "sem_vencimento" && row.expires_at !== null) return false;
+      }
+      if (q) {
+        const supplier = fornecedorPorId.get(row.supplier_id);
+        const texto = [
+          row.title,
+          row.document_type,
+          row.notes ?? "",
+          row.file_name ?? "",
+          supplier?.legal_name ?? "",
+          supplier?.trade_name ?? "",
+        ]
+          .join(" ")
+          .toLocaleLowerCase("pt-BR");
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [
+    documentos,
+    buscaVencimento,
+    supplierFilter,
+    tipoVencimentoFiltro,
+    situacaoVencimentoFiltro,
+    fornecedorPorId,
+  ]);
+  const colunasVencimentos: CsvColumn<DocumentoFornecedor>[] = [
+    { header: "Documento", value: (d) => d.title },
+    {
+      header: "Tipo",
+      value: (d) => TIPOS.find(([v]) => v === d.document_type)?.[1] ?? d.document_type,
+    },
+    {
+      header: "Fornecedor",
+      value: (d) =>
+        fornecedorPorId.get(d.supplier_id)?.trade_name ||
+        fornecedorPorId.get(d.supplier_id)?.legal_name ||
+        "—",
+    },
+    { header: "Emissão", value: (d) => dataLocal(d.issue_date) },
+    { header: "Vencimento", value: (d) => dataLocal(d.expires_at) },
+    { header: "Situação", value: (d) => situacaoVencimento(d.expires_at).label },
+  ];
   const vencidos = documentos.filter(
     (d) => d.expires_at && situacaoVencimento(d.expires_at).label === "Vencido",
   ).length;
@@ -893,10 +996,125 @@ function Documentos() {
     setArquivoOriginalModelo(null);
     setAvisosModeloDocx([]);
     setTipoModelo("custom");
+    const defaults = defaultTemplateScopeConfig("custom");
+    setEscoposModelo(defaults.availability_scopes);
+    setEtapasModelo(defaults.process_stages);
+    setModeloAtivo(true);
+    setAbaEditorModelo("edicao");
     setBaseLegalModelo("");
     setFonteModelo("");
     setResumoModelo("");
     setDialogModelo(true);
+  }
+
+  function duplicarModelo(modelo: Modelo) {
+    setCarregandoOriginalModelo(false);
+    setModeloEditando(null);
+    setTituloModelo(`${modelo.title} (Cópia)`.slice(0, 180));
+    setDescricaoModelo(modelo.description ?? "");
+    setConteudoModelo(modelo.content);
+    setArquivoOriginalModelo(null);
+    setAvisosModeloDocx([]);
+    setTipoModelo(modelo.template_type);
+    setEscoposModelo(sanitizeAvailabilityScopes(modelo.availability_scopes, modelo.template_type));
+    setEtapasModelo(sanitizeProcessStages(modelo.process_stages));
+    setModeloAtivo(true);
+    setAbaEditorModelo("edicao");
+    setBaseLegalModelo(modelo.legal_basis ?? "");
+    setFonteModelo(modelo.source_reference ?? "");
+    setResumoModelo(`Duplicado a partir de "${modelo.title}" (v${modelo.version}).`);
+    setDialogModelo(true);
+  }
+
+  async function alternarAtivoModelo(modelo: Modelo, nextActive: boolean) {
+    if (!selecionado || !capacidades.can_manage_templates || processandoToggleModeloId) return;
+    const tenantId = selecionado.id;
+    setProcessandoToggleModeloId(modelo.id);
+    const { error: toggleError } = await db.rpc("set_document_template_active", {
+      p_tenant_id: tenantId,
+      p_template_id: modelo.id,
+      p_is_active: nextActive,
+    });
+    if (tenantIdRef.current !== tenantId) return;
+    setProcessandoToggleModeloId(null);
+    if (toggleError) {
+      toast.error(toggleError.message);
+      return;
+    }
+    toast.success(
+      nextActive
+        ? `Modelo "${modelo.title}" reativado e disponível nos fluxos configurados.`
+        : `Modelo "${modelo.title}" inativado. Documentos já emitidos continuam preservados.`,
+    );
+    await carregar();
+  }
+
+  async function confirmarExcluirModelo() {
+    if (!selecionado || !modeloExcluindo || !capacidades.can_manage_templates || processandoExclusaoModelo)
+      return;
+    const tenantId = selecionado.id;
+    const target = modeloExcluindo;
+    setProcessandoExclusaoModelo(true);
+    const { data: storagePaths, error: deleteError } = await db.rpc("delete_document_template", {
+      p_tenant_id: tenantId,
+      p_template_id: target.id,
+    });
+    if (tenantIdRef.current !== tenantId) return;
+    if (deleteError) {
+      setProcessandoExclusaoModelo(false);
+      toast.error(deleteError.message);
+      return;
+    }
+    if (Array.isArray(storagePaths) && storagePaths.length > 0) {
+      await db.storage.from("gfs-private-documents").remove(storagePaths);
+    }
+    if (tenantIdRef.current !== tenantId) return;
+    setProcessandoExclusaoModelo(false);
+    setModeloExcluindo(null);
+    toast.success(`Modelo "${target.title}" excluído definitivamente.`);
+    await carregar();
+  }
+
+  function abrirPreviaModelo(modelo: Modelo) {
+    setPreviaModo("exemplo");
+    setPreviaProcessoId("");
+    setPreviaContratoId("");
+    setPreviaFornecedorId("");
+    setModeloPrevia(modelo);
+  }
+
+  function alternarEscopoModelo(scope: TemplateAvailabilityScope) {
+    setEscoposModelo((atual) => {
+      const existe = atual.includes(scope);
+      if (existe && atual.length === 1) {
+        toast.warning("Selecione pelo menos um local onde o modelo ficará disponível.");
+        return atual;
+      }
+      const next = existe ? atual.filter((item) => item !== scope) : [...atual, scope];
+      if (scope === "processos" && existe) {
+        setEtapasModelo([]);
+      }
+      return next;
+    });
+  }
+
+  function alternarEtapaModelo(stageId: string) {
+    setEtapasModelo((atual) =>
+      atual.includes(stageId) ? atual.filter((item) => item !== stageId) : [...atual, stageId],
+    );
+  }
+
+  function usarModeloNoGerador(modelo: Modelo) {
+    setModeloPrevia(null);
+    setModeloSelecionado(modelo.id);
+    setCamposComplementares({});
+    setTituloGerado(modelo.title);
+    setConteudoGerado(modelo.content);
+    setProcessoGeracao("");
+    setContratoGeracao("");
+    setFornecedorGeracao("nenhum");
+    setMostrarTodosModelosGerador(true);
+    setDialogGerar(true);
   }
 
   async function iniciarEdicaoModelo(modelo: Modelo) {
@@ -909,6 +1127,10 @@ function Documentos() {
     setArquivoOriginalModelo(null);
     setAvisosModeloDocx([]);
     setTipoModelo(modelo.template_type);
+    setEscoposModelo(sanitizeAvailabilityScopes(modelo.availability_scopes, modelo.template_type));
+    setEtapasModelo(sanitizeProcessStages(modelo.process_stages));
+    setModeloAtivo(modelo.is_active);
+    setAbaEditorModelo("edicao");
     setBaseLegalModelo(modelo.legal_basis ?? "");
     setFonteModelo(modelo.source_reference ?? "");
     setResumoModelo("");
@@ -1147,6 +1369,10 @@ function Documentos() {
         return;
       }
     }
+    const escoposSanitizados = sanitizeAvailabilityScopes(escoposModelo, tipoModelo);
+    const etapasSanitizadas = escoposSanitizados.includes("processos")
+      ? sanitizeProcessStages(etapasModelo)
+      : [];
     const payload = {
       title: tituloModelo.trim(),
       description: descricaoModelo.trim() || null,
@@ -1154,6 +1380,9 @@ function Documentos() {
       template_type: tipoModelo,
       legal_basis: baseLegalModelo.trim() || null,
       source_reference: fonteModelo.trim() || null,
+      availability_scopes: escoposSanitizados,
+      process_stages: etapasSanitizadas,
+      is_active: modeloAtivo,
       variables_schema: buildDocumentTemplateSchema(
         conteudoModelo.trim(),
         modeloAtual?.variables_schema,
@@ -1266,13 +1495,15 @@ function Documentos() {
     await carregar();
   }
 
-  function iniciarGeracao(processoId = "") {
+  function iniciarGeracao(processoId = "", supplierId = "nenhum") {
     setModeloSelecionado("");
     setProcessoGeracao(processoId);
+    setContratoGeracao("");
     setCamposComplementares({});
-    setFornecedorGeracao("nenhum");
+    setFornecedorGeracao(supplierId);
     setTituloGerado("");
     setConteudoGerado("");
+    setMostrarTodosModelosGerador(false);
     setDialogGerar(true);
   }
 
@@ -1283,13 +1514,16 @@ function Documentos() {
     const contratoId = params.get("contrato");
     const tipoSolicitado = params.get("tipo");
     const codigoModelo = params.get("modelo");
-    if ((!processoId && !contratoId) || (!tipoSolicitado && !codigoModelo)) return;
+    const modeloIdSolicitado = params.get("modeloId");
+    if ((!processoId && !contratoId) || (!tipoSolicitado && !codigoModelo && !modeloIdSolicitado))
+      return;
 
     const limparParametros = () => {
       params.delete("processo");
       params.delete("contrato");
       params.delete("tipo");
       params.delete("modelo");
+      params.delete("modeloId");
       const query = params.toString();
       window.history.replaceState(
         window.history.state,
@@ -1336,9 +1570,11 @@ function Documentos() {
     const modelo = modelos.find(
       (item) =>
         item.is_active &&
-        (codigoModelo
-          ? item.template_code === codigoModelo
-          : item.template_type === tipoSolicitado),
+        (modeloIdSolicitado
+          ? item.id === modeloIdSolicitado
+          : codigoModelo
+            ? item.template_code === codigoModelo
+            : item.template_type === tipoSolicitado),
     );
     if (contratoId && codigoModelo && !modelo) {
       if (moduloModelosAtivo && capacidades.can_manage_templates) {
@@ -1571,6 +1807,172 @@ function Documentos() {
       .filter((m) => m.catalog_template_id && m.is_active)
       .map((m) => m.catalog_template_id as string),
   );
+  const modelosAtivosCount = useMemo(
+    () => modelos.filter((m) => m.is_active).length,
+    [modelos],
+  );
+  const geradosPorModeloCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of gerados) {
+      if (item.template_id) {
+        counts.set(item.template_id, (counts.get(item.template_id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [gerados]);
+  const modelosFiltradosNaAba = useMemo(
+    () =>
+      filterAndSortTemplatesForContext(modelos, {
+        search: buscaModelo,
+        category: categoriaModeloFiltro,
+        scope: escopoModeloFiltro,
+        status: statusModeloFiltro,
+        includeOutOfScope: escopoModeloFiltro === "todos",
+      }),
+    [modelos, buscaModelo, categoriaModeloFiltro, escopoModeloFiltro, statusModeloFiltro],
+  );
+  const escopoGerador: TemplateAvailabilityScope = contratoGeracao
+    ? "contratos"
+    : processoGeracao
+      ? "processos"
+      : fornecedorGeracao !== "nenhum"
+        ? "fornecedores"
+        : "avulso";
+  const modelosDisponiveisGerador = useMemo(
+    () =>
+      filterAndSortTemplatesForContext(modelos, {
+        scope: escopoGerador,
+        processStage: processoDoGerador?.stage ?? null,
+        status: "active",
+        includeOutOfScope: mostrarTodosModelosGerador,
+      }),
+    [modelos, escopoGerador, processoDoGerador?.stage, mostrarTodosModelosGerador],
+  );
+  const geradosFiltrados = useMemo(() => {
+    const q = buscaGerado.trim().toLocaleLowerCase("pt-BR");
+    return gerados.filter((d) => {
+      const wfStatus = fluxoPorDocumento.get(d.id)?.status ?? "draft";
+      if (statusGeradoFiltro !== "todos" && wfStatus !== statusGeradoFiltro) return false;
+      if (q) {
+        const texto = [
+          d.title,
+          d.document_type,
+          fornecedorPorId.get(d.supplier_id ?? "")?.legal_name ?? "",
+          contratoPorId.get(d.contract_id ?? "")?.number ?? "",
+          processos.find((p) => p.id === d.process_id)?.number ?? "",
+        ]
+          .join(" ")
+          .toLocaleLowerCase("pt-BR");
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [gerados, buscaGerado, statusGeradoFiltro, fluxoPorDocumento, fornecedorPorId, contratoPorId, processos]);
+
+  const previaEditorResultado = useMemo(() => {
+    if (!dialogModelo) return null;
+    const context = buildSamplePreviewContext({
+      tenantName: selecionado?.nome ?? null,
+      municipality: municipioSecretaria || null,
+      state: ufSecretaria || null,
+      cnpj: cnpjSecretaria || null,
+      ibgeCode: codigoIbgeSecretaria || null,
+      userEmail: session?.user.email ?? null,
+    });
+    return renderTemplateSamplePreview({ content: conteudoModelo || "", context });
+  }, [
+    dialogModelo,
+    conteudoModelo,
+    selecionado?.nome,
+    municipioSecretaria,
+    ufSecretaria,
+    cnpjSecretaria,
+    codigoIbgeSecretaria,
+    session?.user.email,
+  ]);
+
+  const previaModalResultado = useMemo(() => {
+    if (!modeloPrevia) return null;
+    const proc =
+      previaModo === "real" && previaProcessoId
+        ? processos.find((item) => item.id === previaProcessoId) ?? null
+        : null;
+    const cont =
+      previaModo === "real" && previaContratoId
+        ? contratos.find((item) => item.id === previaContratoId) ?? null
+        : null;
+    const fornId = cont?.supplier_id ?? (previaModo === "real" ? previaFornecedorId : "");
+    const forn = fornId ? fornecedorPorId.get(fornId) ?? null : null;
+
+    const context = buildSamplePreviewContext({
+      tenantName: selecionado?.nome ?? null,
+      municipality: municipioSecretaria || null,
+      state: ufSecretaria || null,
+      cnpj: cnpjSecretaria || null,
+      ibgeCode: codigoIbgeSecretaria || null,
+      userEmail: session?.user.email ?? null,
+      ...(previaModo === "real"
+        ? {
+            overrideContext: {
+              process: proc
+                ? {
+                    number: proc.number,
+                    title: proc.title,
+                    description: proc.description,
+                    modality: proc.modality,
+                    stage: proc.stage,
+                    status: proc.status,
+                    priority: proc.priority,
+                    requestingUnit: proc.requesting_unit,
+                    responsibleName: proc.responsible_name,
+                    estimatedValue: proc.estimated_value,
+                    dueDate: proc.due_date,
+                  }
+                : null,
+              contract: cont
+                ? {
+                    number: cont.number,
+                    object: cont.object,
+                    modality: cont.modality,
+                    totalValue: cont.total_value,
+                    startDate: cont.start_date,
+                    endDate: cont.end_date,
+                    managerName: cont.manager_name,
+                    inspectorName: cont.inspector_name,
+                    ordinance: cont.ordinance,
+                  }
+                : null,
+              supplier: forn
+                ? {
+                    legalName: forn.legal_name,
+                    tradeName: forn.trade_name,
+                    cnpj: forn.cnpj,
+                    email: null,
+                    phone: null,
+                  }
+                : null,
+            },
+          }
+        : {}),
+    });
+
+    return renderTemplateSamplePreview({ content: modeloPrevia.content, context });
+  }, [
+    modeloPrevia,
+    previaModo,
+    previaProcessoId,
+    previaContratoId,
+    previaFornecedorId,
+    processos,
+    contratos,
+    fornecedorPorId,
+    selecionado?.nome,
+    municipioSecretaria,
+    ufSecretaria,
+    cnpjSecretaria,
+    codigoIbgeSecretaria,
+    session?.user.email,
+  ]);
 
   function abrirEdicaoGerado(documento: DocumentoGerado) {
     setDocumentoGeradoEditando(documento);
@@ -2120,25 +2522,80 @@ function Documentos() {
           </div>
 
           <Tabs value={aba} onValueChange={setAba} className="print:hidden">
-            <TabsList>
-              <TabsTrigger value="vencimentos">Vencimentos</TabsTrigger>
+            <TabsList className="h-auto flex-wrap">
+              <TabsTrigger value="vencimentos">Vencimentos ({documentos.length})</TabsTrigger>
               {moduloModelosAtivo && (
-                <TabsTrigger value="modelos">Modelos ({modelos.length})</TabsTrigger>
+                <TabsTrigger value="modelos">
+                  Modelos ({modelosAtivosCount}
+                  {modelos.length > modelosAtivosCount ? ` / ${modelos.length}` : ""})
+                </TabsTrigger>
               )}
               <TabsTrigger value="gerados">Gerados ({gerados.length})</TabsTrigger>
               {moduloModelosAtivo && capacidades.can_manage_templates && (
                 <TabsTrigger value="biblioteca">Biblioteca-base ({catalogo.length})</TabsTrigger>
               )}
             </TabsList>
-            <TabsContent value="vencimentos" className="mt-4">
+            <TabsContent value="vencimentos" className="mt-4 space-y-3">
               {supplierFilter && (
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <p>Documentos de {fornecedorPorId.get(supplierFilter)?.legal_name}</p>
-                  <Button variant="outline" onClick={() => setSupplierFilter("")}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium">
+                    Documentos de {fornecedorPorId.get(supplierFilter)?.legal_name}
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => setSupplierFilter("")}>
                     Ver todos os fornecedores
                   </Button>
                 </div>
               )}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-9"
+                      aria-label="Pesquisar documentos e fornecedores"
+                      placeholder="Buscar documento, fornecedor ou arquivo"
+                      value={buscaVencimento}
+                      onChange={(e) => setBuscaVencimento(e.target.value)}
+                    />
+                  </div>
+                  <Select
+                    value={situacaoVencimentoFiltro}
+                    onValueChange={(value) =>
+                      setSituacaoVencimentoFiltro(value as typeof situacaoVencimentoFiltro)
+                    }
+                  >
+                    <SelectTrigger className="w-[185px]" aria-label="Filtrar por situação">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as situações</SelectItem>
+                      <SelectItem value="vencidos">Vencidos ({vencidos})</SelectItem>
+                      <SelectItem value="30dias">Vencem em até 30d ({proximos})</SelectItem>
+                      <SelectItem value="em_dia">Em dia</SelectItem>
+                      <SelectItem value="sem_vencimento">Sem vencimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={tipoVencimentoFiltro} onValueChange={setTipoVencimentoFiltro}>
+                    <SelectTrigger className="w-[180px]" aria-label="Filtrar por tipo documental">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os tipos</SelectItem>
+                      {TIPOS.map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <ReportExportActions
+                  title="Documentos e Controle de Vencimentos"
+                  filename={`documentos-vencimentos-${new Date().toISOString().slice(0, 10)}`}
+                  columns={colunasVencimentos}
+                  rows={visibleDocuments}
+                />
+              </div>
               <div className="overflow-hidden rounded-lg border bg-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2210,6 +2667,37 @@ function Documentos() {
                                       </a>
                                     </Button>
                                   )}
+                                  {capacidades.can_create &&
+                                    (status.label === "Vencido" || status.variant === "secondary") && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          iniciarGeracao("", d.supplier_id);
+                                          const notifModel = modelos.find(
+                                            (mod) =>
+                                              mod.is_active && mod.template_type === "notificacao",
+                                          );
+                                          if (notifModel) {
+                                            setModeloSelecionado(notifModel.id);
+                                            setTituloGerado(
+                                              `Notificação de vencimento — ${d.title}`.slice(0, 180),
+                                            );
+                                            setConteudoGerado(notifModel.content);
+                                          } else {
+                                            setTituloGerado(
+                                              `Solicitação de renovação — ${d.title}`.slice(0, 180),
+                                            );
+                                            setConteudoGerado(
+                                              `Prezado fornecedor {{fornecedor}} (CNPJ {{cnpj}}),\n\nSolicitamos o envio atualizado do documento "${d.title}" (${TIPOS.find(([v]) => v === d.document_type)?.[1] ?? d.document_type}), com vencimento registrado em ${dataLocal(d.expires_at)}, visando manter a regularidade fiscal e cadastral junto à {{secretaria}}.\n\nAtenciosamente,\n{{usuario}}\n{{secretaria}}`,
+                                            );
+                                          }
+                                        }}
+                                        title="Gerar notificação de renovação para este fornecedor"
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" /> Cobrar renovação
+                                      </Button>
+                                    )}
                                   {capacidades.can_update && (
                                     <Button
                                       size="icon"
@@ -2247,56 +2735,197 @@ function Documentos() {
               </p>
             </TabsContent>
             {moduloModelosAtivo && (
-              <TabsContent value="modelos" className="mt-4">
+              <TabsContent value="modelos" className="mt-4 space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-9"
+                      aria-label="Pesquisar modelos de documentos"
+                      placeholder="Buscar por nome, descrição ou base normativa"
+                      value={buscaModelo}
+                      onChange={(e) => setBuscaModelo(e.target.value)}
+                    />
+                  </div>
+                  <Select value={categoriaModeloFiltro} onValueChange={setCategoriaModeloFiltro}>
+                    <SelectTrigger className="w-[190px]" aria-label="Filtrar por categoria">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as categorias</SelectItem>
+                      {TEMPLATE_CATEGORY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={escopoModeloFiltro}
+                    onValueChange={(value) =>
+                      setEscopoModeloFiltro(value as TemplateAvailabilityScope | "todos")
+                    }
+                  >
+                    <SelectTrigger className="w-[205px]" aria-label="Filtrar por onde usar">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os fluxos de uso</SelectItem>
+                      {TEMPLATE_AVAILABILITY_SCOPES.map((scope) => (
+                        <SelectItem key={scope.id} value={scope.id}>
+                          {scope.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={statusModeloFiltro}
+                    onValueChange={(value) =>
+                      setStatusModeloFiltro(value as "active" | "inactive" | "all")
+                    }
+                  >
+                    <SelectTrigger className="w-[140px]" aria-label="Filtrar por status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Somente ativos</SelectItem>
+                      <SelectItem value="inactive">Inativos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid gap-3 md:grid-cols-2">
-                  {modelos.map((m) => (
-                    <Card key={m.id}>
-                      <CardHeader>
-                        <CardTitle className="text-base">{m.title}</CardTitle>
-                        {m.description && (
-                          <p className="text-sm text-muted-foreground">{m.description}</p>
-                        )}
-                      </CardHeader>
-                      <CardContent>
-                        <p className="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
-                          {m.content}
-                        </p>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline">Versão {m.version}</Badge>
-                          <Badge variant="outline">
-                            {ROTULOS_CATEGORIA_MODELO[m.template_type] ?? m.template_type}
-                          </Badge>
-                          {m.legal_basis && <span>{m.legal_basis}</span>}
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Campos automáticos: processo, objeto, Secretaria, município, unidade,
-                          responsável, prioridade e prazo quando cadastrados.
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void abrirHistoricoModelo(m)}
-                          >
-                            <History className="h-4 w-4" /> Histórico
-                          </Button>
-                          {capacidades.can_manage_templates && (
+                  {modelosFiltradosNaAba.map((m) => {
+                    const docsCount = geradosPorModeloCount.get(m.id) ?? 0;
+                    const placeholders = extractTemplatePlaceholders(m.content);
+                    const etapasResumo = sanitizeProcessStages(m.process_stages);
+                    return (
+                      <Card key={m.id} className={!m.is_active ? "opacity-75" : undefined}>
+                        <CardHeader className="pb-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <CardTitle className="text-base">{m.title}</CardTitle>
+                              {m.description && (
+                                <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>
+                              )}
+                            </div>
+                            <Badge variant={m.is_active ? "secondary" : "outline"}>
+                              {m.is_active ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="line-clamp-4 whitespace-pre-wrap rounded bg-muted/30 p-2.5 text-sm text-muted-foreground">
+                            {m.content}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                            <Badge variant="outline">Versão {m.version}</Badge>
+                            <Badge variant="outline">
+                              {ROTULOS_CATEGORIA_MODELO[m.template_type] ?? m.template_type}
+                            </Badge>
+                            {m.legal_basis && <span className="truncate">{m.legal_basis}</span>}
+                          </div>
+                          <div className="mt-2.5 space-y-1 text-xs">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="font-medium text-foreground">
+                                Disponível em:
+                              </span>
+                              {m.scopesResolved.map((scope) => (
+                                <Badge key={scope} variant="outline" className="text-[11px]">
+                                  {ROTULOS_ESCOPO_MODELO[scope] ?? scope}
+                                </Badge>
+                              ))}
+                            </div>
+                            {m.scopesResolved.includes("processos") && etapasResumo.length > 0 && (
+                              <p className="text-muted-foreground">
+                                <strong>Etapas do processo:</strong>{" "}
+                                {etapasResumo.map((e) => ROTULOS_ETAPA_MODELO[e] ?? e).join(" · ")}
+                              </p>
+                            )}
+                            <p className="text-muted-foreground">
+                              Campos: {placeholders.automatic.length} automático(s) ·{" "}
+                              {placeholders.manualOrCustom.length} complementar(es)
+                              {docsCount > 0 ? ` · ${docsCount} documento(s) gerado(s)` : ""}
+                            </p>
+                          </div>
+                          <div className="mt-4 flex flex-wrap gap-1.5">
+                            {capacidades.can_create && m.is_active && (
+                              <Button size="sm" onClick={() => usarModeloNoGerador(m)}>
+                                <FilePlus2 className="h-4 w-4" /> Usar modelo
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => void iniciarEdicaoModelo(m)}
+                              onClick={() => abrirPreviaModelo(m)}
                             >
-                              <Pencil className="h-4 w-4" /> Editar modelo
+                              <Eye className="h-4 w-4" /> Prévia
                             </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {modelos.length === 0 && (
+                            {capacidades.can_manage_templates && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => void iniciarEdicaoModelo(m)}
+                              >
+                                <Pencil className="h-4 w-4" /> Editar
+                              </Button>
+                            )}
+                            {capacidades.can_manage_templates && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => duplicarModelo(m)}
+                                title="Criar uma cópia editável deste modelo"
+                              >
+                                <Copy className="h-4 w-4" /> Duplicar
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => void abrirHistoricoModelo(m)}
+                            >
+                              <History className="h-4 w-4" /> Histórico
+                            </Button>
+                            {capacidades.can_manage_templates && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={processandoToggleModeloId === m.id}
+                                onClick={() => void alternarAtivoModelo(m, !m.is_active)}
+                              >
+                                {m.is_active ? (
+                                  <>
+                                    <Archive className="h-4 w-4" /> Inativar
+                                  </>
+                                ) : (
+                                  <>
+                                    <RotateCcw className="h-4 w-4" /> Reativar
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            {capacidades.can_manage_templates && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setModeloExcluindo(m)}
+                              >
+                                <Trash2 className="h-4 w-4" /> Excluir
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {modelosFiltradosNaAba.length === 0 && (
                     <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground md:col-span-2">
-                      Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um
-                      texto-base.
+                      {modelos.length === 0
+                        ? "Nenhum modelo cadastrado. Use “Novo modelo” para importar ou colar um texto-base."
+                        : "Nenhum modelo encontrado para os filtros atuais."}
                     </div>
                   )}
                 </div>
@@ -2362,7 +2991,33 @@ function Documentos() {
                 </div>
               </TabsContent>
             )}
-            <TabsContent value="gerados" className="mt-4">
+            <TabsContent value="gerados" className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    aria-label="Pesquisar documentos gerados"
+                    placeholder="Buscar título, processo, contrato ou fornecedor"
+                    value={buscaGerado}
+                    onChange={(e) => setBuscaGerado(e.target.value)}
+                  />
+                </div>
+                <Select value={statusGeradoFiltro} onValueChange={setStatusGeradoFiltro}>
+                  <SelectTrigger className="w-[210px]" aria-label="Filtrar situação do fluxo">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as situações</SelectItem>
+                    <SelectItem value="draft">Em elaboração</SelectItem>
+                    <SelectItem value="pending_approval">Aguardando aprovação</SelectItem>
+                    <SelectItem value="approved">Aprovado (pronto p/ assinatura)</SelectItem>
+                    <SelectItem value="rejected">Devolvido para correção</SelectItem>
+                    <SelectItem value="signed">Assinado</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="overflow-hidden rounded-lg border bg-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2376,14 +3031,16 @@ function Documentos() {
                       </tr>
                     </thead>
                     <tbody>
-                      {gerados.length === 0 ? (
+                      {geradosFiltrados.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="p-10 text-center text-muted-foreground">
-                            Nenhum documento gerado.
+                            {gerados.length === 0
+                              ? "Nenhum documento gerado."
+                              : "Nenhum documento corresponde aos filtros aplicados."}
                           </td>
                         </tr>
                       ) : (
-                        gerados.map((d) => {
+                        geradosFiltrados.map((d) => {
                           const camposPendentes = extractPendingDocumentFields(d.content_snapshot);
                           return (
                             <tr key={d.id} id={`gerado-${d.id}`} className="border-t">
@@ -2745,184 +3402,307 @@ function Documentos() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>
               {modeloEditando ? "Editar modelo de documento" : "Novo modelo de documento"}
             </DialogTitle>
             <DialogDescription>
               {modeloEditando
-                ? "A alteração cria uma nova versão e preserva as versões anteriores e os documentos já gerados."
-                : "Cole ou importe o conteúdo do modelo que será usado para gerar documentos. A versão original fica salva nesta Secretaria."}
+                ? "Configure onde o modelo fica disponível e edite o conteúdo. Alterações de texto criam uma nova versão preservando o histórico."
+                : "Configure o texto, os campos automáticos e onde este modelo ficará disponível nos fluxos da Secretaria."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={salvarModelo} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome do modelo *</Label>
-              <Input
-                required
-                minLength={2}
-                maxLength={180}
-                value={tituloModelo}
-                onChange={(e) => setTituloModelo(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Categoria do modelo</Label>
-              <Select value={tipoModelo} onValueChange={setTipoModelo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dfd">DFD</SelectItem>
-                  <SelectItem value="etp">ETP</SelectItem>
-                  <SelectItem value="risk_analysis">Análise de riscos</SelectItem>
-                  <SelectItem value="risk_matrix">Matriz contratual de riscos</SelectItem>
-                  <SelectItem value="tr">Termo de Referência</SelectItem>
-                  <SelectItem value="term_addendum_renewal">
-                    Termo aditivo de prorrogação
-                  </SelectItem>
-                  <SelectItem value="custom">Outro documento</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Descrição</Label>
-              <Input
-                maxLength={1000}
-                value={descricaoModelo}
-                onChange={(e) => setDescricaoModelo(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Base normativa ou fundamento</Label>
-                <Input
-                  maxLength={2000}
-                  value={baseLegalModelo}
-                  onChange={(e) => setBaseLegalModelo(e.target.value)}
-                  placeholder="Indique a referência a revisar localmente"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fonte oficial ou referência</Label>
-                <Input
-                  maxLength={2000}
-                  value={fonteModelo}
-                  onChange={(e) => setFonteModelo(e.target.value)}
-                  placeholder="URL ou identificação da fonte"
-                />
-              </div>
-            </div>
-            {modeloEditando && (
-              <div className="space-y-2">
-                <Label>Resumo da alteração</Label>
-                <Input
-                  maxLength={500}
-                  value={resumoModelo}
-                  onChange={(e) => setResumoModelo(e.target.value)}
-                  placeholder="Ex.: Adequação ao regulamento municipal e ao objeto."
-                />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="arquivo-modelo">Importar modelo (.docx, .txt ou .md)</Label>
-              <Input
-                id="arquivo-modelo"
-                type="file"
-                accept=".docx,.txt,.md,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-                onChange={(e) => {
-                  void importarModelo(e.target.files?.[0]);
-                  e.currentTarget.value = "";
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                No DOCX, o texto fica editável e o Word original fica vinculado a esta versão.
-                <br />
-                Alterar o texto abaixo descarta o vínculo com o arquivo importado; importe novamente
-                para preservar sua formatação. Também é possível copiar e colar texto.
-              </p>
-              {arquivoOriginalModelo && (
-                <p className="text-xs text-primary">Word original: {arquivoOriginalModelo.name}</p>
-              )}
-              {avisosModeloDocx.length > 0 && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>O modelo contém recursos que exigem atenção</AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc space-y-1 pl-4">
-                      {avisosModeloDocx.map((warning) => (
-                        <li key={warning.code}>{warning.message}</li>
-                      ))}
-                    </ul>
-                    O Word original mantém esses recursos. A exportação PDF será bloqueada quando
-                    eles puderem causar perda de conteúdo ou paginação incorreta.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Texto do modelo *</Label>
-              {carregandoOriginalModelo && (
-                <p className="text-xs text-muted-foreground">
-                  Carregando o Word original da versão para preservar o arquivo na próxima
-                  gravação...
-                </p>
-              )}
-              {arquivoOriginalModelo && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Word original vinculado</AlertTitle>
-                  <AlertDescription>
-                    O arquivo original será preservado se o texto permanecer sem alterações. Esta
-                    caixa é um editor textual; ao editar o texto ou inserir campos, o vínculo com o
-                    Word será removido. Para manter estilos e tabelas, ajuste o arquivo no Word e
-                    importe novamente.
-                  </AlertDescription>
-                </Alert>
-              )}
-              <Textarea
-                ref={conteudoModeloRef}
-                required
-                disabled={carregandoOriginalModelo}
-                rows={12}
-                maxLength={50000}
-                value={conteudoModelo}
-                onChange={(e) => {
-                  if (arquivoOriginalModelo) {
-                    toast.warning(
-                      "A edição textual desvinculou o Word original; esta versão será gerada a partir do texto.",
-                    );
-                  }
-                  setConteudoModelo(e.target.value);
-                  setArquivoOriginalModelo(null);
-                  setAvisosModeloDocx([]);
-                }}
-                placeholder="Escreva ou importe o conteúdo e insira os campos que deseja preencher automaticamente."
-              />
-              <details className="rounded-md border p-3">
-                <summary className="cursor-pointer text-sm font-medium">
-                  Inserir campo automático
-                </summary>
-                <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
-                  {DOCUMENT_TEMPLATE_VARIABLES.map((variable) => (
-                    <Button
-                      key={variable.key}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="justify-start font-mono text-xs"
-                      onClick={() => inserirCampoModelo(variable.key)}
+            <Tabs
+              value={abaEditorModelo}
+              onValueChange={(value) => setAbaEditorModelo(value as "edicao" | "previa")}
+            >
+              <TabsList>
+                <TabsTrigger value="edicao">Configuração e Texto</TabsTrigger>
+                <TabsTrigger value="previa">
+                  <Eye className="mr-1.5 h-4 w-4" /> Prévia em tempo real
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="edicao" className="mt-4 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Nome do modelo *</Label>
+                    <Input
+                      required
+                      minLength={2}
+                      maxLength={180}
+                      value={tituloModelo}
+                      onChange={(e) => setTituloModelo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Categoria do modelo</Label>
+                    <Select
+                      value={tipoModelo}
+                      onValueChange={(value) => {
+                        setTipoModelo(value);
+                        if (!modeloEditando) {
+                          const suggested = defaultTemplateScopeConfig(value);
+                          setEscoposModelo(suggested.availability_scopes);
+                          setEtapasModelo(suggested.process_stages);
+                        }
+                      }}
                     >
-                      {"{{" + variable.key + "}}"}
-                      <span className="ml-2 truncate font-sans text-muted-foreground">
-                        {variable.label}
-                      </span>
-                    </Button>
-                  ))}
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TEMPLATE_CATEGORY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição</Label>
+                    <Input
+                      maxLength={1000}
+                      value={descricaoModelo}
+                      onChange={(e) => setDescricaoModelo(e.target.value)}
+                      placeholder="Finalidade e orientações breves de preenchimento"
+                    />
+                  </div>
                 </div>
-              </details>
-            </div>
+
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" aria-hidden />
+                      <Label className="text-sm font-semibold">
+                        Onde este modelo fica disponível para uso *
+                      </Label>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-medium">
+                      <input
+                        type="checkbox"
+                        checked={modeloAtivo}
+                        onChange={(event) => setModeloAtivo(event.target.checked)}
+                      />
+                      Modelo ativo e liberado para geração
+                    </label>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {TEMPLATE_AVAILABILITY_SCOPES.map((scope) => {
+                      const marcado = escoposModelo.includes(scope.id);
+                      return (
+                        <label
+                          key={scope.id}
+                          className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-xs ${
+                            marcado ? "border-primary/50 bg-background" : "bg-background/60"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={marcado}
+                            onChange={() => alternarEscopoModelo(scope.id)}
+                          />
+                          <span>
+                            <strong className="block text-foreground">{scope.label}</strong>
+                            <span className="text-muted-foreground">{scope.description}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {escoposModelo.includes("processos") && (
+                    <div className="space-y-2 border-t pt-3">
+                      <Label className="text-xs font-semibold">
+                        Etapas do Fluxo de Processo onde é recomendado (opcional)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Quando selecionadas, o sistema destaca este modelo automaticamente dentro dos
+                        processos que estiverem nessas etapas.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ETAPAS.map((etapa) => {
+                          const selecionada = etapasModelo.includes(etapa.id);
+                          return (
+                            <Button
+                              key={etapa.id}
+                              type="button"
+                              size="sm"
+                              variant={selecionada ? "default" : "outline"}
+                              aria-pressed={selecionada}
+                              className="h-7 text-xs"
+                              onClick={() => alternarEtapaModelo(etapa.id)}
+                            >
+                              {etapa.nome}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Base normativa ou fundamento</Label>
+                    <Input
+                      maxLength={2000}
+                      value={baseLegalModelo}
+                      onChange={(e) => setBaseLegalModelo(e.target.value)}
+                      placeholder="Ex.: Lei nº 14.133/2021, art. 18"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fonte oficial ou referência</Label>
+                    <Input
+                      maxLength={2000}
+                      value={fonteModelo}
+                      onChange={(e) => setFonteModelo(e.target.value)}
+                      placeholder="URL ou identificação da fonte"
+                    />
+                  </div>
+                </div>
+                {modeloEditando && (
+                  <div className="space-y-2">
+                    <Label>Resumo da alteração</Label>
+                    <Input
+                      maxLength={500}
+                      value={resumoModelo}
+                      onChange={(e) => setResumoModelo(e.target.value)}
+                      placeholder="Ex.: Adequação ao regulamento municipal e inclusão de fluxo de processo."
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="arquivo-modelo">Importar modelo (.docx, .txt ou .md)</Label>
+                  <Input
+                    id="arquivo-modelo"
+                    type="file"
+                    accept=".docx,.txt,.md,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                    onChange={(e) => {
+                      void importarModelo(e.target.files?.[0]);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    No DOCX, o texto fica editável e o Word original fica vinculado a esta versão.
+                    <br />
+                    Alterar o texto abaixo descarta o vínculo com o arquivo importado; importe
+                    novamente para preservar sua formatação. Também é possível copiar e colar texto.
+                  </p>
+                  {arquivoOriginalModelo && (
+                    <p className="text-xs text-primary">Word original: {arquivoOriginalModelo.name}</p>
+                  )}
+                  {avisosModeloDocx.length > 0 && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>O modelo contém recursos que exigem atenção</AlertTitle>
+                      <AlertDescription>
+                        <ul className="list-disc space-y-1 pl-4">
+                          {avisosModeloDocx.map((warning) => (
+                            <li key={warning.code}>{warning.message}</li>
+                          ))}
+                        </ul>
+                        O Word original mantém esses recursos. A exportação PDF será bloqueada quando
+                        eles puderem causar perda de conteúdo ou paginação incorreta.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Texto do modelo *</Label>
+                  {carregandoOriginalModelo && (
+                    <p className="text-xs text-muted-foreground">
+                      Carregando o Word original da versão para preservar o arquivo na próxima
+                      gravação...
+                    </p>
+                  )}
+                  {arquivoOriginalModelo && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Word original vinculado</AlertTitle>
+                      <AlertDescription>
+                        O arquivo original será preservado se o texto permanecer sem alterações. Esta
+                        caixa é um editor textual; ao editar o texto ou inserir campos, o vínculo com
+                        o Word será removido. Para manter estilos e tabelas, ajuste o arquivo no Word
+                        e importe novamente.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <Textarea
+                    ref={conteudoModeloRef}
+                    required
+                    disabled={carregandoOriginalModelo}
+                    rows={12}
+                    maxLength={50000}
+                    value={conteudoModelo}
+                    onChange={(e) => {
+                      if (arquivoOriginalModelo) {
+                        toast.warning(
+                          "A edição textual desvinculou o Word original; esta versão será gerada a partir do texto.",
+                        );
+                      }
+                      setConteudoModelo(e.target.value);
+                      setArquivoOriginalModelo(null);
+                      setAvisosModeloDocx([]);
+                    }}
+                    placeholder="Escreva ou importe o conteúdo e insira os campos que deseja preencher automaticamente."
+                  />
+                  <details className="rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Inserir campo automático
+                    </summary>
+                    <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
+                      {DOCUMENT_TEMPLATE_VARIABLES.map((variable) => (
+                        <Button
+                          key={variable.key}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="justify-start font-mono text-xs"
+                          onClick={() => inserirCampoModelo(variable.key)}
+                        >
+                          {"{{" + variable.key + "}}"}
+                          <span className="ml-2 truncate font-sans text-muted-foreground">
+                            {variable.label}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="previa" className="mt-4 space-y-3">
+                <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Esta prévia simula como o documento ficará ao ser gerado com os dados cadastrais da
+                  Secretaria ({selecionado?.nome}) e um contexto ilustrativo de processo, contrato e
+                  fornecedor.
+                </div>
+                {conteudoModelo.trim() ? (
+                  <div className="max-h-[55vh] overflow-y-auto rounded-lg border bg-white p-6 text-sm leading-6 text-slate-900 shadow-inner dark:bg-slate-950 dark:text-slate-100">
+                    <p className="mb-4 text-center text-xs uppercase tracking-wider text-muted-foreground">
+                      {selecionado?.nome}
+                    </p>
+                    <h3 className="mb-4 text-center text-base font-bold">
+                      {tituloModelo.trim() || "Título do modelo"}
+                    </h3>
+                    <div className="whitespace-pre-wrap font-serif">
+                      {previaEditorResultado?.content ?? conteudoModelo}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                    Digite ou importe um texto na aba “Configuração e Texto” para visualizar a prévia.
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogModelo(false)}>
                 Cancelar
@@ -2933,7 +3713,7 @@ function Documentos() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}{" "}
-                {modeloEditando ? "Salvar nova versão" : "Salvar modelo"}
+                {modeloEditando ? "Salvar alterações" : "Salvar modelo"}
               </Button>
             </DialogFooter>
           </form>
@@ -3090,16 +3870,29 @@ function Documentos() {
                   </p>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label>Modelo</Label>
+              <div className="space-y-2 sm:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label>
+                    Modelo ({ROTULOS_ESCOPO_MODELO[escopoGerador] ?? escopoGerador})
+                  </Label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={mostrarTodosModelosGerador}
+                      onChange={(e) => setMostrarTodosModelosGerador(e.target.checked)}
+                    />
+                    Exibir modelos de outros fluxos
+                  </label>
+                </div>
                 <Select value={modeloSelecionado} onValueChange={selecionarModelo}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um modelo" />
+                    <SelectValue placeholder="Selecione um modelo ativo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {modelos.map((m) => (
+                    {modelosDisponiveisGerador.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.title}
+                        {m.recommendedForStage ? " · Recomendado para a etapa" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -3306,6 +4099,208 @@ function Documentos() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!modeloPrevia}
+        onOpenChange={(open) => {
+          if (!open) setModeloPrevia(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Prévia do modelo — {modeloPrevia?.title}</DialogTitle>
+            <DialogDescription>
+              Visualize o layout preenchido e confira quais variáveis serão preenchidas
+              automaticamente com dados reais ou com a massa de demonstração.
+            </DialogDescription>
+          </DialogHeader>
+          {modeloPrevia && (
+            <div className="space-y-4">
+              <div className="grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Modo de preenchimento da prévia</Label>
+                  <Select
+                    value={previaModo}
+                    onValueChange={(value) => setPreviaModo(value as "exemplo" | "real")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exemplo">Dados de demonstração da Secretaria</SelectItem>
+                      <SelectItem value="real">Simular com dados reais cadastrados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {previaModo === "real" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Processo (opcional)</Label>
+                      <Select
+                        value={previaProcessoId || "nenhum"}
+                        onValueChange={(v) => setPreviaProcessoId(v === "nenhum" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Nenhum processo</SelectItem>
+                          {processos.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.number} — {p.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Contrato (opcional)</Label>
+                      <Select
+                        value={previaContratoId || "nenhum"}
+                        onValueChange={(v) => setPreviaContratoId(v === "nenhum" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Nenhum contrato</SelectItem>
+                          {contratos.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.number} — {c.object}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Fornecedor (opcional)</Label>
+                      <Select
+                        value={previaFornecedorId || "nenhum"}
+                        onValueChange={(v) => setPreviaFornecedorId(v === "nenhum" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Nenhum fornecedor</SelectItem>
+                          {fornecedores.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.trade_name || f.legal_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="max-h-[52vh] overflow-y-auto rounded-lg border bg-white p-6 text-sm leading-6 text-slate-900 shadow-inner dark:bg-slate-950 dark:text-slate-100">
+                <p className="mb-4 text-center text-xs uppercase tracking-wider text-muted-foreground">
+                  {selecionado.nome}
+                </p>
+                <h3 className="mb-4 text-center text-base font-bold">{modeloPrevia.title}</h3>
+                <div className="whitespace-pre-wrap font-serif">
+                  {previaModalResultado?.content ?? modeloPrevia.content}
+                </div>
+              </div>
+
+              {previaModalResultado &&
+                (previaModalResultado.missingKeys.length > 0 ||
+                  previaModalResultado.unknownKeys.length > 0) && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Campos complementares ou sem correspondência automática</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {[...previaModalResultado.missingKeys, ...previaModalResultado.unknownKeys].join(
+                        ", ",
+                      )}{" "}
+                      — serão solicitados ou preenchidos durante a geração do documento.
+                    </AlertDescription>
+                  </Alert>
+                )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModeloPrevia(null)}>
+              Fechar
+            </Button>
+            {modeloPrevia && capacidades.can_create && modeloPrevia.is_active && (
+              <Button onClick={() => usarModeloNoGerador(modeloPrevia)}>
+                <FilePlus2 className="h-4 w-4" /> Usar este modelo
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!modeloExcluindo}
+        onOpenChange={(open) => {
+          if (!processandoExclusaoModelo && !open) setModeloExcluindo(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir modelo de documento</DialogTitle>
+            <DialogDescription>
+              {modeloExcluindo?.title} (v{modeloExcluindo?.version})
+            </DialogDescription>
+          </DialogHeader>
+          {modeloExcluindo && (geradosPorModeloCount.get(modeloExcluindo.id) ?? 0) > 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Exclusão definitiva bloqueada por rastreabilidade</AlertTitle>
+              <AlertDescription className="text-sm">
+                Este modelo possui{" "}
+                <strong>{geradosPorModeloCount.get(modeloExcluindo.id)}</strong> documento(s)
+                gerado(s) vinculado(s). Para não perder o vínculo histórico exigido por auditorias,
+                você pode <strong>Inativar</strong> o modelo para removê-lo da lista ativa.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Este modelo ainda não possui documentos gerados vinculados. A exclusão removerá o
+              modelo e todo o seu histórico de versões permanentemente desta Secretaria.
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={processandoExclusaoModelo}
+              onClick={() => setModeloExcluindo(null)}
+            >
+              Cancelar
+            </Button>
+            {modeloExcluindo && (geradosPorModeloCount.get(modeloExcluindo.id) ?? 0) > 0 ? (
+              <Button
+                variant="secondary"
+                disabled={processandoToggleModeloId === modeloExcluindo.id}
+                onClick={async () => {
+                  const target = modeloExcluindo;
+                  setModeloExcluindo(null);
+                  await alternarAtivoModelo(target, false);
+                }}
+              >
+                <Archive className="h-4 w-4" /> Inativar modelo
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                disabled={processandoExclusaoModelo}
+                onClick={() => void confirmarExcluirModelo()}
+              >
+                {processandoExclusaoModelo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Excluir definitivamente
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

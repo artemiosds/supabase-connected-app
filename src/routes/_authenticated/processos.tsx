@@ -44,6 +44,10 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Tables } from "@/integrations/supabase/types";
 import { DocumentViewerSheet } from "@/components/documents/document-viewer-sheet";
 import {
+  filterAndSortTemplatesForContext,
+  ROTULOS_CATEGORIA_MODELO,
+} from "@/lib/document-templates";
+import {
   ETAPAS,
   etapaAnterior,
   formatarData,
@@ -769,6 +773,7 @@ function Processos() {
                 aberto={!!aberto}
                 tenantId={selecionado.id}
                 processId={aberto.id}
+                processStage={aberto.stage}
               />
               <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setDadosAbertos(true)}>
@@ -858,16 +863,23 @@ const TIPOS_DOCUMENTO_PROCESSO = [
 ] as const;
 
 const ROTULOS_TIPO_DOCUMENTO: Record<string, string> = {
-  dfd: "DFD",
-  etp: "ETP",
-  risk_analysis: "Análise de riscos",
-  risk_matrix: "Matriz contratual de riscos",
-  tr: "Termo de Referência",
+  ...ROTULOS_CATEGORIA_MODELO,
   custom: "Documento personalizado",
 };
 
-function DocumentosVinculados(props: { aberto: boolean; tenantId: string; processId: string }) {
+type ModeloProcesso = Pick<
+  Tables<"document_templates">,
+  "id" | "title" | "description" | "content" | "template_type" | "legal_basis" | "is_active" | "availability_scopes" | "process_stages"
+>;
+
+function DocumentosVinculados(props: {
+  aberto: boolean;
+  tenantId: string;
+  processId: string;
+  processStage?: string | null;
+}) {
   const [documentos, setDocumentos] = useState<Tables<"generated_documents">[]>([]);
+  const [modelosDisponiveis, setModelosDisponiveis] = useState<ModeloProcesso[]>([]);
   const [documentoVisualizando, setDocumentoVisualizando] =
     useState<Tables<"generated_documents"> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -876,19 +888,29 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
   const carregar = useCallback(async () => {
     if (!props.aberto) {
       setDocumentos([]);
+      setModelosDisponiveis([]);
       return;
     }
 
     setLoading(true);
     setErro(null);
-    const { data, error } = await db
-      .from("generated_documents")
-      .select("*")
-      .eq("tenant_id", props.tenantId)
-      .eq("process_id", props.processId)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(20);
+    const [{ data, error }, { data: templatesData }] = await Promise.all([
+      db
+        .from("generated_documents")
+        .select("*")
+        .eq("tenant_id", props.tenantId)
+        .eq("process_id", props.processId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(20),
+      db
+        .from("document_templates")
+        .select("id,title,description,content,template_type,legal_basis,is_active,availability_scopes,process_stages")
+        .eq("tenant_id", props.tenantId)
+        .eq("is_active", true)
+        .order("title")
+        .limit(50),
+    ]);
 
     if (error) {
       setDocumentos([]);
@@ -896,6 +918,7 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
     } else {
       setDocumentos((data ?? []) as Tables<"generated_documents">[]);
     }
+    setModelosDisponiveis((templatesData ?? []) as ModeloProcesso[]);
     setLoading(false);
   }, [props.aberto, props.tenantId, props.processId]);
 
@@ -908,6 +931,11 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
     signed: "Assinado",
     cancelled: "Cancelado",
   };
+  const modelosFiltrados = filterAndSortTemplatesForContext(modelosDisponiveis, {
+    scope: "processos",
+    processStage: props.processStage ?? null,
+    status: "active",
+  });
 
   return (
     <Card>
@@ -935,17 +963,40 @@ function DocumentosVinculados(props: { aberto: boolean; tenantId: string; proces
             Gerar documento deste processo
           </p>
           <div className="flex flex-wrap gap-2">
-            {TIPOS_DOCUMENTO_PROCESSO.map((tipo) => (
-              <Button key={tipo.value} asChild size="sm" variant="outline" className="min-h-9">
-                <a
-                  href={`/documentos?processo=${encodeURIComponent(props.processId)}&tipo=${tipo.value}`}
-                  aria-label={`Gerar ${tipo.label} para este processo`}
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  {tipo.label}
-                </a>
-              </Button>
-            ))}
+            {modelosFiltrados.length > 0
+              ? modelosFiltrados.map((modelo) => (
+                  <Button
+                    key={modelo.id}
+                    asChild
+                    size="sm"
+                    variant={modelo.recommendedForStage ? "secondary" : "outline"}
+                    className="min-h-9"
+                  >
+                    <a
+                      href={`/documentos?processo=${encodeURIComponent(props.processId)}&modeloId=${encodeURIComponent(modelo.id)}`}
+                      aria-label={`Gerar ${modelo.title} para este processo`}
+                    >
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                      {modelo.title}
+                      {modelo.recommendedForStage && (
+                        <Badge variant="outline" className="ml-1 text-[10px]">
+                          Etapa atual
+                        </Badge>
+                      )}
+                    </a>
+                  </Button>
+                ))
+              : TIPOS_DOCUMENTO_PROCESSO.map((tipo) => (
+                  <Button key={tipo.value} asChild size="sm" variant="outline" className="min-h-9">
+                    <a
+                      href={`/documentos?processo=${encodeURIComponent(props.processId)}&tipo=${tipo.value}`}
+                      aria-label={`Gerar ${tipo.label} para este processo`}
+                    >
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                      {tipo.label}
+                    </a>
+                  </Button>
+                ))}
           </div>
           <p className="text-xs text-muted-foreground">
             A geração exige que o modelo correspondente esteja instalado na Biblioteca-base desta

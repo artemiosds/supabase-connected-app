@@ -816,6 +816,7 @@ export type Database = {
       }
       document_templates: {
         Row: {
+          availability_scopes: string[]
           catalog_template_id: string | null
           change_summary: string | null
           content: string
@@ -826,6 +827,7 @@ export type Database = {
           is_active: boolean
           is_base_template: boolean
           legal_basis: string | null
+          process_stages: string[]
           source_reference: string | null
           template_code: string | null
           template_type: string
@@ -837,6 +839,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          availability_scopes?: string[]
           catalog_template_id?: string | null
           change_summary?: string | null
           content: string
@@ -847,6 +850,7 @@ export type Database = {
           is_active?: boolean
           is_base_template?: boolean
           legal_basis?: string | null
+          process_stages?: string[]
           source_reference?: string | null
           template_code?: string | null
           template_type?: string
@@ -858,6 +862,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          availability_scopes?: string[]
           catalog_template_id?: string | null
           change_summary?: string | null
           content?: string
@@ -868,6 +873,7 @@ export type Database = {
           is_active?: boolean
           is_base_template?: boolean
           legal_basis?: string | null
+          process_stages?: string[]
           source_reference?: string | null
           template_code?: string | null
           template_type?: string
@@ -4943,6 +4949,14 @@ export type Database = {
       delete_custom_tenant_role: {
         Args: { p_role_id: string; p_tenant_id: string }
         Returns: undefined
+      }
+      delete_document_template: {
+        Args: { p_template_id: string; p_tenant_id: string }
+        Returns: string[]
+      }
+      set_document_template_active: {
+        Args: { p_is_active: boolean; p_template_id: string; p_tenant_id: string }
+        Returns: boolean
       }
       save_tenant_role_with_permissions: {
         Args: {
