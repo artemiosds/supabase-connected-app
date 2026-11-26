@@ -113,6 +113,32 @@ ALTER TABLE public.document_templates
     ]::text[]
   );
 
+-- Preservar auditoria em migrações sem sessão (auth.uid() nulo) e garantir updated_by não nulo
+CREATE OR REPLACE FUNCTION public.fn_guard_document_template()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO ''
+AS $function$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_by := COALESCE((SELECT auth.uid()), NEW.created_by);
+    NEW.updated_by := COALESCE((SELECT auth.uid()), NEW.updated_by, NEW.created_by);
+    NEW.created_at := now();
+    NEW.updated_at := now();
+  ELSE
+    IF NEW.id IS DISTINCT FROM OLD.id
+      OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+      OR NEW.created_by IS DISTINCT FROM OLD.created_by
+      OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Identidade, Secretaria e dados de criacao do modelo sao imutaveis.';
+    END IF;
+    NEW.updated_by := COALESCE((SELECT auth.uid()), OLD.updated_by);
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
 -- Backfill inteligente nos modelos existentes com base no tipo documental
 UPDATE public.document_templates
 SET
