@@ -36,10 +36,11 @@ describe("access-profiles: helpers de perfis de acesso e permissões", () => {
 
   it("gera slug único e válido para perfil duplicado/personalizado", () => {
     const slug1 = gerarSlugPerfilPersonalizado("Pregoeiro / Agente", ["admin", "pregoeiro"]);
-    expect(slug1).toMatch(/^[a-z0-9][a-z0-9_-]{1,59}$/);
+    expect(slug1).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(slug1).toBe("pregoeiro-agente-custom");
 
-    const slug2 = gerarSlugPerfilPersonalizado("Gestor", ["gestor_custom", "gestor_custom_2"]);
-    expect(slug2).toBe("gestor_custom_3");
+    const slug2 = gerarSlugPerfilPersonalizado("Gestor", ["gestor-custom", "gestor-custom-2"]);
+    expect(slug2).toBe("gestor-custom-3");
   });
 
   it("filtra permissões por nome, descrição, código ou módulo traduzido", () => {

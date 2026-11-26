@@ -365,7 +365,7 @@ function Usuarios() {
     setDialogoConviteAberto(false);
     setNomeConvite("");
     setEmailConvite("");
-    setPapelConviteId(papeis.find((role) => role.slug === "operador")?.id ?? papeis[0]?.id ?? "");
+    setPapelConviteId(selecionarPapelPadraoConvite(papeis));
     await carregar();
     void data;
   }
@@ -976,6 +976,9 @@ function Usuarios() {
                     const memberCount = membros.filter((m) =>
                       (m.membership_roles ?? []).some((mr) => mr.role_id === role.id),
                     ).length;
+                    const pendingInviteCount = convitesPendentes.filter(
+                      (invite) => invite.role_id === role.id,
+                    ).length;
                     return (
                       <article
                         key={role.id}
@@ -1032,11 +1035,17 @@ function Usuarios() {
                                   size="sm"
                                   variant="ghost"
                                   className="text-destructive hover:text-destructive"
-                                  disabled={memberCount > 0 || deletingRoleId === role.id}
+                                  disabled={
+                                    memberCount > 0 ||
+                                    pendingInviteCount > 0 ||
+                                    deletingRoleId === role.id
+                                  }
                                   title={
                                     memberCount > 0
                                       ? "Reatribua os usuários vinculados antes de excluir este perfil."
-                                      : "Excluir perfil personalizado"
+                                      : pendingInviteCount > 0
+                                        ? "Cancele os convites pendentes vinculados antes de excluir este perfil."
+                                        : "Excluir perfil personalizado"
                                   }
                                   onClick={() => void excluirPerfil(role)}
                                 >

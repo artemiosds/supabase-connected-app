@@ -34,19 +34,19 @@ export function gerarSlugPerfilPersonalizado(
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9_-]+/g, "_")
-    .replace(/^[_-]+|[_-]+$/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 48);
 
-  const prefix = raw.length >= 2 && /^[a-z0-9]/.test(raw) ? `${raw}_custom` : "perfil_custom";
+  const prefix = raw.length >= 2 && /^[a-z0-9]/.test(raw) ? `${raw}-custom` : "perfil-custom";
   const taken = new Set(existingSlugs.map((s) => s.toLowerCase()));
   if (!taken.has(prefix)) return prefix;
 
   for (let i = 2; i < 100; i += 1) {
-    const candidate = `${prefix.slice(0, 55)}_${i}`;
+    const candidate = `${prefix.slice(0, 55)}-${i}`;
     if (!taken.has(candidate)) return candidate;
   }
-  return `${prefix.slice(0, 45)}_${Date.now().toString().slice(-6)}`;
+  return `${prefix.slice(0, 45)}-${Date.now().toString().slice(-6)}`;
 }
 
 export function filtrarPermissaoPorTexto(
