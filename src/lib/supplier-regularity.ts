@@ -11,12 +11,7 @@ export type RegularitySource =
   | "anvisa_afe"
   | "outro";
 
-export type RegularityStatus =
-  | "regular"
-  | "irregular"
-  | "pending_review"
-  | "not_found"
-  | "exempt";
+export type RegularityStatus = "regular" | "irregular" | "pending_review" | "not_found" | "exempt";
 
 export type SupplierRegularityCheck = {
   id: string;
@@ -98,19 +93,22 @@ export function rotuloStatusRegularidade(status: RegularityStatus): {
       return {
         label: "Regular / Nada Consta",
         badgeVariant: "default",
-        colorClass: "text-emerald-700 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300",
+        colorClass:
+          "text-emerald-700 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300",
       };
     case "irregular":
       return {
         label: "Irregular / Consta Ocorrência",
         badgeVariant: "destructive",
-        colorClass: "text-rose-700 bg-rose-100 dark:bg-rose-950 dark:text-rose-300 border-rose-300 font-semibold",
+        colorClass:
+          "text-rose-700 bg-rose-100 dark:bg-rose-950 dark:text-rose-300 border-rose-300 font-semibold",
       };
     case "pending_review":
       return {
         label: "Em Análise / Divergência",
         badgeVariant: "outline",
-        colorClass: "text-amber-700 bg-amber-100 dark:bg-amber-950 dark:text-amber-300 border-amber-300",
+        colorClass:
+          "text-amber-700 bg-amber-100 dark:bg-amber-950 dark:text-amber-300 border-amber-300",
       };
     case "not_found":
       return {
@@ -152,13 +150,13 @@ export async function registrarVerificacaoRegularidade(params: {
   tenantId: string;
   supplierId: string;
   source: RegularitySource;
-  sourceLabel?: string;
+  sourceLabel?: string | undefined;
   status: RegularityStatus;
-  certificateNumber?: string;
-  validUntil?: string | null;
-  evidenceUrl?: string;
-  notes?: string;
-  requiresAction?: boolean;
+  certificateNumber?: string | undefined;
+  validUntil?: string | null | undefined;
+  evidenceUrl?: string | undefined;
+  notes?: string | undefined;
+  requiresAction?: boolean | undefined;
 }): Promise<string> {
   const sourceInfo = FONTES_OFICIAIS[params.source];
   const sourceLabel = params.sourceLabel || sourceInfo?.label || "Fonte Oficial";
@@ -169,10 +167,10 @@ export async function registrarVerificacaoRegularidade(params: {
     p_source: params.source,
     p_source_label: sourceLabel,
     p_status: params.status,
-    p_certificate_number: params.certificateNumber || null,
-    p_valid_until: params.validUntil || null,
-    p_evidence_url: params.evidenceUrl || null,
-    p_notes: params.notes || null,
+    ...(params.certificateNumber ? { p_certificate_number: params.certificateNumber } : {}),
+    ...(params.validUntil ? { p_valid_until: params.validUntil } : {}),
+    ...(params.evidenceUrl ? { p_evidence_url: params.evidenceUrl } : {}),
+    ...(params.notes ? { p_notes: params.notes } : {}),
     p_requires_action: Boolean(params.requiresAction),
   });
 

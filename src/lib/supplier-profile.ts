@@ -199,7 +199,7 @@ export function resumirFichaFornecedor(
   const sancoesVigentes = sancoes.filter((s) => isSanctionCurrentlyEffective(s, hoje)).length;
 
   // Entrega 1: Homologação
-  const ultimaHomologacao = homologacoes.length > 0 ? homologacoes[0] : null;
+  const ultimaHomologacao = homologacoes[0] ?? null;
 
   // Entrega 2: Regularidade oficial
   const regulares = regularidades.filter((r) => r.status === "regular").length;

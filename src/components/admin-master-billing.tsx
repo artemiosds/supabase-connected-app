@@ -376,7 +376,7 @@ export function MasterBillingSettings({
       p_amount: amount,
       p_due_date: newInvoiceDueDate,
       p_payment_method: newInvoiceMethod,
-      p_notes: newInvoiceNotes.trim() || null,
+      ...(newInvoiceNotes.trim() ? { p_notes: newInvoiceNotes.trim() } : {}),
     });
     setCreatingInvoice(false);
     if (error) {
@@ -404,8 +404,8 @@ export function MasterBillingSettings({
       p_invoice_id: settleInvoice.id,
       p_status: "paid",
       p_payment_method: settleMethod,
-      p_external_reference: settleRef.trim() || null,
-      p_notes: settleNotes.trim() || null,
+      ...(settleRef.trim() ? { p_external_reference: settleRef.trim() } : {}),
+      ...(settleNotes.trim() ? { p_notes: settleNotes.trim() } : {}),
       p_sync_tenant_status: settleSyncTenant,
     });
     setUpdatingInvoiceId(null);

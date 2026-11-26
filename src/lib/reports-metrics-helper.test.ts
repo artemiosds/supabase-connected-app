@@ -20,8 +20,8 @@ describe("reports-metrics-helper: calcularMetricasBI", () => {
 
     const movimentos: MovimentoOFResumo[] = [
       { contract_id: "c1", quantity: 10, unit_price: 2000, movement_type: "consumption" }, // 20.000
-      { contract_id: "c2", quantity: 5, unit_price: 3000, movement_type: "consumption" },  // 15.000
-      { contract_id: "c1", quantity: 2, unit_price: 1000, movement_type: "adjustment" },   // ajuste ignorado no consumo
+      { contract_id: "c2", quantity: 5, unit_price: 3000, movement_type: "consumption" }, // 15.000
+      { contract_id: "c1", quantity: 2, unit_price: 1000, movement_type: "adjustment" }, // ajuste ignorado no consumo
     ];
 
     const metricas = calcularMetricasBI(contratos, movimentos);
@@ -55,24 +55,24 @@ describe("reports-metrics-helper: calcularMetricasBI", () => {
     expect(metricas.rankingFornecedores.length).toBe(5);
 
     // 1º Empresa C: 120.000
-    expect(metricas.rankingFornecedores[0].fornecedor).toBe("Empresa C");
-    expect(metricas.rankingFornecedores[0].valorTotal).toBe(120000);
-    expect(metricas.rankingFornecedores[0].qtdContratos).toBe(1);
+    expect(metricas.rankingFornecedores[0]?.fornecedor).toBe("Empresa C");
+    expect(metricas.rankingFornecedores[0]?.valorTotal).toBe(120000);
+    expect(metricas.rankingFornecedores[0]?.qtdContratos).toBe(1);
 
     // 2º Empresa B: 90.000
-    expect(metricas.rankingFornecedores[1].fornecedor).toBe("Empresa B");
-    expect(metricas.rankingFornecedores[1].valorTotal).toBe(90000);
+    expect(metricas.rankingFornecedores[1]?.fornecedor).toBe("Empresa B");
+    expect(metricas.rankingFornecedores[1]?.valorTotal).toBe(90000);
 
     // 3º Empresa A: 70.000 (2 contratos somados)
-    expect(metricas.rankingFornecedores[2].fornecedor).toBe("Empresa A");
-    expect(metricas.rankingFornecedores[2].valorTotal).toBe(70000);
-    expect(metricas.rankingFornecedores[2].qtdContratos).toBe(2);
+    expect(metricas.rankingFornecedores[2]?.fornecedor).toBe("Empresa A");
+    expect(metricas.rankingFornecedores[2]?.valorTotal).toBe(70000);
+    expect(metricas.rankingFornecedores[2]?.qtdContratos).toBe(2);
 
     // 4º Empresa E: 50.000
-    expect(metricas.rankingFornecedores[3].fornecedor).toBe("Empresa E");
+    expect(metricas.rankingFornecedores[3]?.fornecedor).toBe("Empresa E");
 
     // 5º Empresa D: 15.000
-    expect(metricas.rankingFornecedores[4].fornecedor).toBe("Empresa D");
+    expect(metricas.rankingFornecedores[4]?.fornecedor).toBe("Empresa D");
   });
 
   it("deve tratar listas vazias sem divisão por zero (percentual 0%)", () => {

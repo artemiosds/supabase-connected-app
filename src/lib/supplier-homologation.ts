@@ -1,11 +1,7 @@
 import { db } from "@/lib/db";
 
 export type HomologationStatus =
-  | "draft"
-  | "in_review"
-  | "awaiting_completion"
-  | "completed"
-  | "cancelled";
+  "draft" | "in_review" | "awaiting_completion" | "completed" | "cancelled";
 
 export type ConclusionStatus = "regular" | "pending" | "rejected";
 
@@ -94,12 +90,14 @@ export function rotuloConclusao(status: ConclusionStatus | null): {
     case "regular":
       return {
         label: "Regular para a Finalidade",
-        colorClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300",
+        colorClass:
+          "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300",
       };
     case "pending":
       return {
         label: "Com Pendências",
-        colorClass: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300",
+        colorClass:
+          "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300",
       };
     case "rejected":
       return {
@@ -123,7 +121,10 @@ export function rotuloStatusChecklist(status: ChecklistVerificationStatus): {
     case "awaiting_review":
       return { label: "Aguardando Conferência", colorClass: "text-amber-600 dark:text-amber-400" };
     case "pending_issue":
-      return { label: "Com Pendência", colorClass: "text-rose-600 dark:text-rose-400 font-semibold" };
+      return {
+        label: "Com Pendência",
+        colorClass: "text-rose-600 dark:text-rose-400 font-semibold",
+      };
     case "expired":
       return { label: "Vencido", colorClass: "text-destructive font-semibold" };
     case "replaced":
@@ -193,8 +194,8 @@ export async function iniciarAnaliseHomologacao(params: {
     p_supplier_id: params.supplierId,
     p_category: params.category,
     p_scope_description: params.scopeDescription,
-    p_assigned_to: params.assignedTo ?? null,
-    p_process_id: params.processId ?? null,
+    ...(params.assignedTo ? { p_assigned_to: params.assignedTo } : {}),
+    ...(params.processId ? { p_process_id: params.processId } : {}),
   });
 
   if (error) throw error;
@@ -206,9 +207,9 @@ export async function atualizarItemChecklist(params: {
   homologationId: string;
   itemId: string;
   verificationStatus: ChecklistVerificationStatus;
-  notes?: string;
-  documentId?: string | null;
-  verifiedBy?: string | null;
+  notes?: string | undefined;
+  documentId?: string | null | undefined;
+  verifiedBy?: string | null | undefined;
 }): Promise<void> {
   const { error } = await db
     .from("supplier_homologation_checklist_items")
@@ -224,12 +225,16 @@ export async function atualizarItemChecklist(params: {
 
   if (error) throw error;
 
+  const { data: userData } = await db.auth.getUser();
+  const actorId = params.verifiedBy ?? userData.user?.id ?? "";
+
   // Registrar evento auditável
   await db.from("supplier_homologation_events").insert({
     tenant_id: params.tenantId,
     homologation_id: params.homologationId,
     event_type: "checklist_verified",
     description: `Item do checklist atualizado para "${params.verificationStatus}". ${params.notes ? `Observações: ${params.notes}` : ""}`,
+    created_by: actorId,
   });
 }
 
@@ -248,6 +253,9 @@ export async function solicitarComplementacao(params: {
 
   if (error) throw error;
 
+  const { data: userData } = await db.auth.getUser();
+  const actorId = userData.user?.id ?? "";
+
   await db.from("supplier_homologation_events").insert({
     tenant_id: params.tenantId,
     homologation_id: params.homologationId,
@@ -255,6 +263,7 @@ export async function solicitarComplementacao(params: {
     from_status: "in_review",
     to_status: "awaiting_completion",
     description: `Solicitação de complementação documental registrada: ${params.exigencias}`,
+    created_by: actorId,
   });
 }
 

@@ -87,7 +87,7 @@ export async function gerarLinkPortalFornecedor(
   const { data, error } = await supabase.rpc("generate_supplier_portal_token", {
     p_tenant_id: tenantId,
     p_supplier_id: supplierId,
-    p_homologation_id: homologationId ?? null,
+    ...(homologationId ? { p_homologation_id: homologationId } : {}),
     p_days_valid: daysValid,
   });
 
@@ -108,7 +108,7 @@ export async function obterDadosPortalFornecedor(token: string): Promise<PortalR
   });
 
   if (error) throw error;
-  return data as PortalResponseData;
+  return data as unknown as PortalResponseData;
 }
 
 /**
@@ -119,21 +119,27 @@ export async function enviarDocumentoPortal(
 ): Promise<SubmitDocumentResponse> {
   const { data, error } = await supabase.rpc("submit_supplier_portal_document", {
     p_token: params.token,
-    p_checklist_item_id: params.checklist_item_id ?? null,
-    p_title: params.title ?? null,
+    ...(params.checklist_item_id ? { p_checklist_item_id: params.checklist_item_id } : {}),
+    ...(params.title ? { p_title: params.title } : {}),
     p_document_type: params.document_type ?? "outros",
-    p_file_name: params.file_name ?? null,
-    p_storage_path: params.storage_path ?? null,
-    p_external_url: params.external_url ?? null,
-    p_expires_at: params.expires_at ?? null,
+    ...(params.file_name ? { p_file_name: params.file_name } : {}),
+    ...(params.storage_path ? { p_storage_path: params.storage_path } : {}),
+    ...(params.external_url ? { p_external_url: params.external_url } : {}),
+    ...(params.expires_at ? { p_expires_at: params.expires_at } : {}),
   });
 
   if (error) throw error;
-  return data as SubmitDocumentResponse;
+  return data as unknown as SubmitDocumentResponse;
 }
 
-export function rotuloChecklistPortal(status: string): { label: string; variante: "default" | "secondary" | "destructive" | "outline" } {
-  const map: Record<string, { label: string; variante: "default" | "secondary" | "destructive" | "outline" }> = {
+export function rotuloChecklistPortal(status: string): {
+  label: string;
+  variante: "default" | "secondary" | "destructive" | "outline";
+} {
+  const map: Record<
+    string,
+    { label: string; variante: "default" | "secondary" | "destructive" | "outline" }
+  > = {
     not_submitted: { label: "Pendente de Envio", variante: "outline" },
     received: { label: "Recebido / Em Análise", variante: "secondary" },
     verified: { label: "Aprovado / Regular", variante: "default" },

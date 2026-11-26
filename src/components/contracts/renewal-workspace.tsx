@@ -401,11 +401,11 @@ export function RenewalWorkspace(props: {
         p_tenant_id: tenantId,
         p_contract_id: item.contract_id,
         p_item_key: item.item_key,
-        p_assigned_user_id: item.assigned_user_id,
-        p_due_date: item.due_date,
+        ...(item.assigned_user_id ? { p_assigned_user_id: item.assigned_user_id } : {}),
+        ...(item.due_date ? { p_due_date: item.due_date } : {}),
         p_status: item.status,
-        p_evidence_reference: item.evidence_reference,
-        p_notes: item.notes,
+        ...(item.evidence_reference ? { p_evidence_reference: item.evidence_reference } : {}),
+        ...(item.notes ? { p_notes: item.notes } : {}),
       });
       if (error) {
         toast.error(error.message);

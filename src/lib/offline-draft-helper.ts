@@ -16,7 +16,7 @@ export function buildDraftKey(
   tenantId: string,
   userId: string,
   formId: string,
-  entityId?: string
+  entityId?: string,
 ): string {
   const t = (tenantId || "default").trim();
   const u = (userId || "anonymous").trim();
@@ -30,7 +30,7 @@ export function saveDraft<T>(
   userId: string,
   formId: string,
   data: T,
-  entityId?: string
+  entityId?: string,
 ): boolean {
   if (typeof window === "undefined" || !window.localStorage) return false;
   try {
@@ -39,7 +39,7 @@ export function saveDraft<T>(
       tenantId,
       userId,
       formId,
-      entityId,
+      ...(entityId !== undefined ? { entityId } : {}),
       savedAt: new Date().toISOString(),
       data,
     };
@@ -54,7 +54,7 @@ export function loadDraft<T>(
   tenantId: string,
   userId: string,
   formId: string,
-  entityId?: string
+  entityId?: string,
 ): DraftStorageEnvelope<T> | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
   try {
@@ -76,7 +76,7 @@ export function clearDraft(
   tenantId: string,
   userId: string,
   formId: string,
-  entityId?: string
+  entityId?: string,
 ): boolean {
   if (typeof window === "undefined" || !window.localStorage) return false;
   try {

@@ -431,8 +431,8 @@ export function usePlatformAdmin() {
         p_description: plan.description,
         p_default_monthly_fee: plan.default_monthly_fee,
         p_default_max_users: plan.default_max_users,
-        p_default_ai_monthly_budget_usd: plan.default_ai_monthly_budget_usd,
-        p_default_ai_monthly_token_limit: plan.default_ai_monthly_token_limit,
+        p_default_ai_monthly_budget_usd: plan.default_ai_monthly_budget_usd as unknown as number,
+        p_default_ai_monthly_token_limit: plan.default_ai_monthly_token_limit as unknown as number,
         p_default_modules: plan.default_modules as Json,
         p_is_active: plan.is_active,
       });
@@ -446,8 +446,8 @@ export function usePlatformAdmin() {
     async (tenantId: string, monthlyBudgetUsd: number | null, monthlyTokenLimit: number | null) => {
       const { error: limitsError } = await db.rpc("set_tenant_ai_limits", {
         p_tenant_id: tenantId,
-        p_monthly_budget_usd: monthlyBudgetUsd,
-        p_monthly_token_limit: monthlyTokenLimit,
+        ...(monthlyBudgetUsd !== null ? { p_monthly_budget_usd: monthlyBudgetUsd } : {}),
+        ...(monthlyTokenLimit !== null ? { p_monthly_token_limit: monthlyTokenLimit } : {}),
       });
       if (limitsError) throw limitsError;
       await load();

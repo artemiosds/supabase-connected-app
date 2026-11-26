@@ -137,7 +137,7 @@ export function SupplierHomologationTab({
       setErro(null);
       const lista = await listarHomologacoesFornecedor(tenantId, supplierId);
       setHomologacoes(lista);
-      if (lista.length > 0 && (!selecionadaId || !lista.some((h) => h.id === selecionadaId))) {
+      if (lista[0] && (!selecionadaId || !lista.some((h) => h.id === selecionadaId))) {
         setSelecionadaId(lista[0].id);
       }
     } catch (e) {

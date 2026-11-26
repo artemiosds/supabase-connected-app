@@ -70,14 +70,14 @@ function providerErrorFromResponse(
   } catch {
     // Some gateways return plain-text or HTML error bodies.
   }
-  const error = record(payload.error);
-  const metadata = record(error.metadata);
+  const error = record(payload["error"]);
+  const metadata = record(error["metadata"]);
   const message = sanitizedErrorMessage(
-    error.message ?? payload.message ?? payload.error_description ?? rawBody,
+    error["message"] ?? payload["message"] ?? payload["error_description"] ?? rawBody,
     apiKey,
   );
-  const errorCodeValue = metadata.provider_code ?? error.code ?? payload.code;
-  const errorTypeValue = metadata.error_type ?? error.type ?? payload.error_type;
+  const errorCodeValue = metadata["provider_code"] ?? error["code"] ?? payload["code"];
+  const errorTypeValue = metadata["error_type"] ?? error["type"] ?? payload["error_type"];
   const errorCode = errorCodeValue === undefined ? null : String(errorCodeValue).slice(0, 120);
   const errorType = errorTypeValue === undefined ? null : String(errorTypeValue).slice(0, 120);
   const retryable =
@@ -129,28 +129,28 @@ function numberOrNull(value: unknown): number | null {
 }
 
 function openAiResponseText(payload: JsonRecord): string {
-  if (typeof payload.output_text === "string") return payload.output_text.trim();
-  if (!Array.isArray(payload.output)) return "";
-  return payload.output
+  if (typeof payload["output_text"] === "string") return payload["output_text"].trim();
+  if (!Array.isArray(payload["output"])) return "";
+  return payload["output"]
     .flatMap((item) => {
-      const content = record(item).content;
+      const content = record(item)["content"];
       return Array.isArray(content) ? content : [];
     })
-    .filter((item) => record(item).type === "output_text" && typeof record(item).text === "string")
-    .map((item) => String(record(item).text))
+    .filter((item) => record(item)["type"] === "output_text" && typeof record(item)["text"] === "string")
+    .map((item) => String(record(item)["text"]))
     .join("\n")
     .trim();
 }
 
 function chatCompletionText(payload: JsonRecord): string {
-  const choices = Array.isArray(payload.choices) ? payload.choices : [];
-  const message = record(record(choices[0]).message);
-  const content = message.content;
+  const choices = Array.isArray(payload["choices"]) ? payload["choices"] : [];
+  const message = record(record(choices[0])["message"]);
+  const content = message["content"];
   if (typeof content === "string") return content.trim();
   if (Array.isArray(content)) {
     return content
-      .filter((item) => typeof record(item).text === "string")
-      .map((item) => String(record(item).text))
+      .filter((item) => typeof record(item)["text"] === "string")
+      .map((item) => String(record(item)["text"]))
       .join("\n")
       .trim();
   }
@@ -158,21 +158,21 @@ function chatCompletionText(payload: JsonRecord): string {
 }
 
 function geminiText(payload: JsonRecord): string {
-  const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-  const parts = record(record(candidates[0]).content).parts;
+  const candidates = Array.isArray(payload["candidates"]) ? payload["candidates"] : [];
+  const parts = record(record(candidates[0])["content"])["parts"];
   if (!Array.isArray(parts)) return "";
   return parts
-    .filter((part) => typeof record(part).text === "string")
-    .map((part) => String(record(part).text))
+    .filter((part) => typeof record(part)["text"] === "string")
+    .map((part) => String(record(part)["text"]))
     .join("\n")
     .trim();
 }
 
 function anthropicText(payload: JsonRecord): string {
-  if (!Array.isArray(payload.content)) return "";
-  return payload.content
-    .filter((part) => record(part).type === "text" && typeof record(part).text === "string")
-    .map((part) => String(record(part).text))
+  if (!Array.isArray(payload["content"])) return "";
+  return payload["content"]
+    .filter((part) => record(part)["type"] === "text" && typeof record(part)["text"] === "string")
+    .map((part) => String(record(part)["text"]))
     .join("\n")
     .trim();
 }
@@ -198,7 +198,7 @@ function requestForProvider(
   switch (provider.provider) {
     case "openai":
       url = "https://api.openai.com/v1/responses";
-      headers.Authorization = "Bearer " + apiKey;
+      headers["Authorization"] = "Bearer " + apiKey;
       body = {
         model: provider.model,
         instructions,
@@ -256,7 +256,7 @@ function requestForProvider(
     case "openai_compatible":
       if (!provider.api_base_url) throw new Error("URL base da API compatível não configurada.");
       url = compatibleEndpoint(provider.api_base_url);
-      headers.Authorization = "Bearer " + apiKey;
+      headers["Authorization"] = "Bearer " + apiKey;
       const isOpenRouterNemotron =
         (new URL(provider.api_base_url).hostname === "openrouter.ai" ||
           new URL(provider.api_base_url).hostname === "www.openrouter.ai") &&
@@ -336,31 +336,31 @@ export async function invokeAiProvider(
   switch (provider.provider) {
     case "openai": {
       text = openAiResponseText(payload);
-      const usage = record(payload.usage);
-      inputTokens = numberOrNull(usage.input_tokens);
-      outputTokens = numberOrNull(usage.output_tokens);
+      const usage = record(payload["usage"]);
+      inputTokens = numberOrNull(usage["input_tokens"]);
+      outputTokens = numberOrNull(usage["output_tokens"]);
       break;
     }
     case "gemini": {
       text = geminiText(payload);
-      const usage = record(payload.usageMetadata);
-      inputTokens = numberOrNull(usage.promptTokenCount);
-      outputTokens = numberOrNull(usage.candidatesTokenCount);
+      const usage = record(payload["usageMetadata"]);
+      inputTokens = numberOrNull(usage["promptTokenCount"]);
+      outputTokens = numberOrNull(usage["candidatesTokenCount"]);
       break;
     }
     case "anthropic": {
       text = anthropicText(payload);
-      const usage = record(payload.usage);
-      inputTokens = numberOrNull(usage.input_tokens);
-      outputTokens = numberOrNull(usage.output_tokens);
+      const usage = record(payload["usage"]);
+      inputTokens = numberOrNull(usage["input_tokens"]);
+      outputTokens = numberOrNull(usage["output_tokens"]);
       break;
     }
     case "azure_openai":
     case "openai_compatible": {
       text = chatCompletionText(payload);
-      const usage = record(payload.usage);
-      inputTokens = numberOrNull(usage.prompt_tokens);
-      outputTokens = numberOrNull(usage.completion_tokens);
+      const usage = record(payload["usage"]);
+      inputTokens = numberOrNull(usage["prompt_tokens"]);
+      outputTokens = numberOrNull(usage["completion_tokens"]);
       break;
     }
   }

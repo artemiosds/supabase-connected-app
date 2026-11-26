@@ -51,29 +51,29 @@ export interface CreateTaskParams {
   supplier_id: string;
   task_type: TaskType;
   title: string;
-  description?: string;
-  priority?: TaskPriority;
-  due_date?: string;
-  assigned_to?: string;
-  reference_table?: string;
-  reference_id?: string;
+  description?: string | undefined;
+  priority?: TaskPriority | undefined;
+  due_date?: string | undefined;
+  assigned_to?: string | undefined;
+  reference_table?: string | undefined;
+  reference_id?: string | undefined;
 }
 
 export interface ResolveTaskParams {
   tenant_id: string;
   task_id: string;
-  resolution_notes?: string;
-  action?: "resolved" | "dismissed";
+  resolution_notes?: string | undefined;
+  action?: "resolved" | "dismissed" | undefined;
 }
 
 export interface ListTasksParams {
   tenant_id: string;
-  supplier_id?: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  task_type?: TaskType;
-  limit?: number;
-  offset?: number;
+  supplier_id?: string | undefined;
+  status?: TaskStatus | undefined;
+  priority?: TaskPriority | undefined;
+  task_type?: TaskType | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,24 +82,24 @@ export interface ListTasksParams {
 
 export function rotuloTipoTarefa(type: TaskType): string {
   const map: Record<TaskType, string> = {
-    document_expired:          "Documento Vencido",
-    document_expiring:         "Documento a Vencer",
-    regularity_expired:        "Regularidade Expirada",
-    regularity_irregular:      "Irregularidade Detectada",
-    homologation_pending:      "Homologação Pendente",
+    document_expired: "Documento Vencido",
+    document_expiring: "Documento a Vencer",
+    regularity_expired: "Regularidade Expirada",
+    regularity_irregular: "Irregularidade Detectada",
+    homologation_pending: "Homologação Pendente",
     complementation_requested: "Complementação Solicitada",
-    sanction_recorded:         "Sanção Registrada",
-    manual:                    "Tarefa Manual",
+    sanction_recorded: "Sanção Registrada",
+    manual: "Tarefa Manual",
   };
   return map[type] ?? type;
 }
 
 export function rotuloStatusTarefa(status: TaskStatus): string {
   const map: Record<TaskStatus, string> = {
-    open:        "Aberta",
+    open: "Aberta",
     in_progress: "Em Andamento",
-    resolved:    "Resolvida",
-    dismissed:   "Dispensada",
+    resolved: "Resolvida",
+    dismissed: "Dispensada",
   };
   return map[status] ?? status;
 }
@@ -107,22 +107,22 @@ export function rotuloStatusTarefa(status: TaskStatus): string {
 export function rotuloPrioridade(priority: TaskPriority): string {
   const map: Record<TaskPriority, string> = {
     critical: "Crítica",
-    high:     "Alta",
-    medium:   "Média",
-    low:      "Baixa",
+    high: "Alta",
+    medium: "Média",
+    low: "Baixa",
   };
   return map[priority] ?? priority;
 }
 
 /** Retorna a variante do Badge shadcn/ui correspondente à prioridade */
 export function variantePrioridade(
-  priority: TaskPriority
+  priority: TaskPriority,
 ): "destructive" | "default" | "outline" | "secondary" {
   const map: Record<TaskPriority, "destructive" | "default" | "outline" | "secondary"> = {
     critical: "destructive",
-    high:     "default",
-    medium:   "outline",
-    low:      "secondary",
+    high: "default",
+    medium: "outline",
+    low: "secondary",
   };
   return map[priority] ?? "outline";
 }
@@ -131,9 +131,9 @@ export function variantePrioridade(
 export function corPrioridade(priority: TaskPriority): string {
   const map: Record<TaskPriority, string> = {
     critical: "text-red-600 dark:text-red-400",
-    high:     "text-amber-600 dark:text-amber-400",
-    medium:   "text-blue-600 dark:text-blue-400",
-    low:      "text-gray-500 dark:text-gray-400",
+    high: "text-amber-600 dark:text-amber-400",
+    medium: "text-blue-600 dark:text-blue-400",
+    low: "text-gray-500 dark:text-gray-400",
   };
   return map[priority] ?? "text-gray-500";
 }
@@ -151,16 +151,20 @@ export function estaVencida(task: SupplierPendingTask): boolean {
 export async function listarTarefasFornecedor(
   tenantId: string,
   supplierId: string,
-  filtros?: { status?: TaskStatus; priority?: TaskPriority; task_type?: TaskType }
+  filtros?: {
+    status?: TaskStatus | undefined;
+    priority?: TaskPriority | undefined;
+    task_type?: TaskType | undefined;
+  },
 ): Promise<SupplierPendingTask[]> {
   const { data, error } = await supabase.rpc("list_supplier_pending_tasks", {
-    p_tenant_id:   tenantId,
+    p_tenant_id: tenantId,
     p_supplier_id: supplierId,
-    p_status:      filtros?.status    ?? null,
-    p_priority:    filtros?.priority  ?? null,
-    p_task_type:   filtros?.task_type ?? null,
-    p_limit:       100,
-    p_offset:      0,
+    ...(filtros?.status ? { p_status: filtros.status } : {}),
+    ...(filtros?.priority ? { p_priority: filtros.priority } : {}),
+    ...(filtros?.task_type ? { p_task_type: filtros.task_type } : {}),
+    p_limit: 100,
+    p_offset: 0,
   });
 
   if (error) throw error;
@@ -169,16 +173,15 @@ export async function listarTarefasFornecedor(
 
 export async function listarTarefasAbertas(
   tenantId: string,
-  filtros?: { priority?: TaskPriority; task_type?: TaskType }
+  filtros?: { priority?: TaskPriority | undefined; task_type?: TaskType | undefined },
 ): Promise<SupplierPendingTask[]> {
   const { data, error } = await supabase.rpc("list_supplier_pending_tasks", {
-    p_tenant_id:   tenantId,
-    p_supplier_id: null,
-    p_status:      "open",
-    p_priority:    filtros?.priority  ?? null,
-    p_task_type:   filtros?.task_type ?? null,
-    p_limit:       200,
-    p_offset:      0,
+    p_tenant_id: tenantId,
+    p_status: "open",
+    ...(filtros?.priority ? { p_priority: filtros.priority } : {}),
+    ...(filtros?.task_type ? { p_task_type: filtros.task_type } : {}),
+    p_limit: 200,
+    p_offset: 0,
   });
 
   if (error) throw error;
@@ -186,34 +189,33 @@ export async function listarTarefasAbertas(
 }
 
 export async function resumoTarefas(tenantId: string): Promise<TasksSummary> {
-  const { data, error } = await supabase.rpc(
-    "get_supplier_pending_tasks_summary",
-    { p_tenant_id: tenantId }
-  );
+  const { data, error } = await supabase.rpc("get_supplier_pending_tasks_summary", {
+    p_tenant_id: tenantId,
+  });
 
   if (error) throw error;
 
   const row = Array.isArray(data) ? data[0] : data;
   return {
-    open_count:     Number(row?.open_count     ?? 0),
+    open_count: Number(row?.open_count ?? 0),
     critical_count: Number(row?.critical_count ?? 0),
-    overdue_count:  Number(row?.overdue_count  ?? 0),
-    high_count:     Number(row?.high_count     ?? 0),
+    overdue_count: Number(row?.overdue_count ?? 0),
+    high_count: Number(row?.high_count ?? 0),
   };
 }
 
 export async function criarTarefa(params: CreateTaskParams): Promise<string> {
   const { data, error } = await supabase.rpc("create_supplier_task", {
-    p_tenant_id:       params.tenant_id,
-    p_supplier_id:     params.supplier_id,
-    p_task_type:       params.task_type,
-    p_title:           params.title,
-    p_description:     params.description     ?? null,
-    p_priority:        params.priority        ?? "medium",
-    p_due_date:        params.due_date        ?? null,
-    p_assigned_to:     params.assigned_to     ?? null,
-    p_reference_table: params.reference_table ?? null,
-    p_reference_id:    params.reference_id    ?? null,
+    p_tenant_id: params.tenant_id,
+    p_supplier_id: params.supplier_id,
+    p_task_type: params.task_type,
+    p_title: params.title,
+    ...(params.description ? { p_description: params.description } : {}),
+    p_priority: params.priority ?? "medium",
+    ...(params.due_date ? { p_due_date: params.due_date } : {}),
+    ...(params.assigned_to ? { p_assigned_to: params.assigned_to } : {}),
+    ...(params.reference_table ? { p_reference_table: params.reference_table } : {}),
+    ...(params.reference_id ? { p_reference_id: params.reference_id } : {}),
   });
 
   if (error) throw error;
@@ -222,10 +224,10 @@ export async function criarTarefa(params: CreateTaskParams): Promise<string> {
 
 export async function resolverTarefa(params: ResolveTaskParams): Promise<boolean> {
   const { data, error } = await supabase.rpc("resolve_supplier_task", {
-    p_tenant_id:        params.tenant_id,
-    p_task_id:          params.task_id,
-    p_resolution_notes: params.resolution_notes ?? null,
-    p_action:           params.action           ?? "resolved",
+    p_tenant_id: params.tenant_id,
+    p_task_id: params.task_id,
+    ...(params.resolution_notes ? { p_resolution_notes: params.resolution_notes } : {}),
+    p_action: params.action ?? "resolved",
   });
 
   if (error) throw error;

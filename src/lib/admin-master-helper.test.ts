@@ -169,8 +169,8 @@ describe("admin-master-helper", () => {
     expect(draft.plan_tier).toBe("basico");
     expect(draft.monthly_fee).toBe(990);
     expect(draft.max_users).toBe(10);
-    expect(draft.enabled_modules.pca).toBe(false);
-    expect(draft.enabled_modules.relatorios).toBe(true);
+    expect(draft.enabled_modules["pca"]).toBe(false);
+    expect(draft.enabled_modules["relatorios"]).toBe(true);
     expect(draft.ai_monthly_budget_usd).toBe(10);
     expect(draft.ai_monthly_token_limit).toBe(2_000_000);
   });

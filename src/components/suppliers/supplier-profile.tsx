@@ -584,7 +584,7 @@ export function FichaFornecedor({
                             resumo.ultimaHomologacao.status as Parameters<
                               typeof rotuloStatusHomologacao
                             >[0],
-                          )
+                          ).label
                           : "Não iniciada"
                         : null
                     }
@@ -1044,7 +1044,7 @@ export function FichaFornecedor({
             params={{
               fornecedor,
               statusConsolidado: resumo.statusConsolidado360,
-              ultimaHomologacao: resumo.ultimaHomologacao,
+              ultimaHomologacao: resumo.ultimaHomologacao ?? null,
               regularidades: dados?.regularidades.rows ?? [],
               documentos: documentoRows,
               sancoes: sancoes,
