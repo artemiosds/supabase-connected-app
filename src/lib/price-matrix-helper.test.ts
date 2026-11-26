@@ -40,7 +40,15 @@ it("groups distinct suppliers, preserves multiple quotes and highlights effectiv
   });
 });
 it("separates missing samples and approved items", () => {
-  const result = prepareBatchApprovalPayload(items, quotes, [], "mediana", "Justificativa válida");
+  // 3 cotações ativas (qty=3 ≥ 3) mas apenas 2 fontes distintas (A e B) → requer justificativa excepcional (IN 65 art. 6º §5º)
+  const result = prepareBatchApprovalPayload(
+    items,
+    quotes,
+    [],
+    "mediana",
+    "Justificativa válida",
+    "Exceção: apenas 2 fontes disponíveis no mercado local",
+  );
   expect(result.eligibleItems.map((i) => i.itemId)).toEqual(["a"]);
   expect(result.ineligibleItems[0]?.reason).toBe("Sem cotações válidas");
   expect(
@@ -50,6 +58,7 @@ it("separates missing samples and approved items", () => {
       [{ procurement_item_id: "a", status: "approved" }],
       "media",
       "Justificativa válida",
+      "Exceção: apenas 2 fontes disponíveis no mercado local",
     ).eligibleItems,
   ).toHaveLength(0);
 });

@@ -323,3 +323,96 @@ export function gerarCsvMapaDePrecos(
   }
   return "\uFEFF" + rows.map((row) => row.map(escaparCelulaCsv).join(";")).join("\r\n");
 }
+
+function normalizarDocumentoFonte(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function normalizarTextoFonte(value: string | null | undefined): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+export function contarFontesDistintas(
+  quotes: Array<
+    Pick<CotacaoMapa, "id" | "source_name"> & {
+      supplier_id?: string | null | undefined;
+      source_tax_id?: string | null | undefined;
+    }
+  >,
+): number {
+  const keys = new Set<string>();
+  for (const quote of quotes) {
+    if (quote.supplier_id) {
+      keys.add(`sup:${quote.supplier_id}`);
+      continue;
+    }
+    const taxId = normalizarDocumentoFonte(quote.source_tax_id);
+    if (taxId) {
+      keys.add(`tax:${taxId}`);
+      continue;
+    }
+    const name = normalizarTextoFonte(quote.source_name);
+    keys.add(name ? `name:${name}` : `id:${quote.id}`);
+  }
+  return keys.size;
+}
+
+export type AlertaValidadeCotacao = {
+  quoteId: string;
+  sourceName: string;
+  quotedAt: string;
+  limiteMeses: number;
+  diasDecorridos: number;
+};
+
+export function avaliarValidadeCotacoes(
+  quotes: Array<Pick<CotacaoMapa, "id" | "quoted_at" | "source_type" | "source_name">>,
+  referenceDateIso?: string,
+): { expiradas: AlertaValidadeCotacao[]; futuras: string[] } {
+  const today =
+    referenceDateIso ??
+    (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })();
+  const refMs = Date.parse(`${today}T00:00:00Z`);
+  if (!Number.isFinite(refMs)) return { expiradas: [], futuras: [] };
+
+  const expiradas: AlertaValidadeCotacao[] = [];
+  const futuras: string[] = [];
+
+  for (const quote of quotes) {
+    const quotedAt = quote.quoted_at?.slice(0, 10) ?? "";
+    const quoteMs = Date.parse(`${quotedAt}T00:00:00Z`);
+    if (!Number.isFinite(quoteMs)) continue;
+    const diasDecorridos = Math.floor((refMs - quoteMs) / 86_400_000);
+    if (diasDecorridos < 0) {
+      futuras.push(quote.id);
+      continue;
+    }
+    const isMediaOuFornecedor =
+      quote.source_type === "fornecedor" ||
+      quote.source_type === "midia_especializada" ||
+      quote.source_type === "site_especializado";
+    const limiteMeses = isMediaOuFornecedor ? 6 : 12;
+    const limiteDias = isMediaOuFornecedor ? 180 : 365;
+    if (diasDecorridos > limiteDias) {
+      expiradas.push({
+        quoteId: quote.id,
+        sourceName: quote.source_name,
+        quotedAt,
+        limiteMeses,
+        diasDecorridos,
+      });
+    }
+  }
+
+  return { expiradas, futuras };
+}

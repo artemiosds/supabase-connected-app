@@ -176,7 +176,10 @@ Deno.serve(async (request: Request) => {
   let invitedUserId: string | null = inviteData?.user?.id ?? null;
   let deliveryError = sendError;
 
-  if (deliveryError && /already.*registered|already exists/i.test(deliveryError.message ?? "")) {
+  if (
+    deliveryError &&
+    /already.*registered|already exists/i.test(deliveryError.message ?? "")
+  ) {
     // Caso a conta exista no Auth ainda sem confirmação de e-mail, reenvia a confirmação/ativação.
     const { error: resendError } = await adminClient.auth.resend({
       type: "signup",

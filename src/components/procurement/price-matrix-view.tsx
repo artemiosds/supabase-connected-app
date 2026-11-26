@@ -1,6 +1,9 @@
 import { useMemo } from "react";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { formatarMoeda } from "@/lib/contratacao";
+import { avaliarValidadeCotacoes } from "@/lib/pesquisa-precos";
 import {
   buildPriceMatrix,
   isApproved,
@@ -19,6 +22,10 @@ export function PriceMatrixView({
   approvals: MatrixApproval[];
 }) {
   const matrix = useMemo(() => buildPriceMatrix(items, quotes), [items, quotes]);
+  const validade = useMemo(
+    () => avaliarValidadeCotacoes(quotes.filter((q) => q.is_active !== false)),
+    [quotes],
+  );
   const money = (value: number | null) => (value === null ? "—" : formatarMoeda(value));
   return (
     <div className="space-y-3">
@@ -27,6 +34,16 @@ export function PriceMatrixView({
         respectiva fonte, inclusive propostas distintas do mesmo fornecedor. Os indicadores
         consideram todas as amostras válidas.
       </p>
+      {validade.expiradas.length > 0 && (
+        <Alert className="border-amber-400/60 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-xs">
+            {validade.expiradas.length} cotação(ões) ativa(s) excedem a janela recomendada pela IN
+            SEGES/ME nº 65/2021 (12 meses para painéis/contratações públicas/NFs ou 6 meses para
+            mídia/pesquisa direta). Revise as datas na guia Detalhamento.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="max-h-[55vh] overflow-auto rounded-md border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-background">

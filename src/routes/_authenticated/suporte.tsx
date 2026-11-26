@@ -1,10 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { AlertTriangle, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
-import { db } from "@/lib/db";
+import { isCommercialModuleEnabled } from "@/lib/commercial-access";
 import { supportRpc } from "@/lib/support-rpc";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -32,23 +31,48 @@ function dataHora(value: string | null) {
   );
 }
 
+export default CentralSuporte;
+
 function CentralSuporte() {
-  const navigate = useNavigate();
-  const { session } = useAuth();
+  const navigate = Route.useNavigate();
   const { tenants, selecionado, selecionar, loading, supportAccess, recarregar } = useTenant();
   const [tenantId, setTenantId] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
 
+  const organizacoesElegiveis = useCallback(() => {
+    return tenants.filter(
+      (tenant) =>
+        tenant.status === "active" &&
+        (tenant.commercial_status === "active" || tenant.commercial_status === "trial") &&
+        isCommercialModuleEnabled(tenant.enabled_modules, "fornecedores"),
+    );
+  }, [tenants]);
+
+  const listaTenantsSuporte = organizacoesElegiveis();
+
   useEffect(() => {
     if (supportAccess?.session_id && supportAccess.tenant_id) {
       setTenantId(supportAccess.tenant_id);
       return;
     }
-    const fallbackTenantId = selecionado?.id ?? tenants[0]?.id;
-    if (!tenantId && fallbackTenantId) setTenantId(fallbackTenantId);
-  }, [supportAccess?.session_id, supportAccess?.tenant_id, selecionado?.id, tenants, tenantId]);
+    const stillValid = listaTenantsSuporte.some((t) => t.id === tenantId);
+    if (stillValid) return;
+
+    const selectedEligible =
+      selecionado && listaTenantsSuporte.some((t) => t.id === selecionado.id)
+        ? selecionado.id
+        : undefined;
+    const fallbackTenantId = selectedEligible ?? listaTenantsSuporte[0]?.id ?? "";
+    setTenantId(fallbackTenantId);
+  }, [
+    supportAccess?.session_id,
+    supportAccess?.tenant_id,
+    selecionado,
+    listaTenantsSuporte,
+    tenantId,
+  ]);
 
   const isAuthorized =
     supportAccess?.is_platform_admin === true || supportAccess?.is_agent === true;
@@ -69,8 +93,8 @@ function CentralSuporte() {
       if (error) throw error;
       if (!data?.[0]?.session_id) throw new Error("O banco não retornou uma sessão válida.");
       selecionar(tenantId);
+      await recarregar();
       toast.success("Sessão de suporte iniciada por 60 minutos.");
-      recarregar();
       await navigate({ to: "/fornecedores" });
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível iniciar o suporte.");
@@ -87,8 +111,8 @@ function CentralSuporte() {
         p_session_id: supportAccess.session_id,
       });
       if (error) throw error;
+      await recarregar();
       toast.success("Sessão de suporte encerrada.");
-      recarregar();
       setReason("");
       await navigate({ to: supportAccess.is_agent ? "/suporte" : "/painel" });
     } catch (cause) {
@@ -161,14 +185,19 @@ function CentralSuporte() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border p-4 space-y-2">
               <p className="text-sm font-medium">Motivo registrado</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {supportAccess?.reason}
               </p>
-              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock3 className="h-4 w-4" aria-hidden />
-                Expira em {dataHora(supportAccess?.expires_at ?? null)}
+              <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock3 className="h-4 w-4" aria-hidden />
+                  Expira em {dataHora(supportAccess?.expires_at ?? null)}
+                </span>
+                {supportAccess?.allowed_actions && supportAccess.allowed_actions.length > 0 && (
+                  <span>Ações permitidas: {supportAccess.allowed_actions.join(", ")}</span>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -195,12 +224,12 @@ function CentralSuporte() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {tenants.length === 0 ? (
+            {listaTenantsSuporte.length === 0 ? (
               <Alert>
-                <AlertTitle>Nenhuma organização atribuída</AlertTitle>
+                <AlertTitle>Nenhuma organização elegível atribuída</AlertTitle>
                 <AlertDescription>
-                  Solicite ao Administrador Master uma atribuição ativa com permissão de consulta de
-                  fornecedores.
+                  Solicite ao Administrador Master uma atribuição ativa em Secretaria regular com o
+                  módulo de fornecedores habilitado.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -212,7 +241,7 @@ function CentralSuporte() {
                       <SelectValue placeholder="Selecione uma Secretaria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {tenants.map((tenant) => (
+                      {listaTenantsSuporte.map((tenant) => (
                         <SelectItem key={tenant.id} value={tenant.id}>
                           {tenant.nome}
                         </SelectItem>
@@ -249,7 +278,6 @@ function CentralSuporte() {
           excluir ou inativar fornecedores.
         </AlertDescription>
       </Alert>
-      <p className="text-xs text-muted-foreground">Conta autenticada: {session?.user.email}</p>
     </div>
   );
 }

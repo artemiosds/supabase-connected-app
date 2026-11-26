@@ -120,4 +120,28 @@ describe("pncp-export: pré-validação e pacote PNCP (Lei 14.133/2021)", () => 
     expect((res.payload["pca"] as Record<string, unknown>)["anoPca"]).toBe(2026);
     expect(Array.isArray(res.payload["itens"])).toBe(true);
   });
+
+  it("bloqueia exportação de PCA quando há demandas no exercício mas nenhuma aprovada", () => {
+    const res = validarPcaPncp(
+      { name: "Secretaria Municipal de Saúde", cnpj: "12.345.678/0001-90" },
+      {
+        year: 2026,
+        totalDemands: 2,
+        approvedDemands: 0,
+        items: [
+          {
+            description: "Dipirona Sódica 500mg",
+            unit: "COMPR",
+            totalQuantity: 10000,
+            sourceDemandsCount: 2,
+            valorEstimadoTotal: 1500,
+          },
+        ],
+      },
+    );
+
+    expect(res.status).toBe("blocked");
+    expect(res.blockers.some((b) => b.field === "pca.approvals")).toBe(true);
+    expect((res.payload["pca"] as Record<string, unknown>)["valorTotalEstimado"]).toBe(1500);
+  });
 });

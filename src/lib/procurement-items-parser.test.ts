@@ -65,3 +65,20 @@ it("handles item header aliases, decimal scale and monetary rounding", () => {
 it("keeps a real first item named Produto", () => {
   expect(parsePastedItems("Produto\tUN\t10\t2")).toHaveLength(1);
 });
+
+it("supports numbered 4-column headerless rows without unit price", () => {
+  expect(parsePastedItems("1\tSeringa 10ml\tun\t250")[0]).toMatchObject({
+    isValid: true,
+    description: "Seringa 10ml",
+    unit: "UNIDADE",
+    quantity: 250,
+    estimated_unit_price: null,
+  });
+  expect(parsePastedItems("123\tun\t10\t2")[0]).toMatchObject({
+    isValid: true,
+    description: "123",
+    unit: "UNIDADE",
+    quantity: 10,
+    estimated_unit_price: 2,
+  });
+});

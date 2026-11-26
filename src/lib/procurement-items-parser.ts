@@ -192,7 +192,15 @@ export function parsePastedItems(
   return chosen.rows.slice(hasHeader ? 1 : 0).map((row) => {
     const erros: string[] = [];
     if (row.error) erros.push("Aspas inválidas: confira os campos da planilha.");
-    const numbered = !mapping && row.cells.length === 5 && /^\d+$/.test(row.cells[0] ?? "");
+    const firstCell = (row.cells[0] ?? "").trim();
+    const isNumberedFiveCol = !mapping && row.cells.length === 5 && /^\d+$/.test(firstCell);
+    const isNumberedFourCol =
+      !mapping &&
+      row.cells.length === 4 &&
+      /^\d+$/.test(firstCell) &&
+      !Number.isFinite(parseBrazilianNumber(row.cells[2] ?? "")) &&
+      Number.isFinite(parseBrazilianNumber(row.cells[3] ?? ""));
+    const numbered = isNumberedFiveCol || isNumberedFourCol;
     const offset = numbered ? 1 : 0;
     const get = (field: Field, index: number) =>
       row.cells[mapping ? mapping.indexOf(field) : index + offset] ?? "";

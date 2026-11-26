@@ -12,6 +12,7 @@ import {
   type MatrixQuote,
   type MatrixApproval,
 } from "@/lib/price-matrix-helper";
+import { contarFontesDistintas } from "@/lib/pesquisa-precos";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,9 +83,13 @@ export function BatchPriceApprovalDialog({
     exceptional,
   );
   const matrix = buildPriceMatrix(remaining, quotes);
-  const low = matrix.rows.some(
-    (r) => !isApproved(r.item, approvals) && r.summary.quantidade > 0 && r.summary.quantidade < 3,
-  );
+  const low = matrix.rows.some((r) => {
+    if (isApproved(r.item, effectiveApprovals) || r.summary.quantidade === 0) return false;
+    const activeItemQuotes = quotes.filter(
+      (q) => q.procurement_item_id === r.item.id && q.is_active !== false,
+    );
+    return r.summary.quantidade < 3 || contarFontesDistintas(activeItemQuotes) < 3;
+  });
   const high = matrix.rows.filter(
     (r) =>
       prepared.eligibleItems.some((i) => i.itemId === r.item.id) &&
@@ -127,12 +132,17 @@ export function BatchPriceApprovalDialog({
           if (latest.data.estimated_price_source === "approved")
             throw new Error("O item já possui preço aprovado. Atualize a lista.");
           if (!validScope()) break;
+          const distinctSources = contarFontesDistintas(
+            quotes.filter((q) => q.procurement_item_id === item.itemId && q.is_active !== false),
+          );
           const result = await db.rpc("approve_procurement_item_price", {
             p_tenant_id: tenantId,
             p_item_id: item.itemId,
             p_method: method,
             p_method_justification: justification.trim(),
-            ...(item.samplesCount < 3 ? { p_exceptional_justification: exceptional.trim() } : {}),
+            ...(item.samplesCount < 3 || distinctSources < 3
+              ? { p_exceptional_justification: exceptional.trim() }
+              : {}),
           });
           if (result.error) throw new Error(result.error.message);
           completed.push(item.itemId);

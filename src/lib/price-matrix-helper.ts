@@ -1,5 +1,6 @@
 import {
   calcularResumoDePrecos,
+  contarFontesDistintas,
   precoUnitarioComFrete,
   type ItemMapa,
   type CotacaoMapa,
@@ -91,7 +92,10 @@ export function prepareBatchApprovalPayload(
       )
     )
       reason = "Proposta formal incompleta";
-    else if (summary.quantidade < 3 && exceptionalJustification.trim().length < 10)
+    else if (
+      (summary.quantidade < 3 || contarFontesDistintas(active) < 3) &&
+      exceptionalJustification.trim().length < 10
+    )
       reason = "Exige justificativa excepcional (mínimo de 10 caracteres).";
     if (reason) ineligibleItems.push({ itemId: item.id, description: item.description, reason });
     else

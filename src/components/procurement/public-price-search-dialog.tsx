@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckSquare, Database, ExternalLink, Loader2, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  ExternalLink,
+  Loader2,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +35,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarData, formatarMoeda } from "@/lib/contratacao";
 import { db } from "@/lib/db";
+import { normalizeHealthUnit } from "@/lib/procurement-items-parser";
 import {
   calcularEstatisticasPrecosPublicos,
   consultarPrecosPublicos,
@@ -76,10 +87,17 @@ type Props = {
   tenantId: string;
   userId: string;
   items: ItemOption[];
+  canImport?: boolean;
   onSaved: () => Promise<void>;
 };
 
-export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Props) {
+export function PublicPriceSearchDialog({
+  tenantId,
+  userId,
+  items,
+  canImport = true,
+  onSaved,
+}: Props) {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const scope = useRef({ tenant: selecionado?.id, user: session?.user.id });
@@ -97,6 +115,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<PublicPriceSearchResult | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const importLockRef = useRef(false);
 
   useEffect(() => {
     if (!targetItemId && activeItems[0]) {
@@ -116,7 +135,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
     [selectedRecords],
   );
 
-  async function handleSearch() {
+  async function handleSearch(requestedPage = 1) {
     if (!inScope()) {
       toast.error("A sessão ou a Secretaria mudou. Reabra o processo.");
       return;
@@ -136,9 +155,10 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
         code: cleanCode,
         ...(uf === "ALL" ? {} : { uf }),
         months: Number(months) as 6 | 12 | 24,
-        page: 1,
+        page: requestedPage,
         pageSize: 20,
       });
+      if (!inScope()) return;
       setResult(data);
       if (data.records.length === 0) {
         toast.info("Nenhum preço homologado encontrado para esses filtros no período.");
@@ -171,6 +191,11 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
   }
 
   async function handleImport() {
+    if (importLockRef.current) return;
+    if (!canImport) {
+      toast.error("Seu perfil não possui permissão para importar cotações nesta Secretaria.");
+      return;
+    }
     if (!inScope()) {
       toast.error("A sessão ou a Secretaria mudou. Reabra o processo.");
       return;
@@ -184,8 +209,14 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
       return;
     }
 
+    importLockRef.current = true;
     setImporting(true);
     try {
+      const access = await db.rpc("get_document_capabilities", { p_tenant_id: tenantId });
+      if (access.error || !access.data?.[0]?.can_create) {
+        throw new Error("Seu perfil não possui permissão para cadastrar cotações nesta Secretaria.");
+      }
+      if (!inScope()) return;
       const payloads = selectedRecords.map((record) =>
         montarPayloadCotacaoPublica({
           tenantId,
@@ -209,6 +240,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
         err instanceof Error ? err.message : "Não foi possível importar os preços selecionados.",
       );
     } finally {
+      importLockRef.current = false;
       setImporting(false);
     }
   }
@@ -219,7 +251,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
         type="button"
         variant="outline"
         size="sm"
-        disabled={activeItems.length === 0}
+        disabled={activeItems.length === 0 || !canImport}
         onClick={() => setOpen(true)}
       >
         <Database className="mr-2 h-4 w-4" />
@@ -327,7 +359,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
                 type="button"
                 className="w-full"
                 disabled={loading}
-                onClick={() => void handleSearch()}
+                onClick={() => void handleSearch(1)}
               >
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -338,6 +370,17 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
               </Button>
             </div>
           </div>
+
+          {months === "24" && (
+            <Alert className="border-amber-400/60 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-xs">
+                Atenção à IN SEGES/ME nº 65/2021 (art. 5º, II): contratações similares de outros
+                entes devem ter no máximo 1 ano até a data da pesquisa, salvo justificativa
+                excepcional nos autos.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {result?.catalogItem && (
             <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
@@ -472,7 +515,21 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
                             <td className="p-2 whitespace-nowrap">
                               {formatarData(rec.purchaseDate)}
                             </td>
-                            <td className="p-2">{rec.unit}</td>
+                            <td className="p-2">
+                              <span>{rec.unit}</span>
+                              {targetItem &&
+                                rec.unit &&
+                                normalizeHealthUnit(rec.unit) !==
+                                  normalizeHealthUnit(targetItem.unit) && (
+                                  <Badge
+                                    variant="outline"
+                                    className="ml-1.5 border-amber-400 text-[10px] text-amber-800"
+                                    title={`Item usa ${targetItem.unit}`}
+                                  >
+                                    Difere de {targetItem.unit}
+                                  </Badge>
+                                )}
+                            </td>
                             <td className="p-2 text-right font-semibold whitespace-nowrap">
                               {formatarMoeda(rec.unitPrice)}
                             </td>
@@ -481,6 +538,35 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {result.totalPaginas > 1 && (
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    Página {result.pagina} de {result.totalPaginas} ({result.totalRegistros}{" "}
+                    registro(s) encontrados)
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={loading || result.pagina <= 1}
+                      onClick={() => void handleSearch(result.pagina - 1)}
+                    >
+                      <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Anterior
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={loading || result.pagina >= result.totalPaginas}
+                      onClick={() => void handleSearch(result.pagina + 1)}
+                    >
+                      Próxima <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -492,7 +578,7 @@ export function PublicPriceSearchDialog({ tenantId, userId, items, onSaved }: Pr
             </Button>
             <Button
               type="button"
-              disabled={importing || selectedRecords.length === 0 || !targetItem}
+              disabled={!canImport || importing || selectedRecords.length === 0 || !targetItem}
               onClick={() => void handleImport()}
             >
               {importing ? (

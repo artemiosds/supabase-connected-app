@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  avaliarValidadeCotacoes,
   calcularResumoDePrecos,
   calcularPrecoHomologado,
   calcularPrecoUnitarioEfetivo,
   analisarDispersaoPrecos,
   calcularMediana,
+  contarFontesDistintas,
   expurgarAmostrasInconsistentes,
   gerarCsvMapaDePrecos,
   precoUnitarioComFrete,
@@ -169,5 +171,52 @@ describe("estatística amostral", () => {
     }));
     expect(expurgarAmostrasInconsistentes(quotes)[0]?.sinalizada).toBe(true);
     expect(quotes[0]?.selected_for_estimate).toBe(true);
+  });
+
+  it("conta fontes distintas por fornecedor, CNPJ/CPF ou nome e valida prazos da IN 65/2021", () => {
+    const distinct = contarFontesDistintas([
+      { id: "1", source_name: "Fornecedor Alpha", supplier_id: "s1", source_tax_id: "11.111.111/0001-11" },
+      { id: "2", source_name: "Filial Alpha", supplier_id: "s1", source_tax_id: "11.111.111/0001-11" },
+      { id: "3", source_name: "Painel de Preços", source_tax_id: null },
+      { id: "4", source_name: "painel de precos", source_tax_id: null },
+      { id: "5", source_name: "BPS Saúde", source_tax_id: null },
+    ]);
+    expect(distinct).toBe(3);
+
+    const validade = avaliarValidadeCotacoes(
+      [
+        {
+          id: "q-forn-expirada",
+          quoted_at: "2025-11-01",
+          source_type: "fornecedor",
+          source_name: "Fornecedor Antigo",
+        },
+        {
+          id: "q-painel-ok",
+          quoted_at: "2026-01-15",
+          source_type: "painel_precos",
+          source_name: "Painel",
+        },
+        {
+          id: "q-painel-expirada",
+          quoted_at: "2025-05-01",
+          source_type: "painel_precos",
+          source_name: "Painel Antigo",
+        },
+        {
+          id: "q-futura",
+          quoted_at: "2026-12-01",
+          source_type: "fornecedor",
+          source_name: "Cotação Futura",
+        },
+      ],
+      "2026-11-26",
+    );
+
+    expect(validade.expiradas.map((item) => item.quoteId)).toEqual([
+      "q-forn-expirada",
+      "q-painel-expirada",
+    ]);
+    expect(validade.futuras).toEqual(["q-futura"]);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -52,12 +52,19 @@ export function StageTransitionDialog({
   const [responsibleName, setResponsibleName] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const initializedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (open && processo) {
-      setResponsibleName(processo.responsible_name ?? "");
-      setDueDate(processo.due_date ?? "");
+    if (!open || !processo) {
+      initializedForRef.current = null;
+      return;
     }
+    const key = `${processo.id}:${processo.stage}`;
+    if (initializedForRef.current === key) return;
+    initializedForRef.current = key;
+    setResponsibleName(processo.responsible_name ?? "");
+    setDueDate(processo.due_date ?? "");
   }, [open, processo]);
 
   if (!processo) return null;
@@ -65,8 +72,9 @@ export function StageTransitionDialog({
   const validacao = validarTransicaoEtapa(processo, itensChecklist, totalItensProcesso);
 
   const handleConfirm = async () => {
-    if (!validacao.podeAvancar || !validacao.proximaEtapa) return;
+    if (!validacao.podeAvancar || !validacao.proximaEtapa || submittingRef.current) return;
 
+    submittingRef.current = true;
     try {
       setSubmitting(true);
       await onConfirm({
@@ -75,12 +83,18 @@ export function StageTransitionDialog({
         due_date: dueDate || null,
       });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!submitting) onOpenChange(nextOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle>Assistente de Transição de Fase (Lei 14.133)</DialogTitle>

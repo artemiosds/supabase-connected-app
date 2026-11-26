@@ -29,7 +29,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 
-type Props = { tenantId: string; processId: string; userId: string; onSaved: () => Promise<void> };
+type Props = {
+  tenantId: string;
+  processId: string;
+  userId: string;
+  canCreate?: boolean;
+  onSaved: () => Promise<void>;
+};
 const example =
   "Descrição\tUnidade\tQuantidade\tPreço\nAmoxicilina 500mg\tcp\t5000\t0,45\nDipirona 500mg/ml\tamp\t1200\t1,50\nSoro fisiológico 0,9% 500ml\tfr\t300\t5,20";
 type Insert = TablesInsert<"procurement_items">;
@@ -40,7 +46,7 @@ const unitPriceFormat = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 4,
 });
 
-export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props) {
+export function BatchItemsDialog({ tenantId, processId, userId, canCreate = true, onSaved }: Props) {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const [open, setOpen] = useState(false);
@@ -199,7 +205,7 @@ export function BatchItemsDialog({ tenantId, processId, userId, onSaved }: Props
         }
       }}
     >
-      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+      <Button type="button" variant="outline" disabled={!canCreate} onClick={() => setOpen(true)}>
         <FileSpreadsheet className="h-4 w-4" />
         Importar Planilha
       </Button>

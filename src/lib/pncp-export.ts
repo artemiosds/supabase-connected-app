@@ -81,6 +81,7 @@ export type PncpPcaInput = {
     unit: string;
     totalQuantity: number;
     sourceDemandsCount: number;
+    valorEstimadoTotal?: number | null | undefined;
   }>;
 };
 
@@ -491,12 +492,36 @@ export function validarPcaPncp(tenant: PncpTenantInfo, pca: PncpPcaInput): PncpV
         },
   );
 
-  if (pca.totalDemands > pca.approvedDemands) {
+  checks.push(
+    Number.isInteger(pca.year) && pca.year >= 2020 && pca.year <= 2100
+      ? {
+          field: "pca.year",
+          label: "Exercício do PCA",
+          severity: "ok",
+          message: `Exercício ${pca.year} válido (Decreto nº 10.947/2022).`,
+        }
+      : {
+          field: "pca.year",
+          label: "Exercício do PCA",
+          severity: "blocker",
+          message: "Informe um exercício financeiro válido entre 2020 e 2100.",
+        },
+  );
+
+  if (pca.totalDemands > 0 && pca.approvedDemands === 0) {
+    checks.push({
+      field: "pca.approvals",
+      label: "Aprovação das demandas",
+      severity: "blocker",
+      message:
+        "Ao menos uma demanda precisa estar aprovada pela autoridade competente antes de publicar o PCA no PNCP (art. 12, § 1º).",
+    });
+  } else if (pca.totalDemands > pca.approvedDemands) {
     checks.push({
       field: "pca.approvals",
       label: "Aprovação das demandas",
       severity: "warning",
-      message: `${pca.totalDemands - pca.approvedDemands} demanda(s) ainda aguarda(m) aprovação da autoridade competente (art. 12, § 1º).`,
+      message: `${pca.totalDemands - pca.approvedDemands} demanda(s) ainda aguarda(m) aprovação ou revisão (apenas demandas aprovadas devem compor a publicação oficial).`,
     });
   } else if (pca.totalDemands > 0) {
     checks.push({
@@ -507,9 +532,14 @@ export function validarPcaPncp(tenant: PncpTenantInfo, pca: PncpPcaInput): PncpV
     });
   }
 
+  const valorTotalEstimado = pca.items.reduce((sum, item) => {
+    const val = Number(item.valorEstimadoTotal ?? 0);
+    return Number.isFinite(val) && val > 0 ? sum + val : sum;
+  }, 0);
+
   const payload = {
     padrao: "PNCP_API_PCA_V1",
-    leiReferencia: "Lei nº 14.133/2021, art. 12, § 1º",
+    leiReferencia: "Lei nº 14.133/2021, art. 12, § 1º; Decreto nº 10.947/2022",
     geradoEm: new Date().toISOString(),
     orgaoEntidade: {
       cnpj: orgCnpj || null,
@@ -523,12 +553,17 @@ export function validarPcaPncp(tenant: PncpTenantInfo, pca: PncpPcaInput): PncpV
       quantidadeDemandas: pca.totalDemands,
       demandasAprovadas: pca.approvedDemands,
       quantidadeItensConsolidados: pca.items.length,
+      valorTotalEstimado: Math.round((valorTotalEstimado + Number.EPSILON) * 100) / 100,
     },
     itens: pca.items.map((item, index) => ({
       numeroItem: index + 1,
       descricao: item.description,
       unidadeMedida: item.unit,
       quantidadeTotal: Number(item.totalQuantity),
+      valorTotalEstimado:
+        item.valorEstimadoTotal != null && Number.isFinite(Number(item.valorEstimadoTotal))
+          ? Math.round((Number(item.valorEstimadoTotal) + Number.EPSILON) * 100) / 100
+          : null,
       demandasOrigem: item.sourceDemandsCount,
     })),
   };

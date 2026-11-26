@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -18,7 +18,9 @@ import {
 import { MyTasks } from "@/components/dashboard/my-tasks";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
-import { db } from "@/lib/db";
+import { isCommercialModuleEnabled } from "@/lib/commercial-access";
+import { dataHojeLocalISO } from "@/lib/contratacao";
+import { carregarTodasAsPaginas, db } from "@/lib/db";
 import {
   DIAS_PROCESSO_PARADO,
   listarProcessosParados,
@@ -28,7 +30,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({ meta: [{ title: "Painel — Gestão de Fornecedores da Saúde" }] }),
@@ -45,10 +46,6 @@ type Indicadores = {
   stalledProcesses: ProcessoParado[] | null;
 };
 
-function dataLocalISO(data: Date): string {
-  return new Date(data.getTime() - data.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
-
 function Painel() {
   const { session } = useAuth();
   const { selecionado, loading: carregandoTenant, bancoPendente, erro: erroTenant } = useTenant();
@@ -63,8 +60,20 @@ function Painel() {
   });
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const requisicaoRef = useRef(0);
+
+  const moduloFornecedores = selecionado
+    ? isCommercialModuleEnabled(selecionado.enabled_modules, "fornecedores")
+    : false;
+  const moduloDocumentos = selecionado
+    ? isCommercialModuleEnabled(selecionado.enabled_modules, "documentos")
+    : false;
+  const moduloProcessos = selecionado
+    ? isCommercialModuleEnabled(selecionado.enabled_modules, "processos")
+    : false;
 
   const carregar = useCallback(async () => {
+    const req = ++requisicaoRef.current;
     if (!selecionado?.id) {
       setIndicadores({
         suppliers: null,
@@ -75,101 +84,147 @@ function Painel() {
         generated: null,
         stalledProcesses: null,
       });
+      setErro(null);
+      setLoading(false);
       return;
     }
+
     setLoading(true);
     setErro(null);
     const agora = new Date();
     const dataLimite = new Date(agora);
     dataLimite.setDate(dataLimite.getDate() + 30);
-    const hoje = dataLocalISO(agora);
-    const limite = dataLocalISO(dataLimite);
+    const hoje = dataHojeLocalISO(agora);
+    const limite = dataHojeLocalISO(dataLimite);
     const cutoffParalisacao = new Date(
       agora.getTime() - DIAS_PROCESSO_PARADO * 86_400_000,
     ).toISOString();
-    const [s, d, expired, expiring, m, g, processosParados] = await Promise.all([
-      db
-        .from("suppliers")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id),
-      db
-        .from("supplier_documents")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id)
-        .eq("status", "active"),
-      db
-        .from("supplier_documents")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id)
-        .eq("status", "active")
-        .not("expires_at", "is", null)
-        .lt("expires_at", hoje),
-      db
-        .from("supplier_documents")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id)
-        .eq("status", "active")
-        .not("expires_at", "is", null)
-        .gte("expires_at", hoje)
-        .lte("expires_at", limite),
+
+    const okEmpty = Promise.resolve({ error: null, count: null as number | null });
+
+    const [s, d, expired, expiring, m, g] = await Promise.all([
+      moduloFornecedores
+        ? db
+            .from("suppliers")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", selecionado.id)
+        : okEmpty,
+      moduloDocumentos
+        ? db
+            .from("supplier_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", selecionado.id)
+            .eq("status", "active")
+        : okEmpty,
+      moduloDocumentos
+        ? db
+            .from("supplier_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", selecionado.id)
+            .eq("status", "active")
+            .not("expires_at", "is", null)
+            .lt("expires_at", hoje)
+        : okEmpty,
+      moduloDocumentos
+        ? db
+            .from("supplier_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", selecionado.id)
+            .eq("status", "active")
+            .not("expires_at", "is", null)
+            .gte("expires_at", hoje)
+            .lte("expires_at", limite)
+        : okEmpty,
       db
         .from("tenant_memberships")
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", selecionado.id)
         .eq("status", "active"),
-      db
-        .from("generated_documents")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id),
-      db
-        .from("procurement_processes")
-        .select("id, number, title, stage, status, responsible_name, updated_at")
-        .eq("tenant_id", selecionado.id)
-        .neq("status", "concluido")
-        .neq("status", "arquivado")
-        .lt("updated_at", cutoffParalisacao)
-        .order("updated_at", { ascending: true })
-        .limit(100),
+      moduloDocumentos
+        ? db
+            .from("generated_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", selecionado.id)
+        : okEmpty,
     ]);
+
     let stalledProcesses: ProcessoParado[] | null = null;
-    let activityError: string | null = null;
-    if (!processosParados.error) {
-      const ids = (processosParados.data ?? []).map((processo) => processo.id);
-      if (ids.length === 0) {
-        stalledProcesses = [];
-      } else {
-        const atividades = await db
-          .from("process_items")
-          .select("process_id, updated_at")
-          .eq("tenant_id", selecionado.id)
-          .in("process_id", ids);
-        activityError = atividades.error?.message ?? null;
-        if (!atividades.error) {
-          stalledProcesses = listarProcessosParados(
-            processosParados.data ?? [],
-            atividades.data ?? [],
-            agora,
-          );
+    let processError: string | null = null;
+
+    if (moduloProcessos) {
+      try {
+        const processosRows = await carregarTodasAsPaginas<{
+          id: string;
+          number: string;
+          title: string;
+          stage: string;
+          status: string;
+          responsible_name: string | null;
+          updated_at: string;
+        }>((from, to) =>
+          db
+            .from("procurement_processes")
+            .select("id, number, title, stage, status, responsible_name, updated_at")
+            .eq("tenant_id", selecionado.id)
+            .neq("status", "concluido")
+            .neq("status", "arquivado")
+            .lt("updated_at", cutoffParalisacao)
+            .order("updated_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
+
+        if (req !== requisicaoRef.current) return;
+
+        if (processosRows.length === 0) {
+          stalledProcesses = [];
+        } else {
+          const atividades: Array<{ process_id: string; updated_at: string }> = [];
+          for (let i = 0; i < processosRows.length; i += 100) {
+            const idsChunk = processosRows.slice(i, i + 100).map((p) => p.id);
+            const chunkRows = await carregarTodasAsPaginas<{
+              process_id: string;
+              updated_at: string;
+            }>((from, to) =>
+              db
+                .from("process_items")
+                .select("process_id, updated_at")
+                .eq("tenant_id", selecionado.id)
+                .in("process_id", idsChunk)
+                .order("id")
+                .range(from, to),
+            );
+            atividades.push(...chunkRows);
+          }
+          if (req !== requisicaoRef.current) return;
+          stalledProcesses = listarProcessosParados(processosRows, atividades, agora);
         }
+      } catch (err) {
+        processError = err instanceof Error ? err.message : String(err);
       }
     }
-    const failures = [s, d, expired, expiring, m, g, processosParados]
+
+    if (req !== requisicaoRef.current) return;
+
+    const failures = [s, d, expired, expiring, m, g]
       .filter((x) => x.error)
       .map((x) => x.error?.message ?? "");
-    if (activityError) failures.push(activityError);
+    if (processError) failures.push(processError);
+
     setIndicadores({
-      suppliers: s.error ? null : (s.count ?? 0),
-      documents: d.error ? null : (d.count ?? 0),
-      expired: expired.error ? null : (expired.count ?? 0),
-      expiring: expiring.error ? null : (expiring.count ?? 0),
+      suppliers: !moduloFornecedores || s.error ? null : (s.count ?? 0),
+      documents: !moduloDocumentos || d.error ? null : (d.count ?? 0),
+      expired: !moduloDocumentos || expired.error ? null : (expired.count ?? 0),
+      expiring: !moduloDocumentos || expiring.error ? null : (expiring.count ?? 0),
       members: m.error ? null : (m.count ?? 0),
-      generated: g.error ? null : (g.count ?? 0),
+      generated: !moduloDocumentos || g.error ? null : (g.count ?? 0),
       stalledProcesses,
     });
-    if (failures.length)
+    if (failures.length) {
       setErro("Alguns indicadores não puderam ser consultados com as permissões deste perfil.");
+    }
     setLoading(false);
-  }, [selecionado?.id]);
+  }, [selecionado?.id, moduloFornecedores, moduloDocumentos, moduloProcessos]);
 
   useEffect(() => {
     void carregar();
@@ -378,13 +433,13 @@ function Painel() {
                         {loading ? "…" : (metrica.value ?? "—")}
                       </p>
                       <div className="mt-4 border-t border-border/70 pt-3">
-                        <a
-                          href={metrica.href}
+                        <Link
+                          to={metrica.href}
                           className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                         >
                           {metrica.action}
                           <ArrowRight className="size-3.5" aria-hidden="true" />
-                        </a>
+                        </Link>
                         <p className="text-[11px] text-muted-foreground">{metrica.helper}</p>
                       </div>
                     </CardContent>
@@ -428,6 +483,14 @@ function Painel() {
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Verificando a atividade dos processos…
                 </div>
+              ) : !moduloProcessos ? (
+                <Alert>
+                  <AlertTitle>Módulo de processos desativado</AlertTitle>
+                  <AlertDescription>
+                    Habilite o módulo de Processos no plano desta Secretaria para acompanhar a
+                    esteira de contratações e alertas de estagnação.
+                  </AlertDescription>
+                </Alert>
               ) : indicadores.stalledProcesses === null ? (
                 <Alert>
                   <AlertTitle>Alerta indisponível</AlertTitle>
@@ -479,12 +542,13 @@ function Painel() {
                             : ""}
                         </p>
                       </div>
-                      <a
-                        href={`/processos?processo=${encodeURIComponent(processo.id)}`}
+                      <Link
+                        to="/processos"
+                        search={{ processo: processo.id } as never}
                         className="inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
                       >
                         Ver processo <ArrowUpRight className="size-4" aria-hidden="true" />
-                      </a>
+                      </Link>
                     </div>
                   ))}
                   <Link

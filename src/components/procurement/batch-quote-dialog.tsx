@@ -45,6 +45,7 @@ type Props = {
   userId: string;
   items: Item[];
   suppliers: Supplier[];
+  canManage?: boolean;
   onSaved: () => Promise<void>;
 };
 const extensions: Record<string, string> = {
@@ -80,6 +81,7 @@ export function BatchQuoteDialog({
   userId,
   items,
   suppliers,
+  canManage = true,
   onSaved,
 }: Props) {
   const { selecionado } = useTenant();
@@ -332,7 +334,7 @@ export function BatchQuoteDialog({
       <Button
         variant="outline"
         type="button"
-        disabled={!items.some((i) => i.is_active)}
+        disabled={!canManage || !items.some((i) => i.is_active)}
         onClick={start}
       >
         <Receipt className="h-4 w-4" />

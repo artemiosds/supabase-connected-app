@@ -1065,23 +1065,23 @@ function NovoContrato(props: {
     setF(
       contrato
         ? {
-            number: contrato.number,
-            object: contrato.object,
-            supplier_id: contrato.supplier_id ?? "",
-            process_id: contrato.process_id ?? "",
-            modality: contrato.modality,
-            instrument_type: contrato.instrument_type,
-            total_value: String(Number(contrato.total_value)),
-            start_date: contrato.start_date,
-            end_date: contrato.end_date,
-            manager_name: contrato.manager_name ?? "",
-            manager_user_id: contrato.manager_user_id ?? "",
-            inspector_name: contrato.inspector_name ?? "",
-            inspector_user_id: contrato.inspector_user_id ?? "",
-            ordinance: contrato.ordinance ?? "",
-            status: contrato.status,
-            notes: contrato.notes ?? "",
-          }
+          number: contrato.number,
+          object: contrato.object,
+          supplier_id: contrato.supplier_id ?? "",
+          process_id: contrato.process_id ?? "",
+          modality: contrato.modality,
+          instrument_type: contrato.instrument_type,
+          total_value: String(Number(contrato.total_value)),
+          start_date: contrato.start_date,
+          end_date: contrato.end_date,
+          manager_name: contrato.manager_name ?? "",
+          manager_user_id: contrato.manager_user_id ?? "",
+          inspector_name: contrato.inspector_name ?? "",
+          inspector_user_id: contrato.inspector_user_id ?? "",
+          ordinance: contrato.ordinance ?? "",
+          status: contrato.status,
+          notes: contrato.notes ?? "",
+        }
         : CONTRATO_FORM_VAZIO,
     );
   }, [props.aberto, props.contrato]);
@@ -1201,7 +1201,7 @@ function NovoContrato(props: {
         else
           toast.warning(
             "Contrato salvo, mas não foi possível vincular as cotações selecionadas: " +
-              linkError.message,
+            linkError.message,
           );
       }
     }
@@ -1460,10 +1460,10 @@ function NovoAditivo(props: {
   const valorNumerico = valor.trim() ? numeroDecimal(valor) : Number.NaN;
   const limites = props.contrato
     ? calcularLimitesArt125({
-        valorVigenteAtual: Number(props.contrato.total_value),
-        aditivos: props.aditivosContrato,
-        isReformaEdificioOuEquipamento: isReforma,
-      })
+      valorVigenteAtual: Number(props.contrato.total_value),
+      aditivos: props.aditivosContrato,
+      isReformaEdificioOuEquipamento: isReforma,
+    })
     : null;
   const limiteVigencia = props.contrato
     ? calcularLimiteVigenciaInstrumento(props.contrato.start_date, props.contrato.instrument_type)
@@ -1609,7 +1609,7 @@ function NovoAditivo(props: {
                   <strong>
                     {formatarMoeda(
                       Number(props.contrato.total_value) +
-                        (tipo === "supressao" ? -1 : 1) * valorNumerico,
+                      (tipo === "supressao" ? -1 : 1) * valorNumerico,
                     )}
                   </strong>
                 </p>

@@ -16,7 +16,7 @@ import {
 import { SupplierSelect } from "@/components/supplier-select";
 import { AnnualDemandPanel } from "@/components/annual-demand-panel";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import type { CsvColumn } from "@/lib/csv-export";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
+import { isCommercialModuleEnabled } from "@/lib/commercial-access";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
 import type { Tables } from "@/integrations/supabase/types";
@@ -48,6 +49,7 @@ import {
   ROTULOS_CATEGORIA_MODELO,
 } from "@/lib/document-templates";
 import {
+  dataHojeLocalISO,
   ETAPAS,
   etapaAnterior,
   formatarData,
@@ -82,9 +84,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  avaliarValidadeCotacoes,
   calcularResumoDePrecos,
   calcularPrecoHomologado,
   analisarDispersaoPrecos,
+  contarFontesDistintas,
   expurgarAmostrasInconsistentes,
   gerarCsvMapaDePrecos,
   precoUnitarioComFrete,
@@ -154,11 +158,16 @@ const corPrioridade: Record<string, string> = {
 };
 
 function Processos() {
+  const navigate = useNavigate();
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const userId = session?.user.id ?? "";
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
+  const [docCaps, setDocCaps] = useState<{ can_create: boolean; can_update: boolean }>({
+    can_create: false,
+    can_update: false,
+  });
   const [salvandoEtapaId, setSalvandoEtapaId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendente, setPendente] = useState(false);
@@ -167,6 +176,14 @@ function Processos() {
   const [novo, setNovo] = useState(false);
   const [novoViaDfd, setNovoViaDfd] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [devolvendoProcesso, setDevolvendoProcesso] = useState<{
+    processo: Processo;
+    destino: EtapaId;
+  } | null>(null);
+  const acaoLockRef = useRef(false);
+  const etapaOriginalRef = useRef<Map<string, { responsible_name: string | null; due_date: string | null }>>(
+    new Map(),
+  );
   const members = useAssignees(abertoId ? selecionado?.id : undefined);
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -183,6 +200,7 @@ function Processos() {
   const [transicaoAberta, setTransicaoAberta] = useState(false);
   const [totalItensProcurement, setTotalItensProcurement] = useState(0);
   useEffect(() => {
+    let ativo = true;
     if (!abertoId || !selecionado?.id) {
       setTotalItensProcurement(0);
       return;
@@ -191,9 +209,14 @@ function Processos() {
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", selecionado.id)
       .eq("process_id", abertoId)
-      .then(({ count }) => {
-        setTotalItensProcurement(count ?? 0);
+      .eq("is_active", true)
+      .then(({ count, error: countError }) => {
+        if (!ativo) return;
+        setTotalItensProcurement(countError ? 0 : (count ?? 0));
       });
+    return () => {
+      ativo = false;
+    };
   }, [abertoId, selecionado?.id, dadosAbertos]);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluido">("todos");
@@ -210,6 +233,7 @@ function Processos() {
     setTenantCarregadoId(null);
     setProcessos([]);
     setItens([]);
+    setDocCaps({ can_create: false, can_update: false });
     setErro(null);
     setPendente(false);
 
@@ -221,7 +245,7 @@ function Processos() {
 
     setLoading(true);
     try {
-      const [processosRows, checklistRows] = await Promise.all([
+      const [processosRows, checklistRows, capsRes] = await Promise.all([
         carregarTodasAsPaginas((inicio, fim) =>
           db
             .from("procurement_processes")
@@ -241,10 +265,16 @@ function Processos() {
             .order("id")
             .range(inicio, fim),
         ),
+        db.rpc("get_document_capabilities", { p_tenant_id: tenantId }),
       ]);
       if (requisicaoAtual !== requisicaoRef.current) return;
       setProcessos(comEtapaValida(processosRows));
       setItens(comEtapaValida(checklistRows));
+      const capsRow = capsRes.data?.[0];
+      setDocCaps({
+        can_create: Boolean(capsRow?.can_create),
+        can_update: Boolean(capsRow?.can_update),
+      });
       setTenantCarregadoId(tenantId);
     } catch (error) {
       if (requisicaoAtual !== requisicaoRef.current) return;
@@ -321,7 +351,11 @@ function Processos() {
   ];
 
   async function moverEtapa(p: Processo, destino: EtapaId | null) {
-    if (!destino) return;
+    if (!destino || !selecionado?.id || acaoLockRef.current) return;
+    if (!docCaps.can_update) {
+      toast.error("Seu perfil não possui permissão para tramitar processos nesta Secretaria.");
+      return;
+    }
 
     const pendentes = itens.filter(
       (item) => item.process_id === p.id && item.stage === p.stage && !item.is_done,
@@ -333,52 +367,82 @@ function Processos() {
       return;
     }
 
-    const { error } = await db
-      .from("procurement_processes")
-      .update({ stage: destino, updated_by: userId })
-      .eq("id", p.id)
-      .eq("tenant_id", selecionado?.id ?? "");
-    if (error) {
-      toast.error(error.message);
-      return;
+    acaoLockRef.current = true;
+    const tenantSnapshot = selecionado.id;
+    try {
+      const { error } = await db
+        .from("procurement_processes")
+        .update({ stage: destino, updated_by: userId })
+        .eq("id", p.id)
+        .eq("tenant_id", tenantSnapshot);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`Processo movido para ${ETAPAS.find((e) => e.id === destino)?.nome}.`);
+      void carregar();
+    } finally {
+      acaoLockRef.current = false;
     }
-    toast.success(`Processo movido para ${ETAPAS.find((e) => e.id === destino)?.nome}.`);
-    void carregar();
   }
 
   async function alternarItem(item: Item) {
-    const { error } = await db
-      .from("process_items")
-      .update({ is_done: !item.is_done, updated_by: userId })
-      .eq("id", item.id);
-    if (error) {
-      toast.error(error.message);
+    if (!selecionado?.id || acaoLockRef.current) return;
+    if (!docCaps.can_update) {
+      toast.error("Seu perfil não possui permissão para atualizar o checklist.");
       return;
     }
-    setItens((s) => s.map((x) => (x.id === item.id ? { ...x, is_done: !x.is_done } : x)));
+    acaoLockRef.current = true;
+    try {
+      const { error } = await db
+        .from("process_items")
+        .update({ is_done: !item.is_done, updated_by: userId })
+        .eq("id", item.id)
+        .eq("tenant_id", selecionado.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setItens((s) => s.map((x) => (x.id === item.id ? { ...x, is_done: !x.is_done } : x)));
+    } finally {
+      acaoLockRef.current = false;
+    }
   }
 
   async function salvarResponsavelPrazoEtapa(item: Item) {
+    if (!selecionado?.id || !docCaps.can_update) return;
+    const orig = etapaOriginalRef.current.get(item.id);
+    const cleanResp = item.responsible_name?.trim() || null;
+    const cleanDue = item.due_date || null;
+    if (orig && orig.responsible_name === cleanResp && orig.due_date === cleanDue) {
+      return;
+    }
     setSalvandoEtapaId(item.id);
     const { error } = await db
       .from("process_items")
       .update({
-        responsible_name: item.responsible_name?.trim() || null,
-        due_date: item.due_date || null,
+        responsible_name: cleanResp,
+        due_date: cleanDue,
         updated_by: userId,
       })
       .eq("id", item.id)
-      .eq("tenant_id", selecionado?.id ?? "");
+      .eq("tenant_id", selecionado.id);
     setSalvandoEtapaId(null);
     if (error) {
       toast.error("Não foi possível salvar o responsável e o prazo da etapa.");
       void carregar();
       return;
     }
+    etapaOriginalRef.current.set(item.id, { responsible_name: cleanResp, due_date: cleanDue });
     toast.success("Responsável e prazo da etapa salvos.");
   }
 
   async function concluir(p: Processo) {
+    if (!selecionado?.id || acaoLockRef.current) return;
+    if (!docCaps.can_update) {
+      toast.error("Seu perfil não possui permissão para concluir o processo.");
+      return;
+    }
     const pendentes = itens.filter((item) => item.process_id === p.id && !item.is_done);
     if (pendentes.length > 0) {
       toast.error(
@@ -387,18 +451,23 @@ function Processos() {
       return;
     }
 
-    const { error } = await db
-      .from("procurement_processes")
-      .update({ status: "concluido", updated_by: userId })
-      .eq("id", p.id)
-      .eq("tenant_id", selecionado?.id ?? "");
-    if (error) {
-      toast.error(error.message);
-      return;
+    acaoLockRef.current = true;
+    try {
+      const { error } = await db
+        .from("procurement_processes")
+        .update({ status: "concluido", updated_by: userId })
+        .eq("id", p.id)
+        .eq("tenant_id", selecionado.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Processo concluído.");
+      setAbertoId(null);
+      void carregar();
+    } finally {
+      acaoLockRef.current = false;
     }
-    toast.success("Processo concluído.");
-    setAbertoId(null);
-    void carregar();
   }
 
   if (!selecionado) {
@@ -438,7 +507,9 @@ function Processos() {
 
   return (
     <div className="space-y-6">
-      <AnnualDemandPanel key={selecionado.id} tenantId={selecionado.id} onConverted={carregar} />
+      {isCommercialModuleEnabled(selecionado.enabled_modules, "pca") && (
+        <AnnualDemandPanel key={selecionado.id} tenantId={selecionado.id} onConverted={carregar} />
+      )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Processos de contratação</h1>
@@ -449,7 +520,7 @@ function Processos() {
         <div className="flex flex-wrap gap-2">
           <ReportExportActions
             title="Processos de contratação"
-            filename={`processos-${new Date().toISOString().slice(0, 10)}.csv`}
+            filename={`processos-${dataHojeLocalISO()}.csv`}
             columns={colunasRelatorio}
             rows={processosFiltrados}
             disabled={loading}
@@ -462,9 +533,11 @@ function Processos() {
             {visao === "kanban" ? <List className="h-4 w-4" /> : <Columns3 className="h-4 w-4" />}
             {visao === "kanban" ? "Ver em lista" : "Ver em quadro"}
           </Button>
-          <Button onClick={() => setNovo(true)} disabled={pendente}>
-            <Plus className="h-4 w-4" /> Novo processo
-          </Button>
+          {docCaps.can_create && (
+            <Button onClick={() => setNovo(true)} disabled={pendente}>
+              <Plus className="h-4 w-4" /> Novo processo
+            </Button>
+          )}
         </div>
       </div>
 
@@ -610,9 +683,10 @@ function Processos() {
         onSalvo={(processoId) => {
           void carregar();
           if (novoViaDfd) {
-            window.location.assign(
-              `/documentos?processo=${encodeURIComponent(processoId)}&tipo=dfd`,
-            );
+            void navigate({
+              to: "/documentos",
+              search: { processo: processoId, tipo: "dfd" } as never,
+            });
           }
         }}
       />
@@ -637,16 +711,22 @@ function Processos() {
                     value={aberto.responsible_user_id}
                     members={members}
                     onChange={async (value) => {
-                      const { data, error } = await db
-                        .from("procurement_processes")
-                        .update({ responsible_user_id: value || null, updated_by: userId })
-                        .eq("tenant_id", selecionado.id)
-                        .eq("id", aberto.id)
-                        .select("id")
-                        .maybeSingle();
-                      if (error || !data)
-                        return void toast.error("Não foi possível vincular o responsável.");
-                      void carregar();
+                      if (!docCaps.can_update || acaoLockRef.current) return;
+                      acaoLockRef.current = true;
+                      try {
+                        const { data, error } = await db
+                          .from("procurement_processes")
+                          .update({ responsible_user_id: value || null, updated_by: userId })
+                          .eq("tenant_id", selecionado.id)
+                          .eq("id", aberto.id)
+                          .select("id")
+                          .maybeSingle();
+                        if (error || !data)
+                          return void toast.error("Não foi possível vincular o responsável.");
+                        void carregar();
+                      } finally {
+                        acaoLockRef.current = false;
+                      }
                     }}
                   />
                 </label>
@@ -683,7 +763,8 @@ function Processos() {
                           <label className="flex items-start gap-2 text-sm">
                             <Checkbox
                               checked={i.is_done}
-                              onCheckedChange={() => alternarItem(i)}
+                              disabled={!docCaps.can_update}
+                              onCheckedChange={() => void alternarItem(i)}
                               aria-label={`Concluir: ${i.title}`}
                             />
                             <span className={i.is_done ? "text-muted-foreground line-through" : ""}>
@@ -697,27 +778,33 @@ function Processos() {
                                 value={i.responsible_user_id}
                                 members={members}
                                 onChange={async (value) => {
-                                  const { data, error } = await db
-                                    .from("process_items")
-                                    .update({
-                                      responsible_user_id: value || null,
-                                      updated_by: userId,
-                                    })
-                                    .eq("tenant_id", selecionado.id)
-                                    .eq("id", i.id)
-                                    .select("id")
-                                    .maybeSingle();
-                                  if (error || !data)
-                                    return void toast.error(
-                                      "Não foi possível vincular o responsável da tarefa.",
+                                  if (!docCaps.can_update || acaoLockRef.current) return;
+                                  acaoLockRef.current = true;
+                                  try {
+                                    const { data, error } = await db
+                                      .from("process_items")
+                                      .update({
+                                        responsible_user_id: value || null,
+                                        updated_by: userId,
+                                      })
+                                      .eq("tenant_id", selecionado.id)
+                                      .eq("id", i.id)
+                                      .select("id")
+                                      .maybeSingle();
+                                    if (error || !data)
+                                      return void toast.error(
+                                        "Não foi possível vincular o responsável da tarefa.",
+                                      );
+                                    setItens((current) =>
+                                      current.map((row) =>
+                                        row.id === i.id
+                                          ? { ...row, responsible_user_id: value || null }
+                                          : row,
+                                      ),
                                     );
-                                  setItens((current) =>
-                                    current.map((row) =>
-                                      row.id === i.id
-                                        ? { ...row, responsible_user_id: value || null }
-                                        : row,
-                                    ),
-                                  );
+                                  } finally {
+                                    acaoLockRef.current = false;
+                                  }
                                 }}
                               />
                               <Label htmlFor={`responsavel-${i.id}`}>Responsável</Label>
@@ -725,6 +812,14 @@ function Processos() {
                                 id={`responsavel-${i.id}`}
                                 maxLength={180}
                                 value={i.responsible_name ?? ""}
+                                onFocus={() => {
+                                  if (!etapaOriginalRef.current.has(i.id)) {
+                                    etapaOriginalRef.current.set(i.id, {
+                                      responsible_name: i.responsible_name?.trim() || null,
+                                      due_date: i.due_date || null,
+                                    });
+                                  }
+                                }}
                                 onChange={(event) =>
                                   setItens((current) =>
                                     current.map((item) =>
@@ -735,7 +830,7 @@ function Processos() {
                                   )
                                 }
                                 onBlur={() => void salvarResponsavelPrazoEtapa(i)}
-                                disabled={salvandoEtapaId === i.id}
+                                disabled={salvandoEtapaId === i.id || !docCaps.can_update}
                               />
                             </div>
                             <div className="space-y-1">
@@ -744,6 +839,14 @@ function Processos() {
                                 id={`prazo-${i.id}`}
                                 type="date"
                                 value={i.due_date ?? ""}
+                                onFocus={() => {
+                                  if (!etapaOriginalRef.current.has(i.id)) {
+                                    etapaOriginalRef.current.set(i.id, {
+                                      responsible_name: i.responsible_name?.trim() || null,
+                                      due_date: i.due_date || null,
+                                    });
+                                  }
+                                }}
                                 onChange={(event) =>
                                   setItens((current) =>
                                     current.map((item) =>
@@ -754,7 +857,7 @@ function Processos() {
                                   )
                                 }
                                 onBlur={() => void salvarResponsavelPrazoEtapa(i)}
-                                disabled={salvandoEtapaId === i.id}
+                                disabled={salvandoEtapaId === i.id || !docCaps.can_update}
                               />
                             </div>
                           </div>
@@ -781,25 +884,71 @@ function Processos() {
                 </Button>
               </div>
               <DialogFooter className="flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={!etapaAnterior(aberto.stage)}
-                  onClick={() => moverEtapa(aberto, etapaAnterior(aberto.stage))}
-                >
-                  <ChevronLeft className="h-4 w-4" /> Devolver
-                </Button>
-                {proximaEtapa(aberto.stage) ? (
-                  <Button onClick={() => setTransicaoAberta(true)}>
-                    Avançar etapa <ChevronRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button onClick={() => concluir(aberto)} disabled={aberto.status === "concluido"}>
-                    Concluir processo
-                  </Button>
+                {docCaps.can_update && (
+                  <>
+                    <Button
+                      variant="outline"
+                      disabled={!etapaAnterior(aberto.stage)}
+                      onClick={() => {
+                        const ant = etapaAnterior(aberto.stage);
+                        if (ant) setDevolvendoProcesso({ processo: aberto, destino: ant });
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" /> Devolver
+                    </Button>
+                    {proximaEtapa(aberto.stage) ? (
+                      <Button onClick={() => setTransicaoAberta(true)}>
+                        Avançar etapa <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => void concluir(aberto)}
+                        disabled={aberto.status === "concluido"}
+                      >
+                        Concluir processo
+                      </Button>
+                    )}
+                  </>
                 )}
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!devolvendoProcesso}
+        onOpenChange={(o) => !o && setDevolvendoProcesso(null)}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar devolução de etapa</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deseja retornar o processo{" "}
+            <strong>{devolvendoProcesso?.processo.number}</strong> para{" "}
+            <strong>
+              {ETAPAS.find((e) => e.id === devolvendoProcesso?.destino)?.nome ??
+                devolvendoProcesso?.destino}
+            </strong>
+            ?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDevolvendoProcesso(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!devolvendoProcesso) return;
+                const { processo, destino } = devolvendoProcesso;
+                setDevolvendoProcesso(null);
+                await moverEtapa(processo, destino);
+              }}
+            >
+              Confirmar devolução
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -820,6 +969,8 @@ function Processos() {
             processEstimatedValue={aberto.estimated_value}
             processResponsibleName={aberto.responsible_name}
             userId={userId}
+            canCreate={docCaps.can_create}
+            canUpdate={docCaps.can_update}
           />
           <StageTransitionDialog
             open={transicaoAberta}
@@ -884,42 +1035,56 @@ function DocumentosVinculados(props: {
     useState<Tables<"generated_documents"> | null>(null);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const requisicaoRef = useRef(0);
 
   const carregar = useCallback(async () => {
+    const req = ++requisicaoRef.current;
     if (!props.aberto) {
       setDocumentos([]);
       setModelosDisponiveis([]);
+      setErro(null);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
     setErro(null);
-    const [{ data, error }, { data: templatesData }] = await Promise.all([
-      db
-        .from("generated_documents")
-        .select("*")
-        .eq("tenant_id", props.tenantId)
-        .eq("process_id", props.processId)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(20),
-      db
-        .from("document_templates")
-        .select("id,title,description,content,template_type,legal_basis,is_active,availability_scopes,process_stages")
-        .eq("tenant_id", props.tenantId)
-        .eq("is_active", true)
-        .order("title")
-        .limit(50),
-    ]);
+    try {
+      const [docsRows, templatesRows] = await Promise.all([
+        carregarTodasAsPaginas<Tables<"generated_documents">>((from, to) =>
+          db
+            .from("generated_documents")
+            .select("*")
+            .eq("tenant_id", props.tenantId)
+            .eq("process_id", props.processId)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to),
+        ),
+        carregarTodasAsPaginas<ModeloProcesso>((from, to) =>
+          db
+            .from("document_templates")
+            .select(
+              "id,title,description,content,template_type,legal_basis,is_active,availability_scopes,process_stages",
+            )
+            .eq("tenant_id", props.tenantId)
+            .eq("is_active", true)
+            .order("title")
+            .order("id")
+            .range(from, to),
+        ),
+      ]);
 
-    if (error) {
+      if (req !== requisicaoRef.current) return;
+      setDocumentos(docsRows);
+      setModelosDisponiveis(templatesRows);
+    } catch {
+      if (req !== requisicaoRef.current) return;
       setDocumentos([]);
       setErro("Não foi possível carregar os documentos vinculados a este processo.");
-    } else {
-      setDocumentos((data ?? []) as Tables<"generated_documents">[]);
+    } finally {
+      if (req === requisicaoRef.current) setLoading(false);
     }
-    setModelosDisponiveis((templatesData ?? []) as ModeloProcesso[]);
-    setLoading(false);
   }, [props.aberto, props.tenantId, props.processId]);
 
   useEffect(() => {
@@ -972,8 +1137,9 @@ function DocumentosVinculados(props: {
                     variant={modelo.recommendedForStage ? "secondary" : "outline"}
                     className="min-h-9"
                   >
-                    <a
-                      href={`/documentos?processo=${encodeURIComponent(props.processId)}&modeloId=${encodeURIComponent(modelo.id)}`}
+                    <Link
+                      to="/documentos"
+                      search={{ processo: props.processId, modeloId: modelo.id } as never}
                       aria-label={`Gerar ${modelo.title} para este processo`}
                     >
                       <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -983,18 +1149,19 @@ function DocumentosVinculados(props: {
                           Etapa atual
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   </Button>
                 ))
               : TIPOS_DOCUMENTO_PROCESSO.map((tipo) => (
                   <Button key={tipo.value} asChild size="sm" variant="outline" className="min-h-9">
-                    <a
-                      href={`/documentos?processo=${encodeURIComponent(props.processId)}&tipo=${tipo.value}`}
+                    <Link
+                      to="/documentos"
+                      search={{ processo: props.processId, tipo: tipo.value } as never}
                       aria-label={`Gerar ${tipo.label} para este processo`}
                     >
                       <Plus className="h-3.5 w-3.5" aria-hidden />
                       {tipo.label}
-                    </a>
+                    </Link>
                   </Button>
                 ))}
           </div>
@@ -1052,10 +1219,9 @@ function DocumentosVinculados(props: {
               </div>
             ))
           )}
-          {documentos.length === 20 && (
+          {documentos.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              Exibindo os 20 documentos mais recentes. Consulte o GED para acessar o histórico
-              completo.
+              Total exibido: {documentos.length} documento(s) vinculados a este processo.
             </p>
           )}
         </div>
@@ -1201,15 +1367,19 @@ function DadosEstruturados(props: {
   processEstimatedValue: number | null;
   processResponsibleName: string | null;
   userId: string;
+  canCreate: boolean;
+  canUpdate: boolean;
 }) {
   const [items, setItems] = useState<ItemCompra[]>([]);
   const [quotes, setQuotes] = useState<CotacaoCompra[]>([]);
   const [approvals, setApprovals] = useState<AprovacaoPrecoCompra[]>([]);
   const [compliance, setCompliance] = useState<ConformidadeCompra | null>(null);
   const [canApprovePrice, setCanApprovePrice] = useState(false);
+  const [canValidateNormativeBasis, setCanValidateNormativeBasis] = useState(false);
   const [budgets, setBudgets] = useState<DotacaoCompra[]>([]);
   const [suppliers, setSuppliers] = useState<FornecedorCompra[]>([]);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const dadosReqRef = useRef(0);
   const [approvalForms, setApprovalForms] = useState<
     Record<
       string,
@@ -1254,7 +1424,7 @@ function DadosEstruturados(props: {
     supplier_id: "sem_fornecedor",
     source_name: "",
     reference_url: "",
-    quoted_at: new Date().toISOString().slice(0, 10),
+    quoted_at: dataHojeLocalISO(),
     quantity: "1",
     unit_price: "",
     delivery_cost: "0",
@@ -1275,7 +1445,7 @@ function DadosEstruturados(props: {
     payment_terms: "",
     warranty_terms: "",
     supplier_response_deadline: "",
-    supplier_consultation_sent_at: new Date().toISOString().slice(0, 10),
+    supplier_consultation_sent_at: dataHojeLocalISO(),
     supplier_consultation_response_deadline: "",
   });
   const [budgetForm, setBudgetForm] = useState({
@@ -1290,7 +1460,11 @@ function DadosEstruturados(props: {
   });
 
   const carregarDados = useCallback(async () => {
-    if (!props.aberto) return;
+    const req = ++dadosReqRef.current;
+    if (!props.aberto) {
+      setEvidenceFile(null);
+      return;
+    }
     setLoading(true);
 
     try {
@@ -1359,12 +1533,16 @@ function DadosEstruturados(props: {
           .maybeSingle(),
         db.rpc("get_procurement_price_capabilities", { p_tenant_id: props.tenantId }),
       ]);
+      if (req !== dadosReqRef.current) return;
       if (processComplianceResult.error) throw processComplianceResult.error;
       if (tenantComplianceResult.error) throw tenantComplianceResult.error;
       if (capabilityResult.error) throw capabilityResult.error;
       setApprovals(approvalRows);
       setCompliance(processComplianceResult.data);
       setCanApprovePrice(Boolean(capabilityResult.data?.[0]?.can_approve_price));
+      setCanValidateNormativeBasis(
+        Boolean(capabilityResult.data?.[0]?.can_validate_normative_basis),
+      );
       const processCompliance = processComplianceResult.data;
       const tenantCompliance = tenantComplianceResult.data;
       setComplianceForm({
@@ -1406,11 +1584,13 @@ function DadosEstruturados(props: {
         quoteRows.push(...quotesPage);
       }
 
+      if (req !== dadosReqRef.current) return;
       setItems(itemRows);
       setQuotes(quoteRows);
       setBudgets(budgetRows);
       setSuppliers(supplierRows);
     } catch (error) {
+      if (req !== dadosReqRef.current) return;
       setItems([]);
       setQuotes([]);
       setBudgets([]);
@@ -1418,11 +1598,12 @@ function DadosEstruturados(props: {
       setApprovals([]);
       setCompliance(null);
       setCanApprovePrice(false);
+      setCanValidateNormativeBasis(false);
       toast.error(
         error instanceof Error ? error.message : "Falha ao carregar os dados da contratação.",
       );
     } finally {
-      setLoading(false);
+      if (req === dadosReqRef.current) setLoading(false);
     }
   }, [props.aberto, props.tenantId, props.processId]);
 
@@ -1432,6 +1613,10 @@ function DadosEstruturados(props: {
 
   async function salvarItem(event: React.FormEvent) {
     event.preventDefault();
+    if (!props.canCreate) {
+      toast.error("Seu perfil não possui permissão para cadastrar itens nesta Secretaria.");
+      return;
+    }
     const quantity = numeroDecimal(itemForm.quantity);
     const unitPrice = itemForm.estimated_unit_price.trim()
       ? numeroDecimal(itemForm.estimated_unit_price)
@@ -1445,19 +1630,36 @@ function DadosEstruturados(props: {
       return;
     }
     setSaving(true);
-    const { error } = await db.from("procurement_items").insert({
-      tenant_id: props.tenantId,
-      process_id: props.processId,
-      line_number: Math.max(0, ...items.map((item) => item.line_number)) + 1,
-      description: itemForm.description.trim(),
-      technical_specification: itemForm.technical_specification.trim() || null,
-      unit: normalizeHealthUnit(itemForm.unit),
-      quantity,
-      estimated_unit_price: unitPrice,
-      delivery_location: itemForm.delivery_location.trim() || null,
-      created_by: props.userId,
-      updated_by: props.userId,
-    });
+    let error: { code?: string; message: string } | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: lastRow, error: lastErr } = await db
+        .from("procurement_items")
+        .select("line_number")
+        .eq("tenant_id", props.tenantId)
+        .eq("process_id", props.processId)
+        .order("line_number", { ascending: false })
+        .limit(1);
+      if (lastErr) {
+        error = lastErr;
+        break;
+      }
+      const nextLineNumber = (lastRow?.[0]?.line_number ?? 0) + 1;
+      const insertRes = await db.from("procurement_items").insert({
+        tenant_id: props.tenantId,
+        process_id: props.processId,
+        line_number: nextLineNumber,
+        description: itemForm.description.trim(),
+        technical_specification: itemForm.technical_specification.trim() || null,
+        unit: normalizeHealthUnit(itemForm.unit),
+        quantity,
+        estimated_unit_price: unitPrice,
+        delivery_location: itemForm.delivery_location.trim() || null,
+        created_by: props.userId,
+        updated_by: props.userId,
+      });
+      error = insertRes.error;
+      if (!error || error.code !== "23505") break;
+    }
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -1633,7 +1835,7 @@ function DadosEstruturados(props: {
       supplier_id: "sem_fornecedor",
       source_name: "",
       reference_url: "",
-      quoted_at: new Date().toISOString().slice(0, 10),
+      quoted_at: dataHojeLocalISO(),
       quantity: String(item?.quantity ?? 1),
       unit_price: "",
       delivery_cost: "0",
@@ -1645,7 +1847,7 @@ function DadosEstruturados(props: {
         .toISOString()
         .slice(0, 16),
       supplier_response_deadline: "",
-      supplier_consultation_sent_at: new Date().toISOString().slice(0, 10),
+      supplier_consultation_sent_at: dataHojeLocalISO(),
       supplier_consultation_response_deadline: "",
       source_tax_id: "",
       source_contact_name: "",
@@ -2237,7 +2439,11 @@ function DadosEstruturados(props: {
         const approval = currentApprovals.find((a) => a.procurement_item_id === item.id);
         const itemQuotes = quotes
           .filter((q) => q.procurement_item_id === item.id && q.is_active)
-          .sort((a, b) => Number(a.unit_price) - Number(b.unit_price));
+          .sort(
+            (a, b) =>
+              (precoUnitarioComFrete(a) ?? Number.POSITIVE_INFINITY) -
+              (precoUnitarioComFrete(b) ?? Number.POSITIVE_INFINITY),
+          );
         const winnerQuote =
           itemQuotes.find((q) => q.selected_for_estimate) ?? itemQuotes[0] ?? null;
         const winnerSupplier = winnerQuote?.supplier_id
@@ -2245,10 +2451,9 @@ function DadosEstruturados(props: {
           : undefined;
 
         const estimatedPrice = Number(item.estimated_unit_price) || 0;
+        const winnerEffectivePrice = winnerQuote ? precoUnitarioComFrete(winnerQuote) : null;
         const approvedPrice =
-          Number(approval?.approved_unit_price) ||
-          Number(winnerQuote?.unit_price) ||
-          estimatedPrice;
+          approval?.approved_unit_price ?? winnerEffectivePrice ?? estimatedPrice;
 
         return {
           itemNumber: item.line_number,
@@ -2256,7 +2461,7 @@ function DadosEstruturados(props: {
           unit: item.unit,
           quantity: Number(item.quantity) || 0,
           estimatedPrice,
-          approvedPrice,
+          approvedPrice: Number(approvedPrice) || 0,
           winnerSupplierName: winnerSupplier?.legal_name ?? winnerQuote?.source_name ?? null,
           winnerSupplierCnpj: winnerSupplier?.cnpj ?? winnerQuote?.source_tax_id ?? null,
         };
@@ -2287,7 +2492,10 @@ function DadosEstruturados(props: {
         const entry = quoteGroupMap.get(key)!;
         entry.itemIds.add(q.procurement_item_id);
         entry.totalQuotedValue +=
-          Number(q.total_price ?? Number(q.quantity) * Number(q.unit_price)) || 0;
+          Number(
+            q.total_price ??
+              Number(q.quantity) * Number(q.unit_price) + Number(q.delivery_cost || 0),
+          ) || 0;
       }
 
       const dossierQuotes = Array.from(quoteGroupMap.values()).map((q) => ({
@@ -2377,18 +2585,80 @@ function DadosEstruturados(props: {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function selecionarCotacao(quote: CotacaoCompra) {
-    const { error } = await db.rpc("select_procurement_price_quote", {
-      p_tenant_id: props.tenantId,
-      p_item_id: quote.procurement_item_id,
-      p_quote_id: quote.id,
-    });
-    if (error) {
-      toast.error(error.message);
+  async function anexarComprovanteCotacao(quote: CotacaoCompra, file: File) {
+    if (!props.canUpdate) {
+      toast.error("Seu perfil não possui permissão para anexar comprovantes.");
       return;
     }
-    toast.success("Cotação selecionada como referência e preço estimado atualizado.");
-    await carregarDados();
+    const extensions: Record<string, string> = {
+      "application/pdf": "pdf",
+      "application/msword": "doc",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+      "application/vnd.ms-excel": "xls",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+      "image/jpeg": "jpg",
+      "image/png": "png",
+    };
+    const ext = extensions[file.type];
+    if (!ext || file.size <= 0 || file.size > 20 * 1024 * 1024) {
+      toast.error("O comprovante deve ser PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG de até 20 MB.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const evidenceId = crypto.randomUUID();
+      const storagePath = `${props.tenantId}/procurement-quotes/${quote.procurement_item_id}/${quote.id}/${evidenceId}.${ext}`;
+      const { error: uploadError } = await db.storage
+        .from("gfs-private-documents")
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { error: linkError } = await db
+        .from("procurement_price_quotes")
+        .update({
+          evidence_storage_path: storagePath,
+          evidence_file_name: file.name,
+          evidence_mime_type: file.type,
+          evidence_file_size: file.size,
+          updated_by: props.userId,
+        })
+        .eq("tenant_id", props.tenantId)
+        .eq("id", quote.id);
+      if (linkError) {
+        await db.storage.from("gfs-private-documents").remove([storagePath]);
+        throw linkError;
+      }
+      toast.success("Comprovante anexado à cotação.");
+      await carregarDados();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível anexar o comprovante.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function selecionarCotacao(quote: CotacaoCompra) {
+    if (!props.canUpdate || saving) {
+      toast.error("Operação indisponível ou sem permissão.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await db.rpc("select_procurement_price_quote", {
+        p_tenant_id: props.tenantId,
+        p_item_id: quote.procurement_item_id,
+        p_quote_id: quote.id,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Cotação selecionada como referência e preço estimado atualizado.");
+      await carregarDados();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function aprovarPreco(item: ItemCompra) {
@@ -2414,10 +2684,14 @@ function DadosEstruturados(props: {
       }
     }
     try {
+      const distinctSources = contarFontesDistintas(activeQuotes);
       const preview = calcularPrecoHomologado(form.method, activeQuotes, item.quantity, otherPrice);
-      if (preview.quantidadeAmostras < 3 && form.exceptionalJustification.trim().length < 10) {
+      if (
+        (preview.quantidadeAmostras < 3 || distinctSources < 3) &&
+        form.exceptionalJustification.trim().length < 10
+      ) {
         toast.error(
-          "Com menos de três preços válidos, registre a justificativa excepcional (mínimo de 10 caracteres).",
+          "Com menos de três fontes distintas de pesquisa, registre a justificativa excepcional (mínimo de 10 caracteres).",
         );
         return;
       }
@@ -2452,7 +2726,7 @@ function DadosEstruturados(props: {
   }
 
   async function salvarConformidadeNormativa() {
-    if (!canApprovePrice) {
+    if (!canApprovePrice && !canValidateNormativeBasis) {
       toast.error("Seu perfil não pode validar o enquadramento normativo.");
       return;
     }
@@ -2705,6 +2979,19 @@ function DadosEstruturados(props: {
             </CardContent>
           </Card>
         </div>
+        {totalEstimadoItens > 0 && totalOrcamentario < totalEstimadoItens && (
+          <Alert className="border-amber-400/60 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-xs font-semibold">
+              Adequação orçamentária pendente (Lei nº 14.133/2021, art. 18, caput e art. 150)
+            </AlertTitle>
+            <AlertDescription className="text-xs">
+              {totalOrcamentario === 0
+                ? `Nenhuma dotação registrada para cobrir o valor estimado de ${formatarMoeda(totalEstimadoItens)}.`
+                : `As dotações ativas somam ${formatarMoeda(totalOrcamentario)}, abaixo do total estimado dos itens (${formatarMoeda(totalEstimadoItens)}).`}
+            </AlertDescription>
+          </Alert>
+        )}
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -2726,6 +3013,7 @@ function DadosEstruturados(props: {
                   tenantId={props.tenantId}
                   processId={props.processId}
                   userId={props.userId}
+                  canCreate={props.canCreate}
                   onSaved={carregarDados}
                 />
                 <BatchQuoteDialog
@@ -2735,6 +3023,7 @@ function DadosEstruturados(props: {
                   userId={props.userId}
                   items={items}
                   suppliers={suppliers}
+                  canManage={props.canCreate && props.canUpdate}
                   onSaved={carregarDados}
                 />
                 <PublicPriceSearchDialog
@@ -2742,6 +3031,7 @@ function DadosEstruturados(props: {
                   tenantId={props.tenantId}
                   userId={props.userId}
                   items={items}
+                  canImport={props.canCreate}
                   onSaved={carregarDados}
                 />
                 <SupplierQuotePortalDialog
@@ -2762,9 +3052,11 @@ function DadosEstruturados(props: {
                 >
                   Mapa comparativo ({quotes.length})
                 </Button>
-                <Button onClick={() => setItemFormOpen((value) => !value)} variant="outline">
-                  <Plus className="h-4 w-4" /> Adicionar item
-                </Button>
+                {props.canCreate && (
+                  <Button onClick={() => setItemFormOpen((value) => !value)} variant="outline">
+                    <Plus className="h-4 w-4" /> Adicionar item
+                  </Button>
+                )}
               </div>
               {itemFormOpen && (
                 <Card>
@@ -2991,13 +3283,31 @@ function DadosEstruturados(props: {
                                   value={quoteForm.supplier_id}
                                   onValueChange={(value) => {
                                     const supplier = suppliers.find((entry) => entry.id === value);
+                                    if (value === "sem_fornecedor") {
+                                      setQuoteForm((current) => ({
+                                        ...current,
+                                        supplier_id: "sem_fornecedor",
+                                        source_type:
+                                          current.source_type === "fornecedor"
+                                            ? "painel_precos"
+                                            : current.source_type,
+                                        source_name: current.supplier_id !== "sem_fornecedor" ? "" : current.source_name,
+                                        source_tax_id: current.supplier_id !== "sem_fornecedor" ? "" : current.source_tax_id,
+                                        source_contact_name:
+                                          current.supplier_id !== "sem_fornecedor" ? "" : current.source_contact_name,
+                                        source_contact_email:
+                                          current.supplier_id !== "sem_fornecedor" ? "" : current.source_contact_email,
+                                        source_contact_phone:
+                                          current.supplier_id !== "sem_fornecedor" ? "" : current.source_contact_phone,
+                                        source_address:
+                                          current.supplier_id !== "sem_fornecedor" ? "" : current.source_address,
+                                      }));
+                                      return;
+                                    }
                                     setQuoteForm((current) => ({
                                       ...current,
                                       supplier_id: value,
-                                      source_type:
-                                        value === "sem_fornecedor"
-                                          ? current.source_type
-                                          : "fornecedor",
+                                      source_type: "fornecedor",
                                       source_name: supplier?.legal_name ?? current.source_name,
                                       source_tax_id: supplier?.cnpj ?? current.source_tax_id,
                                       source_contact_name: supplier
@@ -3399,7 +3709,10 @@ function DadosEstruturados(props: {
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  onClick={() => setQuoteTarget(null)}
+                                  onClick={() => {
+                                    setQuoteTarget(null);
+                                    setEvidenceFile(null);
+                                  }}
                                 >
                                   Cancelar
                                 </Button>
@@ -3702,7 +4015,7 @@ function DadosEstruturados(props: {
                       : "Pendente de validação"}
                   </Badge>
                 </div>
-                {canApprovePrice ? (
+                {canApprovePrice || canValidateNormativeBasis ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
@@ -3995,7 +4308,8 @@ function DadosEstruturados(props: {
                 canApprovePrice={canApprovePrice}
                 in65Applicable={
                   compliance?.legal_review_status === "validated" &&
-                  compliance?.in65_applicability === "applicable"
+                  (compliance?.in65_applicability === "applicable" ||
+                    compliance?.in65_applicability === "adopted")
                 }
                 onSaved={carregarDados}
               />
@@ -4047,6 +4361,8 @@ function DadosEstruturados(props: {
                     approvalPreview = null;
                   }
                   const sinais = expurgarAmostrasInconsistentes(rows);
+                  const distinctSourcesCount = contarFontesDistintas(rows);
+                  const validadeCotacoes = avaliarValidadeCotacoes(rows);
                   const dispersao = analisarDispersaoPrecos(
                     rows.map(precoUnitarioComFrete).filter((v): v is number => v !== null),
                   );
@@ -4250,9 +4566,22 @@ function DadosEstruturados(props: {
                           da homologação.
                         </p>
                       )}
-                      {rows.length < 3 && (
+                      {(rows.length < 3 || distinctSourcesCount < 3) && (
                         <p className="text-amber-700">
-                          Menos de três cotações: exige análise e justificativa da equipe.
+                          {distinctSourcesCount < rows.length
+                            ? `Apenas ${distinctSourcesCount} fonte(s) distinta(s) entre ${rows.length} cotação(ões): a IN 65/2021 exige justificativa da autoridade competente para menos de três fontes distintas.`
+                            : "Menos de três cotações: exige análise e justificativa da equipe."}
+                        </p>
+                      )}
+                      {validadeCotacoes.expiradas.length > 0 && (
+                        <p className="rounded border border-amber-400/60 bg-amber-50 p-2 text-xs text-amber-950">
+                          {validadeCotacoes.expiradas.length} cotação(ões) ultrapassa(m) o prazo
+                          da IN SEGES/ME nº 65/2021 (12 meses para painéis/NFs ou 6 meses para
+                          fornecedor/mídia):{" "}
+                          {validadeCotacoes.expiradas
+                            .map((item) => `${item.sourceName} (${formatarData(item.quotedAt)})`)
+                            .join(", ")}
+                          .
                         </p>
                       )}
                       <p>
@@ -4270,7 +4599,7 @@ function DadosEstruturados(props: {
                           </AlertDescription>
                         </Alert>
                       )}
-                      {canApprovePrice ? (
+                      {canApprovePrice || canValidateNormativeBasis ? (
                         <div className="space-y-3 rounded-lg border p-3">
                           <div>
                             <p className="font-semibold">Aprovação do preço estimado</p>
@@ -4343,9 +4672,11 @@ function DadosEstruturados(props: {
                                 placeholder="Explique por que o método é adequado à série de preços e ao objeto."
                               />
                             </div>
-                            {approvalPreview && approvalPreview.quantidadeAmostras < 3 && (
+                            {(rows.length < 3 || distinctSourcesCount < 3) && (
                               <div className="space-y-1 sm:col-span-2">
-                                <Label>Justificativa excepcional para menos de três preços *</Label>
+                                <Label>
+                                  Justificativa excepcional para menos de três fontes distintas *
+                                </Label>
                                 <Textarea
                                   rows={2}
                                   value={approvalForm.exceptionalJustification}
@@ -4358,7 +4689,7 @@ function DadosEstruturados(props: {
                                       },
                                     }))
                                   }
-                                  placeholder="Registre a impossibilidade de obter três preços e a fundamentação para prosseguir."
+                                  placeholder="Registre a impossibilidade de obter três preços de fontes distintas e a fundamentação para prosseguir."
                                 />
                               </div>
                             )}

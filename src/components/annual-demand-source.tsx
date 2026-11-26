@@ -12,10 +12,11 @@ export function AnnualDemandSource({
   const { session } = useAuth();
   const query = useQuery({
     queryKey: ["annual-demand-source", session?.user.id, tenantId, processId],
+    enabled: Boolean(session?.user.id && tenantId && processId),
     queryFn: async () => {
       const { data, error } = await db
         .from("annual_procurement_demands")
-        .select("plan_year,title,justification,items")
+        .select("plan_year,title,justification,items,requesting_unit,responsible_name")
         .eq("tenant_id", tenantId)
         .eq("process_id", processId)
         .maybeSingle();
@@ -25,13 +26,20 @@ export function AnnualDemandSource({
   });
   if (query.isError) return <p role="alert">Falha ao consultar a demanda de origem.</p>;
   if (!query.data) return null;
-  const { plan_year, title, justification, items } = query.data;
+  const { plan_year, title, justification, items, requesting_unit, responsible_name } = query.data;
   return (
     <section aria-label="Demanda de origem do PCA" className="space-y-1 rounded border p-3 text-sm">
       <h3 className="font-semibold">Demanda de origem do PCA · {plan_year}</h3>
-      <p>{title}</p>
-      <p>{justification}</p>
-      <ul className="list-inside list-disc">
+      <p className="font-medium">{title}</p>
+      {(requesting_unit || responsible_name) && (
+        <p className="text-xs text-muted-foreground">
+          {requesting_unit ? `Unidade: ${requesting_unit}` : ""}
+          {requesting_unit && responsible_name ? " · " : ""}
+          {responsible_name ? `Responsável: ${responsible_name}` : ""}
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">{justification}</p>
+      <ul className="list-inside list-disc text-xs">
         {Array.isArray(items) &&
           items.map(
             (item, index) =>
@@ -39,7 +47,9 @@ export function AnnualDemandSource({
               typeof item === "object" &&
               !Array.isArray(item) && (
                 <li key={index}>
-                  {String(item["description"])} — {String(item["quantity"])} {String(item["unit"])}
+                  {String((item as Record<string, unknown>)["description"])} —{" "}
+                  {String((item as Record<string, unknown>)["quantity"])}{" "}
+                  {String((item as Record<string, unknown>)["unit"])}
                 </li>
               ),
           )}

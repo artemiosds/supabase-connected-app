@@ -18,11 +18,21 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          category: string
+          desired_date: string | null
+          estimated_total_value: number | null
           id: string
           items: Json
           justification: string
           plan_year: number
+          priority: string
           process_id: string | null
+          rejection_reason: string | null
+          requesting_unit: string | null
+          responsible_name: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           submitted_at: string
           submitted_by: string
           tenant_id: string
@@ -31,11 +41,21 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string
+          desired_date?: string | null
+          estimated_total_value?: number | null
           id: string
           items: Json
           justification: string
           plan_year: number
+          priority?: string
           process_id?: string | null
+          rejection_reason?: string | null
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           submitted_at?: string
           submitted_by: string
           tenant_id: string
@@ -44,11 +64,21 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string
+          desired_date?: string | null
+          estimated_total_value?: number | null
           id?: string
           items?: Json
           justification?: string
           plan_year?: number
+          priority?: string
           process_id?: string | null
+          rejection_reason?: string | null
+          requesting_unit?: string | null
+          responsible_name?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           submitted_at?: string
           submitted_by?: string
           tenant_id?: string

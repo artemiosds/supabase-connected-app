@@ -58,7 +58,7 @@ type TenantContextValue = {
   erro: string | null;
   bancoPendente: boolean;
   supportAccess: PlatformSupportAccess | null;
-  recarregar: () => void;
+  recarregar: () => Promise<void>;
 };
 
 const TenantContext = createContext<TenantContextValue | null>(null);
@@ -220,8 +220,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     tenants[0] ??
     null;
 
-  const recarregar = useCallback(() => {
-    void carregar();
+  const recarregar = useCallback(async () => {
+    await carregar();
   }, [carregar]);
 
   return (

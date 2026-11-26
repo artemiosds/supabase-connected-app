@@ -85,4 +85,33 @@ describe("reports-metrics-helper: calcularMetricasBI", () => {
     expect(metricas.totalContratosAtivos).toBe(0);
     expect(metricas.rankingFornecedores).toEqual([]);
   });
+
+  it("subtrai estornos (reversal) e ignora movimentações de contratos encerrados", () => {
+    const contratos = [
+      {
+        id: "ctr-ativo",
+        supplier_name: "Med A",
+        total_value: 1000,
+        status: "vigente",
+      },
+      {
+        id: "ctr-encerrado",
+        supplier_name: "Med B",
+        total_value: 5000,
+        status: "encerrado",
+      },
+    ];
+    const movimentos = [
+      { contract_id: "ctr-ativo", movement_type: "consumption" as const, total_value: 600 },
+      { contract_id: "ctr-ativo", movement_type: "reversal" as const, total_value: 150 },
+      { contract_id: "ctr-encerrado", movement_type: "consumption" as const, total_value: 2000 },
+    ];
+
+    const metricas = calcularMetricasBI(contratos, movimentos);
+
+    expect(metricas.totalContratado).toBe(1000);
+    expect(metricas.totalExecutadoOF).toBe(450);
+    expect(metricas.saldoRestante).toBe(550);
+    expect(metricas.percentualExecucao).toBe(45);
+  });
 });
