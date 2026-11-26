@@ -1099,10 +1099,10 @@ function Usuarios() {
                   disabled={roleReadOnly}
                   minLength={2}
                   maxLength={60}
-                  pattern="[a-z0-9][a-z0-9_-]{1,59}"
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
                   value={roleSlug}
                   onChange={(e) => setRoleSlug(e.target.value)}
-                  placeholder="ex: fiscal_contrato"
+                  placeholder="ex: fiscal-contrato"
                 />
               </div>
               <div className="space-y-1 sm:col-span-2">
