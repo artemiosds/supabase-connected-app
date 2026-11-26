@@ -1,6 +1,7 @@
 import { PriceMatrixView } from "@/components/procurement/price-matrix-view";
 import { BatchPriceApprovalDialog } from "@/components/procurement/batch-price-approval-dialog";
 import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
+import { PublicPriceSearchDialog } from "@/components/procurement/public-price-search-dialog";
 import { SupplierQuotePortalDialog } from "@/components/procurement/supplier-quote-portal-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
 import { StageTransitionDialog } from "@/components/procurement/stage-transition-dialog";
@@ -2666,6 +2667,13 @@ function DadosEstruturados(props: {
                   userId={props.userId}
                   items={items}
                   suppliers={suppliers}
+                  onSaved={carregarDados}
+                />
+                <PublicPriceSearchDialog
+                  key={`${props.tenantId}-${props.processId}-public-prices`}
+                  tenantId={props.tenantId}
+                  userId={props.userId}
+                  items={items}
                   onSaved={carregarDados}
                 />
                 <SupplierQuotePortalDialog
