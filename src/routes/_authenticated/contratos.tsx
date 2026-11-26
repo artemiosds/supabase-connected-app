@@ -580,6 +580,7 @@ function Contratos() {
             userId={session?.user.id ?? ""}
             contracts={listaAtual.filter((c) => termosBusca(textoContrato(c), busca))}
             supplierName={nomeFornecedor}
+            supplierCnpj={(id) => fornecedoresAtuais.find((f) => f.id === id)?.cnpj ?? undefined}
             onAmendment={(id) => setAditivoDe(listaAtual.find((c) => c.id === id) ?? null)}
           />
         )

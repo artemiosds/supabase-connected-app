@@ -3,6 +3,7 @@ import {
   mapModalidadePncp,
   mapTipoContratoPncp,
   validarContratoPncp,
+  validarPcaPncp,
   validarProcessoPncp,
 } from "./pncp-export";
 
@@ -95,5 +96,28 @@ describe("pncp-export: pré-validação e pacote PNCP (Lei 14.133/2021)", () => 
     expect(res.status).toBe("ready_with_warnings");
     expect(res.blockers).toHaveLength(0);
     expect(res.warnings).toHaveLength(1);
+  });
+
+  it("valida PCA consolidado no padrão PNCP (art. 12)", () => {
+    const res = validarPcaPncp(
+      { name: "Secretaria Municipal de Saúde", cnpj: "12.345.678/0001-90" },
+      {
+        year: 2026,
+        totalDemands: 3,
+        approvedDemands: 3,
+        items: [
+          {
+            description: "Dipirona Sódica 500mg",
+            unit: "COMPR",
+            totalQuantity: 10000,
+            sourceDemandsCount: 2,
+          },
+        ],
+      },
+    );
+
+    expect(res.status).toBe("ready");
+    expect((res.payload["pca"] as Record<string, unknown>)["anoPca"]).toBe(2026);
+    expect(Array.isArray(res.payload["itens"])).toBe(true);
   });
 });

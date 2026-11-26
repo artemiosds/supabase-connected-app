@@ -22,8 +22,10 @@ import {
 import { db } from "@/lib/db";
 import {
   validarContratoPncp,
+  validarPcaPncp,
   validarProcessoPncp,
   type PncpContractInput,
+  type PncpPcaInput,
   type PncpProcessInput,
   type PncpTenantInfo,
 } from "@/lib/pncp-export";
@@ -41,6 +43,13 @@ type Props =
       tenantId: string;
       tenantName: string;
       process: PncpProcessInput;
+      triggerLabel?: string;
+    }
+  | {
+      kind: "pca";
+      tenantId: string;
+      tenantName: string;
+      pca: PncpPcaInput;
       triggerLabel?: string;
     };
 
@@ -85,9 +94,9 @@ export function PncpExportDialog(props: Props) {
 
   const validation = useMemo(() => {
     if (!open || loadingTenant) return null;
-    return props.kind === "contract"
-      ? validarContratoPncp(tenantInfo, props.contract)
-      : validarProcessoPncp(tenantInfo, props.process);
+    if (props.kind === "contract") return validarContratoPncp(tenantInfo, props.contract);
+    if (props.kind === "pca") return validarPcaPncp(tenantInfo, props.pca);
+    return validarProcessoPncp(tenantInfo, props.process);
   }, [open, loadingTenant, tenantInfo, props]);
 
   const jsonString = useMemo(
@@ -95,7 +104,12 @@ export function PncpExportDialog(props: Props) {
     [validation],
   );
 
-  const fileIdentifier = props.kind === "contract" ? props.contract.number : props.process.number;
+  const fileIdentifier =
+    props.kind === "contract"
+      ? props.contract.number
+      : props.kind === "pca"
+        ? String(props.pca.year)
+        : props.process.number;
 
   async function handleCopy() {
     try {

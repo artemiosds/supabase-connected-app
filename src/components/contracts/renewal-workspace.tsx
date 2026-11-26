@@ -6,6 +6,7 @@ import {
   FileText,
   Loader2,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
@@ -32,6 +33,8 @@ import {
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { diasAte, formatarData, formatarMoeda } from "@/lib/contratacao";
 import { calcularVariacaoPrecoPercentual, podeUsarMinutaProrrogacao } from "@/lib/contract-renewal";
+import { registrarVerificacaoRegularidade } from "@/lib/supplier-regularity";
+import { consultarRegularidadeAutomatica } from "@/lib/supplier-regularity-lookup";
 import type { Json, Tables } from "@/integrations/supabase/types";
 
 type Followup = Pick<Tables<"contract_renewal_followups">, "contract_id" | "started_at">;
@@ -187,6 +190,7 @@ export function RenewalWorkspace(props: {
   userId: string;
   contracts: Contract[];
   supplierName: (id: string | null) => string;
+  supplierCnpj?: (id: string | null) => string | undefined;
   onAmendment: (id: string) => void;
 }) {
   const { tenantId, userId } = props;
@@ -198,6 +202,11 @@ export function RenewalWorkspace(props: {
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [form, setForm] = useState<AssessmentForm | null>(null);
   const [savingAssessment, setSavingAssessment] = useState(false);
+  const [checkingRegularity, setCheckingRegularity] = useState(false);
+  const [regularityAlert, setRegularityAlert] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [validations, setValidations] = useState<Record<string, Validation>>({});
 
@@ -263,6 +272,10 @@ export function RenewalWorkspace(props: {
     setValidations({});
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setRegularityAlert(null);
+  }, [editingContract?.id]);
 
   const current = state?.tenantId === tenantId ? state : null;
   const recorded = useMemo(
@@ -1106,7 +1119,102 @@ export function RenewalWorkspace(props: {
               </section>
 
               <section className="space-y-3">
-                <h3 className="font-semibold">4. Condições, anuências e autorizações</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold">4. Condições, anuências e autorizações</h3>
+                  {editingContract.supplier_id && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={checkingRegularity || !current?.canEdit}
+                      onClick={async () => {
+                        if (!editingContract.supplier_id) return;
+                        setCheckingRegularity(true);
+                        setRegularityAlert(null);
+                        try {
+                          let rawCnpj = props.supplierCnpj?.(editingContract.supplier_id) ?? "";
+                          if (!rawCnpj) {
+                            const { data: sup } = await db
+                              .from("suppliers")
+                              .select("cnpj")
+                              .eq("id", editingContract.supplier_id)
+                              .eq("tenant_id", tenantId)
+                              .maybeSingle();
+                            rawCnpj = sup?.cnpj ?? "";
+                          }
+                          const cleanCnpj = rawCnpj.replace(/\D/g, "");
+                          if (cleanCnpj.length !== 14) {
+                            toast.error(
+                              "Fornecedor sem CNPJ de 14 dígitos para consulta automática.",
+                            );
+                            return;
+                          }
+                          const res = await consultarRegularidadeAutomatica({
+                            tenantId,
+                            cnpj: cleanCnpj,
+                          });
+                          if (res.checks.length === 0) {
+                            toast.warning(res.warnings[0] || "Nenhuma certidão retornada.");
+                            return;
+                          }
+                          await Promise.all(
+                            res.checks.map((item) =>
+                              registrarVerificacaoRegularidade({
+                                tenantId,
+                                supplierId: editingContract.supplier_id!,
+                                source: item.source,
+                                sourceLabel: item.sourceLabel,
+                                status: item.status,
+                                certificateNumber: item.certificateNumber ?? undefined,
+                                evidenceUrl: item.evidenceUrl ?? undefined,
+                                notes: `Pré-checagem de prorrogação (art. 91, § 4º) · ${item.notes}`,
+                                requiresAction: item.requiresAction,
+                              }),
+                            ),
+                          );
+                          const blockers = res.checks.filter((c) => c.status !== "regular");
+                          if (blockers.length === 0) {
+                            updateForm("habilitation_confirmed", true);
+                            const msg = `Idoneidade e situação cadastral regularizadas em ${res.checks.length} fonte(s) (TCU, CNJ, CEIS, CNEP e RFB).`;
+                            setRegularityAlert({ ok: true, message: msg });
+                            toast.success(msg);
+                          } else {
+                            updateForm("habilitation_confirmed", false);
+                            const msg = `Atenção (art. 91, § 4º): ${blockers.map((b) => `${b.sourceLabel}: ${b.rawSituation}`).join("; ")}.`;
+                            setRegularityAlert({ ok: false, message: msg });
+                            toast.error(msg);
+                          }
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Não foi possível consultar TCU/CEIS/RFB.",
+                          );
+                        } finally {
+                          setCheckingRegularity(false);
+                        }
+                      }}
+                    >
+                      <Sparkles
+                        className={`mr-1.5 h-3.5 w-3.5 ${checkingRegularity ? "animate-pulse" : ""}`}
+                      />
+                      {checkingRegularity
+                        ? "Consultando TCU/CEIS/RFB..."
+                        : "Verificar TCU / CEIS / CNEP / RFB"}
+                    </Button>
+                  )}
+                </div>
+                {regularityAlert && (
+                  <div
+                    className={`rounded-md border p-2.5 text-xs ${
+                      regularityAlert.ok
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                        : "border-destructive/50 bg-destructive/10 text-destructive"
+                    }`}
+                  >
+                    {regularityAlert.message}
+                  </div>
+                )}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(
                     [

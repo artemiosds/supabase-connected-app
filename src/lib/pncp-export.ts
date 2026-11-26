@@ -72,6 +72,18 @@ export type PncpProcessInput = {
   }>;
 };
 
+export type PncpPcaInput = {
+  year: number;
+  totalDemands: number;
+  approvedDemands: number;
+  items: Array<{
+    description: string;
+    unit: string;
+    totalQuantity: number;
+    sourceDemandsCount: number;
+  }>;
+};
+
 export function onlyDigits(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "");
 }
@@ -431,6 +443,93 @@ export function validarProcessoPncp(
       quantidade: Number(item.quantity),
       valorUnitarioEstimado: item.estimated_unit_price ?? null,
       valorTotal: item.estimated_total ?? null,
+    })),
+  };
+
+  return {
+    status: summarizeChecks(checks),
+    blockers: checks.filter((c) => c.severity === "blocker"),
+    warnings: checks.filter((c) => c.severity === "warning"),
+    checks,
+    payload,
+  };
+}
+
+export function validarPcaPncp(tenant: PncpTenantInfo, pca: PncpPcaInput): PncpValidationResult {
+  const checks: PncpValidationItem[] = [];
+  const orgCnpj = onlyDigits(tenant.cnpj);
+
+  checks.push(
+    orgCnpj.length === 14
+      ? {
+          field: "tenant.cnpj",
+          label: "CNPJ do órgão",
+          severity: "ok",
+          message: `CNPJ ${orgCnpj} válido para publicação do PCA.`,
+        }
+      : {
+          field: "tenant.cnpj",
+          label: "CNPJ do órgão",
+          severity: "blocker",
+          message: "Cadastre o CNPJ (14 dígitos) da Secretaria em Configurações.",
+        },
+  );
+
+  checks.push(
+    pca.items.length > 0
+      ? {
+          field: "pca.items",
+          label: "Itens consolidados no exercício",
+          severity: "ok",
+          message: `${pca.items.length} item(ns) consolidado(s) para o exercício ${pca.year}.`,
+        }
+      : {
+          field: "pca.items",
+          label: "Itens consolidados no exercício",
+          severity: "blocker",
+          message: "Registre ao menos uma demanda com itens para exportar o PCA.",
+        },
+  );
+
+  if (pca.totalDemands > pca.approvedDemands) {
+    checks.push({
+      field: "pca.approvals",
+      label: "Aprovação das demandas",
+      severity: "warning",
+      message: `${pca.totalDemands - pca.approvedDemands} demanda(s) ainda aguarda(m) aprovação da autoridade competente (art. 12, § 1º).`,
+    });
+  } else if (pca.totalDemands > 0) {
+    checks.push({
+      field: "pca.approvals",
+      label: "Aprovação das demandas",
+      severity: "ok",
+      message: "Todas as demandas do exercício estão aprovadas.",
+    });
+  }
+
+  const payload = {
+    padrao: "PNCP_API_PCA_V1",
+    leiReferencia: "Lei nº 14.133/2021, art. 12, § 1º",
+    geradoEm: new Date().toISOString(),
+    orgaoEntidade: {
+      cnpj: orgCnpj || null,
+      razaoSocial: tenant.name,
+      codigoIbge: tenant.ibge_code ?? null,
+      municipio: tenant.municipality ?? null,
+      uf: tenant.state ?? null,
+    },
+    pca: {
+      anoPca: pca.year,
+      quantidadeDemandas: pca.totalDemands,
+      demandasAprovadas: pca.approvedDemands,
+      quantidadeItensConsolidados: pca.items.length,
+    },
+    itens: pca.items.map((item, index) => ({
+      numeroItem: index + 1,
+      descricao: item.description,
+      unidadeMedida: item.unit,
+      quantidadeTotal: Number(item.totalQuantity),
+      demandasOrigem: item.sourceDemandsCount,
     })),
   };
 

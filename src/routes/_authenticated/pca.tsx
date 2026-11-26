@@ -48,6 +48,7 @@ import { useTenant } from "@/hooks/use-tenant";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { formatarData, MODALIDADES } from "@/lib/contratacao";
 import { exportToXlsx } from "@/lib/xlsx-export";
+import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import {
   consolidarDemandasPCA,
   type DemandaPCARow,
@@ -115,9 +116,7 @@ function PcaPage() {
       setCapabilities((capsRes.data?.[0] as DemandCapabilities) ?? null);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Erro ao consultar o PCA.";
-      setErro(
-        bancoNaoConfigurado(msg) ? "PCA pendente de implantação nesta base." : msg,
-      );
+      setErro(bancoNaoConfigurado(msg) ? "PCA pendente de implantação nesta base." : msg);
       toast.error("Falha ao carregar PCA", { description: msg });
     } finally {
       setLoading(false);
@@ -205,8 +204,14 @@ function PcaPage() {
       const columns = [
         { header: "Descrição do Item", value: (r: ItemConsolidadoPCA) => r.descricaoOriginal },
         { header: "Unidade", value: (r: ItemConsolidadoPCA) => r.unidade },
-        { header: "Quantidade Total Consolidada", value: (r: ItemConsolidadoPCA) => r.quantidadeTotal },
-        { header: "Demandas / Unidades Solicitantes", value: (r: ItemConsolidadoPCA) => r.totalDemandasOrigem },
+        {
+          header: "Quantidade Total Consolidada",
+          value: (r: ItemConsolidadoPCA) => r.quantidadeTotal,
+        },
+        {
+          header: "Demandas / Unidades Solicitantes",
+          value: (r: ItemConsolidadoPCA) => r.totalDemandasOrigem,
+        },
       ];
 
       await exportToXlsx(`pca-consolidado-${year}`, columns, resumo.itensConsolidados);
@@ -226,9 +231,7 @@ function PcaPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Plano de Contratações Anual (PCA)
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Plano de Contratações Anual (PCA)</h1>
             {capabilities && (
               <Badge variant="outline" className="text-xs flex items-center gap-1">
                 <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -241,7 +244,8 @@ function PcaPage() {
             )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Central de planejamento anual, consolidação de compras em escala e conversão direta em DFD / Processos (Lei nº 14.133/2021).
+            Central de planejamento anual, consolidação de compras em escala e conversão direta em
+            DFD / Processos (Lei nº 14.133/2021).
           </p>
         </div>
 
@@ -260,10 +264,35 @@ function PcaPage() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm" onClick={() => void carregarDados()} disabled={loading || busy}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void carregarDados()}
+            disabled={loading || busy}
+          >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
+
+          {selecionado && (
+            <PncpExportDialog
+              kind="pca"
+              tenantId={selecionado.id}
+              tenantName={selecionado.nome}
+              triggerLabel="Exportar PCA (PNCP)"
+              pca={{
+                year,
+                totalDemands: resumo.totalDemandas,
+                approvedDemands: resumo.demandasAprovadas + resumo.demandasConvertidas,
+                items: resumo.itensConsolidados.map((item) => ({
+                  description: item.descricaoOriginal,
+                  unit: item.unidade,
+                  totalQuantity: item.quantidadeTotal,
+                  sourceDemandsCount: item.totalDemandasOrigem,
+                })),
+              }}
+            />
+          )}
 
           {capabilities?.can_create && (
             <Button size="sm" onClick={() => setNovaAberta(true)} disabled={busy}>
@@ -344,9 +373,7 @@ function PcaPage() {
       {/* Abas Principais */}
       <Tabs defaultValue="demandas" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="demandas">
-            Demandas Cadastradas ({demandas.length})
-          </TabsTrigger>
+          <TabsTrigger value="demandas">Demandas Cadastradas ({demandas.length})</TabsTrigger>
           <TabsTrigger value="consolidado">
             Quadro Consolidado de Itens ({resumo.itensConsolidados.length})
           </TabsTrigger>
@@ -362,7 +389,9 @@ function PcaPage() {
           ) : demandas.length === 0 ? (
             <Card className="border-dashed py-12 text-center">
               <CardContent className="space-y-2">
-                <p className="font-medium text-sm">Nenhuma demanda registrada para o exercício {year}.</p>
+                <p className="font-medium text-sm">
+                  Nenhuma demanda registrada para o exercício {year}.
+                </p>
                 <p className="text-xs text-muted-foreground">
                   As unidades podem registrar suas necessidades anuais clicando em "Nova Demanda".
                 </p>
@@ -379,7 +408,8 @@ function PcaPage() {
                         <div className="space-y-1">
                           <CardTitle className="text-base">{demand.title}</CardTitle>
                           <CardDescription className="text-xs">
-                            Enviada em {formatarData(demand.submitted_at)} · {itemsList.length} item(ns)
+                            Enviada em {formatarData(demand.submitted_at)} · {itemsList.length}{" "}
+                            item(ns)
                           </CardDescription>
                         </div>
                         <Badge
@@ -411,7 +441,9 @@ function PcaPage() {
                                 typeof item === "object" &&
                                 !Array.isArray(item) && (
                                   <li key={idx} className="flex items-center justify-between">
-                                    <span>{String((item as Record<string, unknown>)["description"])}</span>
+                                    <span>
+                                      {String((item as Record<string, unknown>)["description"])}
+                                    </span>
                                     <span className="font-semibold tabular-nums">
                                       {String((item as Record<string, unknown>)["quantity"])}{" "}
                                       {String((item as Record<string, unknown>)["unit"])}
@@ -480,7 +512,8 @@ function PcaPage() {
                     Quadro Consolidado de Itens para Compra em Escala
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Agrupamento automático de itens idênticos solicitados por diferentes unidades no exercício {year}.
+                    Agrupamento automático de itens idênticos solicitados por diferentes unidades no
+                    exercício {year}.
                   </CardDescription>
                 </div>
                 <Button
@@ -506,8 +539,12 @@ function PcaPage() {
                       <TableRow className="bg-muted/50">
                         <TableHead>Descrição do Item</TableHead>
                         <TableHead className="w-[110px]">Unidade</TableHead>
-                        <TableHead className="w-[180px] text-right">Qtd. Total Consolidada</TableHead>
-                        <TableHead className="w-[180px] text-right">Unidades Solicitantes</TableHead>
+                        <TableHead className="w-[180px] text-right">
+                          Qtd. Total Consolidada
+                        </TableHead>
+                        <TableHead className="w-[180px] text-right">
+                          Unidades Solicitantes
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -544,19 +581,38 @@ function PcaPage() {
           <DialogHeader>
             <DialogTitle>Registrar Nova Demanda no PCA {year}</DialogTitle>
             <DialogDescription>
-              Informe o objeto, justificativa e os itens necessários para compor o planejamento anual da Secretaria.
+              Informe o objeto, justificativa e os itens necessários para compor o planejamento
+              anual da Secretaria.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCriarDemanda} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="pca-title" className="text-xs">Objeto da Demanda *</Label>
-              <Input id="pca-title" name="title" required minLength={3} maxLength={300} className="text-xs" />
+              <Label htmlFor="pca-title" className="text-xs">
+                Objeto da Demanda *
+              </Label>
+              <Input
+                id="pca-title"
+                name="title"
+                required
+                minLength={3}
+                maxLength={300}
+                className="text-xs"
+              />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pca-justification" className="text-xs">Justificativa *</Label>
-              <Input id="pca-justification" name="justification" required minLength={3} maxLength={5000} className="text-xs" />
+              <Label htmlFor="pca-justification" className="text-xs">
+                Justificativa *
+              </Label>
+              <Input
+                id="pca-justification"
+                name="justification"
+                required
+                minLength={3}
+                maxLength={5000}
+                className="text-xs"
+              />
             </div>
 
             <div className="space-y-2">
@@ -575,14 +631,29 @@ function PcaPage() {
 
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {rows.map((key, idx) => (
-                  <div key={key} className="grid gap-2 rounded-md border p-3 sm:grid-cols-12 items-end bg-muted/20">
+                  <div
+                    key={key}
+                    className="grid gap-2 rounded-md border p-3 sm:grid-cols-12 items-end bg-muted/20"
+                  >
                     <div className="sm:col-span-6 space-y-1">
                       <Label className="text-[11px]">Descrição (Item {idx + 1}) *</Label>
-                      <Input name={"description-" + key} required minLength={3} maxLength={500} className="h-8 text-xs" />
+                      <Input
+                        name={"description-" + key}
+                        required
+                        minLength={3}
+                        maxLength={500}
+                        className="h-8 text-xs"
+                      />
                     </div>
                     <div className="sm:col-span-2 space-y-1">
                       <Label className="text-[11px]">Unidade *</Label>
-                      <Input name={"unit-" + key} required maxLength={30} placeholder="UN/CX" className="h-8 text-xs" />
+                      <Input
+                        name={"unit-" + key}
+                        required
+                        maxLength={30}
+                        placeholder="UN/CX"
+                        className="h-8 text-xs"
+                      />
                     </div>
                     <div className="sm:col-span-3 space-y-1">
                       <Label className="text-[11px]">Quantidade *</Label>
@@ -615,7 +686,13 @@ function PcaPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setNovaAberta(false)} disabled={busy}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNovaAberta(false)}
+                disabled={busy}
+              >
                 Cancelar
               </Button>
               <Button type="submit" size="sm" disabled={busy}>
@@ -632,13 +709,16 @@ function PcaPage() {
           <DialogHeader>
             <DialogTitle>Criar Processo a partir do PCA</DialogTitle>
             <DialogDescription>
-              Converter a demanda aprovada "{convertendoDemanda?.title}" em um novo processo de contratação e DFD.
+              Converter a demanda aprovada "{convertendoDemanda?.title}" em um novo processo de
+              contratação e DFD.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleConverterDemanda} className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="proc-number" className="text-xs">Número do Processo *</Label>
+              <Label htmlFor="proc-number" className="text-xs">
+                Número do Processo *
+              </Label>
               <Input
                 id="proc-number"
                 value={numeroProcesso}
@@ -651,7 +731,9 @@ function PcaPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="proc-modality" className="text-xs">Modalidade *</Label>
+              <Label htmlFor="proc-modality" className="text-xs">
+                Modalidade *
+              </Label>
               <Select value={modalidadeProcesso} onValueChange={setModalidadeProcesso} required>
                 <SelectTrigger id="proc-modality" className="text-xs">
                   <SelectValue placeholder="Selecione a modalidade" />
