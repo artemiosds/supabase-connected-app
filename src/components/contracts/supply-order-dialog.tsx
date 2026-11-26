@@ -99,11 +99,6 @@ export function SupplyOrderDialog({
     const order = result.itemsToConsume;
     const reference = referenceNumber.trim();
     const motive = reason.trim();
-    const results: Outcome[] = order.map((item) => ({
-      description: items.find((row) => row.itemId === item.itemId)?.description ?? item.itemId,
-      status: "Não enviado",
-    }));
-    let submitted = false;
     try {
       const permission = await db.rpc("get_document_capabilities", {
         p_tenant_id: tenantId,
@@ -164,36 +159,29 @@ export function SupplyOrderDialog({
               " mudou. Atualize a consulta.",
           );
       }
-      for (const [index, item] of order.entries()) {
-        if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a operação.");
-        submitted = true;
-        setAttempted(true);
-        try {
-          const response = await db.rpc("record_contract_item_consumption", {
-            p_tenant_id: tenantId,
-            p_contract_item_id: item.itemId,
-            p_quantity: item.quantity,
-            p_reason: motive,
-            p_reference_number: reference,
-          });
-          if (response.error || !response.data)
-            throw new Error(response.error?.message ?? "Resposta sem confirmação.");
-          results[index] = {
-            description: results[index]!.description,
-            status: "Registrado",
-          };
-          setOutcomes([...results]);
-        } catch (e) {
-          results[index] = {
-            description: results[index]!.description,
-            status: "Conferir histórico",
-            message: e instanceof Error ? e.message : "Resposta incerta.",
-          };
-          throw e;
-        }
+      if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a operação.");
+      const response = await db.rpc("record_supply_order_consumption", {
+        p_tenant_id: tenantId,
+        p_contract_id: contractId,
+        p_reference_number: reference,
+        p_reason: motive,
+        p_items: order.map((item) => ({
+          contract_item_id: item.itemId,
+          quantity: item.quantity,
+        })),
+      });
+      if (response.error || !response.data || response.data.length !== order.length) {
+        throw new Error(
+          response.error?.message ?? "Não foi possível confirmar a gravação da ordem de fornecimento.",
+        );
       }
+      setAttempted(true);
+      const completedResults: Outcome[] = order.map((item) => ({
+        description: items.find((row) => row.itemId === item.itemId)?.description ?? item.itemId,
+        status: "Registrado",
+      }));
       const completedAt = new Date().toISOString();
-      setOutcomes([...results]);
+      setOutcomes(completedResults);
       setCompletedOrder({
         referenceNumber: reference,
         reason: motive,
@@ -214,12 +202,6 @@ export function SupplyOrderDialog({
       toast.success("Ordem de fornecimento " + reference + " registrada com sucesso!");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível concluir a ordem.");
-      if (submitted) {
-        setOutcomes([...results]);
-        toast.warning(
-          "Ordem interrompida. Confira os resultados e o histórico antes de novo envio.",
-        );
-      }
     } finally {
       if (inScope()) {
         try {
@@ -346,8 +328,8 @@ export function SupplyOrderDialog({
         <DialogHeader>
           <DialogTitle>Emitir Ordem de Fornecimento</DialogTitle>
           <DialogDescription>
-            Registre os consumos da ordem com a mesma referência e motivo. Cada baixa é validada
-            individualmente no banco.
+            Registre os consumos da ordem com a mesma referência e motivo. Todos os itens são
+            validados e gravados em uma única transação atômica no banco.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">

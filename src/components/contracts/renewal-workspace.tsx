@@ -33,6 +33,10 @@ import {
 import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { diasAte, formatarData, formatarMoeda } from "@/lib/contratacao";
 import { calcularVariacaoPrecoPercentual, podeUsarMinutaProrrogacao } from "@/lib/contract-renewal";
+import {
+  calcularNovaDataVigencia,
+  identificarMesesVigencia,
+} from "@/lib/contract-extension-helper";
 import { registrarVerificacaoRegularidade } from "@/lib/supplier-regularity";
 import { consultarRegularidadeAutomatica } from "@/lib/supplier-regularity-lookup";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -45,6 +49,7 @@ type Contract = Pick<
   | "id"
   | "number"
   | "object"
+  | "start_date"
   | "end_date"
   | "status"
   | "total_value"
@@ -594,11 +599,37 @@ export function RenewalWorkspace(props: {
                   </p>
 
                   {contract.instrument_type === "ata_registro_precos" ? (
-                    <p className="rounded-md bg-muted/50 p-2 text-sm">
-                      Ata de registro de preços: não utilizar a minuta de prorrogação do art. 107. A
-                      extensão da ata segue regras próprias e deve ser analisada em fluxo
-                      específico.
-                    </p>
+                    <div className="space-y-2">
+                      <p className="rounded-md bg-muted/50 p-2 text-sm">
+                        Ata de registro de preços (art. 84 da Lei nº 14.133/2021): vigência de 1
+                        ano, prorrogável por igual período (máximo total de 24 meses a contar de{" "}
+                        {formatarData(contract.start_date)}), desde que comprovado o preço vantajoso
+                        e formalizada antes do vencimento.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {days >= 0 && !followup && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!current.canEdit || current.failed || !!busy}
+                            onClick={() => void start(contract.id)}
+                          >
+                            {busy === contract.id ? "Registrando…" : "Iniciar acompanhamento"}
+                          </Button>
+                        )}
+                        {days >= 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!current.canEdit || current.failed}
+                            onClick={() => props.onAmendment(contract.id)}
+                          >
+                            <FilePlus2 className="h-4 w-4" />
+                            Registrar prorrogação da Ata
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <>
                       {current.schemaReady && assessment && (
@@ -918,13 +949,67 @@ export function RenewalWorkspace(props: {
                   </div>
                   <div className="space-y-1">
                     <Label>Período proposto (meses)</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={form.proposed_months}
-                      onChange={(event) => updateForm("proposed_months", event.target.value)}
-                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="120"
+                        className="flex-1"
+                        value={form.proposed_months}
+                        onChange={(event) => {
+                          const raw = event.target.value;
+                          const months = Number.parseInt(raw, 10);
+                          if (
+                            Number.isInteger(months) &&
+                            months >= 1 &&
+                            months <= 120 &&
+                            editingContract
+                          ) {
+                            setForm((old) =>
+                              old
+                                ? {
+                                    ...old,
+                                    proposed_months: raw,
+                                    proposed_start_date: dataSeguinte(editingContract.end_date),
+                                    proposed_end_date: calcularNovaDataVigencia(
+                                      editingContract.end_date,
+                                      months,
+                                    ),
+                                  }
+                                : old,
+                            );
+                          } else {
+                            updateForm("proposed_months", raw);
+                          }
+                        }}
+                      />
+                      {[6, 12].map((preset) => (
+                        <Button
+                          key={preset}
+                          type="button"
+                          size="sm"
+                          variant={form.proposed_months === String(preset) ? "default" : "outline"}
+                          onClick={() => {
+                            if (!editingContract) return;
+                            setForm((old) =>
+                              old
+                                ? {
+                                    ...old,
+                                    proposed_months: String(preset),
+                                    proposed_start_date: dataSeguinte(editingContract.end_date),
+                                    proposed_end_date: calcularNovaDataVigencia(
+                                      editingContract.end_date,
+                                      preset,
+                                    ),
+                                  }
+                                : old,
+                            );
+                          }}
+                        >
+                          +{preset}m
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <Label>Início proposto</Label>
@@ -939,10 +1024,43 @@ export function RenewalWorkspace(props: {
                     <Input
                       type="date"
                       value={form.proposed_end_date}
-                      onChange={(event) => updateForm("proposed_end_date", event.target.value)}
+                      onChange={(event) => {
+                        const novaDataFim = event.target.value;
+                        const mesesCalculados = editingContract
+                          ? identificarMesesVigencia(editingContract.end_date, novaDataFim)
+                          : null;
+                        setForm((old) =>
+                          old
+                            ? {
+                                ...old,
+                                proposed_end_date: novaDataFim,
+                                ...(mesesCalculados !== null
+                                  ? {
+                                      proposed_months: String(mesesCalculados),
+                                      proposed_start_date: dataSeguinte(editingContract.end_date),
+                                    }
+                                  : {}),
+                              }
+                            : old,
+                        );
+                      }}
                     />
                   </div>
                 </div>
+                {(() => {
+                  const acc = Number.parseInt(form.accumulated_months, 10);
+                  const prop = Number.parseInt(form.proposed_months, 10);
+                  if (Number.isInteger(acc) && Number.isInteger(prop) && acc + prop > 120) {
+                    return (
+                      <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                        Atenção: o prazo acumulado ({acc} meses) somado ao proposto ({prop} meses)
+                        atinge {acc + prop} meses e ultrapassa o limite decenal de 120 meses (art.
+                        107 da Lei nº 14.133/2021).
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="flex items-center gap-2 text-sm">
                     <input

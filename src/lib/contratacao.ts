@@ -167,3 +167,7 @@ export function formatarData(iso: string | null | undefined): string {
   const [a, m, d] = iso.slice(0, 10).split("-");
   return `${d}/${m}/${a}`;
 }
+
+export function dataHojeLocalISO(hoje: Date = new Date()): string {
+  return hoje.toLocaleDateString("sv-SE");
+}

@@ -4809,6 +4809,16 @@ export type Database = {
         }
         Returns: string
       }
+      record_supply_order_consumption: {
+        Args: {
+          p_contract_id: string
+          p_items: Json
+          p_reason: string
+          p_reference_number: string
+          p_tenant_id: string
+        }
+        Returns: string[]
+      }
       record_supplier_regularity_check: {
         Args: {
           p_certificate_number?: string

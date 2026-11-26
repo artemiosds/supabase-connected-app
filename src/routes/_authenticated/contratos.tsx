@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import {
+  dataHojeLocalISO,
   diasAte,
   formatarData,
   formatarMoeda,
@@ -40,6 +41,14 @@ import {
   ROTULO_ALERTA,
   type NivelAlerta,
 } from "@/lib/contratacao";
+import {
+  ROTULOS_TIPO_ADITIVO,
+  calcularLimitesArt125,
+  calcularLimiteVigenciaInstrumento,
+  validarNovoAditivo,
+  type AditivoHistoricoInput,
+} from "@/lib/contract-amendments";
+import { sugerirProximoNumeroAditivo } from "@/lib/contract-extension-helper";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -428,12 +437,7 @@ function Contratos() {
     { header: "Fiscal", value: (contrato) => contrato.inspector_name ?? "—" },
     { header: "Portaria", value: (contrato) => contrato.ordinance ?? "—" },
   ];
-  const rotuloTipoAditivo: Record<string, string> = {
-    prorrogacao: "Prorrogação de prazo",
-    acrescimo: "Acréscimo de valor",
-    supressao: "Supressão de valor",
-    outro: "Outro",
-  };
+  const rotuloTipoAditivo = ROTULOS_TIPO_ADITIVO;
   const aditivosFiltrados = aditivosAtuais.flatMap((item) => {
     const contrato = listaAtual.find((c) => c.id === item.contract_id);
     if (!contrato || (tipoAditivo !== "todos" && item.kind !== tipoAditivo)) return [];
@@ -641,7 +645,10 @@ function Contratos() {
                 <Card key={c.id} id={`contrato-${c.id}`}>
                   <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 pb-2">
                     <div>
-                      <CardTitle className="text-base">Contrato nº {c.number}</CardTitle>
+                      <CardTitle className="text-base">
+                        {c.instrument_type === "ata_registro_precos" ? "Ata" : "Contrato"} nº{" "}
+                        {c.number}
+                      </CardTitle>
                       <p className="text-sm text-muted-foreground">{c.object}</p>
                     </div>
                     <Badge variant="outline" className={corAlerta[c.nivel]}>
@@ -697,7 +704,8 @@ function Contratos() {
                       <Button
                         size="sm"
                         variant="outline"
-                        aria-label={`Registrar aditivo — Contrato ${c.number}`}
+                        disabled={c.status === "arquivado" || c.status === "rescindido"}
+                        aria-label={`Registrar aditivo — ${c.instrument_type === "ata_registro_precos" ? "Ata" : "Contrato"} ${c.number}`}
                         onClick={() => setAditivoDe(c)}
                       >
                         <FilePlus2 className="h-4 w-4" /> Registrar aditivo
@@ -802,7 +810,7 @@ function Contratos() {
                           </p>
                         ) : (
                           <ol className="space-y-3">
-                            {aditivos
+                            {aditivosAtuais
                               .filter((item) => item.contract_id === c.id)
                               .map((item) => (
                                 <li key={item.id} className="border-l-2 border-primary/30 pl-3">
@@ -938,7 +946,10 @@ function Contratos() {
           <div className="max-h-[55vh] space-y-2 overflow-y-auto">
             {listaAtual
               .filter(
-                (c) => c.status !== "arquivado" && termosBusca(textoContrato(c), buscaContrato),
+                (c) =>
+                  c.status !== "arquivado" &&
+                  c.status !== "rescindido" &&
+                  termosBusca(textoContrato(c), buscaContrato),
               )
               .map((c) => (
                 <button
@@ -951,7 +962,8 @@ function Contratos() {
                   }}
                 >
                   <p className="font-medium">
-                    Contrato {c.number} · {nomeFornecedor(c.supplier_id)}
+                    {c.instrument_type === "ata_registro_precos" ? "Ata" : "Contrato"} {c.number} ·{" "}
+                    {nomeFornecedor(c.supplier_id)}
                   </p>
                   <p className="text-sm text-muted-foreground">{c.object}</p>
                   <p className="text-xs text-muted-foreground">
@@ -960,7 +972,10 @@ function Contratos() {
                 </button>
               ))}
             {!listaAtual.some(
-              (c) => c.status !== "arquivado" && termosBusca(textoContrato(c), buscaContrato),
+              (c) =>
+                c.status !== "arquivado" &&
+                c.status !== "rescindido" &&
+                termosBusca(textoContrato(c), buscaContrato),
             ) && <p className="p-3 text-sm text-muted-foreground">Nenhum contrato encontrado.</p>}
           </div>
         </DialogContent>
@@ -970,7 +985,8 @@ function Contratos() {
         aberto={novoAberto}
         contrato={contratoEditando}
         hasAditivos={
-          !!contratoEditando && aditivos.some((item) => item.contract_id === contratoEditando.id)
+          !!contratoEditando &&
+          aditivosAtuais.some((item) => item.contract_id === contratoEditando.id)
         }
         onFechar={() => {
           setNovoAberto(false);
@@ -984,6 +1000,9 @@ function Contratos() {
       />
       <NovoAditivo
         contrato={aditivoDe}
+        aditivosContrato={
+          aditivoDe ? aditivosAtuais.filter((item) => item.contract_id === aditivoDe.id) : []
+        }
         onFechar={() => setAditivoDe(null)}
         tenantId={selecionado.id}
         userId={session?.user.id ?? ""}
@@ -1223,7 +1242,11 @@ function NovoContrato(props: {
             />
           </Campo>
           <Campo label="Tipo de instrumento">
-            <Select value={f.instrument_type} onValueChange={set("instrument_type")}>
+            <Select
+              value={f.instrument_type}
+              disabled={!!props.contrato && props.hasAditivos}
+              onValueChange={set("instrument_type")}
+            >
               <SelectTrigger aria-label="Tipo de instrumento">
                 <SelectValue />
               </SelectTrigger>
@@ -1403,6 +1426,7 @@ function NovoContrato(props: {
 
 function NovoAditivo(props: {
   contrato: Contrato | null;
+  aditivosContrato: Array<AditivoHistoricoInput & { number: string }>;
   onFechar: () => void;
   tenantId: string;
   userId: string;
@@ -1411,22 +1435,48 @@ function NovoAditivo(props: {
   const [numero, setNumero] = useState("");
   const [tipo, setTipo] = useState("prorrogacao");
   const [novaData, setNovaData] = useState("");
-  const [dataAssinatura, setDataAssinatura] = useState(() =>
-    new Date().toLocaleDateString("sv-SE"),
-  );
+  const [dataAssinatura, setDataAssinatura] = useState(() => dataHojeLocalISO());
   const [valor, setValor] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [isReforma, setIsReforma] = useState(false);
+  const [supressaoConsensual, setSupressaoConsensual] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  const hoje = dataHojeLocalISO();
+  const isArp = props.contrato?.instrument_type === "ata_registro_precos";
 
   useEffect(() => {
     if (!props.contrato) return;
-    setNumero("");
+    setNumero(sugerirProximoNumeroAditivo(props.aditivosContrato));
     setTipo("prorrogacao");
     setNovaData("");
-    setDataAssinatura(new Date().toLocaleDateString("sv-SE"));
+    setDataAssinatura(dataHojeLocalISO());
     setValor("");
     setObservacoes("");
-  }, [props.contrato]);
+    setIsReforma(false);
+    setSupressaoConsensual(false);
+  }, [props.contrato, props.aditivosContrato]);
+
+  const valorNumerico = valor.trim() ? numeroDecimal(valor) : Number.NaN;
+  const limites = props.contrato
+    ? calcularLimitesArt125({
+        valorVigenteAtual: Number(props.contrato.total_value),
+        aditivos: props.aditivosContrato,
+        isReformaEdificioOuEquipamento: isReforma,
+      })
+    : null;
+  const limiteVigencia = props.contrato
+    ? calcularLimiteVigenciaInstrumento(props.contrato.start_date, props.contrato.instrument_type)
+    : null;
+
+  const supressaoUltrapassa25 =
+    tipo === "supressao" &&
+    !!limites?.baseValida &&
+    Number.isFinite(valorNumerico) &&
+    valorNumerico > 0 &&
+    limites.totalSupressoesAbs + valorNumerico > limites.valorMaximoSupressaoUnilateral + 0.01;
+
+  const precisaValor = tipo === "acrescimo" || tipo === "supressao" || tipo === "reajuste";
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
@@ -1435,30 +1485,34 @@ function NovoAditivo(props: {
       toast.error("Não foi possível identificar o usuário da sessão.");
       return;
     }
-    if (!numero.trim()) {
-      toast.error("Informe o número do termo aditivo.");
+
+    const validacao = validarNovoAditivo({
+      contrato: {
+        status: props.contrato.status,
+        instrument_type: props.contrato.instrument_type,
+        start_date: props.contrato.start_date,
+        end_date: props.contrato.end_date,
+        total_value: Number(props.contrato.total_value),
+      },
+      aditivosExistentes: props.aditivosContrato,
+      novoAditivo: {
+        numero,
+        tipo,
+        novaData,
+        dataAssinatura,
+        ...(Number.isFinite(valorNumerico) ? { valorNumerico } : {}),
+        observacoes,
+        isReformaEdificioOuEquipamento: isReforma,
+        supressaoConsensualConfirmada: supressaoConsensual,
+      },
+      hoje,
+    });
+
+    if (!validacao.valido) {
+      toast.error(validacao.erro ?? "Revise os dados do aditivo antes de registrar.");
       return;
     }
-    if (!dataAssinatura || dataAssinatura > new Date().toLocaleDateString("sv-SE")) {
-      toast.error("Informe uma data de assinatura válida, não futura.");
-      return;
-    }
-    const v = valor.trim() ? numeroDecimal(valor) : 0;
-    if (tipo === "prorrogacao") {
-      if (!novaData || novaData <= props.contrato.end_date) {
-        toast.error("A nova data final deve ser posterior à vigência atual do contrato.");
-        return;
-      }
-    } else if (tipo === "acrescimo" || tipo === "supressao") {
-      if (!valor.trim() || !Number.isFinite(v) || v <= 0) {
-        toast.error("Informe um valor de aditivo válido e maior que zero.");
-        return;
-      }
-      if (tipo === "supressao" && v > props.contrato.total_value) {
-        toast.error("A supressão não pode exceder o valor atual do contrato.");
-        return;
-      }
-    }
+
     setSalvando(true);
     const { error } = await db.from("contract_amendments").insert({
       tenant_id: props.tenantId,
@@ -1466,9 +1520,9 @@ function NovoAditivo(props: {
       number: numero.trim(),
       kind: tipo,
       new_end_date: tipo === "prorrogacao" ? novaData || null : null,
-      value_change: tipo === "supressao" ? -Math.abs(v) : tipo === "acrescimo" ? Math.abs(v) : 0,
+      value_change: validacao.valorChange,
       signed_at: dataAssinatura,
-      notes: observacoes.trim() || null,
+      notes: observacoes.trim(),
       created_by: props.userId,
       updated_by: props.userId,
     });
@@ -1477,80 +1531,143 @@ function NovoAditivo(props: {
       toast.error(error.message);
       return;
     }
-    toast.success("Aditivo registrado e contrato atualizado.");
+    toast.success("Termo registrado e instrumento atualizado no ledger.");
     setNumero("");
     setNovaData("");
-    setDataAssinatura(new Date().toLocaleDateString("sv-SE"));
+    setDataAssinatura(dataHojeLocalISO());
     setValor("");
     setObservacoes("");
+    setIsReforma(false);
+    setSupressaoConsensual(false);
     props.onFechar();
     props.onSalvo();
   }
 
+  const tiposDisponiveis = Object.entries(ROTULOS_TIPO_ADITIVO).filter(
+    ([value]) => !(isArp && value === "acrescimo"),
+  );
+
   return (
     <Dialog open={!!props.contrato} onOpenChange={(o) => !o && props.onFechar()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Termo aditivo — Contrato {props.contrato?.number}</DialogTitle>
+          <DialogTitle>
+            Termo aditivo / Apostilamento — {isArp ? "Ata" : "Contrato"} {props.contrato?.number}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={salvar} className="grid gap-4">
           {props.contrato && (
-            <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
-              <p>
-                Valor vigente: <strong>{formatarMoeda(Number(props.contrato.total_value))}</strong>
-              </p>
-              <p>
-                Fim da vigência: <strong>{formatarData(props.contrato.end_date)}</strong>
-              </p>
-              {(tipo === "acrescimo" || tipo === "supressao") &&
-                Number.isFinite(numeroDecimal(valor)) &&
-                numeroDecimal(valor) > 0 && (
+            <div className="space-y-1.5 rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <span>
+                  Valor vigente: <strong>{formatarMoeda(Number(props.contrato.total_value))}</strong>
+                </span>
+                <span>
+                  Vigência atual: <strong>{formatarData(props.contrato.end_date)}</strong>
+                </span>
+              </div>
+              {limites?.baseValida && !isArp && (
+                <div className="space-y-0.5 border-t pt-1.5 text-xs text-muted-foreground">
                   <p>
-                    Valor após a alteração (prévia):{" "}
+                    Base inicial atualizada (art. 125):{" "}
+                    <strong className="text-foreground">
+                      {formatarMoeda(limites.valorInicialAtualizado)}
+                    </strong>
+                    {limites.totalReajustesApostilamentos !== 0 &&
+                      ` (original ${formatarMoeda(limites.valorOriginalContrato)} + reajustes ${formatarMoeda(limites.totalReajustesApostilamentos)})`}
+                  </p>
+                  <p>
+                    Acréscimos acumulados:{" "}
                     <strong>
-                      {formatarMoeda(
-                        Number(props.contrato.total_value) +
-                          (tipo === "supressao" ? -1 : 1) * numeroDecimal(valor),
-                      )}
+                      {limites.percentualAcrescimos.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 2,
+                      })}
+                      %
+                    </strong>{" "}
+                    (saldo até {limites.limiteAcrescimoPct}%:{" "}
+                    {formatarMoeda(limites.saldoAcrescimoDisponivel)}) · Supressões:{" "}
+                    <strong>
+                      {limites.percentualSupressoes.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 2,
+                      })}
+                      %
                     </strong>
                   </p>
-                )}
+                  <p>Acréscimos e supressões são apurados separadamente, sem compensação (TCU).</p>
+                </div>
+              )}
+              {isArp && (
+                <p className="border-t pt-1.5 text-xs text-muted-foreground">
+                  Ata de Registro de Preços: limite máximo de vigência de{" "}
+                  <strong>{limiteVigencia?.limiteData ? formatarData(limiteVigencia.limiteData) : "24 meses"}</strong>{" "}
+                  (art. 84) e vedação de acréscimo de quantitativos (Decreto nº 11.462/2023, art. 23).
+                </p>
+              )}
+              {precisaValor && Number.isFinite(valorNumerico) && valorNumerico > 0 && (
+                <p className="border-t pt-1.5">
+                  Valor após a alteração (prévia):{" "}
+                  <strong>
+                    {formatarMoeda(
+                      Number(props.contrato.total_value) +
+                        (tipo === "supressao" ? -1 : 1) * valorNumerico,
+                    )}
+                  </strong>
+                </p>
+              )}
             </div>
           )}
-          <Campo label="Número do aditivo *">
+          <Campo label="Número do termo *">
             <Input
               required
-              maxLength={80}
+              maxLength={60}
               value={numero}
               onChange={(e) => setNumero(e.target.value)}
               placeholder="1º Termo Aditivo"
             />
           </Campo>
-          <Campo label="Tipo">
-            <Select value={tipo} onValueChange={setTipo}>
-              <SelectTrigger>
+          <Campo label="Espécie / Tipo *">
+            <Select
+              value={tipo}
+              onValueChange={(nextTipo) => {
+                setTipo(nextTipo);
+                setIsReforma(false);
+                setSupressaoConsensual(false);
+              }}
+            >
+              <SelectTrigger aria-label="Tipo do termo aditivo">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="prorrogacao">Prorrogação de prazo</SelectItem>
-                <SelectItem value="acrescimo">Acréscimo de valor</SelectItem>
-                <SelectItem value="supressao">Supressão de valor</SelectItem>
-                <SelectItem value="outro">Outro</SelectItem>
+                {tiposDisponiveis.map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Campo>
           {tipo === "prorrogacao" && (
-            <Campo label="Nova data final *">
+            <Campo
+              label={`Nova data final *${limiteVigencia?.limiteData ? ` (teto legal: ${formatarData(limiteVigencia.limiteData)})` : ""}`}
+            >
               <Input
                 type="date"
                 required
+                min={props.contrato?.end_date}
+                max={limiteVigencia?.limiteData ?? undefined}
                 value={novaData}
                 onChange={(e) => setNovaData(e.target.value)}
               />
             </Campo>
           )}
-          {(tipo === "acrescimo" || tipo === "supressao") && (
-            <Campo label="Valor (R$) *">
+          {precisaValor && (
+            <Campo
+              label={
+                tipo === "reajuste"
+                  ? "Valor do reajuste / repactuação (R$) *"
+                  : "Valor da alteração (R$) *"
+              }
+            >
               <Input
                 required
                 inputMode="decimal"
@@ -1559,22 +1676,53 @@ function NovoAditivo(props: {
               />
             </Campo>
           )}
+          {tipo === "acrescimo" && (
+            <label className="flex items-start gap-2 rounded-md border p-2.5 text-xs">
+              <input
+                type="checkbox"
+                checked={isReforma}
+                onChange={(event) => setIsReforma(event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                O objeto refere-se especificamente a <strong>reforma de edifício ou equipamento</strong>{" "}
+                (aplica o teto excepcional de 50% do art. 125 da Lei nº 14.133/2021).
+              </span>
+            </label>
+          )}
+          {supressaoUltrapassa25 && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs">
+              <input
+                type="checkbox"
+                checked={supressaoConsensual}
+                onChange={(event) => setSupressaoConsensual(event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                A supressão acumulada supera 25%. Confirmo que há{" "}
+                <strong>acordo consensual formal com a contratada</strong> (art. 124, II, da Lei nº
+                14.133/2021).
+              </span>
+            </label>
+          )}
           <Campo label="Data da assinatura *">
             <Input
               type="date"
               required
-              max={new Date().toLocaleDateString("sv-SE")}
+              max={hoje}
               value={dataAssinatura}
               onChange={(event) => setDataAssinatura(event.target.value)}
             />
           </Campo>
-          <Campo label="Observações e justificativa do aditivo">
+          <Campo label="Justificativa técnica, fundamento legal e processo (mín. 10 caracteres) *">
             <Textarea
               rows={3}
+              required
+              minLength={10}
               maxLength={2000}
               value={observacoes}
               onChange={(event) => setObservacoes(event.target.value)}
-              placeholder="Informe a justificativa, referência do processo e observações relevantes."
+              placeholder="Informe a justificativa motivada (art. 124), referência do processo e cláusula ou índice aplicado."
             />
           </Campo>
           <DialogFooter>
@@ -1582,6 +1730,7 @@ function NovoAditivo(props: {
               Cancelar
             </Button>
             <Button type="submit" disabled={salvando}>
+              {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
               Registrar
             </Button>
           </DialogFooter>

@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
+import { dataHojeLocalISO, numeroDecimal } from "@/lib/contratacao";
 import {
   calcularPercentualDisponivel,
   calcularQuantidadeConsumida,
@@ -110,7 +111,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
 const quantity = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
 
 function numero(input: string): number {
-  return Number(input.trim().replace(",", "."));
+  return numeroDecimal(input);
 }
 
 export function ContractItemsBalance(props: {
@@ -127,10 +128,12 @@ export function ContractItemsBalance(props: {
     Boolean(props.userId) &&
     scope.current.tenant === props.tenantId &&
     scope.current.user === props.userId;
+  const actionLockRef = useRef(false);
   const [aberto, setAberto] = useState(false);
   const [dialogReposicaoAberto, setDialogReposicaoAberto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [canUpdate, setCanUpdate] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -153,18 +156,22 @@ export function ContractItemsBalance(props: {
     setLoading(true);
     setErro(null);
     try {
-      const itemRows = await carregarTodasAsPaginas((inicio, fim) =>
-        db
-          .from("contract_items")
-          .select(
-            "id,line_number,description,specification,unit,quantity_total,unit_value,total_value",
-          )
-          .eq("tenant_id", props.tenantId)
-          .eq("contract_id", props.contract.id)
-          .order("line_number")
-          .order("id")
-          .range(inicio, fim),
-      );
+      const [itemRows, capabilityResult] = await Promise.all([
+        carregarTodasAsPaginas((inicio, fim) =>
+          db
+            .from("contract_items")
+            .select(
+              "id,line_number,description,specification,unit,quantity_total,unit_value,total_value",
+            )
+            .eq("tenant_id", props.tenantId)
+            .eq("contract_id", props.contract.id)
+            .order("line_number")
+            .order("id")
+            .range(inicio, fim),
+        ),
+        db.rpc("get_document_capabilities", { p_tenant_id: props.tenantId }),
+      ]);
+      setCanUpdate(capabilityResult.data?.[0]?.can_update === true);
       const nextItems: Item[] = (itemRows ?? []).map((row) => ({
         ...row,
         total_value: Number(row.total_value ?? row.quantity_total * row.unit_value),
@@ -281,11 +288,11 @@ export function ContractItemsBalance(props: {
         .single(),
       contractResult.data.process_id
         ? db
-            .from("procurement_processes")
-            .select("number")
-            .eq("tenant_id", props.tenantId)
-            .eq("id", contractResult.data.process_id)
-            .maybeSingle()
+          .from("procurement_processes")
+          .select("number")
+          .eq("tenant_id", props.tenantId)
+          .eq("id", contractResult.data.process_id)
+          .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
     if (supplierResult.error || !supplierResult.data)
@@ -436,11 +443,11 @@ export function ContractItemsBalance(props: {
         .maybeSingle(),
       contractResult.data.process_id
         ? db
-            .from("procurement_processes")
-            .select("number")
-            .eq("id", contractResult.data.process_id)
-            .eq("tenant_id", props.tenantId)
-            .maybeSingle()
+          .from("procurement_processes")
+          .select("number")
+          .eq("id", contractResult.data.process_id)
+          .eq("tenant_id", props.tenantId)
+          .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
 
@@ -597,16 +604,53 @@ export function ContractItemsBalance(props: {
 
   async function salvarItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!props.userId) {
-      toast.error("Não foi possível identificar o usuário da sessão.");
+    if (actionLockRef.current || salvando) return;
+    if (!inScope()) {
+      toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+    if (!canUpdate) {
+      toast.error("Seu perfil não possui permissão para alterar itens do contrato.");
+      return;
+    }
+    if (props.contract.status !== "vigente") {
+      toast.error("Somente instrumentos vigentes permitem incluir ou alterar itens.");
       return;
     }
     const total = numero(itemForm.quantity_total);
     const unitValue = numero(itemForm.unit_value);
-    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(unitValue) || unitValue < 0) {
+    if (
+      !Number.isFinite(total) ||
+      total <= 0 ||
+      total > 9_999_999_999.9999 ||
+      !Number.isFinite(unitValue) ||
+      unitValue < 0
+    ) {
       toast.error("Informe quantidade e valor unitário válidos.");
       return;
     }
+    if (itemEditandoId) {
+      const consumed = calcularQuantidadeConsumida(movementsByItem[itemEditandoId] ?? []);
+      if (total < consumed) {
+        toast.error(
+          `A quantidade total (${quantity.format(total)}) não pode ficar abaixo do saldo já consumido (${quantity.format(consumed)}).`,
+        );
+        return;
+      }
+    }
+    const editingItemValue = itemEditandoId
+      ? Number(items.find((i) => i.id === itemEditandoId)?.total_value ?? 0)
+      : 0;
+    const lineTotal = Math.round((total * unitValue + Number.EPSILON) * 100) / 100;
+    const projectedContractItemsTotal =
+      Math.round((itemTotal - editingItemValue + lineTotal + Number.EPSILON) * 100) / 100;
+    if (projectedContractItemsTotal > Number(props.contract.total_value) + 0.001) {
+      toast.error(
+        `A soma dos itens (${currency.format(projectedContractItemsTotal)}) supera o limite do instrumento (${currency.format(Number(props.contract.total_value))}).`,
+      );
+      return;
+    }
+    actionLockRef.current = true;
     setSalvando(true);
     const itemData = {
       description: itemForm.description.trim(),
@@ -618,93 +662,135 @@ export function ContractItemsBalance(props: {
     };
     let itemWriteError: string | null = null;
     let updateFound = true;
-    if (itemEditandoId) {
-      const { data: updatedItem, error: updateError } = await db
-        .from("contract_items")
-        .update(itemData)
-        .eq("tenant_id", props.tenantId)
-        .eq("contract_id", props.contract.id)
-        .eq("id", itemEditandoId)
-        .select("id")
-        .maybeSingle();
-      itemWriteError = updateError?.message ?? null;
-      updateFound = !!updatedItem;
-    } else {
-      const { error: insertError } = await db.from("contract_items").insert({
-        tenant_id: props.tenantId,
-        contract_id: props.contract.id,
-        line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
-        ...itemData,
-        created_by: props.userId,
-      });
-      itemWriteError = insertError?.message ?? null;
+    try {
+      if (itemEditandoId) {
+        const { data: updatedItem, error: updateError } = await db
+          .from("contract_items")
+          .update(itemData)
+          .eq("tenant_id", props.tenantId)
+          .eq("contract_id", props.contract.id)
+          .eq("id", itemEditandoId)
+          .select("id")
+          .maybeSingle();
+        itemWriteError = updateError?.message ?? null;
+        updateFound = !!updatedItem;
+      } else {
+        const { error: insertError } = await db.from("contract_items").insert({
+          tenant_id: props.tenantId,
+          contract_id: props.contract.id,
+          line_number: items.reduce((max, item) => Math.max(max, item.line_number), 0) + 1,
+          ...itemData,
+          created_by: props.userId,
+        });
+        itemWriteError = insertError?.message ?? null;
+      }
+      if (itemWriteError) {
+        toast.error(itemWriteError);
+        return;
+      }
+      if (!updateFound) {
+        toast.error("Item não encontrado ou sem permissão para atualização.");
+        return;
+      }
+      toast.success(itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.");
+      setItemForm(EMPTY_ITEM);
+      setItemEditandoId(null);
+      setFormAberto(false);
+      await carregar();
+    } finally {
+      setSalvando(false);
+      actionLockRef.current = false;
     }
-    setSalvando(false);
-    if (itemWriteError) {
-      toast.error(itemWriteError);
-      return;
-    }
-    if (!updateFound) {
-      toast.error("Item não encontrado ou sem permissão para atualização.");
-      return;
-    }
-    toast.success(itemEditandoId ? "Item atualizado." : "Item incluído no contrato/ARP.");
-    setItemForm(EMPTY_ITEM);
-    setItemEditandoId(null);
-    setFormAberto(false);
-    await carregar();
   }
 
   async function registrarConsumo(event: React.FormEvent<HTMLFormElement>, item: Item) {
     event.preventDefault();
+    if (actionLockRef.current || salvando) return;
+    if (!inScope()) {
+      toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+    if (!canUpdate) {
+      toast.error("Seu perfil não possui permissão para registrar consumo.");
+      return;
+    }
+    const hojeLocal = dataHojeLocalISO();
+    if (props.contract.status !== "vigente" || props.contract.end_date < hojeLocal) {
+      toast.error("Consumo permitido apenas para instrumentos vigentes e dentro da vigência.");
+      return;
+    }
     const amount = numero(consumptionForm.quantity);
-    if (!Number.isFinite(amount) || amount <= 0 || consumptionForm.reason.trim().length < 10) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      Number(amount.toFixed(4)) !== amount ||
+      consumptionForm.reason.trim().length < 10
+    ) {
       toast.error(
-        "Informe uma quantidade válida e uma justificativa com pelo menos 10 caracteres.",
+        "Informe uma quantidade válida (até 4 casas decimais) e uma justificativa com pelo menos 10 caracteres.",
       );
       return;
     }
+    actionLockRef.current = true;
     setSalvando(true);
-    const { error: rpcError } = await db.rpc("record_contract_item_consumption", {
-      p_tenant_id: props.tenantId,
-      p_contract_item_id: item.id,
-      p_quantity: amount,
-      p_reason: consumptionForm.reason.trim(),
-      ...(consumptionForm.reference_number.trim()
-        ? { p_reference_number: consumptionForm.reference_number.trim() }
-        : {}),
-    });
-    setSalvando(false);
-    if (rpcError) {
-      toast.error(rpcError.message);
-      return;
+    try {
+      const { error: rpcError } = await db.rpc("record_contract_item_consumption", {
+        p_tenant_id: props.tenantId,
+        p_contract_item_id: item.id,
+        p_quantity: amount,
+        p_reason: consumptionForm.reason.trim(),
+        ...(consumptionForm.reference_number.trim()
+          ? { p_reference_number: consumptionForm.reference_number.trim() }
+          : {}),
+      });
+      if (rpcError) {
+        toast.error(rpcError.message);
+        return;
+      }
+      toast.success("Consumo registrado no histórico imutável.");
+      setConsumptionItemId(null);
+      setConsumptionForm({ quantity: "", reason: "", reference_number: "" });
+      await carregar();
+    } finally {
+      setSalvando(false);
+      actionLockRef.current = false;
     }
-    toast.success("Consumo registrado no histórico imutável.");
-    setConsumptionItemId(null);
-    setConsumptionForm({ quantity: "", reason: "", reference_number: "" });
-    await carregar();
   }
 
   async function estornar(movement: Movement) {
+    if (actionLockRef.current || salvando) return;
+    if (!inScope()) {
+      toast.error("A Secretaria ou a sessão mudou. Reabra o instrumento.");
+      return;
+    }
+    if (!canUpdate || props.contract.status === "arquivado") {
+      toast.error("Seu perfil ou a situação do instrumento não permite estorno.");
+      return;
+    }
     const reason = reversalReasons[movement.id]?.trim() ?? "";
     if (reason.length < 10) {
       toast.error("Informe uma justificativa de estorno com pelo menos 10 caracteres.");
       return;
     }
+    actionLockRef.current = true;
     setSalvando(true);
-    const { error: rpcError } = await db.rpc("reverse_contract_item_consumption", {
-      p_tenant_id: props.tenantId,
-      p_movement_id: movement.id,
-      p_reason: reason,
-    });
-    setSalvando(false);
-    if (rpcError) {
-      toast.error(rpcError.message);
-      return;
+    try {
+      const { error: rpcError } = await db.rpc("reverse_contract_item_consumption", {
+        p_tenant_id: props.tenantId,
+        p_movement_id: movement.id,
+        p_reason: reason,
+      });
+      if (rpcError) {
+        toast.error(rpcError.message);
+        return;
+      }
+      toast.success("Estorno registrado sem apagar o consumo original.");
+      setReversalReasons((current) => ({ ...current, [movement.id]: "" }));
+      await carregar();
+    } finally {
+      setSalvando(false);
+      actionLockRef.current = false;
     }
-    toast.success("Estorno registrado sem apagar o consumo original.");
-    setReversalReasons((current) => ({ ...current, [movement.id]: "" }));
-    await carregar();
   }
 
   return (
@@ -738,11 +824,12 @@ export function ContractItemsBalance(props: {
                 contractId={props.contract.id}
                 userId={props.userId}
                 enabled={
+                  canUpdate &&
                   !loading &&
                   !erro &&
                   !salvando &&
                   props.contract.status === "vigente" &&
-                  props.contract.end_date >= new Date().toLocaleDateString("sv-SE")
+                  props.contract.end_date >= dataHojeLocalISO()
                 }
                 items={items.map((item) => ({
                   itemId: item.id,
@@ -757,7 +844,7 @@ export function ContractItemsBalance(props: {
                 }))}
                 onSuccess={carregar}
               />
-              {props.contract.process_id && props.contract.status === "vigente" && (
+              {canUpdate && props.contract.process_id && props.contract.status === "vigente" && (
                 <ContractItemsImport
                   key={props.tenantId + props.contract.id + props.contract.process_id}
                   contractId={props.contract.id}
@@ -800,6 +887,7 @@ export function ContractItemsBalance(props: {
               <Button
                 type="button"
                 size="sm"
+                disabled={!canUpdate || props.contract.status !== "vigente" || salvando}
                 onClick={() => {
                   setItemEditandoId(null);
                   setItemForm(EMPTY_ITEM);
@@ -906,6 +994,12 @@ export function ContractItemsBalance(props: {
                   preservar o histórico de consumo e estornos.
                 </p>
               )}
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Saldo disponível no valor global do instrumento:{" "}
+                <strong>
+                  {currency.format(Math.max(0, Number(props.contract.total_value) - itemTotal))}
+                </strong>
+              </p>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={salvando}>
                   {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -1057,7 +1151,7 @@ export function ContractItemsBalance(props: {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={salvando}
+                          disabled={!canUpdate || props.contract.status !== "vigente" || salvando}
                           onClick={() => {
                             setItemEditandoId(item.id);
                             setItemForm({
@@ -1134,7 +1228,12 @@ export function ContractItemsBalance(props: {
                             <div className="flex gap-2 sm:col-span-2">
                               <Button
                                 type="submit"
-                                disabled={salvando || props.contract.status !== "vigente"}
+                                disabled={
+                                  !canUpdate ||
+                                  salvando ||
+                                  props.contract.status !== "vigente" ||
+                                  props.contract.end_date < dataHojeLocalISO()
+                                }
                               >
                                 <ShoppingCart className="h-4 w-4" /> Registrar consumo
                               </Button>
@@ -1153,10 +1252,11 @@ export function ContractItemsBalance(props: {
                             size="sm"
                             variant="outline"
                             disabled={
+                              !canUpdate ||
                               salvando ||
                               available <= 0 ||
                               props.contract.status !== "vigente" ||
-                              props.contract.end_date < new Date().toISOString().slice(0, 10)
+                              props.contract.end_date < dataHojeLocalISO()
                             }
                             onClick={() => setConsumptionItemId(item.id)}
                           >
@@ -1196,7 +1296,9 @@ export function ContractItemsBalance(props: {
                                       ? ` · Referência: ${movement.reference_number}`
                                       : ""}
                                   </p>
-                                  {movement.movement_type === "consumption" &&
+                                  {canUpdate &&
+                                    props.contract.status !== "arquivado" &&
+                                    movement.movement_type === "consumption" &&
                                     !reversedIds.has(movement.id) && (
                                       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                                         <Input
