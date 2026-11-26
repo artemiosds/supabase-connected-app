@@ -11,6 +11,7 @@ export type Tenant = {
   commercial_status: string;
   plan_tier: string;
   monthly_fee: number;
+  max_users: number | null;
   trial_starts_at: string | null;
   trial_ends_at: string | null;
   enabled_modules: Record<string, boolean>;
@@ -24,6 +25,7 @@ type TenantRow = {
   commercial_status: string;
   plan_tier: string;
   monthly_fee: number;
+  max_users?: number | null;
   trial_starts_at: string | null;
   trial_ends_at: string | null;
   enabled_modules: unknown;
@@ -77,6 +79,7 @@ function mapTenant(row: TenantRow): Tenant {
     commercial_status: row.commercial_status,
     plan_tier: row.plan_tier,
     monthly_fee: Number((row as TenantRow & { monthly_fee?: number }).monthly_fee ?? 0),
+    max_users: typeof row.max_users === "number" ? row.max_users : null,
     trial_starts_at: row.trial_starts_at,
     trial_ends_at: row.trial_ends_at,
     enabled_modules: enabledModules,
@@ -116,7 +119,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (adminResult.error) throw adminResult.error;
 
       const tenantSelect =
-        "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules, monthly_fee";
+        "id, name, slug, status, commercial_status, plan_tier, trial_starts_at, trial_ends_at, enabled_modules, monthly_fee, max_users";
       let resolvedTenants: Tenant[] = [];
 
       if (adminResult.data) {
@@ -161,6 +164,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
               commercial_status: "active",
               plan_tier: "profissional",
               monthly_fee: 0,
+              max_users: null,
               trial_starts_at: null,
               trial_ends_at: null,
               enabled_modules: { fornecedores: true },

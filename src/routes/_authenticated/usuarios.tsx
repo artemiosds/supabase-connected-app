@@ -6,6 +6,7 @@ import {
   Eye,
   Loader2,
   LockKeyhole,
+  Mail,
   Pencil,
   Plus,
   RefreshCw,
@@ -23,6 +24,11 @@ import {
   selecionarPapelPadraoConvite,
   traduzirModuloPermissao,
 } from "@/lib/access-profiles";
+import {
+  calcularVagasUsuarios,
+  filtrarConvites,
+  podeAlterarStatusMembro,
+} from "@/lib/tenant-settings-helpers";
 import { isInvitationExpired } from "@/lib/invitations";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +36,16 @@ import { useTenant } from "@/hooks/use-tenant";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -140,6 +156,12 @@ function Usuarios() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [savingRole, setSavingRole] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState<"equipe" | "convites" | "perfis">("equipe");
+  const [suspenderAlvo, setSuspenderAlvo] = useState<Membro | null>(null);
+  const [alterandoStatusId, setAlterandoStatusId] = useState<string | null>(null);
+  const [conviteReenvioId, setConviteReenvioId] = useState<string | null>(null);
+  const [buscaConvite, setBuscaConvite] = useState("");
+  const [filtroStatusConvite, setFiltroStatusConvite] = useState("todos");
 
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
@@ -250,6 +272,13 @@ function Usuarios() {
   const convitesPendentes = convites.filter(
     (invite) => invite.status === "pending" && !conviteExpirado(invite),
   );
+  const convitesFiltrados = filtrarConvites(convites, buscaConvite, filtroStatusConvite);
+  const ativosCount = membros.filter((m) => m.status === "active").length;
+  const vagas = calcularVagasUsuarios(
+    selecionado?.max_users,
+    ativosCount,
+    convitesPendentes.length,
+  );
   const lista = membros.filter((member) => {
     const term = busca.trim().toLocaleLowerCase("pt-BR");
     const matchesName =
@@ -330,11 +359,38 @@ function Usuarios() {
     }
   }
 
+  function abrirReenvioConvite(convite: Convite) {
+    if (!capacidades.can_create || !capacidades.can_assign_role) return;
+    setErro(null);
+    setNomeConvite("");
+    setEmailConvite(convite.invited_email);
+    setPapelConviteId(
+      papeis.some((role) => role.id === convite.role_id)
+        ? convite.role_id
+        : selecionarPapelPadraoConvite(papeis),
+    );
+    setConviteReenvioId(convite.id);
+    setDialogoConviteAberto(true);
+  }
+
   async function enviarConvite(e: FormEvent) {
     e.preventDefault();
     if (!selecionado || !capacidades.can_create || !capacidades.can_assign_role) return;
     setEnviandoConvite(true);
     setErro(null);
+    if (conviteReenvioId) {
+      const conviteAnterior = convites.find((c) => c.id === conviteReenvioId);
+      if (conviteAnterior?.status === "pending" && !conviteExpirado(conviteAnterior)) {
+        const { error: previousRevokeError } = await db.rpc("revoke_tenant_invitation", {
+          p_invitation_id: conviteAnterior.id,
+        });
+        if (previousRevokeError) {
+          setEnviandoConvite(false);
+          setErro(previousRevokeError.message);
+          return;
+        }
+      }
+    }
     const { data, error: inviteError } = await db.functions.invoke("invite-tenant-user", {
       body: {
         tenant_id: selecionado.id,
@@ -361,8 +417,13 @@ function Usuarios() {
       setErro(mensagem);
       return;
     }
-    toast.success("Convite enviado. O acesso será liberado após a confirmação do e-mail.");
+    toast.success(
+      conviteReenvioId
+        ? "Convite reenviado. O acesso será liberado após a confirmação do e-mail."
+        : "Convite enviado. O acesso será liberado após a confirmação do e-mail.",
+    );
     setDialogoConviteAberto(false);
+    setConviteReenvioId(null);
     setNomeConvite("");
     setEmailConvite("");
     setPapelConviteId(selecionarPapelPadraoConvite(papeis));
@@ -516,13 +577,22 @@ function Usuarios() {
   }
 
   async function alternarStatus(membro: Membro) {
-    if (!selecionado || !capacidades.can_suspend || membro.user_id === session?.user.id) return;
+    if (
+      !selecionado ||
+      membro.user_id === session?.user.id ||
+      !podeAlterarStatusMembro(membro.status, capacidades) ||
+      alterandoStatusId
+    )
+      return;
     const novoStatus = membro.status === "active" ? "suspended" : "active";
+    setAlterandoStatusId(membro.id);
     const { error: updateError } = await db
       .from("tenant_memberships")
       .update({ status: novoStatus })
       .eq("id", membro.id)
       .eq("tenant_id", selecionado.id);
+    setAlterandoStatusId(null);
+    setSuspenderAlvo(null);
     if (updateError) {
       toast.error(updateError.message);
       return;
@@ -573,8 +643,10 @@ function Usuarios() {
                 variant="outline"
                 onClick={() => {
                   setErro(null);
+                  setConviteReenvioId(null);
                   setNomeConvite("");
                   setEmailConvite("");
+                  setPapelConviteId(selecionarPapelPadraoConvite(papeis));
                   setDialogoConviteAberto(true);
                 }}
               >
@@ -609,7 +681,11 @@ function Usuarios() {
           </AlertDescription>
         </Alert>
       ) : (
-        <Tabs defaultValue="equipe" className="space-y-5">
+        <Tabs
+          value={abaAtiva}
+          onValueChange={(value) => setAbaAtiva(value as "equipe" | "convites" | "perfis")}
+          className="space-y-5"
+        >
           <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1 sm:inline-grid sm:w-auto sm:grid-cols-3">
             <TabsTrigger value="equipe" className="gap-2 px-3 py-2.5">
               <UserRound className="h-4 w-4" /> Equipe vinculada
@@ -638,13 +714,18 @@ function Usuarios() {
               <>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <Metric
-                    title="Total de vínculos"
-                    value={membros.length}
-                    note="Contas vinculadas à Secretaria"
+                    title="Vagas do plano"
+                    value={vagas.limite ?? vagas.ocupadas}
+                    note={
+                      vagas.limite != null
+                        ? `${vagas.ocupadas} usada(s) · ${vagas.disponiveis} disponível(is)`
+                        : `${vagas.ocupadas} vaga(s) em uso`
+                    }
+                    tone={vagas.atingido ? "amber" : "default"}
                   />
                   <Metric
                     title="Ativos"
-                    value={membros.filter((m) => m.status === "active").length}
+                    value={ativosCount}
                     note="Com acesso habilitado"
                     tone="green"
                   />
@@ -821,17 +902,25 @@ function Usuarios() {
                                             <Pencil /> Alterar papel
                                           </DropdownMenuItem>
                                         )}
-                                        {capacidades.can_assign_role && capacidades.can_suspend && (
-                                          <DropdownMenuSeparator />
-                                        )}
-                                        {capacidades.can_suspend && (
+                                        {capacidades.can_assign_role &&
+                                          podeAlterarStatusMembro(member.status, capacidades) && (
+                                            <DropdownMenuSeparator />
+                                          )}
+                                        {podeAlterarStatusMembro(member.status, capacidades) && (
                                           <DropdownMenuItem
                                             className={
                                               member.status === "active"
                                                 ? "text-destructive focus:text-destructive"
                                                 : ""
                                             }
-                                            onSelect={() => void alternarStatus(member)}
+                                            disabled={alterandoStatusId === member.id}
+                                            onSelect={() => {
+                                              if (member.status === "active") {
+                                                setSuspenderAlvo(member);
+                                              } else {
+                                                void alternarStatus(member);
+                                              }
+                                            }}
                                           >
                                             {member.status === "active" ? (
                                               <>
@@ -867,14 +956,42 @@ function Usuarios() {
           </TabsContent>
           <TabsContent value="convites" className="space-y-4">
             <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4 sm:p-5">
-                <div>
-                  <h2 className="font-semibold">Convites enviados</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Acompanhe os convites e a confirmação de acesso à Secretaria.
-                  </p>
+              <div className="space-y-4 border-b p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">Convites enviados</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Acompanhe os convites e a confirmação de acesso à Secretaria.
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{convitesPendentes.length} aguardando</Badge>
                 </div>
-                <Badge variant="secondary">{convitesPendentes.length} aguardando</Badge>
+                {capacidades.can_view && convites.length > 0 && (
+                  <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_210px]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        placeholder="Buscar convite por e-mail..."
+                        aria-label="Buscar convite por e-mail"
+                        value={buscaConvite}
+                        onChange={(e) => setBuscaConvite(e.target.value)}
+                      />
+                    </div>
+                    <Select value={filtroStatusConvite} onValueChange={setFiltroStatusConvite}>
+                      <SelectTrigger aria-label="Filtrar convites por status">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os status</SelectItem>
+                        <SelectItem value="pending">Pendentes</SelectItem>
+                        <SelectItem value="expired">Expirados</SelectItem>
+                        <SelectItem value="accepted">Aceitos</SelectItem>
+                        <SelectItem value="revoked">Cancelados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
               {!capacidades.can_view ? (
                 <p className="p-6 text-sm text-muted-foreground">
@@ -890,6 +1007,10 @@ function Usuarios() {
                     Quando um convite for enviado, ele aparecerá nesta lista.
                   </p>
                 </div>
+              ) : convitesFiltrados.length === 0 ? (
+                <p className="p-6 text-sm text-muted-foreground">
+                  Nenhum convite encontrado para os filtros aplicados.
+                </p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -899,55 +1020,76 @@ function Usuarios() {
                         <TableHead>Perfil previsto</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Expiração</TableHead>
-                        <TableHead className="pr-5 text-right">Ação</TableHead>
+                        <TableHead className="pr-5 text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {convites.map((invite) => (
-                        <TableRow key={invite.id}>
-                          <TableCell className="pl-5 font-medium">{invite.invited_email}</TableCell>
-                          <TableCell>
-                            {papeis.find((role) => role.id === invite.role_id)?.name ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                conviteExpirado(invite)
-                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                                  : invite.status === "pending"
-                                    ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
-                                    : "text-muted-foreground"
-                              }
-                            >
-                              {statusConvite(invite)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                            {new Date(invite.expires_at).toLocaleDateString("pt-BR")}
-                          </TableCell>
-                          <TableCell className="pr-5 text-right">
-                            {invite.status === "pending" &&
-                              !conviteExpirado(invite) &&
-                              capacidades.can_create &&
-                              capacidades.can_assign_role && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => void cancelarConvite(invite)}
-                                  disabled={cancelandoConviteId !== null}
-                                >
-                                  {cancelandoConviteId === invite.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <UserX />
-                                  )}{" "}
-                                  Cancelar
-                                </Button>
-                              )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {convitesFiltrados.map((invite) => {
+                        const expirado = conviteExpirado(invite);
+                        const pendenteValido = invite.status === "pending" && !expirado;
+                        const podeReenviar =
+                          (invite.status === "pending" || expirado) &&
+                          capacidades.can_create &&
+                          capacidades.can_assign_role;
+                        return (
+                          <TableRow key={invite.id}>
+                            <TableCell className="pl-5 font-medium">
+                              {invite.invited_email}
+                            </TableCell>
+                            <TableCell>
+                              {papeis.find((role) => role.id === invite.role_id)?.name ?? "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  expirado
+                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                                    : invite.status === "pending"
+                                      ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
+                                      : "text-muted-foreground"
+                                }
+                              >
+                                {statusConvite(invite)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                              {new Date(invite.expires_at).toLocaleDateString("pt-BR")}
+                            </TableCell>
+                            <TableCell className="pr-5 text-right">
+                              <div className="flex justify-end gap-1.5">
+                                {podeReenviar && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => abrirReenvioConvite(invite)}
+                                    disabled={cancelandoConviteId !== null}
+                                  >
+                                    <Mail className="h-3.5 w-3.5" /> Reenviar
+                                  </Button>
+                                )}
+                                {pendenteValido &&
+                                  capacidades.can_create &&
+                                  capacidades.can_assign_role && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => void cancelarConvite(invite)}
+                                      disabled={cancelandoConviteId !== null}
+                                    >
+                                      {cancelandoConviteId === invite.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <UserX />
+                                      )}{" "}
+                                      Cancelar
+                                    </Button>
+                                  )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -1011,7 +1153,21 @@ function Usuarios() {
                         </div>
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
                           <span className="text-xs text-muted-foreground">
-                            {count} permissões · {memberCount} usuário(s)
+                            {count} permissões ·{" "}
+                            {memberCount > 0 ? (
+                              <button
+                                type="button"
+                                className="font-medium text-primary underline-offset-2 hover:underline"
+                                onClick={() => {
+                                  setFiltroPapel(role.id);
+                                  setAbaAtiva("equipe");
+                                }}
+                              >
+                                {memberCount} usuário(s)
+                              </button>
+                            ) : (
+                              "0 usuário(s)"
+                            )}
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5">
                             {role.is_system ? (
@@ -1260,18 +1416,34 @@ function Usuarios() {
       <Dialog
         open={dialogoConviteAberto}
         onOpenChange={(open) => {
-          if (!enviandoConvite) setDialogoConviteAberto(open);
+          if (!enviandoConvite) {
+            setDialogoConviteAberto(open);
+            if (!open) setConviteReenvioId(null);
+          }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Convidar usuário por e-mail</DialogTitle>
+            <DialogTitle>
+              {conviteReenvioId ? "Reenviar convite por e-mail" : "Convidar usuário por e-mail"}
+            </DialogTitle>
             <DialogDescription>
-              Enviaremos um link de convite. O acesso só será ativado após a confirmação do mesmo
-              e-mail.
+              {conviteReenvioId
+                ? "Um novo link será emitido e o convite pendente anterior será substituído automaticamente."
+                : "Enviaremos um link de convite. O acesso só será ativado após a confirmação do mesmo e-mail."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={enviarConvite} className="space-y-4">
+            {vagas.atingido && !conviteReenvioId && (
+              <Alert variant="destructive">
+                <AlertTitle>Limite de vagas atingido</AlertTitle>
+                <AlertDescription>
+                  Todas as {vagas.limite} vaga(s) do plano estão ocupadas por usuários ativos ou
+                  convites pendentes. Suspenda um vínculo ou cancele um convite antes de enviar novo
+                  convite.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="convite-nome">Nome completo</Label>
               <Input
@@ -1291,6 +1463,7 @@ function Usuarios() {
                 type="email"
                 autoComplete="email"
                 required
+                readOnly={Boolean(conviteReenvioId)}
                 maxLength={254}
                 value={emailConvite}
                 onChange={(event) => setEmailConvite(event.target.value)}
@@ -1328,13 +1501,18 @@ function Usuarios() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={enviandoConvite || !papelConviteId}>
+              <Button
+                type="submit"
+                disabled={
+                  enviandoConvite || !papelConviteId || (vagas.atingido && !conviteReenvioId)
+                }
+              >
                 {enviandoConvite ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                Enviar convite
+                {conviteReenvioId ? "Reenviar convite" : "Enviar convite"}
               </Button>
             </DialogFooter>
           </form>
@@ -1484,6 +1662,42 @@ function Usuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(suspenderAlvo)}
+        onOpenChange={(open) => {
+          if (!open && !alterandoStatusId) setSuspenderAlvo(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Suspender acesso do usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {suspenderAlvo?.profiles?.full_name ?? "Este usuário"} perderá imediatamente o acesso
+              a {selecionado.nome}, mas seu histórico e auditoria serão preservados e o vínculo
+              poderá ser reativado a qualquer momento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(alterandoStatusId)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={Boolean(alterandoStatusId)}
+              onClick={(event) => {
+                event.preventDefault();
+                if (suspenderAlvo) void alternarStatus(suspenderAlvo);
+              }}
+            >
+              {alterandoStatusId ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <UserX className="mr-2 h-4 w-4" />
+              )}
+              Confirmar suspensão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

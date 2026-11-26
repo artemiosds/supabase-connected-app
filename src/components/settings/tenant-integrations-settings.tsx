@@ -89,7 +89,7 @@ export function TenantIntegrationsSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
-  const [testRecipient, setTestRecipient] = useState("artemiosouza99@gmail.com");
+  const [testRecipient, setTestRecipient] = useState("");
   const [testResult, setTestResult] = useState<{
     outcome: "accepted" | "rejected" | "uncertain" | "configuration" | "error";
     message: string;
@@ -355,373 +355,391 @@ export function TenantIntegrationsSettings() {
           </Alert>
         ) : (
           <form onSubmit={save} className="space-y-8">
-            <section className="space-y-4">
-              <div>
-                <h3 className="font-medium">E-mail institucional</h3>
-                <p className="text-sm text-muted-foreground">
-                  Remetente e credenciais operacionais da Secretaria.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="integration-email-from-name">Nome do remetente</Label>
-                  <Input
-                    id="integration-email-from-name"
-                    maxLength={160}
-                    value={settings.email_from_name}
-                    onChange={(e) => update("email_from_name", e.target.value)}
-                  />
+            {!canEdit && (
+              <Alert>
+                <ShieldCheck className="h-4 w-4" />
+                <AlertTitle>Modo de consulta</AlertTitle>
+                <AlertDescription>
+                  Seu papel permite visualizar integrações e registrar solicitações LGPD, mas apenas
+                  perfis com permissão de edição da Secretaria podem alterar credenciais e
+                  políticas.
+                </AlertDescription>
+              </Alert>
+            )}
+            <fieldset disabled={!canEdit} className="space-y-8 disabled:opacity-90">
+              <section className="space-y-4">
+                <div>
+                  <h3 className="font-medium">E-mail institucional</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Remetente e credenciais operacionais da Secretaria.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="integration-email-from">E-mail do remetente</Label>
-                  <Input
-                    id="integration-email-from"
-                    type="email"
-                    maxLength={254}
-                    value={settings.email_from_address}
-                    onChange={(e) => update("email_from_address", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="integration-email-reply">Responder para</Label>
-                  <Input
-                    id="integration-email-reply"
-                    type="email"
-                    maxLength={254}
-                    value={settings.email_reply_to}
-                    onChange={(e) => update("email_reply_to", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="integration-email-domain">Domínio institucional</Label>
-                  <Input
-                    id="integration-email-domain"
-                    maxLength={253}
-                    value={settings.email_domain}
-                    onChange={(e) => update("email_domain", e.target.value.toLowerCase())}
-                    placeholder="saude.municipio.gov.br"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="integration-email-provider">Provedor operacional</Label>
-                  <select
-                    id="integration-email-provider"
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={settings.email_provider}
-                    onChange={(e) =>
-                      update(
-                        "email_provider",
-                        e.target.value as IntegrationSettings["email_provider"],
-                      )
-                    }
-                  >
-                    <option value="none">Ainda não configurado</option>
-                    <option value="resend">Resend (API)</option>
-                    <option value="smtp_gateway">SMTP institucional</option>
-                  </select>
-                </div>
-              </div>
-              {settings.email_provider === "smtp_gateway" && (
-                <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                    <Label htmlFor="integration-email-from-name">Nome do remetente</Label>
                     <Input
-                      id="smtp-host"
-                      value={settings.email_smtp_host}
-                      onChange={(e) => update("email_smtp_host", e.target.value)}
-                      placeholder="smtp.seudominio.gov.br"
+                      id="integration-email-from-name"
+                      maxLength={160}
+                      value={settings.email_from_name}
+                      onChange={(e) => update("email_from_name", e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="smtp-port">Porta</Label>
+                    <Label htmlFor="integration-email-from">E-mail do remetente</Label>
                     <Input
-                      id="smtp-port"
-                      inputMode="numeric"
-                      value={settings.email_smtp_port}
-                      onChange={(e) => update("email_smtp_port", e.target.value)}
+                      id="integration-email-from"
+                      type="email"
+                      maxLength={254}
+                      value={settings.email_from_address}
+                      onChange={(e) => update("email_from_address", e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="smtp-security">Segurança</Label>
+                    <Label htmlFor="integration-email-reply">Responder para</Label>
+                    <Input
+                      id="integration-email-reply"
+                      type="email"
+                      maxLength={254}
+                      value={settings.email_reply_to}
+                      onChange={(e) => update("email_reply_to", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="integration-email-domain">Domínio institucional</Label>
+                    <Input
+                      id="integration-email-domain"
+                      maxLength={253}
+                      value={settings.email_domain}
+                      onChange={(e) => update("email_domain", e.target.value.toLowerCase())}
+                      placeholder="saude.municipio.gov.br"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="integration-email-provider">Provedor operacional</Label>
                     <select
-                      id="smtp-security"
+                      id="integration-email-provider"
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      value={settings.email_smtp_security}
+                      value={settings.email_provider}
                       onChange={(e) =>
-                        update("email_smtp_security", e.target.value as "tls" | "starttls")
+                        update(
+                          "email_provider",
+                          e.target.value as IntegrationSettings["email_provider"],
+                        )
                       }
                     >
-                      <option value="tls">TLS</option>
-                      <option value="starttls">STARTTLS</option>
+                      <option value="none">Ainda não configurado</option>
+                      <option value="resend">Resend (API)</option>
+                      <option value="smtp_gateway">SMTP institucional</option>
                     </select>
                   </div>
-                  {smtpPortError && (
-                    <p role="alert" className="text-sm text-destructive sm:col-span-2">
-                      {smtpPortError}
-                    </p>
-                  )}
+                </div>
+                {settings.email_provider === "smtp_gateway" && (
+                  <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                      <Input
+                        id="smtp-host"
+                        value={settings.email_smtp_host}
+                        onChange={(e) => update("email_smtp_host", e.target.value)}
+                        placeholder="smtp.seudominio.gov.br"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-port">Porta</Label>
+                      <Input
+                        id="smtp-port"
+                        inputMode="numeric"
+                        value={settings.email_smtp_port}
+                        onChange={(e) => update("email_smtp_port", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-security">Segurança</Label>
+                      <select
+                        id="smtp-security"
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        value={settings.email_smtp_security}
+                        onChange={(e) =>
+                          update("email_smtp_security", e.target.value as "tls" | "starttls")
+                        }
+                      >
+                        <option value="tls">TLS</option>
+                        <option value="starttls">STARTTLS</option>
+                      </select>
+                    </div>
+                    {smtpPortError && (
+                      <p role="alert" className="text-sm text-destructive sm:col-span-2">
+                        {smtpPortError}
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-user">Usuário SMTP</Label>
+                      <Input
+                        id="smtp-user"
+                        autoComplete="off"
+                        value={settings.email_smtp_username}
+                        onChange={(e) => update("email_smtp_username", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="smtp-password">
+                        Senha SMTP{" "}
+                        {settings.has_smtp_secret
+                          ? "(já cadastrada; deixe em branco para manter)"
+                          : ""}
+                      </Label>
+                      <Input
+                        id="smtp-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                      />
+                    </div>
+                    <Alert>
+                      <AlertTitle>Conexão SMTP para alertas</AlertTitle>
+                      <AlertDescription>
+                        Use TLS na porta 465 ou STARTTLS na porta 2525, conforme o provedor. A TI
+                        deve autorizar o servidor de saída e confirmar a entrega em uma caixa
+                        monitorada.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+                {settings.email_provider === "resend" && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="email-api-secret">
+                        Chave API Resend{" "}
+                        {settings.has_email_api_secret
+                          ? "(já cadastrada; deixe em branco para manter)"
+                          : ""}
+                      </Label>
+                      <Input
+                        id="email-api-secret"
+                        type="password"
+                        autoComplete="new-password"
+                        value={emailApiSecret}
+                        onChange={(e) => setEmailApiSecret(e.target.value)}
+                      />
+                    </div>
+                    {settings.email_domain_verified_at ? (
+                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CheckCircle2 className="h-4 w-4" /> Domínio verificado em{" "}
+                        {new Date(settings.email_domain_verified_at).toLocaleString("pt-BR")}.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Adicione e valide os registros DNS do domínio no painel do Resend antes de
+                        verificar aqui.
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        verifyingDomain ||
+                        saving ||
+                        !settings.email_domain ||
+                        !settings.has_email_api_secret
+                      }
+                      onClick={() => void verifyEmailDomain()}
+                    >
+                      {verifyingDomain ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Verificar domínio no Resend
+                    </Button>
+                  </div>
+                )}
+                <Alert>
+                  <AlertTitle>SMTP do Supabase Auth</AlertTitle>
+                  <AlertDescription>
+                    Convites, confirmação de conta e recuperação de senha usam o SMTP global do
+                    Supabase Auth. Configure esse serviço no painel do projeto Supabase, em
+                    Authentication → SMTP Settings; esta tela não altera essa configuração global.
+                  </AlertDescription>
+                </Alert>
+              </section>
+
+              <section className="space-y-4 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">Google Drive</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Credenciais OAuth e pasta de destino. A sincronização só deve ser ativada após
+                    concluir o callback OAuth e validar a conexão.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="smtp-user">Usuário SMTP</Label>
+                    <Label htmlFor="drive-client-id">OAuth Client ID</Label>
                     <Input
-                      id="smtp-user"
-                      autoComplete="off"
-                      value={settings.email_smtp_username}
-                      onChange={(e) => update("email_smtp_username", e.target.value)}
+                      id="drive-client-id"
+                      value={settings.drive_client_id}
+                      onChange={(e) => update("drive_client_id", e.target.value)}
+                      maxLength={512}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="drive-client-secret">
+                      OAuth Client Secret{" "}
+                      {settings.has_drive_client_secret
+                        ? "(já cadastrada; deixe em branco para manter)"
+                        : ""}
+                    </Label>
+                    <Input
+                      id="drive-client-secret"
+                      type="password"
+                      autoComplete="new-password"
+                      value={driveClientSecret}
+                      onChange={(e) => setDriveClientSecret(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="smtp-password">
-                      Senha SMTP{" "}
-                      {settings.has_smtp_secret
-                        ? "(já cadastrada; deixe em branco para manter)"
-                        : ""}
-                    </Label>
+                    <Label htmlFor="drive-root-folder">ID da pasta raiz no Drive</Label>
                     <Input
-                      id="smtp-password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={smtpPassword}
-                      onChange={(e) => setSmtpPassword(e.target.value)}
+                      id="drive-root-folder"
+                      value={settings.drive_root_folder_id}
+                      onChange={(e) => update("drive_root_folder_id", e.target.value)}
+                      maxLength={512}
                     />
                   </div>
-                  <Alert>
-                    <AlertTitle>Conexão SMTP para alertas</AlertTitle>
-                    <AlertDescription>
-                      Use TLS na porta 465 ou STARTTLS na porta 2525, conforme o provedor. A TI deve
-                      autorizar o servidor de saída e confirmar a entrega em uma caixa monitorada.
-                    </AlertDescription>
-                  </Alert>
                 </div>
-              )}
-              {settings.email_provider === "resend" && (
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="email-api-secret">
-                      Chave API Resend{" "}
-                      {settings.has_email_api_secret
-                        ? "(já cadastrada; deixe em branco para manter)"
-                        : ""}
-                    </Label>
-                    <Input
-                      id="email-api-secret"
-                      type="password"
-                      autoComplete="new-password"
-                      value={emailApiSecret}
-                      onChange={(e) => setEmailApiSecret(e.target.value)}
-                    />
-                  </div>
-                  {settings.email_domain_verified_at ? (
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CheckCircle2 className="h-4 w-4" /> Domínio verificado em{" "}
-                      {new Date(settings.email_domain_verified_at).toLocaleString("pt-BR")}.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Adicione e valide os registros DNS do domínio no painel do Resend antes de
-                      verificar aqui.
-                    </p>
-                  )}
+                {settings.has_drive_refresh_token && settings.drive_connected_at ? (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4" /> Conta Google autorizada em{" "}
+                    {new Date(settings.drive_connected_at).toLocaleString("pt-BR")}. A sincronização
+                    automática ainda não está habilitada.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Após salvar as credenciais, conecte a conta Google. A autorização usa escopo
+                    mínimo drive.file e não transfere arquivos automaticamente.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     disabled={
-                      verifyingDomain ||
+                      connectingDrive ||
                       saving ||
-                      !settings.email_domain ||
-                      !settings.has_email_api_secret
+                      !settings.drive_client_id ||
+                      !settings.has_drive_client_secret
                     }
-                    onClick={() => void verifyEmailDomain()}
+                    onClick={() => void connectDrive()}
                   >
-                    {verifyingDomain ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Verificar domínio no Resend
+                    {connectingDrive ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    {connectingDrive
+                      ? "Conectando..."
+                      : settings.has_drive_refresh_token
+                        ? "Reautorizar Google Drive"
+                        : "Conectar Google Drive"}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={
+                      syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token
+                    }
+                    onClick={() => void syncDrive()}
+                  >
+                    {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 25)"}
                   </Button>
                 </div>
-              )}
-              <Alert>
-                <AlertTitle>SMTP do Supabase Auth</AlertTitle>
-                <AlertDescription>
-                  Convites, confirmação de conta e recuperação de senha usam o SMTP global do
-                  Supabase Auth. Configure esse serviço no painel do projeto Supabase, em
-                  Authentication → SMTP Settings; esta tela não altera essa configuração global.
-                </AlertDescription>
-              </Alert>
-            </section>
-
-            <section className="space-y-4 border-t pt-6">
-              <div>
-                <h3 className="font-medium">Google Drive</h3>
-                <p className="text-sm text-muted-foreground">
-                  Credenciais OAuth e pasta de destino. A sincronização só deve ser ativada após
-                  concluir o callback OAuth e validar a conexão.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="drive-client-id">OAuth Client ID</Label>
-                  <Input
-                    id="drive-client-id"
-                    value={settings.drive_client_id}
-                    onChange={(e) => update("drive_client_id", e.target.value)}
-                    maxLength={512}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drive-client-secret">
-                    OAuth Client Secret{" "}
-                    {settings.has_drive_client_secret
-                      ? "(já cadastrada; deixe em branco para manter)"
-                      : ""}
-                  </Label>
-                  <Input
-                    id="drive-client-secret"
-                    type="password"
-                    autoComplete="new-password"
-                    value={driveClientSecret}
-                    onChange={(e) => setDriveClientSecret(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="drive-root-folder">ID da pasta raiz no Drive</Label>
-                  <Input
-                    id="drive-root-folder"
-                    value={settings.drive_root_folder_id}
-                    onChange={(e) => update("drive_root_folder_id", e.target.value)}
-                    maxLength={512}
-                  />
-                </div>
-              </div>
-              {settings.has_drive_refresh_token && settings.drive_connected_at ? (
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4" /> Conta Google autorizada em{" "}
-                  {new Date(settings.drive_connected_at).toLocaleString("pt-BR")}. A sincronização
-                  automática ainda não está habilitada.
-                </p>
-              ) : (
                 <p className="text-xs text-muted-foreground">
-                  Após salvar as credenciais, conecte a conta Google. A autorização usa escopo
-                  mínimo drive.file e não transfere arquivos automaticamente.
+                  A sincronização copia até 25 documentos privados por execução. Os originais
+                  permanecem no armazenamento da plataforma; resultados incertos não são reenviados
+                  automaticamente para evitar duplicatas.
                 </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    connectingDrive ||
-                    saving ||
-                    !settings.drive_client_id ||
-                    !settings.has_drive_client_secret
-                  }
-                  onClick={() => void connectDrive()}
-                >
-                  {connectingDrive ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                  )}
-                  {connectingDrive
-                    ? "Conectando..."
-                    : settings.has_drive_refresh_token
-                      ? "Reautorizar Google Drive"
-                      : "Conectar Google Drive"}
-                </Button>
-                <Button
-                  type="button"
-                  disabled={
-                    syncingDrive || connectingDrive || saving || !settings.has_drive_refresh_token
-                  }
-                  onClick={() => void syncDrive()}
-                >
-                  {syncingDrive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {syncingDrive ? "Sincronizando..." : "Sincronizar documentos (até 25)"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                A sincronização copia até 25 documentos privados por execução. Os originais
-                permanecem no armazenamento da plataforma; resultados incertos não são reenviados
-                automaticamente para evitar duplicatas.
-              </p>
-              {settings.drive_last_sync_at && (
-                <p className="text-xs text-muted-foreground">
-                  Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}.
-                </p>
-              )}
-            </section>
+                {settings.drive_last_sync_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Última execução: {new Date(settings.drive_last_sync_at).toLocaleString("pt-BR")}
+                    .
+                  </p>
+                )}
+              </section>
 
-            <section className="space-y-3 border-t pt-6">
-              <div>
-                <h3 className="font-medium">Modelos oficiais DOCX</h3>
-                <p className="text-sm text-muted-foreground">
-                  O módulo Documentos já possui cadastro de modelos, fontes DOCX privadas, versões e
-                  motor de geração. Cadastre ou atualize os modelos oficiais por lá; não há uma
-                  segunda biblioteca de modelos nesta tela.
-                </p>
-              </div>
-              <Button type="button" variant="outline" asChild>
-                <Link to="/documentos">Abrir gestão de modelos e documentos</Link>
-              </Button>
-            </section>
+              <section className="space-y-3 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">Modelos oficiais DOCX</h3>
+                  <p className="text-sm text-muted-foreground">
+                    O módulo Documentos já possui cadastro de modelos, fontes DOCX privadas, versões
+                    e motor de geração. Cadastre ou atualize os modelos oficiais por lá; não há uma
+                    segunda biblioteca de modelos nesta tela.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" asChild>
+                  <Link to="/documentos">Abrir gestão de modelos e documentos</Link>
+                </Button>
+              </section>
 
-            <section className="space-y-4 border-t pt-6">
-              <div>
-                <h3 className="font-medium">LGPD e retenção documental</h3>
-                <p className="text-sm text-muted-foreground">
-                  Defina uma política institucional. O prazo não dispara exclusão automática de
-                  dados.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="retention-days">Prazo de retenção (dias)</Label>
-                  <Input
-                    id="retention-days"
-                    type="number"
-                    min={30}
-                    max={36500}
-                    value={settings.retention_days}
-                    onChange={(e) => update("retention_days", e.target.value)}
-                  />
+              <section className="space-y-4 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">LGPD e retenção documental</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Defina uma política institucional. O prazo não dispara exclusão automática de
+                    dados.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="retention-days">Prazo de retenção (dias)</Label>
+                    <Input
+                      id="retention-days"
+                      type="number"
+                      min={30}
+                      max={36500}
+                      value={settings.retention_days}
+                      onChange={(e) => update("retention_days", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="retention-version">Versão da política</Label>
+                    <Input
+                      id="retention-version"
+                      maxLength={40}
+                      value={settings.retention_policy_version}
+                      onChange={(e) => update("retention_policy_version", e.target.value)}
+                      placeholder="Ex.: 1.0 - 2026"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="retention-version">Versão da política</Label>
-                  <Input
-                    id="retention-version"
-                    maxLength={40}
-                    value={settings.retention_policy_version}
-                    onChange={(e) => update("retention_policy_version", e.target.value)}
-                    placeholder="Ex.: 1.0 - 2026"
+                  <Label htmlFor="retention-text">Texto da política aprovada</Label>
+                  <Textarea
+                    id="retention-text"
+                    rows={5}
+                    maxLength={8000}
+                    value={settings.retention_policy_text}
+                    onChange={(e) => update("retention_policy_text", e.target.value)}
+                    placeholder="Descreva finalidade, base legal, prazos, responsáveis, exceções legais e procedimento de descarte seguro."
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="retention-text">Texto da política aprovada</Label>
-                <Textarea
-                  id="retention-text"
-                  rows={5}
-                  maxLength={8000}
-                  value={settings.retention_policy_text}
-                  onChange={(e) => update("retention_policy_text", e.target.value)}
-                  placeholder="Descreva finalidade, base legal, prazos, responsáveis, exceções legais e procedimento de descarte seguro."
-                />
-              </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={approvePolicy}
-                  onChange={(e) => setApprovePolicy(e.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  Confirmo que esta política foi revisada e aprovada pela autoridade responsável da
-                  Secretaria. Não estou autorizando exclusão automática de registros.
-                </span>
-              </label>
-              {settings.retention_approved_at && (
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4" /> Política registrada em{" "}
-                  {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.
-                </p>
-              )}
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={approvePolicy}
+                    onChange={(e) => setApprovePolicy(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    Confirmo que esta política foi revisada e aprovada pela autoridade responsável
+                    da Secretaria. Não estou autorizando exclusão automática de registros.
+                  </span>
+                </label>
+                {settings.retention_approved_at && (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4" /> Política registrada em{" "}
+                    {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.
+                  </p>
+                )}
+              </section>
+            </fieldset>
+
+            <section className="space-y-4">
               <div className="space-y-3 rounded-lg border p-4">
                 <div>
                   <h4 className="font-medium">Solicitações de titulares</h4>
@@ -887,6 +905,7 @@ export function TenantIntegrationsSettings() {
                         autoComplete="off"
                         value={testRecipient}
                         onChange={(e) => setTestRecipient(e.target.value)}
+                        placeholder="ex: teste@orgao.gov.br"
                       />
                     </div>
                     <Button
@@ -932,17 +951,19 @@ export function TenantIntegrationsSettings() {
                 </section>
               )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={saving || testingEmail}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {saving ? "Salvando..." : "Salvar configurações"}
-                </Button>
+            {canEdit && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4" /> Segredos criptografados no servidor
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={saving || testingEmail}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {saving ? "Salvando..." : "Salvar configurações"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </form>
         )}
       </CardContent>

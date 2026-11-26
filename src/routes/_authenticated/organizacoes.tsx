@@ -87,6 +87,7 @@ function Organizacoes() {
   const [erroPermissao, setErroPermissao] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
   const [erroCriacao, setErroCriacao] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // A criacao de organizacoes e exclusiva do superadministrador global ativo.
   useEffect(() => {
@@ -127,7 +128,7 @@ function Organizacoes() {
     return () => {
       ativo = false;
     };
-  }, [session?.user.id, bancoPendente, loading]);
+  }, [session?.user.id, bancoPendente, loading, refreshTick]);
 
   // O administrador municipal deve ser um usuario cadastrado e nao pode ser superadmin global.
   useEffect(() => {
@@ -180,7 +181,7 @@ function Organizacoes() {
     return () => {
       ativo = false;
     };
-  }, [isPlatformAdmin]);
+  }, [isPlatformAdmin, refreshTick]);
 
   async function aoCriar(e: FormEvent) {
     e.preventDefault();
@@ -193,7 +194,7 @@ function Organizacoes() {
 
     setCriando(true);
     try {
-      const { error } = await db.rpc("create_tenant_with_admin", {
+      const { data: created, error } = await db.rpc("create_tenant_with_admin", {
         p_name: nome.trim(),
         p_slug: slug.trim(),
         p_admin_user_id: adminUserId,
@@ -210,11 +211,27 @@ function Organizacoes() {
         return;
       }
 
-      toast.success("Organização criada com sucesso.");
+      const tenantId =
+        created && typeof created === "object" && !Array.isArray(created)
+          ? (created as { tenant_id?: unknown }).tenant_id
+          : null;
+      if (typeof tenantId === "string" && tenantId) {
+        const { error: onboardingError } = await db.rpc("apply_tenant_onboarding_defaults", {
+          p_tenant_id: tenantId,
+        });
+        if (onboardingError) {
+          toast.warning(
+            "Organização criada, mas os papéis e modelos padrão precisam ser aplicados manualmente.",
+          );
+        }
+      }
+
+      toast.success("Organização criada com papéis e modelos iniciais.");
       setAberto(false);
       setNome("");
       setSlug("");
       setAdminUserId("");
+      setRefreshTick((t) => t + 1);
       recarregar();
     } catch (error) {
       setErroCriacao(
@@ -229,9 +246,9 @@ function Organizacoes() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organizacoes</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organizações</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Organizacoes as quais voce tem acesso.
+            Organizações às quais você tem acesso.
           </p>
         </div>
         {isPlatformAdmin && !verificandoPermissao && (
@@ -239,15 +256,15 @@ function Organizacoes() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4" aria-hidden />
-                Nova organizacao
+                Nova organização
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova organizacao</DialogTitle>
+                <DialogTitle>Nova organização</DialogTitle>
                 <DialogDescription>
-                  Escolha uma segunda conta já cadastrada para ser o administrador municipal. A
-                  conta global não será membro desta Secretaria.
+                  Escolha uma conta municipal já cadastrada para ser o administrador. A conta global
+                  não será membro desta Secretaria.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={aoCriar} className="space-y-4">
@@ -263,11 +280,11 @@ function Organizacoes() {
                       setNome(e.target.value);
                       setSlug(gerarSlug(e.target.value));
                     }}
-                    placeholder="Ex.: Secretaria Municipal de Saude de Exemplo"
+                    placeholder="Ex.: Secretaria Municipal de Saúde de Exemplo"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="slug-org">Identificador amigavel</Label>
+                  <Label htmlFor="slug-org">Identificador amigável</Label>
                   <Input
                     id="slug-org"
                     required
@@ -303,14 +320,14 @@ function Organizacoes() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    O usuario precisa ter uma conta criada antes de ser selecionado.
+                    O usuário precisa ter uma conta criada antes de ser selecionado.
                   </p>
                   {administradores.length === 0 &&
                     !carregandoAdministradores &&
                     !erroAdministradores && (
                       <p className="text-xs text-muted-foreground">
                         Nenhuma conta municipal confirmada disponível. Crie outra conta pela tela
-                        pública de cadastro, confirme o e-mail e atualize esta página.
+                        pública de cadastro, confirme o e-mail e atualize esta lista.
                       </p>
                     )}
                 </div>
@@ -332,7 +349,7 @@ function Organizacoes() {
                     }
                   >
                     {criando && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                    Criar organizacao
+                    Criar organização
                   </Button>
                 </DialogFooter>
               </form>
@@ -347,15 +364,17 @@ function Organizacoes() {
           <AlertDescription>
             {erroPermissao
               ? `Não foi possível consultar sua permissão no banco: ${erroPermissao}`
-              : `O login atual (${session?.user.email ?? "sem e-mail"}) não possui a autorização de administrador global no Supabase SMS2. Saia da aplicação e entre com a conta global cadastrada.`}
-            O acesso ao editor do Lovable não substitui o usuário de acesso da aplicação.
+              : `O login atual (${session?.user.email ?? "sem e-mail"}) não possui autorização de administrador global cadastrada. Entre com a conta global autorizada.`}
           </AlertDescription>
           <div className="mt-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                setRefreshTick((t) => t + 1);
+                recarregar();
+              }}
             >
               Verificar novamente
             </Button>
@@ -368,17 +387,16 @@ function Organizacoes() {
           <AlertTitle>Falta cadastrar o primeiro administrador municipal</AlertTitle>
           <AlertDescription>
             Sua conta global está reconhecida. No momento não existe outra conta de usuário para
-            receber a administração da Secretaria. Abra uma janela anônima ou outro navegador,
-            acesse a tela de cadastro público, crie uma segunda conta com outro e-mail, confirme
-            esse e-mail e depois volte aqui e atualize a página. A conta global não pode ser
-            selecionada como administrador municipal.
+            receber a administração da Secretaria. Cadastre uma segunda conta com outro e-mail,
+            confirme o endereço e atualize a lista abaixo. A conta global não pode ser selecionada
+            como administrador municipal.
           </AlertDescription>
           <div className="mt-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => window.location.reload()}
+              onClick={() => setRefreshTick((t) => t + 1)}
             >
               Atualizar lista de usuários
             </Button>
@@ -388,16 +406,16 @@ function Organizacoes() {
 
       {bancoPendente && (
         <Alert variant="destructive">
-          <AlertTitle>Estrutura do banco nao aplicada</AlertTitle>
+          <AlertTitle>Estrutura do banco não aplicada</AlertTitle>
           <AlertDescription>
-            A estrutura inicial da Fase 1 (organizacoes, vinculos, permissoes e auditoria) aguarda
-            aprovacao e implantacao controlada no banco. Enquanto isso, esta lista ficara vazia.
+            A estrutura inicial da Fase 1 (organizações, vínculos, permissões e auditoria) aguarda
+            aprovação e implantação controlada no banco. Enquanto isso, esta lista ficará vazia.
           </AlertDescription>
         </Alert>
       )}
       {erro && !bancoPendente && (
         <Alert variant="destructive">
-          <AlertTitle>Erro ao carregar organizacoes</AlertTitle>
+          <AlertTitle>Erro ao carregar organizações</AlertTitle>
           <AlertDescription>{erro}</AlertDescription>
         </Alert>
       )}
@@ -409,8 +427,8 @@ function Organizacoes() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden sm:table-cell">Identificador</TableHead>
-                <TableHead>Situacao</TableHead>
-                <TableHead className="text-right">Acao</TableHead>
+                <TableHead>Situação</TableHead>
+                <TableHead className="text-right">Ação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

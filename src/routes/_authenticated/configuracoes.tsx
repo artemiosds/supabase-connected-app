@@ -1,11 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Building2, FileText, Loader2, Plug, Save, Trash2, UserRound } from "lucide-react";
+import {
+  Building2,
+  FileText,
+  Loader2,
+  Plug,
+  Save,
+  Search,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+  WandSparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
+import {
+  cnpjDivergente,
+  mapCnpjProvider,
+  type CnpjLookupData,
+} from "../../../supabase/functions/_shared/cnpj-mapping.ts";
+import {
+  listarModulosHabilitados,
+  mesclarDadosCnpjOrganizacao,
+  montarSugestaoTimbrado,
+  traduzirPlanoComercial,
+  traduzirStatusComercial,
+} from "@/lib/tenant-settings-helpers";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,13 +140,14 @@ const CATEGORIAS: {
 function Configuracoes() {
   const [categoria, setCategoria] = useState<CategoriaConfig>("conta");
   const { session } = useAuth();
-  const { selecionado } = useTenant();
+  const { selecionado, recarregar } = useTenant();
   const [nome, setNome] = useState("");
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
   const [dadosSecretaria, setDadosSecretaria] = useState<DadosSecretaria>(DADOS_VAZIOS);
   const [podeEditarSecretaria, setPodeEditarSecretaria] = useState(false);
   const [loadingSecretaria, setLoadingSecretaria] = useState(false);
   const [salvandoSecretaria, setSalvandoSecretaria] = useState(false);
+  const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [dadosTimbrado, setDadosTimbrado] = useState<DadosTimbrado>(() => timbradoVazio(""));
   const [loadingTimbrado, setLoadingTimbrado] = useState(false);
@@ -410,6 +435,10 @@ function Configuracoes() {
   async function aoSalvarPerfil(e: FormEvent) {
     e.preventDefault();
     if (!session?.user.id) return;
+    if (!nome.trim()) {
+      toast.error("Informe um nome de exibição válido.");
+      return;
+    }
     setSalvandoPerfil(true);
     const { error } = await db
       .from("profiles")
@@ -420,6 +449,7 @@ function Configuracoes() {
       toast.error(error.message);
       return;
     }
+    setNome(nome.trim());
     toast.success("Perfil atualizado.");
   }
 
@@ -428,6 +458,62 @@ function Configuracoes() {
     valor: DadosSecretaria[K],
   ) {
     setDadosSecretaria((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  async function aoConsultarCnpj() {
+    const cnpj = normalizarCnpj(dadosSecretaria.cnpj);
+    if (!validarCnpj(cnpj) || consultandoCnpj || !podeEditarSecretaria) {
+      toast.error("Informe um CNPJ válido antes de consultar a Receita Federal.");
+      return;
+    }
+    setConsultandoCnpj(true);
+    try {
+      let dados: CnpjLookupData | null = null;
+      try {
+        const { data, error } = await db.functions.invoke("lookup-cnpj", {
+          body: { cnpj },
+        });
+        if (error) throw error;
+        const resposta = data?.data as CnpjLookupData | undefined;
+        if (!resposta?.legal_name || cnpjDivergente(resposta, cnpj)) {
+          throw new Error("Resposta inválida da consulta.");
+        }
+        dados = resposta;
+      } catch {
+        const providers = [
+          {
+            name: "BrasilAPI",
+            url: `https://brasilapi.com.br/api/cnpj/v1/${encodeURIComponent(cnpj)}`,
+          },
+          { name: "Minha Receita", url: `https://minhareceita.org/${encodeURIComponent(cnpj)}` },
+        ];
+        for (const provider of providers) {
+          try {
+            const response = await fetch(provider.url, {
+              headers: { Accept: "application/json" },
+              signal: AbortSignal.timeout(6500),
+            });
+            if (!response.ok) continue;
+            const raw = (await response.json()) as Record<string, unknown>;
+            const mapped = mapCnpjProvider(raw, provider.name);
+            if (!mapped.legal_name || cnpjDivergente(mapped, cnpj)) continue;
+            dados = mapped;
+            break;
+          } catch {
+            // Tenta o próximo provedor público.
+          }
+        }
+      }
+
+      if (!dados) {
+        toast.error("Não foi possível consultar o CNPJ nas fontes públicas no momento.");
+        return;
+      }
+      setDadosSecretaria((atual) => mesclarDadosCnpjOrganizacao(atual, dados));
+      toast.success("Dados públicos da Receita Federal preenchidos nos campos vazios.");
+    } finally {
+      setConsultandoCnpj(false);
+    }
   }
 
   async function aoSalvarSecretaria(e: FormEvent) {
@@ -459,6 +545,7 @@ function Configuracoes() {
       return;
     }
     toast.success("Dados da Secretaria atualizados.");
+    recarregar();
     await carregarSecretaria();
   }
 
@@ -618,18 +705,36 @@ function Configuracoes() {
                 ) : (
                   <form onSubmit={aoSalvarSecretaria} className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
+                      <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="tenant-cnpj">CNPJ</Label>
-                        <Input
-                          id="tenant-cnpj"
-                          maxLength={20}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.cnpj}
-                          onChange={(e) =>
-                            atualizarSecretaria("cnpj", formatarCnpj(e.target.value))
-                          }
-                          placeholder="00.000.000/0000-00"
-                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Input
+                            id="tenant-cnpj"
+                            className="min-w-[200px] flex-1"
+                            maxLength={20}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.cnpj}
+                            onChange={(e) =>
+                              atualizarSecretaria("cnpj", formatarCnpj(e.target.value))
+                            }
+                            placeholder="00.000.000/0000-00"
+                          />
+                          {podeEditarSecretaria && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={consultandoCnpj || !validarCnpj(dadosSecretaria.cnpj)}
+                              onClick={() => void aoConsultarCnpj()}
+                            >
+                              {consultandoCnpj ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Search className="mr-2 h-4 w-4" />
+                              )}
+                              Consultar Receita Federal
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="tenant-email">E-mail institucional</Label>
@@ -704,6 +809,52 @@ function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+            {selecionado && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Plano, limites e módulos
+                    habilitados
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Parâmetros comerciais da assinatura desta Secretaria (somente leitura; geridos
+                    pela administração da plataforma).
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Plano atual</p>
+                      <p className="font-medium">{traduzirPlanoComercial(selecionado.plan_tier)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Situação comercial</p>
+                      <p className="font-medium">
+                        {traduzirStatusComercial(selecionado.commercial_status)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Limite de usuários</p>
+                      <p className="font-medium">
+                        {selecionado.max_users != null
+                          ? `${selecionado.max_users} usuário(s)`
+                          : "Conforme contrato"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Módulos contratados ativos</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {listarModulosHabilitados(selecionado.enabled_modules).map((modulo) => (
+                        <Badge key={modulo} variant="secondary">
+                          {modulo}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </section>
 
           <section hidden={categoria !== "documentos"} className="space-y-6">
@@ -734,6 +885,35 @@ function Configuracoes() {
                   </Alert>
                 ) : (
                   <form onSubmit={aoSalvarTimbrado} className="space-y-5">
+                    {podeEditarSecretaria && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">
+                          Preencha subtítulo e rodapé automaticamente com CNPJ, endereço e contatos
+                          cadastrados na aba Organização.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const sugestao = montarSugestaoTimbrado(
+                              selecionado.nome,
+                              dadosSecretaria,
+                            );
+                            setDadosTimbrado((current) => ({
+                              ...current,
+                              header_title: current.header_title.trim() || selecionado.nome,
+                              header_subtitle: sugestao.header_subtitle,
+                              footer_text: sugestao.footer_text,
+                            }));
+                            toast.success("Campos preenchidos com os dados da Secretaria.");
+                          }}
+                        >
+                          <WandSparkles className="mr-2 h-3.5 w-3.5" />
+                          Preencher com dados da Secretaria
+                        </Button>
+                      </div>
+                    )}
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="timbrado-titulo">Nome no cabeçalho</Label>
@@ -901,6 +1081,52 @@ function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+            {selecionado && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Plano, limites e módulos
+                    habilitados
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Parâmetros comerciais da assinatura desta Secretaria (somente leitura; geridos
+                    pela administração da plataforma).
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Plano atual</p>
+                      <p className="font-medium">{traduzirPlanoComercial(selecionado.plan_tier)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Situação comercial</p>
+                      <p className="font-medium">
+                        {traduzirStatusComercial(selecionado.commercial_status)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Limite de usuários</p>
+                      <p className="font-medium">
+                        {selecionado.max_users != null
+                          ? `${selecionado.max_users} usuário(s)`
+                          : "Conforme contrato"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Módulos contratados ativos</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {listarModulosHabilitados(selecionado.enabled_modules).map((modulo) => (
+                        <Badge key={modulo} variant="secondary">
+                          {modulo}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </section>
 
           <section hidden={categoria !== "integracoes"} className="space-y-6">

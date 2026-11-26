@@ -69,6 +69,7 @@ Deno.serve(async (request: Request) => {
     email?: string;
     role_id?: string;
     full_name?: string;
+    replace_invitation_id?: string;
   };
 
   try {
@@ -81,12 +82,16 @@ Deno.serve(async (request: Request) => {
   const email = body.email?.trim().toLowerCase() ?? "";
   const roleId = body.role_id?.trim() ?? "";
   const fullName = body.full_name?.trim() ?? "";
+  const replaceInvitationId = body.replace_invitation_id?.trim() ?? "";
 
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!uuidPattern.test(tenantId) || !uuidPattern.test(roleId)) {
     return jsonResponse({ error: "Secretaria ou papel inválido." }, 400, origin);
+  }
+  if (replaceInvitationId && !uuidPattern.test(replaceInvitationId)) {
+    return jsonResponse({ error: "Identificador do convite anterior inválido." }, 400, origin);
   }
   if (!emailPattern.test(email) || email.length > 254) {
     return jsonResponse({ error: "Informe um e-mail válido." }, 400, origin);
@@ -114,6 +119,18 @@ Deno.serve(async (request: Request) => {
       403,
       origin,
     );
+  }
+
+  if (replaceInvitationId) {
+    const { error: previousRevokeError } = await userClient.rpc("revoke_tenant_invitation", {
+      p_invitation_id: replaceInvitationId,
+    });
+    if (
+      previousRevokeError &&
+      !previousRevokeError.message.includes("Somente convites pendentes")
+    ) {
+      return jsonResponse({ error: previousRevokeError.message }, 409, origin);
+    }
   }
 
   const { data: invitationId, error: invitationError } = await userClient.rpc(
@@ -156,7 +173,25 @@ Deno.serve(async (request: Request) => {
     },
   );
 
-  if (sendError || !inviteData.user) {
+  let invitedUserId: string | null = inviteData?.user?.id ?? null;
+  let deliveryError = sendError;
+
+  if (deliveryError && /already.*registered|already exists/i.test(deliveryError.message ?? "")) {
+    // Caso a conta exista no Auth ainda sem confirmação de e-mail, reenvia a confirmação/ativação.
+    const { error: resendError } = await adminClient.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+    if (!resendError) {
+      deliveryError = null;
+      invitedUserId = null;
+    } else {
+      deliveryError = resendError;
+    }
+  }
+
+  if (deliveryError) {
     const { error: revokeError } = await userClient.rpc("revoke_tenant_invitation", {
       p_invitation_id: invitationId,
     });
@@ -166,12 +201,9 @@ Deno.serve(async (request: Request) => {
         revokeError.message,
       );
     }
-    console.error(
-      "Falha ao enviar e-mail de convite.",
-      sendError?.message ?? "Auth não retornou usuário.",
-    );
+    console.error("Falha ao enviar e-mail de convite.", deliveryError.message);
     const throttled =
-      sendError?.status === 429 || sendError?.message.toLowerCase().includes("rate limit");
+      deliveryError.status === 429 || deliveryError.message.toLowerCase().includes("rate limit");
     return jsonResponse(
       {
         error: throttled
@@ -183,16 +215,18 @@ Deno.serve(async (request: Request) => {
     );
   }
 
-  const { error: attachError } = await userClient.rpc("set_tenant_invitation_auth_user", {
-    p_invitation_id: invitationId,
-    p_invited_user_id: inviteData.user.id,
-  });
-  if (attachError) {
-    // Acceptance remains bound to the invited email when this auxiliary link fails.
-    console.error(
-      "Convite enviado, mas não foi possível associar o ID do Auth.",
-      attachError.message,
-    );
+  if (invitedUserId) {
+    const { error: attachError } = await userClient.rpc("set_tenant_invitation_auth_user", {
+      p_invitation_id: invitationId,
+      p_invited_user_id: invitedUserId,
+    });
+    if (attachError) {
+      // Acceptance remains bound to the invited email when this auxiliary link fails.
+      console.error(
+        "Convite enviado, mas não foi possível associar o ID do Auth.",
+        attachError.message,
+      );
+    }
   }
 
   return jsonResponse(
