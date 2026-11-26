@@ -1,6 +1,7 @@
 import { PriceMatrixView } from "@/components/procurement/price-matrix-view";
 import { BatchPriceApprovalDialog } from "@/components/procurement/batch-price-approval-dialog";
 import { BatchQuoteDialog } from "@/components/procurement/batch-quote-dialog";
+import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import { PublicPriceSearchDialog } from "@/components/procurement/public-price-search-dialog";
 import { SupplierQuotePortalDialog } from "@/components/procurement/supplier-quote-portal-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
@@ -803,8 +804,16 @@ function Processos() {
             aberto={dadosAbertos}
             onFechar={() => setDadosAbertos(false)}
             tenantId={selecionado.id}
+            tenantName={selecionado.nome}
             processId={aberto.id}
             processNumber={aberto.number}
+            processTitle={aberto.title}
+            processDescription={aberto.description}
+            processModality={aberto.modality}
+            processStage={aberto.stage}
+            processStatus={aberto.status}
+            processEstimatedValue={aberto.estimated_value}
+            processResponsibleName={aberto.responsible_name}
             userId={userId}
           />
           <StageTransitionDialog
@@ -1130,8 +1139,16 @@ function DadosEstruturados(props: {
   aberto: boolean;
   onFechar: () => void;
   tenantId: string;
+  tenantName: string;
   processId: string;
   processNumber: string;
+  processTitle: string;
+  processDescription: string | null;
+  processModality: string;
+  processStage: string;
+  processStatus: string;
+  processEstimatedValue: number | null;
+  processResponsibleName: string | null;
   userId: string;
 }) {
   const [items, setItems] = useState<ItemCompra[]>([]);
@@ -3888,6 +3905,30 @@ function DadosEstruturados(props: {
                 <FileText className="mr-2 h-4 w-4" />
                 {gerandoDossieTce ? "Gerando Dossiê..." : "Dossiê TCE do Processo (PDF)"}
               </Button>
+              <PncpExportDialog
+                kind="process"
+                tenantId={props.tenantId}
+                tenantName={props.tenantName}
+                process={{
+                  id: props.processId,
+                  number: props.processNumber,
+                  title: props.processTitle,
+                  description: props.processDescription,
+                  modality: props.processModality,
+                  stage: props.processStage,
+                  status: props.processStatus,
+                  estimated_value: props.processEstimatedValue,
+                  responsible_name: props.processResponsibleName,
+                  items: items.map((it) => ({
+                    line_number: it.line_number,
+                    description: it.description,
+                    unit: it.unit,
+                    quantity: it.quantity,
+                    estimated_unit_price: it.estimated_unit_price,
+                    estimated_total: it.estimated_total,
+                  })),
+                }}
+              />
               <Button disabled={saving} onClick={() => void exportarMapa("docx")}>
                 Gerar mapa DOCX
               </Button>

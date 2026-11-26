@@ -22,6 +22,7 @@ import type { CsvColumn } from "@/lib/csv-export";
 import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
 import { RenewalWorkspace } from "@/components/contracts/renewal-workspace";
 import { ContractExtensionDialog } from "@/components/contracts/contract-extension-dialog";
+import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import { carregarTodasAsPaginas, db, bancoNaoConfigurado } from "@/lib/db";
 import { useTenant } from "@/hooks/use-tenant";
 import { useAuth } from "@/hooks/use-auth";
@@ -720,6 +721,44 @@ function Contratos() {
                           <Link to="/processos">Abrir processo relacionado</Link>
                         </Button>
                       )}
+                      <PncpExportDialog
+                        kind="contract"
+                        tenantId={selecionado.id}
+                        tenantName={selecionado.nome}
+                        triggerLabel="PNCP"
+                        contract={{
+                          id: c.id,
+                          number: c.number,
+                          object: c.object,
+                          instrument_type: c.instrument_type,
+                          modality: c.modality,
+                          start_date: c.start_date,
+                          end_date: c.end_date,
+                          total_value: Number(c.total_value),
+                          status: c.status,
+                          manager_name: c.manager_name,
+                          inspector_name: c.inspector_name,
+                          ordinance: c.ordinance,
+                          process_number:
+                            processosAtuais.find((p) => p.id === c.process_id)?.number ?? null,
+                          supplier_name:
+                            fornecedoresAtuais.find((f) => f.id === c.supplier_id)?.legal_name ??
+                            null,
+                          supplier_tax_id:
+                            fornecedoresAtuais.find((f) => f.id === c.supplier_id)?.cnpj ?? null,
+                          amendments: aditivosAtuais
+                            .filter((item) => item.contract_id === c.id)
+                            .map((item) => ({
+                              id: item.id,
+                              number: item.number,
+                              kind: item.kind,
+                              signed_at: item.signed_at,
+                              new_end_date: item.new_end_date,
+                              value_change: Number(item.value_change),
+                              notes: item.notes,
+                            })),
+                        }}
+                      />
                       <Button
                         size="sm"
                         variant="ghost"
