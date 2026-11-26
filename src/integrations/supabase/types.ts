@@ -4154,6 +4154,10 @@ export type Database = {
           can_create: boolean
         }[]
       }
+      apply_tenant_onboarding_defaults: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       approve_procurement_item_price: {
         Args: {
           p_exceptional_justification?: string

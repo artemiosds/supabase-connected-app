@@ -315,6 +315,7 @@ function AdminMaster() {
     createTenant,
     updateTenant,
     provisionLocalAdmin,
+    applyTenantOnboardingDefaults,
     savePlan,
     saveTenantAiLimits,
   } = usePlatformAdmin();
@@ -337,6 +338,7 @@ function AdminMaster() {
   const [provisionTenant, setProvisionTenant] = useState<MasterTenant | null>(null);
   const [provisionUser, setProvisionUser] = useState("");
   const [provisioning, setProvisioning] = useState(false);
+  const [onboardingTenantId, setOnboardingTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !session) {
@@ -668,6 +670,7 @@ function AdminMaster() {
 
     try {
       let targetTenantId: string | null = editing ? editing.id : null;
+      let onboardingSummary = "";
       if (editing) {
         await updateTenant(editing.id, {
           name: draft.name.trim(),
@@ -701,6 +704,11 @@ function AdminMaster() {
           details,
         );
         targetTenantId = created?.tenant_id ?? null;
+        if (created?.onboarding) {
+          const rolesCount = created.onboarding.roles_created ?? 0;
+          const templatesCount = created.onboarding.templates_installed ?? 0;
+          onboardingSummary = ` (${rolesCount} papéis especializados e ${templatesCount} modelos oficiais instalados)`;
+        }
       }
 
       const previousQuota = editing ? aiLimitsByTenant[editing.id] : undefined;
@@ -724,7 +732,7 @@ function AdminMaster() {
       toast.success(
         editing
           ? "Dados comerciais e institucionais atualizados."
-          : "Secretaria cadastrada e administrador local provisionado.",
+          : `Secretaria cadastrada e administrador local provisionado${onboardingSummary}.`,
       );
       setDialogOpen(false);
       setEditing(null);
@@ -771,6 +779,24 @@ function AdminMaster() {
     setProvisionTenant(tenant);
     setProvisionUser("");
     setProvisionOpen(true);
+  }
+
+  async function aplicarOnboardingPadrao(tenant: MasterTenant) {
+    setOnboardingTenantId(tenant.id);
+    try {
+      const result = await applyTenantOnboardingDefaults(tenant.id);
+      const rolesCount = result?.roles_created ?? 0;
+      const templatesCount = result?.templates_installed ?? 0;
+      toast.success(
+        `Onboarding aplicado em ${tenant.name}: ${rolesCount} papel(is) criado(s) e ${templatesCount} modelo(s) oficial(is) instalado(s).`,
+      );
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível aplicar o onboarding padrão.",
+      );
+    } finally {
+      setOnboardingTenantId(null);
+    }
   }
 
   async function confirmarProvisionamento(event: FormEvent<HTMLFormElement>) {
@@ -1597,6 +1623,20 @@ function AdminMaster() {
                                     >
                                       <Users className="h-4 w-4" aria-hidden />
                                       <span className="sr-only">Adicionar administrador</span>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={onboardingTenantId === tenant.id}
+                                      title="Aplicar papéis padrão (Pregoeiro, Fiscal, Controle Interno) e 6 modelos oficiais"
+                                      onClick={() => void aplicarOnboardingPadrao(tenant)}
+                                    >
+                                      {onboardingTenantId === tenant.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                      ) : (
+                                        <Sparkles className="h-4 w-4" aria-hidden />
+                                      )}
+                                      <span className="sr-only">Aplicar onboarding padrão</span>
                                     </Button>
                                   </div>
                                 </TableCell>

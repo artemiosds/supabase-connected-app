@@ -372,7 +372,22 @@ export function usePlatformAdmin() {
       );
       if (rpcError) throw rpcError;
       await load();
-      return rpcData as { tenant_id?: string } | null;
+      return rpcData as {
+        tenant_id?: string;
+        onboarding?: { roles_created?: number; templates_installed?: number };
+      } | null;
+    },
+    [load],
+  );
+
+  const applyTenantOnboardingDefaults = useCallback(
+    async (tenantId: string) => {
+      const { data: rpcData, error: rpcError } = await db.rpc("apply_tenant_onboarding_defaults", {
+        p_tenant_id: tenantId,
+      });
+      if (rpcError) throw rpcError;
+      await load();
+      return rpcData as { roles_created?: number; templates_installed?: number } | null;
     },
     [load],
   );
@@ -463,6 +478,7 @@ export function usePlatformAdmin() {
     createTenant,
     updateTenant,
     provisionLocalAdmin,
+    applyTenantOnboardingDefaults,
     savePlan,
     saveTenantAiLimits,
   };
