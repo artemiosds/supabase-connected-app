@@ -4,7 +4,7 @@
 // Primus Gestão — Fase 4
 // =============================================================================
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildDraftKey,
   clearDraft,
@@ -39,7 +39,11 @@ function createMemoryStorage(): Storage {
 
 describe("offline-draft-helper", () => {
   beforeEach(() => {
-    vi.stubGlobal("localStorage", createMemoryStorage());
+    Object.defineProperty(globalThis, "localStorage", {
+      value: createMemoryStorage(),
+      configurable: true,
+      writable: true,
+    });
   });
 
   it("gera chaves com isolamento rigoroso por tenant e usuário", () => {

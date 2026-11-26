@@ -163,7 +163,7 @@ export function AdminMasterConfiguration({ onOpenBilling }: Props) {
             </Badge>
           </div>
           <CardDescription>
-            Toda a engenharia (Fases A–E) já está em produção no Supabase e GitHub. Marque cada
+            Toda a engenharia (Fases A–G) já está em produção no Supabase e GitHub. Marque cada
             etapa conforme concluir no painel externo (salvo localmente neste navegador).
           </CardDescription>
         </CardHeader>

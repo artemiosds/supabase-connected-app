@@ -22,6 +22,8 @@ function provider(
   };
 }
 
+const originalFetch = globalThis.fetch;
+
 function mockFetch(payload: unknown, status = 200, headers: Record<string, string> = {}) {
   let requestUrl = "";
   let requestInit: RequestInit | undefined;
@@ -33,7 +35,7 @@ function mockFetch(payload: unknown, status = 200, headers: Record<string, strin
       headers: { "Content-Type": "application/json", ...headers },
     });
   });
-  vi.stubGlobal("fetch", fetchMock);
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
   return {
     fetchMock,
     getRequest: () => ({ url: requestUrl, init: requestInit }),
@@ -41,7 +43,7 @@ function mockFetch(payload: unknown, status = 200, headers: Record<string, strin
 }
 
 afterEach(() => {
-  vi.unstubAllGlobals();
+  globalThis.fetch = originalFetch;
 });
 
 describe("adaptadores multiprovedor de IA", () => {
