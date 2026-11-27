@@ -8,7 +8,8 @@ import {
 } from "@/lib/supplier-verification";
 import { SupplierProfile } from "@/components/supplier-profile";
 import { clearSupplierAutofill, fillEmptySupplierFields } from "@/lib/supplier-autofill";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatarMoeda } from "@/lib/contratacao";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Building2,
@@ -182,6 +183,10 @@ function Fornecedores() {
   const consultaCnpjRef = useRef(0);
   const ultimoCnpjConsultadoRef = useRef("");
   const [resumosSancoes, setResumosSancoes] = useState<ResumoSancaoFornecedor[]>([]);
+  const [contratosPorFornecedor, setContratosPorFornecedor] = useState<
+    Record<string, { count: number; total: number }>
+  >({});
+  const [somenteComContrato, setSomenteComContrato] = useState(false);
   const [fornecedorFicha, setFornecedorFicha] = useState<Fornecedor | null>(null);
   const [fornecedorSancoes, setFornecedorSancoes] = useState<Fornecedor | null>(null);
   const [sancoesAberto, setSancoesAberto] = useState(false);
@@ -219,6 +224,7 @@ function Fornecedores() {
     setFornecedores([]);
     setFornecedorFicha(null);
     setResumosSancoes([]);
+    setContratosPorFornecedor({});
     setCapacidades({
       can_view: false,
       can_create: false,
@@ -284,6 +290,35 @@ function Fornecedores() {
         // A migration de sanções pode ainda não estar aplicada no ambiente conectado.
         setResumosSancoes([]);
       }
+      try {
+        const contratosVigentes = await carregarTodasAsPaginas<{
+          supplier_id: string | null;
+          total_value: number;
+        }>((inicio, fim) =>
+          db
+            .from("contracts")
+            .select("supplier_id,total_value")
+            .eq("tenant_id", tenantId)
+            .eq("status", "vigente")
+            .not("supplier_id", "is", null)
+            .order("id")
+            .range(inicio, fim),
+        );
+        if (requisicaoAtual !== requisicaoRef.current) return;
+        const map: Record<string, { count: number; total: number }> = {};
+        for (const c of contratosVigentes) {
+          if (!c.supplier_id) continue;
+          const prev = map[c.supplier_id] ?? { count: 0, total: 0 };
+          map[c.supplier_id] = {
+            count: prev.count + 1,
+            total: prev.total + Number(c.total_value || 0),
+          };
+        }
+        setContratosPorFornecedor(map);
+      } catch {
+        if (requisicaoAtual !== requisicaoRef.current) return;
+        setContratosPorFornecedor({});
+      }
       if (requisicaoAtual !== requisicaoRef.current) return;
       setTenantCarregadoId(tenantId);
     } catch (e) {
@@ -319,9 +354,18 @@ function Fornecedores() {
       const correspondeStatus = filtroStatus === "todos" || fornecedor.status === filtroStatus;
       const correspondeCategoria =
         filtroCategoria === "todas" || fornecedor.category === filtroCategoria;
-      return correspondeBusca && correspondeStatus && correspondeCategoria;
+      const correspondeContrato =
+        !somenteComContrato || Boolean(contratosPorFornecedor[fornecedor.id]?.count);
+      return correspondeBusca && correspondeStatus && correspondeCategoria && correspondeContrato;
     });
-  }, [fornecedores, busca, filtroStatus, filtroCategoria]);
+  }, [
+    fornecedores,
+    busca,
+    filtroStatus,
+    filtroCategoria,
+    somenteComContrato,
+    contratosPorFornecedor,
+  ]);
 
   function abrirNovo() {
     consultaCnpjRef.current += 1;
@@ -758,6 +802,10 @@ function Fornecedores() {
       header: "Sanção vigente",
       value: (item) => (fornecedoresComSancaoVigente.has(item.id) ? "Sim" : "Não"),
     },
+    {
+      header: "Contratos vigentes",
+      value: (item) => contratosPorFornecedor[item.id]?.count ?? 0,
+    },
   ];
 
   async function abrirHistoricoSancoes(fornecedor: Fornecedor) {
@@ -1015,6 +1063,14 @@ function Fornecedores() {
                 </option>
               ))}
             </select>
+            <Button
+              type="button"
+              size="sm"
+              variant={somenteComContrato ? "secondary" : "outline"}
+              onClick={() => setSomenteComContrato((v) => !v)}
+            >
+              Com contrato vigente
+            </Button>
           </div>
 
           <div className="overflow-hidden rounded-lg border bg-card">
@@ -1089,6 +1145,17 @@ function Fornecedores() {
                           <Badge variant={fornecedor.status === "active" ? "secondary" : "outline"}>
                             {fornecedor.status === "active" ? "Ativo" : "Inativo"}
                           </Badge>
+                          {contratosPorFornecedor[fornecedor.id] && (
+                            <Link to="/contratos">
+                              <Badge
+                                variant="outline"
+                                className="border-primary/35 bg-primary/10 text-primary hover:bg-primary/20"
+                              >
+                                {contratosPorFornecedor[fornecedor.id]!.count} contrato(s) ·{" "}
+                                {formatarMoeda(contratosPorFornecedor[fornecedor.id]!.total)}
+                              </Badge>
+                            </Link>
+                          )}
                           {fornecedoresComSancaoVigente.has(fornecedor.id) && (
                             <Badge variant="destructive">Sanção vigente</Badge>
                           )}
