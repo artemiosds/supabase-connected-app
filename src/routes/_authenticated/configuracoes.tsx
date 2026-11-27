@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
+  AlertTriangle,
   Building2,
+  CheckCircle2,
   FileText,
   Loader2,
   Plug,
@@ -23,6 +25,7 @@ import {
   type CnpjLookupData,
 } from "../../../supabase/functions/_shared/cnpj-mapping.ts";
 import {
+  calcularProntidaoSecretaria,
   listarModulosHabilitados,
   mesclarDadosCnpjOrganizacao,
   montarSugestaoTimbrado,
@@ -156,7 +159,40 @@ function Configuracoes() {
   const [arquivoBrasao, setArquivoBrasao] = useState<File | null>(null);
   const [removerBrasao, setRemoverBrasao] = useState(false);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [emailIntegrado, setEmailIntegrado] = useState(false);
   const requisicaoTimbradoRef = useRef(0);
+
+  useEffect(() => {
+    if (!db || !selecionado?.id) {
+      setEmailIntegrado(false);
+      return;
+    }
+    let cancelled = false;
+    db.functions
+      .invoke("tenant-integration-settings", {
+        body: { action: "get", tenant_id: selecionado.id },
+      })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const provider = data?.configuration?.email_provider;
+        setEmailIntegrado(Boolean(provider && provider !== "none"));
+      })
+      .then(undefined, () => {
+        if (!cancelled) setEmailIntegrado(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selecionado?.id]);
+
+  const prontidao = calcularProntidaoSecretaria({
+    cnpj: dadosSecretaria.cnpj,
+    hasLogo: Boolean(dadosTimbrado.logo_storage_path || logoPreviewUrl),
+    headerTitle: dadosTimbrado.header_title,
+    street: dadosSecretaria.street,
+    municipality: dadosSecretaria.municipality,
+    emailConfigured: emailIntegrado,
+  });
 
   useEffect(() => {
     let ativo = true;
@@ -551,19 +587,66 @@ function Configuracoes() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Configurações</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sua conta, os dados da Secretaria, o timbrado e as integrações em um só lugar.
-          </p>
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Configurações da Secretaria
+              </h1>
+              <Badge variant="outline" className="text-xs font-medium">
+                {traduzirPlanoComercial(selecionado?.plan_tier)}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {selecionado?.nome ?? "Secretaria Municipal de Saúde"} · Gestão cadastral, identidade
+              visual e segurança.
+            </p>
+          </div>
+
+          {/* Indicador de Prontidão Operacional */}
+          <div className="flex items-center gap-4 rounded-lg border bg-muted/40 px-4 py-2.5 sm:self-center">
+            <div className="text-right">
+              <div className="flex items-center justify-end gap-1.5">
+                {prontidao.status === "completo" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                )}
+                <span className="text-xs font-semibold text-foreground">
+                  {prontidao.percentual}% Pronta
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {prontidao.status === "completo"
+                  ? "Documentos e Atas prontos"
+                  : `${prontidao.resumoPendencias.length} item(ns) pendente(s)`}
+              </p>
+            </div>
+            <div className="h-8 w-1.5 overflow-hidden rounded-full bg-border">
+              <div
+                className={cn(
+                  "w-full transition-all duration-500",
+                  prontidao.percentual === 100 ? "bg-emerald-600" : "bg-amber-500",
+                )}
+                style={{ height: `${prontidao.percentual}%` }}
+              />
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 rounded-md border bg-card px-3 py-2 text-sm sm:max-w-xs">
-          <p className="text-xs text-muted-foreground">Secretaria selecionada</p>
-          <p className="truncate font-medium text-foreground">
-            {selecionado?.nome ?? "Nenhuma selecionada"}
-          </p>
-        </div>
+
+        {prontidao.resumoPendencias.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              Recomendações para operação oficial:
+            </span>
+            {prontidao.resumoPendencias.map((pendencia, idx) => (
+              <Badge key={idx} variant="secondary" className="text-xs font-normal">
+                {pendencia}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {aviso && (
@@ -601,17 +684,50 @@ function Configuracoes() {
                     onClick={() => setCategoria(c.id)}
                     aria-current={ativo ? "page" : undefined}
                     className={cn(
-                      "flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors",
+                      "flex w-full items-start justify-between gap-2 rounded-md px-3 py-2.5 text-left transition-colors",
                       ativo
-                        ? "bg-accent text-accent-foreground"
+                        ? "bg-accent font-medium text-accent-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <Icone className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">{c.titulo}</span>
-                      <span className="block text-xs text-muted-foreground">{c.descricao}</span>
-                    </span>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <Icone className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block text-sm leading-tight">{c.titulo}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {c.descricao}
+                        </span>
+                      </span>
+                    </div>
+
+                    {c.id === "organizacao" && (
+                      <Badge
+                        variant={dadosSecretaria.cnpj ? "outline" : "secondary"}
+                        className="shrink-0 text-[10px] font-normal"
+                      >
+                        {dadosSecretaria.cnpj ? "CNPJ OK" : "Pendente"}
+                      </Badge>
+                    )}
+                    {c.id === "documentos" && (
+                      <Badge
+                        variant={
+                          dadosTimbrado.logo_storage_path || logoPreviewUrl ? "outline" : "secondary"
+                        }
+                        className="shrink-0 text-[10px] font-normal"
+                      >
+                        {dadosTimbrado.logo_storage_path || logoPreviewUrl
+                          ? "Brasão OK"
+                          : "Sem brasão"}
+                      </Badge>
+                    )}
+                    {c.id === "integracoes" && (
+                      <Badge
+                        variant={emailIntegrado ? "outline" : "secondary"}
+                        className="shrink-0 text-[10px] font-normal"
+                      >
+                        {emailIntegrado ? "Ativa" : "Opcional"}
+                      </Badge>
+                    )}
                   </button>
                 </li>
               );

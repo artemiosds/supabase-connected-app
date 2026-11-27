@@ -163,3 +163,79 @@ export function filtrarConvites<
     return convite.status === filtroStatus;
   });
 }
+
+export type ProntidaoSecretaria = {
+  percentual: number;
+  status: "completo" | "parcial" | "pendente";
+  itens: {
+    chave: "cnpj" | "timbrado" | "email" | "endereco";
+    titulo: string;
+    preenchido: boolean;
+    critico: boolean;
+  }[];
+  resumoPendencias: string[];
+};
+
+/**
+ * Avalia o grau de prontidão cadastral e operacional da Secretaria selecionada.
+ * Itens críticos: CNPJ válido e Timbrado com Brasão.
+ */
+export function calcularProntidaoSecretaria(params: {
+  cnpj: string;
+  hasLogo: boolean;
+  headerTitle: string;
+  street: string;
+  municipality: string;
+  emailConfigured: boolean;
+}): ProntidaoSecretaria {
+  const cnpjOk = Boolean(params.cnpj && params.cnpj.replace(/\D/g, "").length === 14);
+  const timbradoOk = Boolean(params.hasLogo || params.headerTitle.trim().length > 3);
+  const enderecoOk = Boolean(params.municipality.trim().length > 1);
+  const emailOk = Boolean(params.emailConfigured);
+
+  const itens = [
+    {
+      chave: "cnpj" as const,
+      titulo: "CNPJ da Secretaria / FMS",
+      preenchido: cnpjOk,
+      critico: true,
+    },
+    {
+      chave: "timbrado" as const,
+      titulo: "Brasão e Timbrado Oficial",
+      preenchido: timbradoOk,
+      critico: true,
+    },
+    {
+      chave: "endereco" as const,
+      titulo: "Município e Endereço",
+      preenchido: enderecoOk,
+      critico: false,
+    },
+    {
+      chave: "email" as const,
+      titulo: "E-mail Institucional",
+      preenchido: emailOk,
+      critico: false,
+    },
+  ];
+
+  const total = itens.length;
+  const concluidos = itens.filter((i) => i.preenchido).length;
+  const percentual = Math.round((concluidos / total) * 100);
+
+  const pendencias: string[] = [];
+  if (!cnpjOk) pendencias.push("Cadastrar o CNPJ oficial do órgão");
+  if (!timbradoOk) pendencias.push("Carregar o Brasão Oficial do Município");
+  if (!emailOk) pendencias.push("Configurar e-mail institucional de saída");
+
+  const status: "completo" | "parcial" | "pendente" =
+    percentual === 100 ? "completo" : percentual >= 50 ? "parcial" : "pendente";
+
+  return {
+    percentual,
+    status,
+    itens,
+    resumoPendencias: pendencias,
+  };
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CnpjLookupData } from "../../supabase/functions/_shared/cnpj-mapping";
 import {
+  calcularProntidaoSecretaria,
   calcularVagasUsuarios,
   filtrarConvites,
   listarModulosHabilitados,
@@ -114,5 +115,42 @@ describe("tenant-settings-helpers: Organização e Usuários", () => {
     expect(filtrarConvites(items, "pedro", "expired")).toHaveLength(1);
     expect(filtrarConvites(items, "", "pending")).toHaveLength(1);
     expect(filtrarConvites(items, "saude.gov.br", "todos")).toHaveLength(3);
+  });
+
+  it("calcula prontidão operacional da Secretaria com percentual e pendências", () => {
+    const vazio = calcularProntidaoSecretaria({
+      cnpj: "",
+      hasLogo: false,
+      headerTitle: "",
+      street: "",
+      municipality: "",
+      emailConfigured: false,
+    });
+    expect(vazio.percentual).toBe(0);
+    expect(vazio.status).toBe("pendente");
+    expect(vazio.resumoPendencias.length).toBeGreaterThanOrEqual(2);
+
+    const parcial = calcularProntidaoSecretaria({
+      cnpj: "05.131.081/0001-82",
+      hasLogo: false,
+      headerTitle: "",
+      street: "Rua 15",
+      municipality: "Oriximiná",
+      emailConfigured: false,
+    });
+    expect(parcial.percentual).toBe(50);
+    expect(parcial.status).toBe("parcial");
+
+    const completo = calcularProntidaoSecretaria({
+      cnpj: "05.131.081/0001-82",
+      hasLogo: true,
+      headerTitle: "Secretaria de Saúde",
+      street: "Rua 15",
+      municipality: "Oriximiná",
+      emailConfigured: true,
+    });
+    expect(completo.percentual).toBe(100);
+    expect(completo.status).toBe("completo");
+    expect(completo.resumoPendencias).toHaveLength(0);
   });
 });
