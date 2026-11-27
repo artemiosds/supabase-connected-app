@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
+import { DocumentExpiryCockpit } from "@/components/documents/document-expiry-cockpit";
 import type { CsvColumn } from "@/lib/csv-export";
 import { ETAPAS } from "@/lib/contratacao";
 import { gerarRoteiroEstruturadoAgu } from "@/lib/agu-etp-tr-helper";
@@ -2567,7 +2568,17 @@ function Documentos() {
                 <TabsTrigger value="biblioteca">Biblioteca-base ({catalogo.length})</TabsTrigger>
               )}
             </TabsList>
-            <TabsContent value="vencimentos" className="mt-4 space-y-3">
+            <TabsContent value="vencimentos" className="mt-4 space-y-4">
+              <DocumentExpiryCockpit
+                documentosFornecedor={documentos}
+                contratos={contratos}
+                fornecedores={fornecedores}
+                busca={buscaVencimento}
+                onFocarDocumento={(docId) => {
+                  const el = document.getElementById(`documento-${docId}`);
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
               {supplierFilter && (
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium">
