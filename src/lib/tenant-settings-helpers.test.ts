@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { CnpjLookupData } from "../../supabase/functions/_shared/cnpj-mapping";
 import {
+  LIMITES_LEI_14133,
   calcularProntidaoSecretaria,
   calcularVagasUsuarios,
   filtrarConvites,
+  formatarBaseNormativa,
   listarModulosHabilitados,
   mesclarDadosCnpjOrganizacao,
   montarSugestaoTimbrado,
@@ -11,6 +13,7 @@ import {
   podeAlterarStatusMembro,
   traduzirPlanoComercial,
   traduzirStatusComercial,
+  validarConformidadeContratacao,
 } from "./tenant-settings-helpers";
 
 const EMPTY_CNPJ_LOOKUP: CnpjLookupData = {
@@ -186,5 +189,48 @@ describe("tenant-settings-helpers: Organização e Usuários", () => {
     expect(resultado.manager_name).toBe("Dra. Maria Silveira");
     expect(resultado.ibge_code).toBe("1505304");
     expect(resultado.municipality).toBe("Oriximiná");
+  });
+
+  it("valida consistência do regulamento municipal e notas jurídicas", () => {
+    const localIncompleto = validarConformidadeContratacao({
+      normative_basis: "local_regulation",
+      in65_applicability: "applicable",
+      local_regulation_name: "",
+      local_regulation_reference: "",
+      legal_review_status: "pending",
+      legal_review_notes: "",
+    });
+    expect(localIncompleto.valido).toBe(false);
+    expect(localIncompleto.erros.length).toBeGreaterThanOrEqual(2);
+
+    const semJustificativa = validarConformidadeContratacao({
+      normative_basis: "in65_2021",
+      in65_applicability: "not_applicable",
+      local_regulation_name: "",
+      local_regulation_reference: "",
+      legal_review_status: "pending",
+      legal_review_notes: "",
+    });
+    expect(semJustificativa.valido).toBe(false);
+    expect(semJustificativa.erros[0]).toContain("justificativa jurídica");
+
+    const valido = validarConformidadeContratacao({
+      normative_basis: "local_regulation",
+      in65_applicability: "adopted",
+      local_regulation_name: "Decreto Municipal nº 4.120/2023",
+      local_regulation_reference: "Art. 18 - Pesquisa de Preços",
+      legal_review_status: "validated",
+      legal_review_notes: "Parecer Jurídico nº 12/2024 PGM",
+    });
+    expect(valido.valido).toBe(true);
+    expect(valido.erros).toHaveLength(0);
+  });
+
+  it("formata rótulos de base normativa e expõe limites oficiais da Lei 14.133", () => {
+    expect(formatarBaseNormativa("in65_2021")).toBe("IN SEGES/ME nº 65/2021 (Federal)");
+    expect(formatarBaseNormativa("local_regulation")).toBe("Regulamento Municipal Próprio");
+    expect(formatarBaseNormativa("pending")).toBe("Padrão Federal / Pendente");
+    expect(LIMITES_LEI_14133.dispensaComprasServicos).toBe(62725.58);
+    expect(LIMITES_LEI_14133.dispensaObrasEngenharia).toBe(125451.15);
   });
 });

@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
+  BookOpen,
   Building2,
   CheckCircle2,
   FileText,
   Loader2,
   Plug,
   Save,
+  Scale,
   Search,
   ShieldCheck,
   Trash2,
@@ -25,6 +27,7 @@ import {
   type CnpjLookupData,
 } from "../../../supabase/functions/_shared/cnpj-mapping.ts";
 import {
+  LIMITES_LEI_14133,
   calcularProntidaoSecretaria,
   listarModulosHabilitados,
   mesclarDadosCnpjOrganizacao,
@@ -32,11 +35,14 @@ import {
   normalizarCodigoIbge,
   traduzirPlanoComercial,
   traduzirStatusComercial,
+  validarConformidadeContratacao,
+  type DadosComplianceFormulario,
 } from "@/lib/tenant-settings-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -118,7 +124,16 @@ function timbradoVazio(nome: string): DadosTimbrado {
   };
 }
 
-type CategoriaConfig = "conta" | "organizacao" | "documentos" | "integracoes";
+type CategoriaConfig = "conta" | "organizacao" | "compras" | "documentos" | "integracoes";
+
+const DADOS_COMPLIANCE_PADRAO: DadosComplianceFormulario = {
+  normative_basis: "in65_2021",
+  in65_applicability: "applicable",
+  local_regulation_name: "",
+  local_regulation_reference: "",
+  legal_review_status: "pending",
+  legal_review_notes: "",
+};
 
 const CATEGORIAS: {
   id: CategoriaConfig;
@@ -126,26 +141,32 @@ const CATEGORIAS: {
   descricao: string;
   icone: typeof UserRound;
 }[] = [
-  { id: "conta", titulo: "Minha conta", descricao: "Perfil e acesso", icone: UserRound },
-  {
-    id: "organizacao",
-    titulo: "Organização",
-    descricao: "Dados cadastrais da Secretaria",
-    icone: Building2,
-  },
-  {
-    id: "documentos",
-    titulo: "Documentos oficiais",
-    descricao: "Timbrado, margens e paginação",
-    icone: FileText,
-  },
-  {
-    id: "integracoes",
-    titulo: "Integrações e LGPD",
-    descricao: "E-mail, Google Drive e privacidade",
-    icone: Plug,
-  },
-];
+    { id: "conta", titulo: "Minha conta", descricao: "Perfil e acesso", icone: UserRound },
+    {
+      id: "organizacao",
+      titulo: "Organização",
+      descricao: "Dados cadastrais da Secretaria",
+      icone: Building2,
+    },
+    {
+      id: "compras",
+      titulo: "Compras e Licitações",
+      descricao: "Regulamento local e alçadas da Lei 14.133",
+      icone: Scale,
+    },
+    {
+      id: "documentos",
+      titulo: "Documentos oficiais",
+      descricao: "Timbrado, margens e paginação",
+      icone: FileText,
+    },
+    {
+      id: "integracoes",
+      titulo: "Integrações e LGPD",
+      descricao: "E-mail, Google Drive e privacidade",
+      icone: Plug,
+    },
+  ];
 
 function Configuracoes() {
   const [categoria, setCategoria] = useState<CategoriaConfig>("conta");
@@ -167,6 +188,11 @@ function Configuracoes() {
   const [removerBrasao, setRemoverBrasao] = useState(false);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [emailIntegrado, setEmailIntegrado] = useState(false);
+  const [dadosCompliance, setDadosCompliance] = useState<DadosComplianceFormulario>(
+    DADOS_COMPLIANCE_PADRAO,
+  );
+  const [podeEditarCompras, setPodeEditarCompras] = useState(false);
+  const [salvandoCompliance, setSalvandoCompliance] = useState(false);
   const requisicaoTimbradoRef = useRef(0);
 
   useEffect(() => {
@@ -232,7 +258,7 @@ function Configuracoes() {
       return;
     }
     setLoadingSecretaria(true);
-    const [caps, tenant] = await Promise.all([
+    const [caps, tenant, complianceRes, priceCapsRes] = await Promise.all([
       db.rpc("get_tenant_settings_capabilities", { p_tenant_id: selecionado.id }),
       db
         .from("tenants")
@@ -241,14 +267,28 @@ function Configuracoes() {
         )
         .eq("id", selecionado.id)
         .maybeSingle(),
+      db
+        .from("tenant_procurement_compliance")
+        .select("*")
+        .eq("tenant_id", selecionado.id)
+        .maybeSingle(),
+      db.rpc("get_procurement_price_capabilities", { p_tenant_id: selecionado.id }),
     ]);
     if (caps.error || tenant.error) {
       const error = caps.error ?? tenant.error;
       if (error && !bancoNaoConfigurado(error.message)) toast.error(error.message);
       setPodeEditarSecretaria(false);
+      setPodeEditarCompras(false);
       setDadosSecretaria(DADOS_VAZIOS);
+      setDadosCompliance(DADOS_COMPLIANCE_PADRAO);
     } else {
-      setPodeEditarSecretaria(caps.data?.[0]?.can_edit ?? false);
+      const podeEditarLocal = caps.data?.[0]?.can_edit ?? false;
+      const podeAprovarPreco = Boolean(
+        priceCapsRes.data?.[0]?.can_approve_price ||
+          priceCapsRes.data?.[0]?.can_validate_normative_basis,
+      );
+      setPodeEditarSecretaria(podeEditarLocal);
+      setPodeEditarCompras(podeEditarLocal || podeAprovarPreco);
       setDadosSecretaria({
         cnpj: tenant.data?.cnpj ? formatarCnpj(tenant.data.cnpj) : "",
         contact_email: tenant.data?.contact_email ?? "",
@@ -260,6 +300,29 @@ function Configuracoes() {
         manager_name: tenant.data?.manager_name ?? "",
         ibge_code: tenant.data?.ibge_code ?? "",
       });
+
+      const comp = complianceRes.data;
+      if (comp) {
+        const basis = comp.normative_basis;
+        const app = comp.in65_applicability;
+        const rev = comp.legal_review_status;
+        setDadosCompliance({
+          normative_basis:
+            basis === "in65_2021" || basis === "local_regulation" || basis === "other"
+              ? basis
+              : "pending",
+          in65_applicability:
+            app === "applicable" || app === "adopted" || app === "not_applicable"
+              ? app
+              : "pending",
+          local_regulation_name: comp.local_regulation_name ?? "",
+          local_regulation_reference: comp.local_regulation_reference ?? "",
+          legal_review_status: rev === "validated" ? "validated" : "pending",
+          legal_review_notes: comp.legal_review_notes ?? "",
+        });
+      } else {
+        setDadosCompliance(DADOS_COMPLIANCE_PADRAO);
+      }
     }
     setLoadingSecretaria(false);
   }, [selecionado?.id]);
@@ -302,19 +365,19 @@ function Configuracoes() {
     setDadosTimbrado(
       data
         ? {
-            header_title: data.header_title,
-            header_subtitle: data.header_subtitle,
-            footer_text: data.footer_text,
-            margin_top_mm: data.margin_top_mm,
-            margin_bottom_mm: data.margin_bottom_mm,
-            margin_left_mm: data.margin_left_mm,
-            margin_right_mm: data.margin_right_mm,
-            show_page_numbers: data.show_page_numbers,
-            logo_storage_path: data.logo_storage_path,
-            logo_mime: data.logo_mime,
-            logo_file_name: data.logo_file_name,
-            logo_file_size: data.logo_file_size,
-          }
+          header_title: data.header_title,
+          header_subtitle: data.header_subtitle,
+          footer_text: data.footer_text,
+          margin_top_mm: data.margin_top_mm,
+          margin_bottom_mm: data.margin_bottom_mm,
+          margin_left_mm: data.margin_left_mm,
+          margin_right_mm: data.margin_right_mm,
+          show_page_numbers: data.show_page_numbers,
+          logo_storage_path: data.logo_storage_path,
+          logo_mime: data.logo_mime,
+          logo_file_name: data.logo_file_name,
+          logo_file_size: data.logo_file_size,
+        }
         : timbradoVazio(selecionado.nome),
     );
     if (data?.logo_storage_path) {
@@ -603,6 +666,46 @@ function Configuracoes() {
     await carregarSecretaria();
   }
 
+  async function aoSalvarCompliance(e?: FormEvent) {
+    if (e) e.preventDefault();
+    if (!selecionado || !session?.user?.id || !podeEditarCompras) return;
+
+    const validacao = validarConformidadeContratacao(dadosCompliance);
+    if (!validacao.valido) {
+      toast.error(validacao.erros[0] || "Verifique os dados da regulamentação.");
+      return;
+    }
+
+    setSalvandoCompliance(true);
+    try {
+      const validada = dadosCompliance.legal_review_status === "validated";
+      const { error } = await db.from("tenant_procurement_compliance").upsert(
+        {
+          tenant_id: selecionado.id,
+          normative_basis: dadosCompliance.normative_basis,
+          in65_applicability: dadosCompliance.in65_applicability,
+          local_regulation_name: dadosCompliance.local_regulation_name.trim() || null,
+          local_regulation_reference: dadosCompliance.local_regulation_reference.trim() || null,
+          legal_review_status: dadosCompliance.legal_review_status,
+          legal_review_notes: dadosCompliance.legal_review_notes.trim() || null,
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+          validated_by: validada ? session.user.id : null,
+          validated_at: validada ? new Date().toISOString() : null,
+        },
+        { onConflict: "tenant_id" },
+      );
+
+      if (error) throw error;
+      toast.success("Parâmetros de compras e regulamento municipal salvos com sucesso!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Tente novamente.";
+      toast.error("Erro ao salvar parâmetros: " + msg);
+    } finally {
+      setSalvandoCompliance(false);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -724,6 +827,18 @@ function Configuracoes() {
                         className="shrink-0 text-[10px] font-normal"
                       >
                         {dadosSecretaria.cnpj ? "CNPJ OK" : "Pendente"}
+                      </Badge>
+                    )}
+                    {c.id === "compras" && (
+                      <Badge
+                        variant={
+                          dadosCompliance.normative_basis !== "pending" ? "outline" : "secondary"
+                        }
+                        className="shrink-0 text-[10px] font-normal"
+                      >
+                        {dadosCompliance.normative_basis === "local_regulation"
+                          ? "Decreto Local"
+                          : "Padrão Federal"}
                       </Badge>
                     )}
                     {c.id === "documentos" && (
@@ -1057,6 +1172,275 @@ function Configuracoes() {
                 </CardContent>
               </Card>
             )}
+          </section>
+
+          <section hidden={categoria !== "compras"} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Scale className="h-5 w-5 text-primary" />
+                  Regulamento Municipal & Instrução Processual
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Estes parâmetros definem a fundamentação legal padrão aplicada automaticamente aos
+                  processos de dispensa, pregão e cotação da Secretaria de Saúde.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={aoSalvarCompliance} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="normative-basis">Base Normativa Principal</Label>
+                      <Select
+                        value={dadosCompliance.normative_basis}
+                        onValueChange={(val) =>
+                          setDadosCompliance((prev) => ({
+                            ...prev,
+                            normative_basis:
+                              val as DadosComplianceFormulario["normative_basis"],
+                          }))
+                        }
+                        disabled={!podeEditarCompras}
+                      >
+                        <SelectTrigger id="normative-basis">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in65_2021">
+                            IN SEGES/ME nº 65/2021 (Padrão Federal)
+                          </SelectItem>
+                          <SelectItem value="local_regulation">
+                            Regulamento Municipal Próprio (Decreto)
+                          </SelectItem>
+                          <SelectItem value="other">Outra Legislação Específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="in65-applicability">
+                        Aplicação da IN 65/2021 (Pesquisa de Preços)
+                      </Label>
+                      <Select
+                        value={dadosCompliance.in65_applicability}
+                        onValueChange={(val) =>
+                          setDadosCompliance((prev) => ({
+                            ...prev,
+                            in65_applicability:
+                              val as DadosComplianceFormulario["in65_applicability"],
+                          }))
+                        }
+                        disabled={!podeEditarCompras}
+                      >
+                        <SelectTrigger id="in65-applicability">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="applicable">Aplicável Diretamente</SelectItem>
+                          <SelectItem value="adopted">
+                            Adotada por Remissão no Regulamento Local
+                          </SelectItem>
+                          <SelectItem value="not_applicable">
+                            Não Aplicável (Exige justificativa)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {dadosCompliance.normative_basis === "local_regulation" && (
+                    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="local-regulation-name">
+                          Nome / Número do Decreto Municipal *
+                        </Label>
+                        <Input
+                          id="local-regulation-name"
+                          placeholder="Ex: Decreto Municipal nº 4.120/2023"
+                          value={dadosCompliance.local_regulation_name}
+                          onChange={(e) =>
+                            setDadosCompliance((prev) => ({
+                              ...prev,
+                              local_regulation_name: e.target.value,
+                            }))
+                          }
+                          disabled={!podeEditarCompras}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="local-regulation-ref">
+                          Artigo / Dispositivo de Referência *
+                        </Label>
+                        <Input
+                          id="local-regulation-ref"
+                          placeholder="Ex: Art. 18 - Regulamento de Cotações da Saúde"
+                          value={dadosCompliance.local_regulation_reference}
+                          onChange={(e) =>
+                            setDadosCompliance((prev) => ({
+                              ...prev,
+                              local_regulation_reference: e.target.value,
+                            }))
+                          }
+                          disabled={!podeEditarCompras}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="legal-notes">
+                      Parecer Prévio / Notas da Assessoria Jurídica / PGM
+                    </Label>
+                    <Textarea
+                      id="legal-notes"
+                      rows={3}
+                      placeholder="Registre aqui a referência ao parecer referencial ou notas da Procuradoria Jurídica do Município..."
+                      value={dadosCompliance.legal_review_notes}
+                      onChange={(e) =>
+                        setDadosCompliance((prev) => ({
+                          ...prev,
+                          legal_review_notes: e.target.value,
+                        }))
+                      }
+                      disabled={!podeEditarCompras}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Homologação Jurídica:</span>
+                      <Badge
+                        variant={
+                          dadosCompliance.legal_review_status === "validated"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {dadosCompliance.legal_review_status === "validated"
+                          ? "Validada"
+                          : "Em análise / Pendente"}
+                      </Badge>
+                      {podeEditarCompras && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() =>
+                            setDadosCompliance((prev) => ({
+                              ...prev,
+                              legal_review_status:
+                                prev.legal_review_status === "validated"
+                                  ? "pending"
+                                  : "validated",
+                            }))
+                          }
+                        >
+                          {dadosCompliance.legal_review_status === "validated"
+                            ? "Revogar Validação"
+                            : "Atestar Conformidade"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {podeEditarCompras && (
+                      <Button type="submit" disabled={salvandoCompliance}>
+                        {salvandoCompliance ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        {salvandoCompliance ? "Salvando..." : "Salvar Regulamento"}
+                      </Button>
+                    )}
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  Teto de Alçadas e Prazos Oficiais — Lei Federal nº 14.133/2021
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Valores e prazos parametrizados e atualizados pelo Decreto Federal nº 12.343/2024
+                  utilizados automaticamente pelo sistema nos alertas e travas de processos.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Dispensa — Compras e Serviços (Saúde)
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-foreground">
+                      R${" "}
+                      {LIMITES_LEI_14133.dispensaComprasServicos.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Art. 75, II · Limite anual por órgão
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Dispensa — Obras e Engenharia</p>
+                    <p className="mt-1 text-lg font-bold text-foreground">
+                      R${" "}
+                      {LIMITES_LEI_14133.dispensaObrasEngenharia.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Art. 75, I · Serviços de engenharia e manutenção
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Validade da Cotação Direta</p>
+                    <p className="mt-1 text-lg font-bold text-foreground">
+                      {LIMITES_LEI_14133.validadeCotacaoFornecedorMeses} meses
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      IN 65/2021, art. 5º · Cotações de fornecedores
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">Validade do Painel de Preços</p>
+                    <p className="mt-1 text-lg font-bold text-foreground">
+                      {LIMITES_LEI_14133.validadePainelPrecosMeses} meses
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      IN 65/2021, art. 5º · Compras públicas similares
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Vigência Máxima — Contratos Contínuos
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-foreground">Até 10 anos</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Art. 107 · 120 meses para serviços contínuos
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Vigência Máxima — Ata de Registro (ARP)
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-foreground">Até 2 anos</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Art. 84 · 1 ano prorrogável por mais 1 ano
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           <section hidden={categoria !== "documentos"} className="space-y-6">

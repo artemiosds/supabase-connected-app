@@ -254,3 +254,68 @@ export function calcularProntidaoSecretaria(params: {
     resumoPendencias: pendencias,
   };
 }
+
+/** Valores e prazos oficiais da Lei nº 14.133/2021 atualizados pelo Decreto Federal nº 12.343/2024. */
+export const LIMITES_LEI_14133 = {
+  dispensaComprasServicos: 62725.58, // Art. 75, II
+  dispensaObrasEngenharia: 125451.15, // Art. 75, I
+  validadeCotacaoFornecedorMeses: 6, // IN 65/2021, art. 5º, § 2º
+  validadePainelPrecosMeses: 12, // IN 65/2021, art. 5º, § 1º
+  maxVigenciaContinuosMeses: 120, // Art. 107 (10 anos)
+  maxVigenciaAtaMeses: 24, // Art. 84 (2 anos)
+} as const;
+
+export type DadosComplianceFormulario = {
+  normative_basis: "pending" | "in65_2021" | "local_regulation" | "other";
+  in65_applicability: "pending" | "applicable" | "adopted" | "not_applicable";
+  local_regulation_name: string;
+  local_regulation_reference: string;
+  legal_review_status: "pending" | "validated";
+  legal_review_notes: string;
+};
+
+/**
+ * Valida a consistência das regras normativas conforme as constraints do banco de dados:
+ * - Se for regulamento local, nome e artigo de referência são obrigatórios.
+ * - Se IN 65 for declarada "not_applicable", a justificativa nas notas jurídicas é obrigatória.
+ */
+export function validarConformidadeContratacao(
+  dados: DadosComplianceFormulario,
+): { valido: boolean; erros: string[] } {
+  const erros: string[] = [];
+
+  if (dados.normative_basis === "local_regulation") {
+    if (!dados.local_regulation_name.trim()) {
+      erros.push("Informe o nome ou número do Decreto/Regulamento Municipal.");
+    }
+    if (!dados.local_regulation_reference.trim()) {
+      erros.push("Informe o dispositivo ou artigo de referência da norma municipal.");
+    }
+  }
+
+  if (dados.in65_applicability === "not_applicable" && !dados.legal_review_notes.trim()) {
+    erros.push(
+      "Ao indicar que a IN 65/2021 não se aplica, é obrigatório registrar a justificativa jurídica.",
+    );
+  }
+
+  return {
+    valido: erros.length === 0,
+    erros,
+  };
+}
+
+/** Formata a descrição amigável da base normativa para exibição. */
+export function formatarBaseNormativa(basis: string | null | undefined): string {
+  switch (basis) {
+    case "in65_2021":
+      return "IN SEGES/ME nº 65/2021 (Federal)";
+    case "local_regulation":
+      return "Regulamento Municipal Próprio";
+    case "other":
+      return "Outra norma jurídica";
+    case "pending":
+    default:
+      return "Padrão Federal / Pendente";
+  }
+}
