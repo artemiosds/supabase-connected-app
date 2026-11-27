@@ -110,6 +110,9 @@ function Usuarios() {
   const { selecionado } = useTenant();
   const { session } = useAuth();
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [cargaPorUsuario, setCargaPorUsuario] = useState<
+    Record<string, { processos: number; contratos: number }>
+  >({});
   const [papeis, setPapeis] = useState<TenantRole[]>([]);
   const [convites, setConvites] = useState<Convite[]>([]);
   const [capacidades, setCapacidades] = useState<Capabilities>({
@@ -166,6 +169,7 @@ function Usuarios() {
   const carregar = useCallback(async () => {
     if (!selecionado?.id) {
       setMembros([]);
+      setCargaPorUsuario({});
       setPapeis([]);
       setConvites([]);
       setCanManageRoles(false);
@@ -222,6 +226,49 @@ function Usuarios() {
       setMembros(allowed.can_view ? ((membershipResult.data ?? []) as unknown as Membro[]) : []);
       setPapeis(roleResult.data ?? []);
       setConvites(allowed.can_view ? (invitationResult.data ?? []) : []);
+      if (allowed.can_view) {
+        Promise.all([
+          db
+            .from("procurement_processes")
+            .select("responsible_user_id")
+            .eq("tenant_id", selecionado.id)
+            .neq("status", "concluido")
+            .neq("status", "arquivado")
+            .not("responsible_user_id", "is", null),
+          db
+            .from("contracts")
+            .select("manager_user_id,inspector_user_id")
+            .eq("tenant_id", selecionado.id)
+            .eq("status", "vigente"),
+        ])
+          .then(([procRes, contrRes]) => {
+            const map: Record<string, { processos: number; contratos: number }> = {};
+            if (!procRes.error && procRes.data) {
+              for (const p of procRes.data) {
+                if (!p.responsible_user_id) continue;
+                const prev = map[p.responsible_user_id] ?? { processos: 0, contratos: 0 };
+                map[p.responsible_user_id] = { ...prev, processos: prev.processos + 1 };
+              }
+            }
+            if (!contrRes.error && contrRes.data) {
+              for (const c of contrRes.data) {
+                const ids = new Set(
+                  [c.manager_user_id, c.inspector_user_id].filter((id): id is string =>
+                    Boolean(id),
+                  ),
+                );
+                for (const uid of ids) {
+                  const prev = map[uid] ?? { processos: 0, contratos: 0 };
+                  map[uid] = { ...prev, contratos: prev.contratos + 1 };
+                }
+              }
+            }
+            setCargaPorUsuario(map);
+          })
+          .catch(() => setCargaPorUsuario({}));
+      } else {
+        setCargaPorUsuario({});
+      }
       const roleManagement = await db.rpc("get_tenant_role_management_capability", {
         p_tenant_id: selecionado.id,
       });
@@ -255,6 +302,7 @@ function Usuarios() {
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setMembros([]);
+      setCargaPorUsuario({});
       setPapeis([]);
       setConvites([]);
       setCanManageRoles(false);
@@ -794,6 +842,7 @@ function Usuarios() {
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableHead className="pl-5">Profissional</TableHead>
                           <TableHead>Perfil de acesso</TableHead>
+                          <TableHead className="hidden md:table-cell">Carga ativa</TableHead>
                           <TableHead>Situação</TableHead>
                           <TableHead className="w-16 pr-5 text-right">Ações</TableHead>
                         </TableRow>
@@ -801,7 +850,7 @@ function Usuarios() {
                       <TableBody>
                         {loading ? (
                           <TableRow>
-                            <TableCell colSpan={4} className="py-12 text-center">
+                            <TableCell colSpan={5} className="py-12 text-center">
                               <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
                               <span className="mt-2 block text-xs text-muted-foreground">
                                 Carregando equipe...
@@ -810,7 +859,7 @@ function Usuarios() {
                           </TableRow>
                         ) : lista.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={4} className="py-12 text-center">
+                            <TableCell colSpan={5} className="py-12 text-center">
                               <UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" />
                               <p className="mt-2 font-medium">Nenhum usuário encontrado</p>
                               <p className="mt-1 text-sm text-muted-foreground">
@@ -858,6 +907,19 @@ function Usuarios() {
                                       </Badge>
                                     ))}
                                   </div>
+                                </TableCell>
+                                <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
+                                  {(() => {
+                                    const carga = cargaPorUsuario[member.user_id];
+                                    if (!carga || (carga.processos === 0 && carga.contratos === 0)) {
+                                      return <span>Sem atribuições ativas</span>;
+                                    }
+                                    return (
+                                      <span className="font-medium text-foreground">
+                                        {carga.processos} proc. · {carga.contratos} contr.
+                                      </span>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell>
                                   <Badge
