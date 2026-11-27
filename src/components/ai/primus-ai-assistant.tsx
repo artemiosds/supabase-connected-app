@@ -37,6 +37,97 @@ const NEEDS_RECORD = new Set<AiFeatureKey>([
   "delivery_receiving",
 ]);
 
+const ATALHOS_PROMPT: Record<AiFeatureKey, Array<{ label: string; prompt: string }>> = {
+  assistant: [
+    {
+      label: "Fluxo Lei 14.133",
+      prompt: "Resuma o fluxo completo da contratação na Lei nº 14.133/2021 e os documentos obrigatórios de cada etapa.",
+    },
+    {
+      label: "Ofício formal",
+      prompt: "Redija um ofício administrativo formal da Secretaria Municipal de Saúde pronto para assinatura do Ordenador de Despesas.",
+    },
+  ],
+  documents: [
+    {
+      label: "Gerar DFD",
+      prompt: "Elabore o Documento de Formalização da Demanda (DFD) completo com base nos dados deste processo, conforme Lei nº 14.133/2021.",
+    },
+    {
+      label: "Gerar ETP",
+      prompt: "Elabore o Estudo Técnico Preliminar (ETP) completo com justificativa, levantamento de mercado, estimativa e riscos para este processo.",
+    },
+    {
+      label: "Gerar TR",
+      prompt: "Elabore a minuta completa do Termo de Referência (TR) com objeto, especificações, obrigações, fiscalização e critérios de pagamento.",
+    },
+    {
+      label: "Dispensa (Art. 75)",
+      prompt: "Redija a justificativa e razão da escolha/preço para contratação direta por dispensa de licitação (Art. 75 da Lei nº 14.133/2021).",
+    },
+    {
+      label: "Mapa de Riscos",
+      prompt: "Monte a Matriz / Mapa de Riscos da contratação com riscos de planejamento, seleção e gestão contratual e medidas mitigadoras.",
+    },
+  ],
+  price_research: [
+    {
+      label: "Analisar cesta",
+      prompt: "Analise as cotações e referências deste processo, aponte possíveis distorções e sugira justificativa conforme IN SEGES/ME nº 65/2021.",
+    },
+    {
+      label: "Nota técnica de preços",
+      prompt: "Redija uma nota técnica resumindo a metodologia da pesquisa de preços e a adequação ao valor estimado.",
+    },
+  ],
+  supplier_documents: [
+    {
+      label: "Checar Art. 68",
+      prompt: "Verifique a regularidade fiscal e trabalhista (Art. 68 da Lei nº 14.133/2021) deste fornecedor e liste o que precisa ser regularizado.",
+    },
+    {
+      label: "Cobrar certidão",
+      prompt: "Redija uma notificação formal solicitando ao fornecedor a atualização imediata das certidões vencidas ou pendentes.",
+    },
+  ],
+  contract_monitoring: [
+    {
+      label: "Prorrogação (Art. 107)",
+      prompt: "Elabore uma minuta de manifestação técnica para prorrogação de vigência contratual (Art. 107 da Lei nº 14.133/2021).",
+    },
+    {
+      label: "Notificar vencimento",
+      prompt: "Redija um ofício ao fornecedor consultando sobre o interesse na renovação do contrato e manutenção das condições vantajosas.",
+    },
+  ],
+  delivery_receiving: [
+    {
+      label: "Notificar atraso",
+      prompt: "Redija uma notificação formal ao fornecedor por atraso/inconformidade na entrega da Ordem de Fornecimento, com prazo para regularização.",
+    },
+    {
+      label: "Relatório do fiscal",
+      prompt: "Elabore um relatório sucinto de fiscalização contratual (Art. 117) registrando o acompanhamento das entregas.",
+    },
+  ],
+  tasks: [
+    {
+      label: "Prioridades de hoje",
+      prompt: "Liste e priorize as pendências mais urgentes da Secretaria para atuação imediata hoje.",
+    },
+  ],
+  email_alerts: [
+    {
+      label: "E-mail ao fornecedor",
+      prompt: "Redija um e-mail institucional claro e formal comunicando pendência documental ou prazo contratual ao fornecedor.",
+    },
+    {
+      label: "E-mail ao fiscal",
+      prompt: "Redija um e-mail de alerta ao fiscal do contrato sobre vencimento próximo e providências necessárias.",
+    },
+  ],
+};
+
 async function readFunctionError(
   error: { message: string; context?: unknown } | null,
 ): Promise<string> {
@@ -68,6 +159,18 @@ export function PrimusAiAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [sending, setSending] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!sending) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [sending]);
   const requestGeneration = useRef(0);
   const contextKey = `${selecionado?.id ?? ""}|${feature}|${recordId}|${open}`;
   const currentContextKey = useRef(contextKey);
@@ -439,7 +542,7 @@ export function PrimusAiAssistant() {
                       {message.role === "user" ? "Você" : "Assistente Primus — rascunho"}
                     </p>
                     <div className="whitespace-pre-wrap">{message.content}</div>
-                    {message.role === "assistant" && feature === "documents" && (
+                    {message.role === "assistant" && message.content.trim().length > 60 && (
                       <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
                         <Button
                           type="button"
@@ -466,15 +569,36 @@ export function PrimusAiAssistant() {
                 {sending && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Preparando resposta…
+                    Preparando resposta com os dados da Secretaria…{" "}
+                    {elapsedSeconds > 0 ? `(${elapsedSeconds}s)` : ""}
                   </div>
                 )}
               </div>
             </ScrollArea>
-            <div className="border-t px-5 py-3 text-xs text-muted-foreground">
-              A solicitação e o contexto selecionado são processados pelo provedor OpenAI
-              configurado pela plataforma. Revise o resultado e confirme normas, valores e dados
-              antes de usar.
+            <div className="space-y-2 border-t px-5 py-3 text-xs text-muted-foreground">
+              {feature && ATALHOS_PROMPT[feature]?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-foreground">Atalhos rápidos:</span>
+                  {ATALHOS_PROMPT[feature].map((atalho) => (
+                    <Button
+                      key={atalho.label}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-6 px-2 text-[11px]"
+                      disabled={sending}
+                      onClick={() => setPrompt(atalho.prompt)}
+                    >
+                      {atalho.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              <p>
+                A solicitação e o contexto selecionado são processados pelo provedor configurado.
+                Revise o resultado e confirme normas, valores e dados antes de usar. (Dica: Ctrl+Enter
+                para enviar)
+              </p>
             </div>
             <DialogFooter className="flex-col gap-2 border-t p-4 sm:flex-row sm:justify-between">
               <Button
@@ -494,7 +618,20 @@ export function PrimusAiAssistant() {
                 <Textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
-                  placeholder="Descreva o que precisa…"
+                  onKeyDown={(event) => {
+                    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                      event.preventDefault();
+                      if (
+                        prompt.trim() &&
+                        feature &&
+                        !sending &&
+                        !(NEEDS_RECORD.has(feature) && !recordId)
+                      ) {
+                        void event.currentTarget.form?.requestSubmit();
+                      }
+                    }
+                  }}
+                  placeholder="Descreva o que precisa ou clique em um atalho acima…"
                   maxLength={3000}
                   rows={2}
                   className="min-h-10 resize-y"

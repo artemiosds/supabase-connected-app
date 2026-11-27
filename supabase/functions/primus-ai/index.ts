@@ -589,37 +589,42 @@ Deno.serve(async (request: Request) => {
             ? null
             : (result.inputTokens * inputRate + result.outputTokens * outputRate) / 1_000_000;
 
-        const { error: usageError } = await adminClient.from("platform_ai_usage").insert({
-          tenant_id: tenantId,
-          provider_id: provider.id,
-          actor_id: authData.user.id,
-          feature: featureKey,
-          model: provider.model,
-          status: "success",
-          input_tokens: result.inputTokens,
-          output_tokens: result.outputTokens,
-          estimated_cost_usd: estimatedCost,
-        });
-        if (usageError) console.error("Falha ao registrar métricas de IA:", usageError.message);
-
-        const { error: auditError } = await adminClient.from("audit_events").insert({
-          tenant_id: tenantId,
-          actor_id: authData.user.id,
-          action: "AI_ASSISTANT_USED",
-          entity: "ai_assistant",
-          entity_id: featureKey,
-          details: {
-            feature: featureKey,
+        const [usageInsert, auditInsert] = await Promise.all([
+          adminClient.from("platform_ai_usage").insert({
+            tenant_id: tenantId,
             provider_id: provider.id,
-            provider: provider.name,
+            actor_id: authData.user.id,
+            feature: featureKey,
             model: provider.model,
+            status: "success",
             input_tokens: result.inputTokens,
             output_tokens: result.outputTokens,
             estimated_cost_usd: estimatedCost,
-            context_record: typeof body.record_id === "string" ? "selected" : "tenant_summary",
-          },
-        });
-        if (auditError) console.error("Falha ao auditar uso de IA:", auditError.message);
+          }),
+          adminClient.from("audit_events").insert({
+            tenant_id: tenantId,
+            actor_id: authData.user.id,
+            action: "AI_ASSISTANT_USED",
+            entity: "ai_assistant",
+            entity_id: featureKey,
+            details: {
+              feature: featureKey,
+              provider_id: provider.id,
+              provider: provider.name,
+              model: provider.model,
+              input_tokens: result.inputTokens,
+              output_tokens: result.outputTokens,
+              estimated_cost_usd: estimatedCost,
+              context_record: typeof body.record_id === "string" ? "selected" : "tenant_summary",
+            },
+          }),
+        ]);
+        if (usageInsert.error) {
+          console.error("Falha ao registrar métricas de IA:", usageInsert.error.message);
+        }
+        if (auditInsert.error) {
+          console.error("Falha ao auditar uso de IA:", auditInsert.error.message);
+        }
 
         return response(
           { text: result.text, feature: featureKey, provider: provider.name },
