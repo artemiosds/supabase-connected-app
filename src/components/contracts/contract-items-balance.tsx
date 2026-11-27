@@ -43,8 +43,6 @@ import {
 } from "@/lib/contract-dossier-pdf-helper";
 import { filtrarItensCriticosParaReposicao } from "@/lib/stock-replenishment-helper";
 import { buildSupplyOrderDocumentText } from "@/lib/supply-order-pdf-helper";
-import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
-import { carregarTimbradoSecretaria } from "@/lib/document-branding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Contract = {
@@ -350,6 +348,8 @@ export function ContractItemsBalance(props: {
     setReprintingReference(order.referenceNumber);
     try {
       const { documentText, tenantName } = await montarTextoOrdemFornecimento(order);
+      const [{ carregarTimbradoSecretaria }, { buildDocxFromText, docxToModel, renderPdf }] =
+        await Promise.all([import("@/lib/document-branding"), import("@/lib/docx-engine")]);
       const branding = await carregarTimbradoSecretaria(props.tenantId, tenantName);
       const docxBytes = await buildDocxFromText(documentText, "Ordem de Fornecimento");
       const model = await docxToModel(docxBytes);
@@ -563,6 +563,8 @@ export function ContractItemsBalance(props: {
     setGerandoDossie(true);
     try {
       const { documentText, tenantName, contractNumber } = await montarTextoDossieTce();
+      const [{ carregarTimbradoSecretaria }, { buildDocxFromText, docxToModel, renderPdf }] =
+        await Promise.all([import("@/lib/document-branding"), import("@/lib/docx-engine")]);
       const branding = await carregarTimbradoSecretaria(props.tenantId, tenantName);
       if (!inScope()) {
         throw new Error("A Secretaria ou a sessão mudou durante a geração.");

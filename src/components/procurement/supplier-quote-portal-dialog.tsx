@@ -29,8 +29,6 @@ import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj } from "@/lib/cnpj";
 import { formatarData, formatarMoeda } from "@/lib/contratacao";
 import { db } from "@/lib/db";
-import { carregarTimbradoSecretaria } from "@/lib/document-branding";
-import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
 import {
   buildFormalQuotePdfText,
   buildQuotePortalUrl,
@@ -287,6 +285,8 @@ export function SupplierQuotePortalDialog({
         payload,
       });
 
+      const [{ carregarTimbradoSecretaria }, { buildDocxFromText, docxToModel, renderPdf }] =
+        await Promise.all([import("@/lib/document-branding"), import("@/lib/docx-engine")]);
       const branding = await carregarTimbradoSecretaria(tenantId, tenantName);
       const docxBytes = await buildDocxFromText(
         formalText,

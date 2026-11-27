@@ -7,8 +7,6 @@ import { carregarTodasAsPaginas, db } from "@/lib/db";
 import { calcularSaldoDisponivel } from "@/lib/contract-item-balance";
 import { validateSupplyOrder, type SupplyOrderItemCandidate } from "@/lib/supply-order-helper";
 import { formatarMoeda } from "@/lib/contratacao";
-import { buildDocxFromText, docxToModel, renderPdf } from "@/lib/docx-engine";
-import { carregarTimbradoSecretaria } from "@/lib/document-branding";
 import {
   buildSupplyOrderDocumentText,
   type SupplyOrderPdfPayload,
@@ -255,6 +253,8 @@ export function SupplyOrderDialog({
         throw new Error("Não foi possível confirmar o fornecedor vinculado ao contrato.");
       if (processResult.error) throw new Error("Não foi possível confirmar o processo de origem.");
       if (!inScope()) throw new Error("A Secretaria ou a sessão mudou durante a emissão do termo.");
+      const [{ carregarTimbradoSecretaria }, { buildDocxFromText, docxToModel, renderPdf }] =
+        await Promise.all([import("@/lib/document-branding"), import("@/lib/docx-engine")]);
       const branding = await carregarTimbradoSecretaria(tenantId, tenantResult.data.name);
       const text = buildSupplyOrderDocumentText({
         tenantName: tenantResult.data.name,
