@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   FilePlus2,
   History,
   Pencil,
@@ -20,6 +21,8 @@ import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import type { CsvColumn } from "@/lib/csv-export";
 import { ContractItemsBalance } from "@/components/contracts/contract-items-balance";
+import { ContractInspectionsPanel } from "@/components/contracts/contract-inspections-panel";
+import { ContractReadjustmentCalculator } from "@/components/contracts/contract-readjustment-calculator";
 import { RenewalWorkspace } from "@/components/contracts/renewal-workspace";
 import { ContractExtensionDialog } from "@/components/contracts/contract-extension-dialog";
 import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
@@ -188,7 +191,9 @@ function Contratos() {
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
   const [prorrogacaoDe, setProrrogacaoDe] = useState<Contrato | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "alerta" | NivelAlerta>("todos");
-  const [aba, setAba] = useState<"contratos" | "aditivos" | "renovacoes">("contratos");
+  const [aba, setAba] = useState<"contratos" | "aditivos" | "renovacoes" | "fiscalizacao">(
+    "contratos",
+  );
   const [busca, setBusca] = useState("");
   const [tipoAditivo, setTipoAditivo] = useState("todos");
   const [seletorAberto, setSeletorAberto] = useState(false);
@@ -539,6 +544,15 @@ function Contratos() {
         >
           Central de renovações
         </Button>
+        <Button
+          variant={aba === "fiscalizacao" ? "default" : "ghost"}
+          onClick={() => {
+            setAba("fiscalizacao");
+            setBusca("");
+          }}
+        >
+          <ClipboardCheck className="h-4 w-4" /> Livro de Fiscalização (Art. 117)
+        </Button>
       </div>
 
       <div className="relative max-w-lg">
@@ -574,7 +588,32 @@ function Contratos() {
         </Alert>
       )}
 
-      {aba === "renovacoes" ? (
+      {aba === "fiscalizacao" ? (
+        loadingAtual ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <ContractInspectionsPanel
+            key={selecionado.id}
+            tenantId={selecionado.id}
+            userId={session?.user.id}
+            userName={
+              typeof session?.user.user_metadata?.["full_name"] === "string"
+                ? session.user.user_metadata["full_name"]
+                : session?.user.email
+            }
+            orgaoNome={selecionado.nome}
+            contratos={listaAtual.map((c) => ({
+              id: c.id,
+              number: c.number,
+              object_description: c.object,
+              supplier_name: nomeFornecedor(c.supplier_id),
+              responsible_name: c.inspector_name || c.manager_name || null,
+              status: c.status,
+            }))}
+            busca={busca}
+          />
+        )
+      ) : aba === "renovacoes" ? (
         loadingAtual ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
@@ -1659,6 +1698,17 @@ function NovoAditivo(props: {
                 onChange={(e) => setNovaData(e.target.value)}
               />
             </Campo>
+          )}
+          {tipo === "reajuste" && props.contrato && (
+            <ContractReadjustmentCalculator
+              valorBase={Number(props.contrato.total_value)}
+              onApply={(valorReajuste, memorialCalculo) => {
+                setValor(valorReajuste.toFixed(2).replace(".", ","));
+                setObservacoes((atual) =>
+                  atual.trim() ? `${atual.trim()}\n\n${memorialCalculo}` : memorialCalculo,
+                );
+              }}
+            />
           )}
           {precisaValor && (
             <Campo

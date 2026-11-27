@@ -198,6 +198,83 @@ export type Database = {
           },
         ]
       }
+      contract_inspection_records: {
+        Row: {
+          contract_id: string
+          created_at: string
+          created_by: string
+          defense_deadline: string | null
+          description: string
+          id: string
+          inspector_name: string
+          legal_basis: string | null
+          occurred_at: string
+          record_number: string
+          record_type: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          supplier_response: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          created_by: string
+          defense_deadline?: string | null
+          description: string
+          id?: string
+          inspector_name: string
+          legal_basis?: string | null
+          occurred_at?: string
+          record_number: string
+          record_type: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          supplier_response?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          defense_deadline?: string | null
+          description?: string
+          id?: string
+          inspector_name?: string
+          legal_basis?: string | null
+          occurred_at?: string
+          record_number?: string
+          record_type?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          supplier_response?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_inspection_records_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_item_movements: {
         Row: {
           contract_item_id: string

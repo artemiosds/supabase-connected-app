@@ -34,6 +34,7 @@ const ENTITY_LABELS: Record<string, string> = {
   contract_movements: "Movimentação de saldo (OF)",
   contract_amendments: "Termo aditivo",
   contract_renewals: "Prorrogação contratual",
+  contract_inspection_records: "Livro de fiscalização (art. 117)",
   ai_extraction_jobs: "Extração inteligente de documento",
   invoices: "Fatura / Cobrança",
   platform_support_sessions: "Sessão de suporte técnico",
@@ -63,6 +64,8 @@ const ACTION_LABELS: Record<string, string> = {
   "annual_demand.rejected": "Demanda PCA devolvida para ajuste",
   "annual_demand.cancelled": "Demanda PCA cancelada",
   "annual_demand.converted": "Demanda PCA convertida em processo",
+  "contract_inspection.created": "Registro no livro de fiscalização",
+  "contract_inspection.updated": "Atualização no livro de fiscalização",
   "platform_support.session_started": "Sessão de suporte iniciada",
   "platform_support.session_ended": "Sessão de suporte encerrada",
 };
