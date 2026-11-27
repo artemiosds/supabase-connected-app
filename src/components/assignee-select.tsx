@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db, carregarTodasAsPaginas } from "@/lib/db";
-type Member = { user_id: string; profiles: { full_name: string } | null };
+export type AssigneeMember = { user_id: string; profiles: { full_name: string } | null };
+type Member = AssigneeMember;
 export function useAssignees(tenant?: string) {
   const [result, setResult] = useState<{ tenant: string; rows: Member[] | null }>();
   useEffect(() => {

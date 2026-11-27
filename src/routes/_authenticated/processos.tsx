@@ -6,6 +6,8 @@ import { PublicPriceSearchDialog } from "@/components/procurement/public-price-s
 import { SupplierQuotePortalDialog } from "@/components/procurement/supplier-quote-portal-dialog";
 import { BatchItemsDialog } from "@/components/procurement/batch-items-dialog";
 import { StageTransitionDialog } from "@/components/procurement/stage-transition-dialog";
+import { ProcessWorkflowCockpit } from "@/components/procurement/process-workflow-cockpit";
+import { mapearDocumentoParaEtapaChecklist } from "@/lib/process-stage-transition-helper";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import {
@@ -34,6 +36,7 @@ import {
   ExternalLink,
   Eye,
   Download,
+  HandHelping,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
@@ -199,21 +202,62 @@ function Processos() {
   const [dadosAbertos, setDadosAbertos] = useState(false);
   const [transicaoAberta, setTransicaoAberta] = useState(false);
   const [totalItensProcurement, setTotalItensProcurement] = useState(0);
+  const [totalDotacoes, setTotalDotacoes] = useState(0);
+  const [itensSemPrecoAprovado, setItensSemPrecoAprovado] = useState(0);
+  const [docsAssinadosStages, setDocsAssinadosStages] = useState<EtapaId[]>([]);
   useEffect(() => {
     let ativo = true;
     if (!abertoId || !selecionado?.id) {
       setTotalItensProcurement(0);
+      setTotalDotacoes(0);
+      setItensSemPrecoAprovado(0);
+      setDocsAssinadosStages([]);
       return;
     }
-    db.from("procurement_items")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", selecionado.id)
-      .eq("process_id", abertoId)
-      .eq("is_active", true)
-      .then(({ count, error: countError }) => {
-        if (!ativo) return;
-        setTotalItensProcurement(countError ? 0 : (count ?? 0));
-      });
+    const tenantId = selecionado.id;
+    Promise.all([
+      db
+        .from("procurement_items")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("process_id", abertoId)
+        .eq("is_active", true),
+      db
+        .from("procurement_budget_allocations")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("process_id", abertoId),
+      db
+        .from("procurement_price_approvals")
+        .select("item_id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("process_id", abertoId),
+      db
+        .from("generated_documents")
+        .select("document_type, status")
+        .eq("tenant_id", tenantId)
+        .eq("process_id", abertoId)
+        .eq("status", "signed"),
+    ]).then(([itemsRes, dotacoesRes, approvalsRes, docsRes]) => {
+      if (!ativo) return;
+      const totalItems = itemsRes.error ? 0 : (itemsRes.count ?? 0);
+      const totalApprovals = approvalsRes.error ? 0 : (approvalsRes.count ?? 0);
+      setTotalItensProcurement(totalItems);
+      setTotalDotacoes(dotacoesRes.error ? 0 : (dotacoesRes.count ?? 0));
+      setItensSemPrecoAprovado(Math.max(0, totalItems - totalApprovals));
+      if (!docsRes.error && docsRes.data) {
+        const stages = Array.from(
+          new Set(
+            docsRes.data
+              .map((d) => mapearDocumentoParaEtapaChecklist(d.document_type ?? ""))
+              .filter((s): s is EtapaId => s !== null),
+          ),
+        );
+        setDocsAssinadosStages(stages);
+      } else {
+        setDocsAssinadosStages([]);
+      }
+    });
     return () => {
       ativo = false;
     };
@@ -404,6 +448,107 @@ function Processos() {
         return;
       }
       setItens((s) => s.map((x) => (x.id === item.id ? { ...x, is_done: !x.is_done } : x)));
+    } finally {
+      acaoLockRef.current = false;
+    }
+  }
+
+  async function assumirProcesso(processo: Processo) {
+    if (!selecionado?.id || !userId || !docCaps.can_update || acaoLockRef.current) return;
+    acaoLockRef.current = true;
+    try {
+      const meuNome =
+        members?.find((m) => m.user_id === userId)?.profiles?.full_name ??
+        processo.responsible_name ??
+        null;
+      const { error } = await db
+        .from("procurement_processes")
+        .update({
+          responsible_user_id: userId,
+          responsible_name: meuNome,
+          updated_by: userId,
+        })
+        .eq("id", processo.id)
+        .eq("tenant_id", selecionado.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setProcessos((s) =>
+        s.map((p) =>
+          p.id === processo.id
+            ? { ...p, responsible_user_id: userId, responsible_name: meuNome }
+            : p,
+        ),
+      );
+      toast.success("Você assumiu a condução atual deste processo.");
+    } finally {
+      acaoLockRef.current = false;
+    }
+  }
+
+  async function assumirItemChecklist(item: Item) {
+    if (!selecionado?.id || !userId || !docCaps.can_update || acaoLockRef.current) return;
+    acaoLockRef.current = true;
+    try {
+      const meuNome =
+        members?.find((m) => m.user_id === userId)?.profiles?.full_name ??
+        item.responsible_name ??
+        null;
+      const { error } = await db
+        .from("process_items")
+        .update({
+          responsible_user_id: userId,
+          responsible_name: meuNome,
+          updated_by: userId,
+        })
+        .eq("id", item.id)
+        .eq("tenant_id", selecionado.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setItens((s) =>
+        s.map((x) =>
+          x.id === item.id
+            ? { ...x, responsible_user_id: userId, responsible_name: meuNome }
+            : x,
+        ),
+      );
+      toast.success("Item do checklist assumido.");
+    } finally {
+      acaoLockRef.current = false;
+    }
+  }
+
+  async function sincronizarDocsComChecklist(processId: string) {
+    if (!selecionado?.id || !docCaps.can_update || acaoLockRef.current) return;
+    const alvos = itens.filter(
+      (i) =>
+        i.process_id === processId &&
+        !i.is_done &&
+        docsAssinadosStages.includes(i.stage),
+    );
+    if (alvos.length === 0) return;
+    acaoLockRef.current = true;
+    try {
+      const ids = alvos.map((a) => a.id);
+      const { error } = await db
+        .from("process_items")
+        .update({ is_done: true, updated_by: userId })
+        .in("id", ids)
+        .eq("tenant_id", selecionado.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const idSet = new Set(ids);
+      setItens((s) =>
+        s.map((x) => (idSet.has(x.id) ? { ...x, is_done: true } : x)),
+      );
+      toast.success(
+        `${alvos.length} item(ns) concluído(s) automaticamente via documento(s) assinado(s).`,
+      );
     } finally {
       acaoLockRef.current = false;
     }
@@ -700,6 +845,25 @@ function Processos() {
                   {aberto.number} — {aberto.title}
                 </DialogTitle>
               </DialogHeader>
+              <ProcessWorkflowCockpit
+                stage={aberto.stage}
+                status={aberto.status}
+                itensChecklist={itens.filter((i) => i.process_id === aberto.id)}
+                responsibleName={aberto.responsible_name}
+                responsibleUserId={aberto.responsible_user_id}
+                currentUserId={userId}
+                canUpdate={docCaps.can_update}
+                docsSincronizaveisCount={
+                  itens.filter(
+                    (i) =>
+                      i.process_id === aberto.id &&
+                      !i.is_done &&
+                      docsAssinadosStages.includes(i.stage),
+                  ).length
+                }
+                onAssumirProcesso={() => void assumirProcesso(aberto)}
+                onSincronizarDocs={() => void sincronizarDocsComChecklist(aberto.id)}
+              />
               <div className="grid gap-1 text-sm sm:grid-cols-2">
                 <span>Modalidade: {MODALIDADES[aberto.modality]}</span>
                 <span>Setor: {aberto.requesting_unit || "—"}</span>
@@ -760,17 +924,34 @@ function Processos() {
                           }}
                           className="space-y-2 rounded-md border p-3"
                         >
-                          <label className="flex items-start gap-2 text-sm">
-                            <Checkbox
-                              checked={i.is_done}
-                              disabled={!docCaps.can_update}
-                              onCheckedChange={() => void alternarItem(i)}
-                              aria-label={`Concluir: ${i.title}`}
-                            />
-                            <span className={i.is_done ? "text-muted-foreground line-through" : ""}>
-                              {i.title}
-                            </span>
-                          </label>
+                          <div className="flex items-start justify-between gap-2">
+                            <label className="flex items-start gap-2 text-sm">
+                              <Checkbox
+                                checked={i.is_done}
+                                disabled={!docCaps.can_update}
+                                onCheckedChange={() => void alternarItem(i)}
+                                aria-label={`Concluir: ${i.title}`}
+                              />
+                              <span className={i.is_done ? "text-muted-foreground line-through" : ""}>
+                                {i.title}
+                              </span>
+                            </label>
+                            {!i.is_done &&
+                              docCaps.can_update &&
+                              userId &&
+                              i.responsible_user_id !== userId && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() => void assumirItemChecklist(i)}
+                                >
+                                  <HandHelping className="mr-1 h-3 w-3" />
+                                  Assumir
+                                </Button>
+                              )}
+                          </div>
                           <div className="grid gap-2 pl-7 sm:grid-cols-2">
                             <div className="space-y-1">
                               <AssigneeSelect
@@ -978,12 +1159,21 @@ function Processos() {
             processo={aberto}
             itensChecklist={itens.filter((item) => item.process_id === aberto.id)}
             totalItensProcesso={totalItensProcurement}
-            onConfirm={async ({ destino, responsible_name, due_date }) => {
+            members={members}
+            contextoExtra={{ totalDotacoes, itensSemPrecoAprovado }}
+            onConfirm={async ({
+              destino,
+              responsible_name,
+              responsible_user_id,
+              due_date,
+              handoff_note,
+            }) => {
               const { error } = await db
                 .from("procurement_processes")
                 .update({
                   stage: destino,
                   responsible_name,
+                  responsible_user_id,
                   due_date,
                   updated_by: userId,
                 })
@@ -994,7 +1184,11 @@ function Processos() {
                 return;
               }
               const nomeProxima = ETAPAS.find((e) => e.id === destino)?.nome ?? destino;
-              toast.success(`Processo avançado para ${nomeProxima} com sucesso.`);
+              toast.success(
+                handoff_note
+                  ? `Processo avançado para ${nomeProxima}. Nota: ${handoff_note}`
+                  : `Processo avançado para ${nomeProxima} com sucesso.`,
+              );
               setTransicaoAberta(false);
               void carregar();
             }}
