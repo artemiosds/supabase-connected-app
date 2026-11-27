@@ -8,7 +8,16 @@ export type DadosOrganizacaoFormulario = {
   street: string;
   municipality: string;
   state: string;
+  trade_name?: string;
+  manager_name?: string;
+  ibge_code?: string;
 };
+
+/** Limpa e formata o código IBGE municipal (7 dígitos numéricos). */
+export function normalizarCodigoIbge(codigo: string | null | undefined): string {
+  if (!codigo) return "";
+  return codigo.replace(/\D/g, "").slice(0, 7);
+}
 
 export type VagasPlano = {
   limite: number | null;
@@ -84,6 +93,9 @@ export function mesclarDadosCnpjOrganizacao(
     .join(", ")
     .slice(0, 200);
 
+  const fantasiaConsulta =
+    typeof consulta.trade_name === "string" ? consulta.trade_name.trim() : "";
+
   return {
     cnpj: atual.cnpj,
     contact_email: atual.contact_email.trim() || consulta.contact_email?.trim() || "",
@@ -91,6 +103,9 @@ export function mesclarDadosCnpjOrganizacao(
     street: atual.street.trim() || enderecoComposto,
     municipality: atual.municipality.trim() || consulta.city?.trim() || "",
     state: atual.state.trim() || consulta.state?.trim().toUpperCase() || "",
+    trade_name: atual.trade_name?.trim() || fantasiaConsulta,
+    manager_name: atual.manager_name?.trim() || "",
+    ibge_code: atual.ibge_code?.trim() || "",
   };
 }
 

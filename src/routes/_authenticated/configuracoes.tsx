@@ -29,6 +29,7 @@ import {
   listarModulosHabilitados,
   mesclarDadosCnpjOrganizacao,
   montarSugestaoTimbrado,
+  normalizarCodigoIbge,
   traduzirPlanoComercial,
   traduzirStatusComercial,
 } from "@/lib/tenant-settings-helpers";
@@ -68,6 +69,9 @@ type DadosSecretaria = {
   street: string;
   municipality: string;
   state: string;
+  trade_name: string;
+  manager_name: string;
+  ibge_code: string;
 };
 
 const DADOS_VAZIOS: DadosSecretaria = {
@@ -77,6 +81,9 @@ const DADOS_VAZIOS: DadosSecretaria = {
   street: "",
   municipality: "",
   state: "",
+  trade_name: "",
+  manager_name: "",
+  ibge_code: "",
 };
 
 type DadosTimbrado = {
@@ -229,7 +236,9 @@ function Configuracoes() {
       db.rpc("get_tenant_settings_capabilities", { p_tenant_id: selecionado.id }),
       db
         .from("tenants")
-        .select("cnpj,contact_email,contact_phone,street,municipality,state")
+        .select(
+          "cnpj,contact_email,contact_phone,street,municipality,state,trade_name,manager_name,ibge_code",
+        )
         .eq("id", selecionado.id)
         .maybeSingle(),
     ]);
@@ -247,6 +256,9 @@ function Configuracoes() {
         street: tenant.data?.street ?? "",
         municipality: tenant.data?.municipality ?? "",
         state: tenant.data?.state ?? "",
+        trade_name: tenant.data?.trade_name ?? "",
+        manager_name: tenant.data?.manager_name ?? "",
+        ibge_code: tenant.data?.ibge_code ?? "",
       });
     }
     setLoadingSecretaria(false);
@@ -545,7 +557,10 @@ function Configuracoes() {
         toast.error("Não foi possível consultar o CNPJ nas fontes públicas no momento.");
         return;
       }
-      setDadosSecretaria((atual) => mesclarDadosCnpjOrganizacao(atual, dados));
+      setDadosSecretaria((atual) => ({
+        ...atual,
+        ...mesclarDadosCnpjOrganizacao(atual, dados),
+      }));
       toast.success("Dados públicos da Receita Federal preenchidos nos campos vazios.");
     } finally {
       setConsultandoCnpj(false);
@@ -573,6 +588,9 @@ function Configuracoes() {
         street: dadosSecretaria.street.trim() || null,
         municipality: dadosSecretaria.municipality.trim() || null,
         state: dadosSecretaria.state.trim().toUpperCase() || null,
+        trade_name: dadosSecretaria.trade_name.trim() || null,
+        manager_name: dadosSecretaria.manager_name.trim() || null,
+        ibge_code: normalizarCodigoIbge(dadosSecretaria.ibge_code) || null,
       })
       .eq("id", selecionado.id);
     setSalvandoSecretaria(false);
@@ -819,91 +837,159 @@ function Configuracoes() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   </div>
                 ) : (
-                  <form onSubmit={aoSalvarSecretaria} className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="tenant-cnpj">CNPJ</Label>
-                        <div className="flex flex-wrap gap-2">
+                  <form onSubmit={aoSalvarSecretaria} className="space-y-6">
+                    <div className="space-y-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        1. Identificação Institucional (FMS e IBGE)
+                      </p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label htmlFor="tenant-cnpj">CNPJ</Label>
+                          <div className="flex flex-wrap gap-2">
+                            <Input
+                              id="tenant-cnpj"
+                              className="min-w-[200px] flex-1"
+                              maxLength={20}
+                              disabled={!podeEditarSecretaria}
+                              value={dadosSecretaria.cnpj}
+                              onChange={(e) =>
+                                atualizarSecretaria("cnpj", formatarCnpj(e.target.value))
+                              }
+                              placeholder="00.000.000/0000-00"
+                            />
+                            {podeEditarSecretaria && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={consultandoCnpj || !validarCnpj(dadosSecretaria.cnpj)}
+                                onClick={() => void aoConsultarCnpj()}
+                              >
+                                {consultandoCnpj ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Search className="mr-2 h-4 w-4" />
+                                )}
+                                Consultar Receita Federal
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-trade-name">Nome Fantasia / FMS</Label>
                           <Input
-                            id="tenant-cnpj"
-                            className="min-w-[200px] flex-1"
-                            maxLength={20}
+                            id="tenant-trade-name"
+                            maxLength={150}
                             disabled={!podeEditarSecretaria}
-                            value={dadosSecretaria.cnpj}
-                            onChange={(e) =>
-                              atualizarSecretaria("cnpj", formatarCnpj(e.target.value))
-                            }
-                            placeholder="00.000.000/0000-00"
+                            value={dadosSecretaria.trade_name}
+                            onChange={(e) => atualizarSecretaria("trade_name", e.target.value)}
+                            placeholder="Ex: Fundo Municipal de Saúde de Oriximiná"
                           />
-                          {podeEditarSecretaria && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={consultandoCnpj || !validarCnpj(dadosSecretaria.cnpj)}
-                              onClick={() => void aoConsultarCnpj()}
-                            >
-                              {consultandoCnpj ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Search className="mr-2 h-4 w-4" />
-                              )}
-                              Consultar Receita Federal
-                            </Button>
-                          )}
+                          <p className="text-[11px] text-muted-foreground">
+                            Utilizado na identificação de empenhos, termos de referência e contratos.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-ibge">Código IBGE do Município</Label>
+                          <Input
+                            id="tenant-ibge"
+                            maxLength={7}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.ibge_code}
+                            onChange={(e) =>
+                              atualizarSecretaria("ibge_code", normalizarCodigoIbge(e.target.value))
+                            }
+                            placeholder="Ex: 1505304 (7 dígitos)"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Necessário para publicação oficial no PNCP e remessas ao TCE.
+                          </p>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tenant-email">E-mail institucional</Label>
-                        <Input
-                          id="tenant-email"
-                          type="email"
-                          maxLength={254}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.contact_email}
-                          onChange={(e) => atualizarSecretaria("contact_email", e.target.value)}
-                        />
+                    </div>
+
+                    <div className="space-y-4 border-t pt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        2. Gestão & Autoridade Competente
+                      </p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label htmlFor="tenant-manager">
+                            Secretário(a) Titular / Ordenador(a) de Despesas
+                          </Label>
+                          <Input
+                            id="tenant-manager"
+                            maxLength={120}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.manager_name}
+                            onChange={(e) => atualizarSecretaria("manager_name", e.target.value)}
+                            placeholder="Nome completo do Secretário(a) de Saúde"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Autoridade responsável pela homologação e assinatura dos atos pela Lei
+                            14.133/2021.
+                          </p>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tenant-phone">Telefone</Label>
-                        <Input
-                          id="tenant-phone"
-                          maxLength={40}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.contact_phone}
-                          onChange={(e) => atualizarSecretaria("contact_phone", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tenant-state">UF</Label>
-                        <Input
-                          id="tenant-state"
-                          maxLength={2}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.state}
-                          onChange={(e) =>
-                            atualizarSecretaria("state", e.target.value.toUpperCase())
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="tenant-municipality">Município</Label>
-                        <Input
-                          id="tenant-municipality"
-                          maxLength={120}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.municipality}
-                          onChange={(e) => atualizarSecretaria("municipality", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="tenant-street">Endereço</Label>
-                        <Input
-                          id="tenant-street"
-                          maxLength={200}
-                          disabled={!podeEditarSecretaria}
-                          value={dadosSecretaria.street}
-                          onChange={(e) => atualizarSecretaria("street", e.target.value)}
-                        />
+                    </div>
+
+                    <div className="space-y-4 border-t pt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        3. Contatos e Endereço Oficial
+                      </p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-email">E-mail institucional</Label>
+                          <Input
+                            id="tenant-email"
+                            type="email"
+                            maxLength={254}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.contact_email}
+                            onChange={(e) => atualizarSecretaria("contact_email", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-phone">Telefone</Label>
+                          <Input
+                            id="tenant-phone"
+                            maxLength={40}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.contact_phone}
+                            onChange={(e) => atualizarSecretaria("contact_phone", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tenant-state">UF</Label>
+                          <Input
+                            id="tenant-state"
+                            maxLength={2}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.state}
+                            onChange={(e) =>
+                              atualizarSecretaria("state", e.target.value.toUpperCase())
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label htmlFor="tenant-municipality">Município</Label>
+                          <Input
+                            id="tenant-municipality"
+                            maxLength={120}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.municipality}
+                            onChange={(e) => atualizarSecretaria("municipality", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label htmlFor="tenant-street">Endereço</Label>
+                          <Input
+                            id="tenant-street"
+                            maxLength={200}
+                            disabled={!podeEditarSecretaria}
+                            value={dadosSecretaria.street}
+                            onChange={(e) => atualizarSecretaria("street", e.target.value)}
+                          />
+                        </div>
                       </div>
                     </div>
                     {podeEditarSecretaria ? (

@@ -7,6 +7,7 @@ import {
   listarModulosHabilitados,
   mesclarDadosCnpjOrganizacao,
   montarSugestaoTimbrado,
+  normalizarCodigoIbge,
   podeAlterarStatusMembro,
   traduzirPlanoComercial,
   traduzirStatusComercial,
@@ -152,5 +153,38 @@ describe("tenant-settings-helpers: Organização e Usuários", () => {
     expect(completo.percentual).toBe(100);
     expect(completo.status).toBe("completo");
     expect(completo.resumoPendencias).toHaveLength(0);
+  });
+
+  it("normaliza código IBGE para no máximo 7 dígitos numéricos", () => {
+    expect(normalizarCodigoIbge("1505304")).toBe("1505304");
+    expect(normalizarCodigoIbge("15.053-04")).toBe("1505304");
+    expect(normalizarCodigoIbge("1505304999")).toBe("1505304");
+    expect(normalizarCodigoIbge("")).toBe("");
+    expect(normalizarCodigoIbge(null)).toBe("");
+  });
+
+  it("mescla nome fantasia do CNPJ mantendo campos do gestor e IBGE", () => {
+    const atual = {
+      cnpj: "05.131.081/0001-82",
+      contact_email: "",
+      contact_phone: "",
+      street: "",
+      municipality: "",
+      state: "",
+      trade_name: "",
+      manager_name: "Dra. Maria Silveira",
+      ibge_code: "1505304",
+    };
+    const consulta: CnpjLookupData = {
+      ...EMPTY_CNPJ_LOOKUP,
+      trade_name: "FUNDO MUNICIPAL DE SAUDE",
+      city: "Oriximiná",
+      state: "PA",
+    };
+    const resultado = mesclarDadosCnpjOrganizacao(atual, consulta);
+    expect(resultado.trade_name).toBe("FUNDO MUNICIPAL DE SAUDE");
+    expect(resultado.manager_name).toBe("Dra. Maria Silveira");
+    expect(resultado.ibge_code).toBe("1505304");
+    expect(resultado.municipality).toBe("Oriximiná");
   });
 });
