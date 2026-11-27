@@ -55,7 +55,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import { useTenant } from "@/hooks/use-tenant";
 import { isCommercialModuleEnabled } from "@/lib/commercial-access";
-import { ETAPAS, formatarData, formatarMoeda, MODALIDADES } from "@/lib/contratacao";
+import { ETAPAS, formatarData, formatarMoeda, MODALIDADES, paraCaixaAlta } from "@/lib/contratacao";
+import { UNIDADES_SAUDE_PADRAO } from "@/lib/procurement-items-parser";
 import { bancoNaoConfigurado, carregarTodasAsPaginas, db } from "@/lib/db";
 import {
   avaliarCronogramaPca,
@@ -1142,11 +1143,13 @@ function PcaPage() {
                 <Input
                   id="pca-title"
                   value={formState.title}
-                  onChange={(e) => setFormState({ ...formState, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormState({ ...formState, title: paraCaixaAlta(e.target.value) })
+                  }
                   required
                   minLength={3}
                   maxLength={300}
-                  className="text-xs"
+                  className="text-xs uppercase"
                 />
               </div>
 
@@ -1156,12 +1159,23 @@ function PcaPage() {
                 </Label>
                 <Input
                   id="pca-unit"
+                  list="unidades-saude-padrao-pca"
                   value={formState.requesting_unit}
-                  onChange={(e) => setFormState({ ...formState, requesting_unit: e.target.value })}
+                  onChange={(e) =>
+                    setFormState({
+                      ...formState,
+                      requesting_unit: paraCaixaAlta(e.target.value),
+                    })
+                  }
                   maxLength={180}
-                  placeholder="Ex: Coordenação de Atenção Básica"
-                  className="text-xs"
+                  placeholder="ESCOLHA OU DIGITE A UNIDADE"
+                  className="text-xs uppercase"
                 />
+                <datalist id="unidades-saude-padrao-pca">
+                  {UNIDADES_SAUDE_PADRAO.map((u) => (
+                    <option key={u} value={paraCaixaAlta(u)} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-1.5">
@@ -1172,10 +1186,13 @@ function PcaPage() {
                   id="pca-resp"
                   value={formState.responsible_name}
                   onChange={(e) =>
-                    setFormState({ ...formState, responsible_name: e.target.value })
+                    setFormState({
+                      ...formState,
+                      responsible_name: paraCaixaAlta(e.target.value),
+                    })
                   }
                   maxLength={180}
-                  className="text-xs"
+                  className="text-xs uppercase"
                 />
               </div>
 
@@ -1283,14 +1300,16 @@ function PcaPage() {
                           setFormState({
                             ...formState,
                             items: formState.items.map((row) =>
-                              row.key === item.key ? { ...row, description: e.target.value } : row,
+                              row.key === item.key
+                                ? { ...row, description: paraCaixaAlta(e.target.value) }
+                                : row,
                             ),
                           })
                         }
                         required
                         minLength={3}
                         maxLength={500}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs uppercase"
                       />
                     </div>
                     <div className="sm:col-span-2 space-y-1">

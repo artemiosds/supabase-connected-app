@@ -17,7 +17,7 @@ import {
 } from "@/lib/procurement-items-parser";
 import { SupplierSelect } from "@/components/supplier-select";
 import { AnnualDemandPanel } from "@/components/annual-demand-panel";
-import { AssigneeSelect, useAssignees } from "@/components/assignee-select";
+import { AssigneeSelect, useAssignees, type AssigneeMember } from "@/components/assignee-select";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -59,9 +59,11 @@ import {
   formatarMoeda,
   MODALIDADES,
   numeroDecimal,
+  paraCaixaAlta,
   proximaEtapa,
   type EtapaId,
 } from "@/lib/contratacao";
+import { LIMITES_LEI_14133 } from "@/lib/tenant-settings-helpers";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,7 +189,7 @@ function Processos() {
   const etapaOriginalRef = useRef<Map<string, { responsible_name: string | null; due_date: string | null }>>(
     new Map(),
   );
-  const members = useAssignees(abertoId ? selecionado?.id : undefined);
+  const members = useAssignees(abertoId || novo ? selecionado?.id : undefined);
   useEffect(() => {
     const url = new URL(window.location.href);
     const id = url.searchParams.get("processo");
@@ -825,6 +827,7 @@ function Processos() {
         }}
         tenantId={selecionado.id}
         userId={userId}
+        members={members}
         onSalvo={(processoId) => {
           void carregar();
           if (novoViaDfd) {
@@ -1324,40 +1327,40 @@ function DocumentosVinculados(props: {
           <div className="flex flex-wrap gap-2">
             {modelosFiltrados.length > 0
               ? modelosFiltrados.map((modelo) => (
-                  <Button
-                    key={modelo.id}
-                    asChild
-                    size="sm"
-                    variant={modelo.recommendedForStage ? "secondary" : "outline"}
-                    className="min-h-9"
+                <Button
+                  key={modelo.id}
+                  asChild
+                  size="sm"
+                  variant={modelo.recommendedForStage ? "secondary" : "outline"}
+                  className="min-h-9"
+                >
+                  <Link
+                    to="/documentos"
+                    search={{ processo: props.processId, modeloId: modelo.id } as never}
+                    aria-label={`Gerar ${modelo.title} para este processo`}
                   >
-                    <Link
-                      to="/documentos"
-                      search={{ processo: props.processId, modeloId: modelo.id } as never}
-                      aria-label={`Gerar ${modelo.title} para este processo`}
-                    >
-                      <Plus className="h-3.5 w-3.5" aria-hidden />
-                      {modelo.title}
-                      {modelo.recommendedForStage && (
-                        <Badge variant="outline" className="ml-1 text-[10px]">
-                          Etapa atual
-                        </Badge>
-                      )}
-                    </Link>
-                  </Button>
-                ))
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    {modelo.title}
+                    {modelo.recommendedForStage && (
+                      <Badge variant="outline" className="ml-1 text-[10px]">
+                        Etapa atual
+                      </Badge>
+                    )}
+                  </Link>
+                </Button>
+              ))
               : TIPOS_DOCUMENTO_PROCESSO.map((tipo) => (
-                  <Button key={tipo.value} asChild size="sm" variant="outline" className="min-h-9">
-                    <Link
-                      to="/documentos"
-                      search={{ processo: props.processId, tipo: tipo.value } as never}
-                      aria-label={`Gerar ${tipo.label} para este processo`}
-                    >
-                      <Plus className="h-3.5 w-3.5" aria-hidden />
-                      {tipo.label}
-                    </Link>
-                  </Button>
-                ))}
+                <Button key={tipo.value} asChild size="sm" variant="outline" className="min-h-9">
+                  <Link
+                    to="/documentos"
+                    search={{ processo: props.processId, tipo: tipo.value } as never}
+                    aria-label={`Gerar ${tipo.label} para este processo`}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    {tipo.label}
+                  </Link>
+                </Button>
+              ))}
           </div>
           <p className="text-xs text-muted-foreground">
             A geração exige que o modelo correspondente esteja instalado na Biblioteca-base desta
@@ -2290,8 +2293,8 @@ function DadosEstruturados(props: {
             `Amostras consideradas na aprovação: ${approval.sample_count}`,
             ...(approval.exceptional_justification
               ? [
-                  `Justificativa excepcional para menos de três preços: ${clean(approval.exceptional_justification)}`,
-                ]
+                `Justificativa excepcional para menos de três preços: ${clean(approval.exceptional_justification)}`,
+              ]
               : []),
           );
         } else {
@@ -2445,17 +2448,17 @@ function DadosEstruturados(props: {
               quote.source_contact_email ?? supplier?.contact_email,
               quote.source_contact_phone ?? supplier?.contact_phone,
               quote.source_address ??
-                [
-                  supplier?.street,
-                  supplier?.street_number,
-                  supplier?.complement,
-                  supplier?.neighborhood,
-                  supplier?.city,
-                  supplier?.state,
-                  supplier?.postal_code,
-                ]
-                  .filter(Boolean)
-                  .join(", "),
+              [
+                supplier?.street,
+                supplier?.street_number,
+                supplier?.complement,
+                supplier?.neighborhood,
+                supplier?.city,
+                supplier?.state,
+                supplier?.postal_code,
+              ]
+                .filter(Boolean)
+                .join(", "),
             ]
               .map(clean)
               .join("\t"),
@@ -2543,13 +2546,13 @@ function DadosEstruturados(props: {
         formato === "docx"
           ? generated.bytes
           : await renderPdf(
-              { ...(await docxToModel(generated.bytes)), footerText: [] },
-              {
-                branding,
-                title: mapaPronto ? "Mapa comparativo" : "Rascunho — mapa comparativo",
-                useTemplatePageSize: true,
-              },
-            );
+            { ...(await docxToModel(generated.bytes)), footerText: [] },
+            {
+              branding,
+              title: mapaPronto ? "Mapa comparativo" : "Rascunho — mapa comparativo",
+              useTemplatePageSize: true,
+            },
+          );
       const url = URL.createObjectURL(
         new Blob([new Uint8Array(bytes)], {
           type:
@@ -2688,7 +2691,7 @@ function DadosEstruturados(props: {
         entry.totalQuotedValue +=
           Number(
             q.total_price ??
-              Number(q.quantity) * Number(q.unit_price) + Number(q.delivery_cost || 0),
+            Number(q.quantity) * Number(q.unit_price) + Number(q.delivery_cost || 0),
           ) || 0;
       }
 
@@ -3141,9 +3144,9 @@ function DadosEstruturados(props: {
 
   const singleItemTotal = itemForm.estimated_unit_price.trim()
     ? calculateItemTotal(
-        numeroDecimal(itemForm.quantity),
-        numeroDecimal(itemForm.estimated_unit_price),
-      )
+      numeroDecimal(itemForm.quantity),
+      numeroDecimal(itemForm.estimated_unit_price),
+    )
     : null;
   if (!props.aberto) return null;
 
@@ -3515,16 +3518,16 @@ function DadosEstruturados(props: {
                                         : current.source_contact_phone,
                                       source_address: supplier
                                         ? [
-                                            supplier.street,
-                                            supplier.street_number,
-                                            supplier.complement,
-                                            supplier.neighborhood,
-                                            supplier.city,
-                                            supplier.state,
-                                            supplier.postal_code,
-                                          ]
-                                            .filter(Boolean)
-                                            .join(", ")
+                                          supplier.street,
+                                          supplier.street_number,
+                                          supplier.complement,
+                                          supplier.neighborhood,
+                                          supplier.city,
+                                          supplier.state,
+                                          supplier.postal_code,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(", ")
                                         : current.source_address,
                                     }));
                                   }}
@@ -4347,24 +4350,24 @@ function DadosEstruturados(props: {
                             quote.source_type,
                           ),
                       ) && (
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label>
-                            Justificativa para não priorizar fontes públicas prioritárias *
-                          </Label>
-                          <Textarea
-                            rows={2}
-                            minLength={20}
-                            value={complianceForm.priority_sources_justification}
-                            onChange={(event) =>
-                              setComplianceForm((current) => ({
-                                ...current,
-                                priority_sources_justification: event.target.value,
-                              }))
-                            }
-                            placeholder="Explique por que não foi possível utilizar Painel de Preços, Banco de Preços em Saúde ou contratações públicas similares (art. 5º, § 1º, IN 65/2021)."
-                          />
-                        </div>
-                      )}
+                          <div className="space-y-1 sm:col-span-2">
+                            <Label>
+                              Justificativa para não priorizar fontes públicas prioritárias *
+                            </Label>
+                            <Textarea
+                              rows={2}
+                              minLength={20}
+                              value={complianceForm.priority_sources_justification}
+                              onChange={(event) =>
+                                setComplianceForm((current) => ({
+                                  ...current,
+                                  priority_sources_justification: event.target.value,
+                                }))
+                              }
+                              placeholder="Explique por que não foi possível utilizar Painel de Preços, Banco de Preços em Saúde ou contratações públicas similares (art. 5º, § 1º, IN 65/2021)."
+                            />
+                          </div>
+                        )}
                       <div className="space-y-1 sm:col-span-2">
                         <Label>
                           Fornecedores consultados que não apresentaram proposta (ou declaração de
@@ -4655,8 +4658,8 @@ function DadosEstruturados(props: {
                                           · Resposta até:{" "}
                                           {q.supplier_consultation_response_deadline
                                             ? formatarData(
-                                                q.supplier_consultation_response_deadline,
-                                              )
+                                              q.supplier_consultation_response_deadline,
+                                            )
                                             : "Não informado"}
                                         </p>
                                       )}
@@ -4934,8 +4937,8 @@ function DadosEstruturados(props: {
                             {resumo.coeficienteVariacao === null
                               ? "Não calculável"
                               : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(
-                                  resumo.coeficienteVariacao,
-                                ) + "%"}
+                                resumo.coeficienteVariacao,
+                              ) + "%"}
                           </dd>
                         </div>
                       </dl>
@@ -4967,6 +4970,7 @@ function NovoProcesso(props: {
   onFechar: () => void;
   tenantId: string;
   userId: string;
+  members?: AssigneeMember[] | null | undefined;
   onSalvo: (processoId: string) => void;
 }) {
   const vazio = {
@@ -4977,6 +4981,7 @@ function NovoProcesso(props: {
     priority: "normal",
     requesting_unit: "",
     responsible_name: "",
+    responsible_user_id: "",
     estimated_value: "",
     due_date: "",
   };
@@ -4994,6 +4999,14 @@ function NovoProcesso(props: {
     });
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof typeof vazio) => (v: string) => setF((s) => ({ ...s, [k]: v }));
+  const setUpper = (k: keyof typeof vazio) => (v: string) =>
+    setF((s) => ({ ...s, [k]: paraCaixaAlta(v) }));
+  const valorPreview = f.estimated_value.trim() ? numeroDecimal(f.estimated_value) : null;
+  const alertaDispensa =
+    f.modality === "dispensa" &&
+    valorPreview !== null &&
+    Number.isFinite(valorPreview) &&
+    valorPreview > LIMITES_LEI_14133.dispensaComprasServicos;
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
@@ -5006,16 +5019,27 @@ function NovoProcesso(props: {
     setSalvando(true);
     const { data: processId, error } = await db.rpc("create_procurement_process_with_checklist", {
       p_tenant_id: props.tenantId,
-      p_number: f.number.trim(),
-      p_title: f.title.trim(),
+      p_number: paraCaixaAlta(f.number.trim()),
+      p_title: paraCaixaAlta(f.title.trim()),
       p_modality: f.modality,
       p_priority: f.priority,
-      ...(f.description.trim() ? { p_description: f.description.trim() } : {}),
-      ...(f.requesting_unit.trim() ? { p_requesting_unit: f.requesting_unit.trim() } : {}),
-      ...(f.responsible_name.trim() ? { p_responsible_name: f.responsible_name.trim() } : {}),
+      ...(f.description.trim() ? { p_description: paraCaixaAlta(f.description.trim()) } : {}),
+      ...(f.requesting_unit.trim()
+        ? { p_requesting_unit: paraCaixaAlta(f.requesting_unit.trim()) }
+        : {}),
+      ...(f.responsible_name.trim()
+        ? { p_responsible_name: paraCaixaAlta(f.responsible_name.trim()) }
+        : {}),
       ...(valorEstimado !== null ? { p_estimated_value: valorEstimado } : {}),
       ...(f.due_date ? { p_due_date: f.due_date } : {}),
     });
+    if (!error && processId && f.responsible_user_id) {
+      await db
+        .from("procurement_processes")
+        .update({ responsible_user_id: f.responsible_user_id, updated_by: props.userId })
+        .eq("id", processId)
+        .eq("tenant_id", props.tenantId);
+    }
     setSalvando(false);
     if (error || !processId) {
       toast.error(error?.message ?? "Não foi possível criar o processo.");
@@ -5045,7 +5069,12 @@ function NovoProcesso(props: {
         <form onSubmit={salvar} className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label>Nº do processo *</Label>
-            <Input required value={f.number} onChange={(e) => set("number")(e.target.value)} />
+            <Input
+              required
+              className="uppercase"
+              value={f.number}
+              onChange={(e) => setUpper("number")(e.target.value)}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Modalidade</Label>
@@ -5067,28 +5096,60 @@ function NovoProcesso(props: {
             <Input
               required
               minLength={3}
+              className="uppercase"
               value={f.title}
-              onChange={(e) => set("title")(e.target.value)}
-              placeholder="Aquisição de medicamentos da farmácia básica"
+              onChange={(e) => setUpper("title")(e.target.value)}
+              placeholder="AQUISIÇÃO DE MEDICAMENTOS DA FARMÁCIA BÁSICA"
             />
           </div>
           <div className="grid gap-1.5 sm:col-span-2">
             <Label>Justificativa</Label>
-            <Textarea value={f.description} onChange={(e) => set("description")(e.target.value)} />
+            <Textarea
+              className="uppercase"
+              value={f.description}
+              onChange={(e) => setUpper("description")(e.target.value)}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Setor requisitante</Label>
             <Input
+              list="unidades-saude-padrao-proc"
+              className="uppercase"
+              placeholder="ESCOLHA OU DIGITE O SETOR"
               value={f.requesting_unit}
-              onChange={(e) => set("requesting_unit")(e.target.value)}
+              onChange={(e) => setUpper("requesting_unit")(e.target.value)}
             />
+            <datalist id="unidades-saude-padrao-proc">
+              {UNIDADES_SAUDE_PADRAO.map((u) => (
+                <option key={u} value={paraCaixaAlta(u)} />
+              ))}
+            </datalist>
           </div>
           <div className="grid gap-1.5">
             <Label>Responsável</Label>
-            <Input
-              value={f.responsible_name}
-              onChange={(e) => set("responsible_name")(e.target.value)}
-            />
+            {props.members && props.members.length > 0 ? (
+              <AssigneeSelect
+                label="Responsável pelo processo"
+                value={f.responsible_user_id || null}
+                members={props.members}
+                onChange={(uid) => {
+                  const membro = props.members?.find((m) => m.user_id === uid);
+                  setF((s) => ({
+                    ...s,
+                    responsible_user_id: uid,
+                    responsible_name: membro?.profiles?.full_name
+                      ? paraCaixaAlta(membro.profiles.full_name)
+                      : s.responsible_name,
+                  }));
+                }}
+              />
+            ) : (
+              <Input
+                className="uppercase"
+                value={f.responsible_name}
+                onChange={(e) => setUpper("responsible_name")(e.target.value)}
+              />
+            )}
           </div>
           <div className="grid gap-1.5">
             <Label>Valor estimado (R$)</Label>
@@ -5097,6 +5158,15 @@ function NovoProcesso(props: {
               value={f.estimated_value}
               onChange={(e) => set("estimated_value")(e.target.value)}
             />
+            {alertaDispensa && (
+              <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                Atenção: valor supera o teto de dispensa para compras/serviços (R${" "}
+                {LIMITES_LEI_14133.dispensaComprasServicos.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                })}{" "}
+                — Decreto nº 12.343/2024).
+              </p>
+            )}
           </div>
           <div className="grid gap-1.5">
             <Label>Prazo desejado</Label>

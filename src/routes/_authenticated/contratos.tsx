@@ -44,6 +44,7 @@ import {
   selecionarContratosAVencerEm90Dias,
   numeroDecimal,
   ORIENTACAO_ALERTA,
+  paraCaixaAlta,
   ROTULO_ALERTA,
   type NivelAlerta,
 } from "@/lib/contratacao";
@@ -1399,8 +1400,9 @@ function NovoContrato(props: {
             <Input
               required
               maxLength={60}
+              className="uppercase"
               value={f.number}
-              onChange={(e) => set("number")(e.target.value)}
+              onChange={(e) => set("number")(paraCaixaAlta(e.target.value))}
               placeholder="042/2026"
             />
           </Campo>
@@ -1439,8 +1441,9 @@ function NovoContrato(props: {
                 required
                 minLength={3}
                 maxLength={500}
+                className="uppercase"
                 value={f.object}
-                onChange={(e) => set("object")(e.target.value)}
+                onChange={(e) => set("object")(paraCaixaAlta(e.target.value))}
               />
             </Campo>
           </div>

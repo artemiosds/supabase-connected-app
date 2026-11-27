@@ -1,5 +1,10 @@
 // Regras de negócio puras de Contratos e Processos de Contratação.
 
+/** Normaliza textos de formulários para CAIXA ALTA respeitando acentuação pt-BR. */
+export function paraCaixaAlta(valor: string): string {
+  return valor.toLocaleUpperCase("pt-BR");
+}
+
 export const ETAPAS = [
   {
     id: "planejamento",
