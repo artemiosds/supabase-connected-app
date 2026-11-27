@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  avaliarConformidadeHabilitacaoFornecedores,
   calcularDiasAteData,
   calcularMetricasCockpitVencimentos,
   classificarUrgenciaVencimento,
@@ -143,5 +144,33 @@ describe("document-expiry-cockpit-helper (Frente 2 - Parte 1)", () => {
       totalContratos: 2,
       totalCertidoes: 2,
     });
+  });
+
+  it("avalia ficha de conformidade art. 68 para empenho/pagamento", () => {
+    const fichas = avaliarConformidadeHabilitacaoFornecedores({
+      hoje,
+      fornecedores: [
+        { id: "f-apto", legal_name: "Apto Ltda", cnpj: "11111111000111" },
+        { id: "f-pendente", legal_name: "Pendente S/A", cnpj: "22222222000122" },
+      ],
+      documentosFornecedor: [
+        { id: "1", supplier_id: "f-apto", document_type: "certidao_federal", expires_at: "2027-02-01" },
+        { id: "2", supplier_id: "f-apto", document_type: "certidao_estadual", expires_at: "2027-02-01" },
+        { id: "3", supplier_id: "f-apto", document_type: "certidao_municipal", expires_at: "2027-02-01" },
+        { id: "4", supplier_id: "f-apto", document_type: "fgts", expires_at: "2026-12-10" }, // a_vencer, ainda válido
+        { id: "5", supplier_id: "f-apto", document_type: "trabalhista", expires_at: "2027-02-01" },
+        { id: "6", supplier_id: "f-pendente", document_type: "certidao_federal", expires_at: "2026-11-01" }, // vencida
+      ],
+    });
+
+    // Pendentes vêm primeiro
+    expect(fichas[0]?.fornecedorId).toBe("f-pendente");
+    expect(fichas[0]?.aptoParaEmpenhoPagamento).toBe(false);
+    expect(fichas[0]?.resumoPendencias).toContain("Federal: vencida");
+    expect(fichas[0]?.resumoPendencias).toContain("FGTS: ausente");
+
+    expect(fichas[1]?.fornecedorId).toBe("f-apto");
+    expect(fichas[1]?.aptoParaEmpenhoPagamento).toBe(true);
+    expect(fichas[1]?.totalRegulares).toBe(5);
   });
 });

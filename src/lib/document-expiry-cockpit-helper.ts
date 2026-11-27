@@ -303,3 +303,175 @@ export function calcularMetricasCockpitVencimentos(
     totalCertidoes,
   };
 }
+
+// =============================================================================
+// Ficha de Conformidade de Habilitação Fiscal e Trabalhista (Art. 68, Lei 14.133)
+// =============================================================================
+
+export const CERTIDOES_ESSENCIAIS_ART68 = [
+  {
+    tipo: "certidao_federal",
+    rotulo: "CND Federal / PGFN",
+    rotuloCurto: "Federal",
+    fundamento: "Lei nº 14.133/2021, art. 68, III",
+  },
+  {
+    tipo: "certidao_estadual",
+    rotulo: "CND Estadual",
+    rotuloCurto: "Estadual",
+    fundamento: "Lei nº 14.133/2021, art. 68, III",
+  },
+  {
+    tipo: "certidao_municipal",
+    rotulo: "CND Municipal",
+    rotuloCurto: "Municipal",
+    fundamento: "Lei nº 14.133/2021, art. 68, III",
+  },
+  {
+    tipo: "fgts",
+    rotulo: "CRF / FGTS",
+    rotuloCurto: "FGTS",
+    fundamento: "Lei nº 14.133/2021, art. 68, IV",
+  },
+  {
+    tipo: "trabalhista",
+    rotulo: "CNDT Trabalhista",
+    rotuloCurto: "CNDT",
+    fundamento: "Lei nº 14.133/2021, art. 68, V",
+  },
+] as const;
+
+export type TipoCertidaoEssencial = (typeof CERTIDOES_ESSENCIAIS_ART68)[number]["tipo"];
+export type StatusCertidaoHabilitacao = "regular" | "a_vencer" | "vencida" | "ausente";
+
+export type ItemCertidaoHabilitacao = {
+  tipo: TipoCertidaoEssencial;
+  rotulo: string;
+  rotuloCurto: string;
+  fundamento: string;
+  status: StatusCertidaoHabilitacao;
+  expiresAt: string | null;
+  diasRestantes: number | null;
+  documentId: string | null;
+};
+
+export type FichaConformidadeFornecedor = {
+  fornecedorId: string;
+  fornecedorNome: string;
+  cnpj: string | null;
+  aptoParaEmpenhoPagamento: boolean;
+  totalRegulares: number;
+  totalEssenciais: number;
+  resumoPendencias: string[];
+  certidoes: ItemCertidaoHabilitacao[];
+};
+
+/**
+ * Avalia a regularidade fiscal, previdenciária e trabalhista (art. 68 da Lei nº 14.133/2021)
+ * para verificação prévia a empenho, liquidação e pagamento na Saúde.
+ */
+export function avaliarConformidadeHabilitacaoFornecedores(params: {
+  fornecedores: Array<{
+    id: string;
+    legal_name?: string | null | undefined;
+    trade_name?: string | null | undefined;
+    cnpj?: string | null | undefined;
+  }>;
+  documentosFornecedor: Array<{
+    id: string;
+    supplier_id: string;
+    document_type?: string | null | undefined;
+    expires_at?: string | null | undefined;
+  }>;
+  hoje?: Date | undefined;
+}): FichaConformidadeFornecedor[] {
+  const refHoje = params.hoje ?? new Date();
+  const docsPorFornecedor = new Map<string, typeof params.documentosFornecedor>();
+
+  for (const doc of params.documentosFornecedor) {
+    const lista = docsPorFornecedor.get(doc.supplier_id) ?? [];
+    lista.push(doc);
+    docsPorFornecedor.set(doc.supplier_id, lista);
+  }
+
+  const fichas: FichaConformidadeFornecedor[] = [];
+
+  for (const fornecedor of params.fornecedores) {
+    const docs = docsPorFornecedor.get(fornecedor.id) ?? [];
+    const nome =
+      fornecedor.trade_name?.trim() ||
+      fornecedor.legal_name?.trim() ||
+      "Fornecedor não identificado";
+    const resumoPendencias: string[] = [];
+    let totalRegulares = 0;
+
+    const certidoes: ItemCertidaoHabilitacao[] = CERTIDOES_ESSENCIAIS_ART68.map((essencial) => {
+      const correspondentes = docs.filter((d) => d.document_type === essencial.tipo);
+      if (correspondentes.length === 0) {
+        resumoPendencias.push(`${essencial.rotuloCurto}: ausente`);
+        return {
+          tipo: essencial.tipo,
+          rotulo: essencial.rotulo,
+          rotuloCurto: essencial.rotuloCurto,
+          fundamento: essencial.fundamento,
+          status: "ausente",
+          expiresAt: null,
+          diasRestantes: null,
+          documentId: null,
+        };
+      }
+
+      // Seleciona a certidão mais recente / com maior validade
+      const melhor = [...correspondentes].sort((a, b) => {
+        if (!a.expires_at && !b.expires_at) return 0;
+        if (!a.expires_at) return -1;
+        if (!b.expires_at) return 1;
+        return b.expires_at.localeCompare(a.expires_at);
+      })[0]!;
+
+      const dias = calcularDiasAteData(melhor.expires_at ?? null, refHoje);
+      let status: StatusCertidaoHabilitacao = "regular";
+      if (dias !== null && dias < 0) {
+        status = "vencida";
+        resumoPendencias.push(`${essencial.rotuloCurto}: vencida`);
+      } else if (dias !== null && dias <= 30) {
+        status = "a_vencer";
+        totalRegulares += 1;
+      } else {
+        status = "regular";
+        totalRegulares += 1;
+      }
+
+      return {
+        tipo: essencial.tipo,
+        rotulo: essencial.rotulo,
+        rotuloCurto: essencial.rotuloCurto,
+        fundamento: essencial.fundamento,
+        status,
+        expiresAt: melhor.expires_at ?? null,
+        diasRestantes: dias,
+        documentId: melhor.id,
+      };
+    });
+
+    fichas.push({
+      fornecedorId: fornecedor.id,
+      fornecedorNome: nome,
+      cnpj: fornecedor.cnpj ?? null,
+      aptoParaEmpenhoPagamento: totalRegulares === CERTIDOES_ESSENCIAIS_ART68.length,
+      totalRegulares,
+      totalEssenciais: CERTIDOES_ESSENCIAIS_ART68.length,
+      resumoPendencias,
+      certidoes,
+    });
+  }
+
+  fichas.sort((a, b) => {
+    if (a.aptoParaEmpenhoPagamento !== b.aptoParaEmpenhoPagamento) {
+      return a.aptoParaEmpenhoPagamento ? 1 : -1;
+    }
+    return a.fornecedorNome.localeCompare(b.fornecedorNome, "pt-BR");
+  });
+
+  return fichas;
+}

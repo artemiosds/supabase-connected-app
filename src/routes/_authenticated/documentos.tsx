@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import { DocumentExpiryCockpit } from "@/components/documents/document-expiry-cockpit";
+import { SupplierComplianceSheet } from "@/components/documents/supplier-compliance-sheet";
 import type { CsvColumn } from "@/lib/csv-export";
 import { ETAPAS } from "@/lib/contratacao";
 import { gerarRoteiroEstruturadoAgu } from "@/lib/agu-etp-tr-helper";
@@ -2578,6 +2579,12 @@ function Documentos() {
                   const el = document.getElementById(`documento-${docId}`);
                   el?.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
+              />
+              <SupplierComplianceSheet
+                fornecedores={fornecedores}
+                documentosFornecedor={documentos}
+                busca={buscaVencimento}
+                onFiltrarFornecedor={(supId) => setSupplierFilter(supId)}
               />
               {supplierFilter && (
                 <div className="flex flex-wrap items-center gap-2">
