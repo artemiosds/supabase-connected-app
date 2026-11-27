@@ -1,15 +1,29 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Loader2, Save, ShieldCheck } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Radio,
+  Save,
+  Server,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTenant } from "@/hooks/use-tenant";
 import { db } from "@/lib/db";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  REGRAS_ALERTAS_VENCIMENTO,
+  diagnosticarIntegracoesSecretaria,
+} from "@/lib/tenant-settings-helpers";
 import {
   normalizeTestRecipient,
   smtpPortSecurityError,
@@ -140,6 +154,7 @@ export function TenantIntegrationsSettings() {
     settings.email_provider === "smtp_gateway"
       ? smtpPortSecurityError(settings.email_smtp_port, settings.email_smtp_security)
       : null;
+  const canaisDiagnostico = diagnosticarIntegracoesSecretaria(settings);
 
   const update = <K extends keyof IntegrationSettings>(key: K, value: IntegrationSettings[K]) =>
     setSettings((current) => ({ ...current, [key]: value }));
@@ -415,14 +430,69 @@ export function TenantIntegrationsSettings() {
                 </AlertDescription>
               </Alert>
             )}
-            <fieldset disabled={!canEdit} className="space-y-8 disabled:opacity-90">
-              <section className="space-y-4">
-                <div>
-                  <h3 className="font-medium">E-mail institucional</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Remetente e credenciais operacionais da Secretaria.
-                  </p>
+            <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">
+                    Central de Diagnóstico de Conexões (Tempo Real)
+                  </h3>
                 </div>
+                <span className="text-xs text-muted-foreground">
+                  {canaisDiagnostico.filter((c) => c.status === "ativo").length} de{" "}
+                  {canaisDiagnostico.length} canais ativos
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {canaisDiagnostico.map((canal) => (
+                  <div
+                    key={canal.id}
+                    className="flex flex-col justify-between gap-2 rounded-lg border bg-card p-3 shadow-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            canal.status === "ativo"
+                              ? "bg-emerald-500"
+                              : canal.status === "homologacao" || canal.status === "parcial"
+                                ? "bg-amber-500"
+                                : "bg-muted-foreground/40"
+                          }`}
+                        />
+                        {canal.titulo}
+                      </span>
+                      <Badge
+                        variant={
+                          canal.status === "ativo"
+                            ? "default"
+                            : canal.status === "homologacao" || canal.status === "parcial"
+                              ? "secondary"
+                              : "outline"
+                        }
+                        className="text-[10px] font-normal"
+                      >
+                        {canal.badge}
+                      </Badge>
+                    </div>
+                    <p className="truncate text-[11px] text-muted-foreground">{canal.detalhe}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <fieldset disabled={!canEdit} className="space-y-6 disabled:opacity-90">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Server className="h-4 w-4 text-primary" />
+                    1. E-mail Institucional & Motor de Alertas Automáticos
+                  </CardTitle>
+                  <CardDescription>
+                    Remetente, credenciais operacionais e régua oficial de notificações da Secretaria.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="integration-email-from-name">Nome do remetente</Label>
@@ -607,9 +677,50 @@ export function TenantIntegrationsSettings() {
                     Authentication → SMTP Settings; esta tela não altera essa configuração global.
                   </AlertDescription>
                 </Alert>
-              </section>
 
-              <section className="space-y-4 border-t pt-6">
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">
+                      Regras de Disparo Automático de Alertas da Saúde
+                    </h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Os avisos de vencimento de contratos e certidões são encaminhados aos fiscais e
+                    gestores responsáveis com registros gravados em auditoria protegida.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {REGRAS_ALERTAS_VENCIMENTO.map((regra) => (
+                      <div
+                        key={regra.dias}
+                        className="flex items-start gap-2.5 rounded-md border bg-card p-2.5 text-xs"
+                      >
+                        <Badge
+                          variant={regra.nivel === "critico" ? "destructive" : "secondary"}
+                          className="shrink-0 font-semibold"
+                        >
+                          {regra.dias} dias · {regra.rotulo}
+                        </Badge>
+                        <span className="text-muted-foreground">{regra.descricao}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    2. Integrações Governamentais & Armazenamento em Nuvem
+                  </CardTitle>
+                  <CardDescription>
+                    Google Drive, envio direto opcional ao PNCP, Assinatura Gov.br e Assistente AGU.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+              <section className="space-y-4">
                 <div>
                   <h3 className="font-medium">Google Drive</h3>
                   <p className="text-sm text-muted-foreground">
@@ -912,15 +1023,19 @@ export function TenantIntegrationsSettings() {
                   <Link to="/documentos">Abrir gestão de modelos e documentos</Link>
                 </Button>
               </section>
+                </CardContent>
+              </Card>
 
-              <section className="space-y-4 border-t pt-6">
-                <div>
-                  <h3 className="font-medium">LGPD e retenção documental</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Defina uma política institucional. O prazo não dispara exclusão automática de
-                    dados.
-                  </p>
-                </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    3. Governança LGPD e Retenção Documental
+                  </CardTitle>
+                  <CardDescription>
+                    Defina a política institucional de guarda. O prazo não dispara exclusão automática.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="retention-days">Prazo de retenção (dias)</Label>
@@ -973,7 +1088,8 @@ export function TenantIntegrationsSettings() {
                     {new Date(settings.retention_approved_at).toLocaleString("pt-BR")}.
                   </p>
                 )}
-              </section>
+                </CardContent>
+              </Card>
             </fieldset>
 
             <section className="space-y-4">

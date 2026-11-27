@@ -319,3 +319,131 @@ export function formatarBaseNormativa(basis: string | null | undefined): string 
       return "Padrão Federal / Pendente";
   }
 }
+
+export const REGRAS_ALERTAS_VENCIMENTO = [
+  {
+    dias: 120,
+    nivel: "planejamento",
+    rotulo: "Planejamento",
+    descricao:
+      "Início do estudo técnico e planejamento de prorrogação ou nova licitação (Art. 107 Lei 14.133)",
+  },
+  {
+    dias: 90,
+    nivel: "alerta",
+    rotulo: "Notificação",
+    descricao: "Notificação formal à Secretaria requisitante e manifestação do fornecedor",
+  },
+  {
+    dias: 60,
+    nivel: "urgencia",
+    rotulo: "Parecer",
+    descricao: "Parecer jurídico referencial e elaboração da minuta de termo aditivo",
+  },
+  {
+    dias: 30,
+    nivel: "critico",
+    rotulo: "Fase Crítica",
+    descricao: "Fase final de assinatura ou bloqueio iminente de empenhos/fornecimento",
+  },
+] as const;
+
+export type StatusCanalIntegracao = "ativo" | "parcial" | "homologacao" | "desativado";
+
+export type DiagnosticoCanal = {
+  id: "email" | "drive" | "pncp" | "govbr" | "agu" | "lgpd";
+  titulo: string;
+  status: StatusCanalIntegracao;
+  badge: string;
+  detalhe: string;
+};
+
+export function diagnosticarIntegracoesSecretaria(config: {
+  email_provider: string;
+  email_from_address?: string | null | undefined;
+  has_smtp_secret?: boolean | undefined;
+  has_email_api_secret?: boolean | undefined;
+  drive_enabled?: boolean | undefined;
+  has_drive_refresh_token?: boolean | undefined;
+  pncp_enabled?: boolean | undefined;
+  pncp_environment?: string | undefined;
+  govbr_enabled?: boolean | undefined;
+  govbr_environment?: string | undefined;
+  agu_assistant_enabled?: boolean | undefined;
+  retention_approved_at?: string | null | undefined;
+}): DiagnosticoCanal[] {
+  // 1. E-mail
+  let emailStatus: StatusCanalIntegracao = "desativado";
+  let emailBadge = "Não configurado";
+  let emailDetalhe = "Alertas automáticos desativados";
+  if (config.email_provider === "smtp_gateway" && config.has_smtp_secret) {
+    emailStatus = "ativo";
+    emailBadge = "SMTP Ativo";
+    emailDetalhe = config.email_from_address || "Servidor SMTP próprio";
+  } else if (config.email_provider === "resend" && config.has_email_api_secret) {
+    emailStatus = "ativo";
+    emailBadge = "Resend API";
+    emailDetalhe = config.email_from_address || "Disparo via API";
+  } else if (config.email_provider !== "none") {
+    emailStatus = "parcial";
+    emailBadge = "Pendente";
+    emailDetalhe = "Credenciais incompletas";
+  }
+
+  // 2. Google Drive
+  let driveStatus: StatusCanalIntegracao = "desativado";
+  let driveBadge = "Inativo";
+  let driveDetalhe = "Backup local no servidor";
+  if (config.has_drive_refresh_token) {
+    driveStatus = "ativo";
+    driveBadge = "Conectado";
+    driveDetalhe = "Sincronização manual autorizada";
+  } else if (config.drive_enabled) {
+    driveStatus = "parcial";
+    driveBadge = "Autorização pendente";
+    driveDetalhe = "Aguardando login Google";
+  }
+
+  // 3. PNCP
+  let pncpStatus: StatusCanalIntegracao = "desativado";
+  let pncpBadge = "Manual";
+  let pncpDetalhe = "Gera arquivos para upload";
+  if (config.pncp_enabled) {
+    pncpStatus = config.pncp_environment === "producao" ? "ativo" : "homologacao";
+    pncpBadge = config.pncp_environment === "producao" ? "Produção PNCP" : "Treinamento PNCP";
+    pncpDetalhe = "Envio direto via API";
+  }
+
+  // 4. Gov.br
+  let govbrStatus: StatusCanalIntegracao = "desativado";
+  let govbrBadge = "Padrão Nativo";
+  let govbrDetalhe = "Assinatura eletrônica SHA-256";
+  if (config.govbr_enabled) {
+    govbrStatus = config.govbr_environment === "producao" ? "ativo" : "homologacao";
+    govbrBadge = config.govbr_environment === "producao" ? "Gov.br Ativo" : "Gov.br Homologação";
+    govbrDetalhe = "Assinatura com conta Prata/Ouro";
+  }
+
+  // 5. Assistente AGU
+  const aguStatus: StatusCanalIntegracao = config.agu_assistant_enabled ? "ativo" : "desativado";
+  const aguBadge = config.agu_assistant_enabled ? "Habilitado" : "Desativado";
+  const aguDetalhe = config.agu_assistant_enabled
+    ? "Cláusulas orientativas ativas"
+    : "Modelos municipais padrão";
+
+  // 6. LGPD
+  const lgpdStatus: StatusCanalIntegracao = config.retention_approved_at ? "ativo" : "parcial";
+  const lgpdBadge = config.retention_approved_at ? "Aprovada" : "Em elaboração";
+  const lgpdDetalhe = config.retention_approved_at
+    ? "Política formal homologada"
+    : "Definição de prazos pendente";
+
+  return [
+    { id: "email", titulo: "E-mail & Alertas", status: emailStatus, badge: emailBadge, detalhe: emailDetalhe },
+    { id: "drive", titulo: "Google Drive (GED)", status: driveStatus, badge: driveBadge, detalhe: driveDetalhe },
+    { id: "pncp", titulo: "Portal PNCP", status: pncpStatus, badge: pncpBadge, detalhe: pncpDetalhe },
+    { id: "govbr", titulo: "Assinatura Gov.br", status: govbrStatus, badge: govbrBadge, detalhe: govbrDetalhe },
+    { id: "agu", titulo: "Assistente AGU", status: aguStatus, badge: aguBadge, detalhe: aguDetalhe },
+    { id: "lgpd", titulo: "Conformidade LGPD", status: lgpdStatus, badge: lgpdBadge, detalhe: lgpdDetalhe },
+  ];
+}

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { CnpjLookupData } from "../../supabase/functions/_shared/cnpj-mapping";
 import {
   LIMITES_LEI_14133,
+  REGRAS_ALERTAS_VENCIMENTO,
   calcularProntidaoSecretaria,
   calcularVagasUsuarios,
+  diagnosticarIntegracoesSecretaria,
   filtrarConvites,
   formatarBaseNormativa,
   listarModulosHabilitados,
@@ -232,5 +234,43 @@ describe("tenant-settings-helpers: Organização e Usuários", () => {
     expect(formatarBaseNormativa("pending")).toBe("Padrão Federal / Pendente");
     expect(LIMITES_LEI_14133.dispensaComprasServicos).toBe(62725.58);
     expect(LIMITES_LEI_14133.dispensaObrasEngenharia).toBe(125451.15);
+  });
+
+  it("diagnostica integrações da Secretaria e expõe marcos de alertas de vencimento", () => {
+    const vazio = diagnosticarIntegracoesSecretaria({ email_provider: "none" });
+    expect(vazio).toHaveLength(6);
+    expect(vazio.find((c) => c.id === "email")?.status).toBe("desativado");
+    expect(vazio.find((c) => c.id === "lgpd")?.status).toBe("parcial");
+
+    const configurado = diagnosticarIntegracoesSecretaria({
+      email_provider: "smtp_gateway",
+      email_from_address: "compras@saude.gov.br",
+      has_smtp_secret: true,
+      drive_enabled: true,
+      has_drive_refresh_token: true,
+      pncp_enabled: true,
+      pncp_environment: "treinamento",
+      govbr_enabled: true,
+      govbr_environment: "homologacao",
+      agu_assistant_enabled: true,
+      retention_approved_at: "2026-11-27T10:00:00Z",
+    });
+
+    expect(configurado.find((c) => c.id === "email")).toMatchObject({
+      status: "ativo",
+      badge: "SMTP Ativo",
+    });
+    expect(configurado.find((c) => c.id === "pncp")).toMatchObject({
+      status: "homologacao",
+      badge: "Treinamento PNCP",
+    });
+    expect(configurado.find((c) => c.id === "govbr")).toMatchObject({
+      status: "homologacao",
+      badge: "Gov.br Homologação",
+    });
+    expect(configurado.find((c) => c.id === "agu")?.status).toBe("ativo");
+    expect(configurado.find((c) => c.id === "lgpd")?.status).toBe("ativo");
+
+    expect(REGRAS_ALERTAS_VENCIMENTO.map((r) => r.dias)).toEqual([120, 90, 60, 30]);
   });
 });
