@@ -16,6 +16,14 @@ import {
   Users,
 } from "lucide-react";
 import { MyTasks } from "@/components/dashboard/my-tasks";
+import { ExecutivePipelineCard } from "@/components/dashboard/executive-pipeline-card";
+import {
+  avaliarProntidaoSecretaria,
+  resumirEsteiraProcessos,
+  type ProcessoResumoPainel,
+  type ResultadoProntidaoSecretaria,
+  type ResumoEsteiraPainel,
+} from "@/lib/executive-dashboard-helper";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { isCommercialModuleEnabled } from "@/lib/commercial-access";
@@ -41,9 +49,13 @@ type Indicadores = {
   documents: number | null;
   expired: number | null;
   expiring: number | null;
+  contractsExpired: number | null;
+  contractsExpiring: number | null;
   members: number | null;
   generated: number | null;
   stalledProcesses: ProcessoParado[] | null;
+  pipeline: ResumoEsteiraPainel | null;
+  prontidao: ResultadoProntidaoSecretaria | null;
 };
 
 function Painel() {
@@ -54,9 +66,13 @@ function Painel() {
     documents: null,
     expired: null,
     expiring: null,
+    contractsExpired: null,
+    contractsExpiring: null,
     members: null,
     generated: null,
     stalledProcesses: null,
+    pipeline: null,
+    prontidao: null,
   });
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -80,9 +96,13 @@ function Painel() {
         documents: null,
         expired: null,
         expiring: null,
+        contractsExpired: null,
+        contractsExpiring: null,
         members: null,
         generated: null,
         stalledProcesses: null,
+        pipeline: null,
+        prontidao: null,
       });
       setErro(null);
       setLoading(false);
@@ -102,73 +122,91 @@ function Painel() {
 
     const okEmpty = Promise.resolve({ error: null, count: null as number | null });
 
-    const [s, d, expired, expiring, m, g] = await Promise.all([
-      moduloFornecedores
-        ? db
-            .from("suppliers")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", selecionado.id)
-        : okEmpty,
-      moduloDocumentos
-        ? db
-            .from("supplier_documents")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", selecionado.id)
-            .eq("status", "active")
-        : okEmpty,
-      moduloDocumentos
-        ? db
-            .from("supplier_documents")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", selecionado.id)
-            .eq("status", "active")
-            .not("expires_at", "is", null)
-            .lt("expires_at", hoje)
-        : okEmpty,
-      moduloDocumentos
-        ? db
-            .from("supplier_documents")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", selecionado.id)
-            .eq("status", "active")
-            .not("expires_at", "is", null)
-            .gte("expires_at", hoje)
-            .lte("expires_at", limite)
-        : okEmpty,
-      db
-        .from("tenant_memberships")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", selecionado.id)
-        .eq("status", "active"),
-      moduloDocumentos
-        ? db
-            .from("generated_documents")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", selecionado.id)
-        : okEmpty,
-    ]);
+    const [s, d, expired, expiring, cExpired, cExpiring, m, g, tenantRes, complianceRes] =
+      await Promise.all([
+        moduloFornecedores
+          ? db
+              .from("suppliers")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", selecionado.id)
+          : okEmpty,
+        moduloDocumentos
+          ? db
+              .from("supplier_documents")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", selecionado.id)
+              .eq("status", "active")
+          : okEmpty,
+        moduloDocumentos
+          ? db
+              .from("supplier_documents")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", selecionado.id)
+              .eq("status", "active")
+              .not("expires_at", "is", null)
+              .lt("expires_at", hoje)
+          : okEmpty,
+        moduloDocumentos
+          ? db
+              .from("supplier_documents")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", selecionado.id)
+              .eq("status", "active")
+              .not("expires_at", "is", null)
+              .gte("expires_at", hoje)
+              .lte("expires_at", limite)
+          : okEmpty,
+        db
+          .from("contracts")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", selecionado.id)
+          .eq("status", "vigente")
+          .lt("end_date", hoje),
+        db
+          .from("contracts")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", selecionado.id)
+          .eq("status", "vigente")
+          .gte("end_date", hoje)
+          .lte("end_date", limite),
+        db
+          .from("tenant_memberships")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", selecionado.id)
+          .eq("status", "active"),
+        moduloDocumentos
+          ? db
+              .from("generated_documents")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", selecionado.id)
+          : okEmpty,
+        db
+          .from("tenants")
+          .select("trade_name, manager_name, ibge_code")
+          .eq("id", selecionado.id)
+          .maybeSingle(),
+        db
+          .from("tenant_procurement_compliance")
+          .select("id")
+          .eq("tenant_id", selecionado.id)
+          .maybeSingle(),
+      ]);
 
     let stalledProcesses: ProcessoParado[] | null = null;
+    let pipeline: ResumoEsteiraPainel | null = null;
     let processError: string | null = null;
 
     if (moduloProcessos) {
       try {
-        const processosRows = await carregarTodasAsPaginas<{
-          id: string;
-          number: string;
-          title: string;
-          stage: string;
-          status: string;
-          responsible_name: string | null;
-          updated_at: string;
-        }>((from, to) =>
+        const processosRows = await carregarTodasAsPaginas<ProcessoResumoPainel>((from, to) =>
           db
             .from("procurement_processes")
-            .select("id, number, title, stage, status, responsible_name, updated_at")
+            .select(
+              "id, number, title, stage, status, responsible_user_id, responsible_name, estimated_value, due_date, updated_at",
+            )
             .eq("tenant_id", selecionado.id)
             .neq("status", "concluido")
             .neq("status", "arquivado")
-            .lt("updated_at", cutoffParalisacao)
             .order("updated_at", { ascending: true })
             .order("id", { ascending: true })
             .range(from, to),
@@ -176,12 +214,17 @@ function Painel() {
 
         if (req !== requisicaoRef.current) return;
 
-        if (processosRows.length === 0) {
+        pipeline = resumirEsteiraProcessos(processosRows, session?.user.id);
+        const processosParadosCandidatos = processosRows.filter(
+          (p) => p.updated_at < cutoffParalisacao,
+        );
+
+        if (processosParadosCandidatos.length === 0) {
           stalledProcesses = [];
         } else {
           const atividades: Array<{ process_id: string; updated_at: string }> = [];
-          for (let i = 0; i < processosRows.length; i += 100) {
-            const idsChunk = processosRows.slice(i, i + 100).map((p) => p.id);
+          for (let i = 0; i < processosParadosCandidatos.length; i += 100) {
+            const idsChunk = processosParadosCandidatos.slice(i, i + 100).map((p) => p.id);
             const chunkRows = await carregarTodasAsPaginas<{
               process_id: string;
               updated_at: string;
@@ -197,7 +240,11 @@ function Painel() {
             atividades.push(...chunkRows);
           }
           if (req !== requisicaoRef.current) return;
-          stalledProcesses = listarProcessosParados(processosRows, atividades, agora);
+          stalledProcesses = listarProcessosParados(
+            processosParadosCandidatos,
+            atividades,
+            agora,
+          );
         }
       } catch (err) {
         processError = err instanceof Error ? err.message : String(err);
@@ -211,20 +258,29 @@ function Painel() {
       .map((x) => x.error?.message ?? "");
     if (processError) failures.push(processError);
 
+    const prontidao =
+      !tenantRes.error && !complianceRes.error
+        ? avaliarProntidaoSecretaria(tenantRes.data, Boolean(complianceRes.data))
+        : null;
+
     setIndicadores({
       suppliers: !moduloFornecedores || s.error ? null : (s.count ?? 0),
       documents: !moduloDocumentos || d.error ? null : (d.count ?? 0),
       expired: !moduloDocumentos || expired.error ? null : (expired.count ?? 0),
       expiring: !moduloDocumentos || expiring.error ? null : (expiring.count ?? 0),
+      contractsExpired: cExpired.error ? null : (cExpired.count ?? 0),
+      contractsExpiring: cExpiring.error ? null : (cExpiring.count ?? 0),
       members: m.error ? null : (m.count ?? 0),
       generated: !moduloDocumentos || g.error ? null : (g.count ?? 0),
       stalledProcesses,
+      pipeline,
+      prontidao,
     });
     if (failures.length) {
       setErro("Alguns indicadores não puderam ser consultados com as permissões deste perfil.");
     }
     setLoading(false);
-  }, [selecionado?.id, moduloFornecedores, moduloDocumentos, moduloProcessos]);
+  }, [selecionado?.id, moduloFornecedores, moduloDocumentos, moduloProcessos, session?.user.id]);
 
   useEffect(() => {
     void carregar();
@@ -325,18 +381,32 @@ function Painel() {
               <div className="mt-4 grid grid-cols-2 divide-x divide-primary-foreground/20">
                 <div className="pr-4">
                   <p className="text-3xl font-bold tabular-nums sm:text-4xl">
-                    {loading ? "…" : (indicadores.expired ?? "—")}
+                    {loading
+                      ? "…"
+                      : indicadores.expired === null && indicadores.contractsExpired === null
+                        ? "—"
+                        : (indicadores.expired ?? 0) + (indicadores.contractsExpired ?? 0)}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-primary-foreground/80">
-                    Documentos vencidos
+                    Itens vencidos
+                  </p>
+                  <p className="text-[11px] text-primary-foreground/65">
+                    {indicadores.expired ?? 0} cert. · {indicadores.contractsExpired ?? 0} contr.
                   </p>
                 </div>
                 <div className="pl-4">
                   <p className="text-3xl font-bold tabular-nums sm:text-4xl">
-                    {loading ? "…" : (indicadores.expiring ?? "—")}
+                    {loading
+                      ? "…"
+                      : indicadores.expiring === null && indicadores.contractsExpiring === null
+                        ? "—"
+                        : (indicadores.expiring ?? 0) + (indicadores.contractsExpiring ?? 0)}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-primary-foreground/80">
                     Vencem em 30 dias
+                  </p>
+                  <p className="text-[11px] text-primary-foreground/65">
+                    {indicadores.expiring ?? 0} cert. · {indicadores.contractsExpiring ?? 0} contr.
                   </p>
                 </div>
               </div>
@@ -385,7 +455,29 @@ function Painel() {
             </Alert>
           )}
 
+          {indicadores.prontidao && !indicadores.prontidao.pronta && (
+            <Alert className="border-amber-500/35 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTitle>Ficha da Secretaria pendente para a Lei nº 14.133/2021</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  Faltando: {indicadores.prontidao.pendencias.join(", ")}.
+                </span>
+                <Link
+                  to="/configuracoes"
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                >
+                  Completar em Configurações <ArrowUpRight className="size-3.5" />
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {session?.user.id && <MyTasks tenantId={selecionado.id} userId={session.user.id} />}
+
+          {moduloProcessos && indicadores.pipeline && indicadores.pipeline.totalAtivos > 0 && (
+            <ExecutivePipelineCard resumo={indicadores.pipeline} />
+          )}
 
           <section aria-labelledby="indicadores-titulo" className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
