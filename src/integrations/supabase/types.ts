@@ -4265,6 +4265,19 @@ export type Database = {
         Returns: {
           can_approve: boolean
           can_create: boolean
+          can_view: boolean
+        }[]
+      }
+      get_tenant_optional_integrations: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          agu_assistant_enabled: boolean
+          govbr_configured: boolean
+          govbr_enabled: boolean
+          govbr_environment: string
+          pncp_configured: boolean
+          pncp_enabled: boolean
+          pncp_environment: string
         }[]
       }
       apply_tenant_onboarding_defaults: {

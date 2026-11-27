@@ -49,6 +49,19 @@ type IntegrationSettings = {
   retention_policy_version: string;
   retention_policy_text: string;
   retention_approved_at: string | null;
+  pncp_enabled: boolean;
+  pncp_environment: "treinamento" | "producao";
+  pncp_login: string;
+  has_pncp_password: boolean;
+  pncp_unidade_compradora: string;
+  pncp_last_test_at: string | null;
+  pncp_last_test_status: string | null;
+  govbr_enabled: boolean;
+  govbr_environment: "homologacao" | "producao";
+  govbr_client_id: string;
+  has_govbr_client_secret: boolean;
+  govbr_redirect_uri: string;
+  agu_assistant_enabled: boolean;
   updated_at: string | null;
 };
 
@@ -76,6 +89,19 @@ const EMPTY: IntegrationSettings = {
   retention_policy_version: "",
   retention_policy_text: "",
   retention_approved_at: null,
+  pncp_enabled: false,
+  pncp_environment: "treinamento",
+  pncp_login: "",
+  has_pncp_password: false,
+  pncp_unidade_compradora: "",
+  pncp_last_test_at: null,
+  pncp_last_test_status: null,
+  govbr_enabled: false,
+  govbr_environment: "homologacao",
+  govbr_client_id: "",
+  has_govbr_client_secret: false,
+  govbr_redirect_uri: "",
+  agu_assistant_enabled: false,
   updated_at: null,
 };
 
@@ -85,6 +111,9 @@ export function TenantIntegrationsSettings() {
   const [smtpPassword, setSmtpPassword] = useState("");
   const [emailApiSecret, setEmailApiSecret] = useState("");
   const [driveClientSecret, setDriveClientSecret] = useState("");
+  const [pncpPassword, setPncpPassword] = useState("");
+  const [govbrClientSecret, setGovbrClientSecret] = useState("");
+  const [testingPncp, setTestingPncp] = useState(false);
   const [approvePolicy, setApprovePolicy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -310,6 +339,8 @@ export function TenantIntegrationsSettings() {
         email_smtp_password: smtpPassword || undefined,
         email_api_secret: emailApiSecret || undefined,
         drive_client_secret: driveClientSecret || undefined,
+        pncp_password: pncpPassword || undefined,
+        govbr_client_secret: govbrClientSecret || undefined,
         approve_retention_policy: approvePolicy,
       },
     });
@@ -321,8 +352,26 @@ export function TenantIntegrationsSettings() {
     setSmtpPassword("");
     setEmailApiSecret("");
     setDriveClientSecret("");
+    setPncpPassword("");
+    setGovbrClientSecret("");
     setApprovePolicy(false);
     toast.success("Configurações protegidas atualizadas.");
+    await load();
+  }
+
+  async function testPncp() {
+    if (!selecionado?.id || testingPncp) return;
+    setTestingPncp(true);
+    const { data, error } = await db.functions.invoke("publish-pncp", {
+      body: { action: "test", tenant_id: selecionado.id },
+    });
+    setTestingPncp(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível autenticar no PNCP.");
+      await load();
+      return;
+    }
+    toast.success(data?.message ?? "Conexão PNCP confirmada!");
     await load();
   }
 
@@ -660,6 +709,194 @@ export function TenantIntegrationsSettings() {
                     .
                   </p>
                 )}
+              </section>
+
+              <section className="space-y-4 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">PNCP — Envio Direto via API (Opcional)</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Permite publicar PCA, Processos e Contratos diretamente no Portal Nacional de
+                    Contratações Públicas. Se mantido desativado, o sistema continua gerando os
+                    arquivos JSON/XML normalmente para envio manual.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={settings.pncp_enabled}
+                    onChange={(e) => update("pncp_enabled", e.target.checked)}
+                  />
+                  <span>Habilitar envio direto opcional ao PNCP nesta Secretaria</span>
+                </label>
+                {settings.pncp_enabled && (
+                  <div className="space-y-4 rounded-md border bg-muted/20 p-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="pncp-env">Ambiente PNCP</Label>
+                        <select
+                          id="pncp-env"
+                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                          value={settings.pncp_environment}
+                          onChange={(e) =>
+                            update(
+                              "pncp_environment",
+                              e.target.value === "producao" ? "producao" : "treinamento",
+                            )
+                          }
+                        >
+                          <option value="treinamento">
+                            Treinamento / Homologação (sem efeito legal)
+                          </option>
+                          <option value="producao">Produção oficial (pncp.gov.br)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pncp-unidade">Código Unidade Compradora (opcional)</Label>
+                        <Input
+                          id="pncp-unidade"
+                          value={settings.pncp_unidade_compradora}
+                          onChange={(e) => update("pncp_unidade_compradora", e.target.value)}
+                          placeholder="Ex.: 987654"
+                          maxLength={80}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pncp-login">Login de API PNCP</Label>
+                        <Input
+                          id="pncp-login"
+                          value={settings.pncp_login}
+                          onChange={(e) => update("pncp_login", e.target.value)}
+                          maxLength={254}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pncp-password">
+                          Senha de API PNCP{" "}
+                          {settings.has_pncp_password
+                            ? "(já cadastrada; deixe em branco para manter)"
+                            : ""}
+                        </Label>
+                        <Input
+                          id="pncp-password"
+                          type="password"
+                          autoComplete="new-password"
+                          value={pncpPassword}
+                          onChange={(e) => setPncpPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={testingPncp || !settings.pncp_login || !settings.has_pncp_password}
+                        onClick={() => void testPncp()}
+                      >
+                        {testingPncp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Testar autenticação PNCP
+                      </Button>
+                      {settings.pncp_last_test_status && (
+                        <span className="text-xs text-muted-foreground">
+                          Último teste: {settings.pncp_last_test_status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-4 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">Assinatura Eletrônica Gov.br (Opcional)</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Permite oferecer a assinatura via conta Gov.br (Prata/Ouro) como opção
+                    adicional à assinatura eletrônica SHA-256 nativa do sistema.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={settings.govbr_enabled}
+                    onChange={(e) => update("govbr_enabled", e.target.checked)}
+                  />
+                  <span>Habilitar opção de assinatura Gov.br nos documentos</span>
+                </label>
+                {settings.govbr_enabled && (
+                  <div className="grid gap-4 rounded-md border bg-muted/20 p-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="govbr-env">Ambiente Gov.br</Label>
+                      <select
+                        id="govbr-env"
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={settings.govbr_environment}
+                        onChange={(e) =>
+                          update(
+                            "govbr_environment",
+                            e.target.value === "producao" ? "producao" : "homologacao",
+                          )
+                        }
+                      >
+                        <option value="homologacao">Homologação (sso.staging.acesso.gov.br)</option>
+                        <option value="producao">Produção oficial (sso.acesso.gov.br)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="govbr-client-id">Gov.br Client ID</Label>
+                      <Input
+                        id="govbr-client-id"
+                        value={settings.govbr_client_id}
+                        onChange={(e) => update("govbr_client_id", e.target.value)}
+                        maxLength={512}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="govbr-secret">
+                        Gov.br Client Secret{" "}
+                        {settings.has_govbr_client_secret
+                          ? "(já cadastrado; deixe em branco para manter)"
+                          : ""}
+                      </Label>
+                      <Input
+                        id="govbr-secret"
+                        type="password"
+                        autoComplete="new-password"
+                        value={govbrClientSecret}
+                        onChange={(e) => setGovbrClientSecret(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="govbr-redirect">Redirect URI autorizada</Label>
+                      <Input
+                        id="govbr-redirect"
+                        value={settings.govbr_redirect_uri}
+                        onChange={(e) => update("govbr_redirect_uri", e.target.value)}
+                        placeholder="https://seu-dominio/govbr/callback"
+                        maxLength={512}
+                      />
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-3 border-t pt-6">
+                <div>
+                  <h3 className="font-medium">
+                    Assistente AGU para ETP e Termo de Referência (Opcional)
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Disponibiliza um botão opcional no módulo Documentos para inserir roteiros e
+                    cláusulas orientativas da AGU (IN SEGES nº 58/2022 e nº 81/2022) sem alterar os
+                    modelos existentes.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={settings.agu_assistant_enabled}
+                    onChange={(e) => update("agu_assistant_enabled", e.target.checked)}
+                  />
+                  <span>Disponibilizar Assistente AGU (ETP/TR) como opção para os profissionais</span>
+                </label>
               </section>
 
               <section className="space-y-3 border-t pt-6">

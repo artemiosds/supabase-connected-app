@@ -4,8 +4,10 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  ExternalLink,
   FileCheck2,
   Loader2,
+  Send,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +22,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { db } from "@/lib/db";
+import {
+  DEFAULT_OPTIONAL_INTEGRATIONS,
+  type OptionalIntegrationsStatus,
+} from "@/lib/optional-integrations-helper";
 import {
   validarContratoPncp,
   validarPcaPncp,
@@ -57,16 +63,30 @@ export function PncpExportDialog(props: Props) {
   const [open, setOpen] = useState(false);
   const [loadingTenant, setLoadingTenant] = useState(false);
   const [tenantInfo, setTenantInfo] = useState<PncpTenantInfo>({ name: props.tenantName });
+  const [optIntegrations, setOptIntegrations] = useState<OptionalIntegrationsStatus>(
+    DEFAULT_OPTIONAL_INTEGRATIONS,
+  );
+  const [publishing, setPublishing] = useState(false);
+  const [publishedResult, setPublishedResult] = useState<{
+    controlNumber: string;
+    url: string;
+    environment: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!open || !props.tenantId) return;
     let cancelled = false;
     setLoadingTenant(true);
-    db.from("tenants")
-      .select("name,cnpj,ibge_code,municipality,state")
-      .eq("id", props.tenantId)
-      .maybeSingle()
-      .then(({ data }) => {
+    setPublishedResult(null);
+    Promise.all([
+      db
+        .from("tenants")
+        .select("name,cnpj,ibge_code,municipality,state")
+        .eq("id", props.tenantId)
+        .maybeSingle(),
+      db.rpc("get_tenant_optional_integrations", { p_tenant_id: props.tenantId }),
+    ])
+      .then(([{ data }, optRes]) => {
         if (cancelled) return;
         if (data) {
           setTenantInfo({
@@ -79,11 +99,18 @@ export function PncpExportDialog(props: Props) {
         } else {
           setTenantInfo({ name: props.tenantName });
         }
+        const firstOpt = Array.isArray(optRes.data) ? optRes.data[0] : optRes.data;
+        if (firstOpt && typeof firstOpt === "object") {
+          setOptIntegrations(firstOpt as OptionalIntegrationsStatus);
+        } else {
+          setOptIntegrations(DEFAULT_OPTIONAL_INTEGRATIONS);
+        }
         setLoadingTenant(false);
       })
       .then(undefined, () => {
         if (!cancelled) {
           setTenantInfo({ name: props.tenantName });
+          setOptIntegrations(DEFAULT_OPTIONAL_INTEGRATIONS);
           setLoadingTenant(false);
         }
       });
@@ -130,6 +157,38 @@ export function PncpExportDialog(props: Props) {
     link.click();
     URL.revokeObjectURL(url);
     toast.success("Arquivo JSON padrão PNCP baixado.");
+  }
+
+  async function handlePublishDirect() {
+    if (!validation || validation.status === "blocked" || publishing) return;
+    setPublishing(true);
+    const recordId =
+      props.kind === "contract"
+        ? props.contract.id
+        : props.kind === "process"
+          ? props.process.id
+          : "";
+    const { data, error } = await db.functions.invoke("publish-pncp", {
+      body: {
+        action: "publish",
+        tenant_id: props.tenantId,
+        kind: props.kind,
+        record_id: recordId,
+        orgao_cnpj: tenantInfo.cnpj ?? "",
+        payload: validation.payload,
+      },
+    });
+    setPublishing(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Não foi possível publicar no PNCP.");
+      return;
+    }
+    setPublishedResult({
+      controlNumber: String(data.pncp_control_number ?? ""),
+      url: String(data.pncp_url ?? ""),
+      environment: String(data.environment ?? optIntegrations.pncp_environment),
+    });
+    toast.success(`Publicado no PNCP (${data.environment}): ${data.pncp_control_number}`);
   }
 
   return (
@@ -212,6 +271,33 @@ export function PncpExportDialog(props: Props) {
                     {jsonString}
                   </pre>
                 </div>
+
+                {publishedResult && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs">
+                    <div>
+                      <p className="font-semibold text-emerald-700 dark:text-emerald-300">
+                        Publicado no PNCP ({publishedResult.environment})
+                      </p>
+                      <p className="text-muted-foreground">
+                        Controle PNCP: <strong>{publishedResult.controlNumber}</strong>
+                      </p>
+                    </div>
+                    {publishedResult.url && (
+                      <Button size="sm" variant="outline" asChild>
+                        <a href={publishedResult.url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Abrir no PNCP
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {!optIntegrations.pncp_configured && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Envio direto via API PNCP é opcional e está desativado/não configurado em
+                    Configurações → Integrações. Você pode baixar ou copiar o JSON acima normalmente.
+                  </p>
+                )}
               </div>
             )
           )}
@@ -231,12 +317,27 @@ export function PncpExportDialog(props: Props) {
             </Button>
             <Button
               type="button"
+              variant={optIntegrations.pncp_configured ? "outline" : "default"}
               disabled={!validation || validation.status === "blocked"}
               onClick={handleDownload}
             >
               <Download className="mr-2 h-4 w-4" />
               Baixar JSON PNCP
             </Button>
+            {optIntegrations.pncp_configured && (
+              <Button
+                type="button"
+                disabled={!validation || validation.status === "blocked" || publishing}
+                onClick={() => void handlePublishDirect()}
+              >
+                {publishing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Publicar no PNCP ({optIntegrations.pncp_environment})
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

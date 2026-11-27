@@ -66,6 +66,7 @@ const ACTION_LABELS: Record<string, string> = {
   "annual_demand.converted": "Demanda PCA convertida em processo",
   "contract_inspection.created": "Registro no livro de fiscalização",
   "contract_inspection.updated": "Atualização no livro de fiscalização",
+  "pncp.published": "Publicado diretamente no PNCP",
   "platform_support.session_started": "Sessão de suporte iniciada",
   "platform_support.session_ended": "Sessão de suporte encerrada",
 };

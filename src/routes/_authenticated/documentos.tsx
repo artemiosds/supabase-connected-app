@@ -29,6 +29,11 @@ import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
 import type { CsvColumn } from "@/lib/csv-export";
 import { ETAPAS } from "@/lib/contratacao";
+import { gerarRoteiroEstruturadoAgu } from "@/lib/agu-etp-tr-helper";
+import {
+  DEFAULT_OPTIONAL_INTEGRATIONS,
+  type OptionalIntegrationsStatus,
+} from "@/lib/optional-integrations-helper";
 import {
   buildSamplePreviewContext,
   defaultTemplateScopeConfig,
@@ -389,6 +394,33 @@ function Documentos() {
   const [tituloEdicaoGerado, setTituloEdicaoGerado] = useState("");
   const [conteudoEdicaoGerado, setConteudoEdicaoGerado] = useState("");
   const [salvandoEdicaoGerado, setSalvandoEdicaoGerado] = useState(false);
+  const [optIntegrations, setOptIntegrations] = useState<OptionalIntegrationsStatus>(
+    DEFAULT_OPTIONAL_INTEGRATIONS,
+  );
+
+  useEffect(() => {
+    if (!db || !selecionado?.id) {
+      setOptIntegrations(DEFAULT_OPTIONAL_INTEGRATIONS);
+      return;
+    }
+    let cancelled = false;
+    db.rpc("get_tenant_optional_integrations", { p_tenant_id: selecionado.id })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const first = Array.isArray(data) ? data[0] : data;
+        if (first && typeof first === "object") {
+          setOptIntegrations(first as OptionalIntegrationsStatus);
+        } else {
+          setOptIntegrations(DEFAULT_OPTIONAL_INTEGRATIONS);
+        }
+      })
+      .then(undefined, () => {
+        if (!cancelled) setOptIntegrations(DEFAULT_OPTIONAL_INTEGRATIONS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selecionado?.id]);
 
   useEffect(() => {
     const tenantId = selecionado?.id ?? null;
@@ -3221,12 +3253,19 @@ function Documentos() {
                                         {d.status === "draft" &&
                                           capacidades.can_sign &&
                                           status === "approved" && (
-                                            <Button
-                                              size="sm"
-                                              onClick={() => void assinarDocumento(d)}
-                                            >
-                                              <CheckCircle2 className="h-4 w-4" /> Assinar
-                                            </Button>
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                onClick={() => void assinarDocumento(d)}
+                                              >
+                                                <CheckCircle2 className="h-4 w-4" /> Assinar
+                                              </Button>
+                                              {optIntegrations.govbr_configured && (
+                                                <Badge variant="outline" className="text-[11px]">
+                                                  Gov.br ({optIntegrations.govbr_environment}) pronto
+                                                </Badge>
+                                              )}
+                                            </>
                                           )}
                                         {workflow?.decision_comment && (
                                           <span className="basis-full text-right text-xs text-muted-foreground">
@@ -3962,7 +4001,49 @@ function Documentos() {
               )}
               {!processoGeracao && (
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Conteúdo do documento *</Label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label>Conteúdo do documento *</Label>
+                    {optIntegrations.agu_assistant_enabled && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const roteiro = gerarRoteiroEstruturadoAgu({
+                              tipo: "etp",
+                              objeto: tituloGerado || "Objeto da contratação",
+                            });
+                            setConteudoGerado((atual) =>
+                              atual.trim() ? `${atual.trim()}\n\n${roteiro}` : roteiro,
+                            );
+                            toast.success("Roteiro AGU (ETP - IN SEGES 58/2022) inserido.");
+                          }}
+                        >
+                          <Sparkles className="mr-1 h-3 w-3" /> Roteiro AGU (ETP)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const roteiro = gerarRoteiroEstruturadoAgu({
+                              tipo: "tr",
+                              objeto: tituloGerado || "Objeto da contratação",
+                            });
+                            setConteudoGerado((atual) =>
+                              atual.trim() ? `${atual.trim()}\n\n${roteiro}` : roteiro,
+                            );
+                            toast.success("Roteiro AGU (TR - IN SEGES 81/2022) inserido.");
+                          }}
+                        >
+                          <Sparkles className="mr-1 h-3 w-3" /> Roteiro AGU (TR)
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <Textarea
                     required
                     rows={14}

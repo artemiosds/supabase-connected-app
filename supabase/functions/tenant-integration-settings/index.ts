@@ -116,6 +116,19 @@ function publicSettings(row: Record<string, unknown> | null) {
     retention_policy_version: row.retention_policy_version,
     retention_policy_text: row.retention_policy_text,
     retention_approved_at: row.retention_approved_at,
+    pncp_enabled: Boolean(row.pncp_enabled),
+    pncp_environment: row.pncp_environment ?? "treinamento",
+    pncp_login: row.pncp_login,
+    has_pncp_password: Boolean(row.pncp_password_ciphertext),
+    pncp_unidade_compradora: row.pncp_unidade_compradora,
+    pncp_last_test_at: row.pncp_last_test_at,
+    pncp_last_test_status: row.pncp_last_test_status,
+    govbr_enabled: Boolean(row.govbr_enabled),
+    govbr_environment: row.govbr_environment ?? "homologacao",
+    govbr_client_id: row.govbr_client_id,
+    has_govbr_client_secret: Boolean(row.govbr_client_secret_ciphertext),
+    govbr_redirect_uri: row.govbr_redirect_uri,
+    agu_assistant_enabled: Boolean(row.agu_assistant_enabled),
     updated_at: row.updated_at,
   };
 }
@@ -745,6 +758,17 @@ Deno.serve(async (request: Request) => {
     drive_enabled: body.drive_enabled === true,
     drive_client_id: textValue(body.drive_client_id, 512),
     drive_root_folder_id: textValue(body.drive_root_folder_id, 512),
+    pncp_enabled: body.pncp_enabled === true,
+    pncp_environment:
+      textValue(body.pncp_environment, 20) === "producao" ? "producao" : "treinamento",
+    pncp_login: textValue(body.pncp_login, 254),
+    pncp_unidade_compradora: textValue(body.pncp_unidade_compradora, 80),
+    govbr_enabled: body.govbr_enabled === true,
+    govbr_environment:
+      textValue(body.govbr_environment, 20) === "producao" ? "producao" : "homologacao",
+    govbr_client_id: textValue(body.govbr_client_id, 512),
+    govbr_redirect_uri: textValue(body.govbr_redirect_uri, 512),
+    agu_assistant_enabled: body.agu_assistant_enabled === true,
     retention_days:
       body.retention_days === null || body.retention_days === ""
         ? (existing?.retention_days ?? null)
@@ -776,6 +800,8 @@ Deno.serve(async (request: Request) => {
     ["email_smtp_password", "email_smtp_secret_ciphertext"],
     ["email_api_secret", "email_api_secret_ciphertext"],
     ["drive_client_secret", "drive_client_secret_ciphertext"],
+    ["pncp_password", "pncp_password_ciphertext"],
+    ["govbr_client_secret", "govbr_client_secret_ciphertext"],
   ] as const;
   try {
     for (const [inputName, columnName] of secrets) {
