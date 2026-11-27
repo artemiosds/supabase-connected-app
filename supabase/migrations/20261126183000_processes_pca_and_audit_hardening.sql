@@ -51,6 +51,7 @@ CREATE POLICY annual_demands_read
     AND app_auth.is_tenant_module_enabled(tenant_id, 'pca')
   );
 
+DROP FUNCTION IF EXISTS public.annual_demand_capabilities(uuid);
 CREATE OR REPLACE FUNCTION public.annual_demand_capabilities(p_tenant_id uuid)
 RETURNS TABLE(can_view boolean, can_create boolean, can_approve boolean)
 LANGUAGE sql
