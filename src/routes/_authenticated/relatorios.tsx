@@ -51,6 +51,7 @@ import {
 import { useTenant } from "@/hooks/use-tenant";
 import { isCommercialModuleEnabled } from "@/lib/commercial-access";
 import { dataHojeLocalISO, formatarData, formatarMoeda } from "@/lib/contratacao";
+import { LIMITES_LEI_14133 } from "@/lib/tenant-settings-helpers";
 import type { CsvColumn } from "@/lib/csv-export";
 import { bancoNaoConfigurado, carregarTodasAsPaginas, db } from "@/lib/db";
 import {
@@ -145,6 +146,15 @@ function RelatoriosPage() {
 
   const [contratos, setContratos] = useState<ContratoCompleto[]>([]);
   const [movimentos, setMovimentos] = useState<MovimentoOFResumo[]>([]);
+  const [governanca, setGovernanca] = useState<{
+    processosAtivos: number;
+    processosConcluidos: number;
+    valorEmTramitacao: number;
+    dispensasAcimaTeto: number;
+    pcaAprovadas: number;
+    pcaConvertidas: number;
+    pcaPercentual: number;
+  } | null>(null);
   const requisicaoRef = useRef(0);
 
   const carregarDados = useCallback(async () => {
@@ -162,57 +172,120 @@ function RelatoriosPage() {
       setLoading(true);
       setErro(null);
 
-      const [contractsData, suppliersData, itemsData, movementsData] = await Promise.all([
-        carregarTodasAsPaginas<{
-          id: string;
-          number: string;
-          object: string | null;
-          instrument_type: string | null;
-          total_value: number;
-          status: string;
-          start_date: string | null;
-          end_date: string | null;
-          supplier_id: string | null;
-        }>((inicio, fim) =>
-          db
-            .from("contracts")
-            .select(
-              "id,number,object,instrument_type,total_value,status,start_date,end_date,supplier_id",
-            )
-            .eq("tenant_id", tenantId)
-            .order("total_value", { ascending: false })
-            .order("id", { ascending: true })
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<{ id: string; legal_name: string; trade_name: string | null }>(
-          (inicio, fim) =>
+      const [contractsData, suppliersData, itemsData, movementsData, processosRes, pcaRes] =
+        await Promise.all([
+          carregarTodasAsPaginas<{
+            id: string;
+            number: string;
+            object: string | null;
+            instrument_type: string | null;
+            total_value: number;
+            status: string;
+            start_date: string | null;
+            end_date: string | null;
+            supplier_id: string | null;
+          }>((inicio, fim) =>
             db
-              .from("suppliers")
-              .select("id,legal_name,trade_name")
+              .from("contracts")
+              .select(
+                "id,number,object,instrument_type,total_value,status,start_date,end_date,supplier_id",
+              )
+              .eq("tenant_id", tenantId)
+              .order("total_value", { ascending: false })
+              .order("id", { ascending: true })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<{ id: string; legal_name: string; trade_name: string | null }>(
+            (inicio, fim) =>
+              db
+                .from("suppliers")
+                .select("id,legal_name,trade_name")
+                .eq("tenant_id", tenantId)
+                .order("id", { ascending: true })
+                .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<ItemContrato>((inicio, fim) =>
+            db
+              .from("contract_items")
+              .select("id,contract_id,unit_value")
               .eq("tenant_id", tenantId)
               .order("id", { ascending: true })
               .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<ItemContrato>((inicio, fim) =>
-          db
-            .from("contract_items")
-            .select("id,contract_id,unit_value")
-            .eq("tenant_id", tenantId)
-            .order("id", { ascending: true })
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<MovimentoBruto>((inicio, fim) =>
-          db
-            .from("contract_item_movements")
-            .select("id,contract_item_id,movement_type,quantity,unit_value_snapshot,created_at")
-            .eq("tenant_id", tenantId)
-            .order("created_at", { ascending: true })
-            .order("id", { ascending: true })
-            .range(inicio, fim),
-        ),
-      ]);
+          ),
+          carregarTodasAsPaginas<MovimentoBruto>((inicio, fim) =>
+            db
+              .from("contract_item_movements")
+              .select("id,contract_item_id,movement_type,quantity,unit_value_snapshot,created_at")
+              .eq("tenant_id", tenantId)
+              .order("created_at", { ascending: true })
+              .order("id", { ascending: true })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<{
+            id: string;
+            modality: string;
+            status: string;
+            estimated_value: number | null;
+          }>((inicio, fim) =>
+            db
+              .from("procurement_processes")
+              .select("id,modality,status,estimated_value")
+              .eq("tenant_id", tenantId)
+              .neq("status", "arquivado")
+              .order("id")
+              .range(inicio, fim),
+          ).catch(() => []),
+          carregarTodasAsPaginas<{
+            id: string;
+            review_status: string | null;
+            process_id: string | null;
+          }>((inicio, fim) =>
+            db
+              .from("annual_procurement_demands")
+              .select("id,review_status,process_id")
+              .eq("tenant_id", tenantId)
+              .eq("plan_year", new Date().getFullYear())
+              .order("id")
+              .range(inicio, fim),
+          ).catch(() => []),
+        ]);
 
       if (req !== requisicaoRef.current) return;
+
+      const processosAtivosList = processosRes.filter((p) => p.status !== "concluido");
+      const processosConcluidos = processosRes.filter((p) => p.status === "concluido").length;
+      const valorEmTramitacao = processosAtivosList.reduce(
+        (acc, p) => acc + (typeof p.estimated_value === "number" ? p.estimated_value : 0),
+        0,
+      );
+      const dispensasAcimaTeto = processosAtivosList.filter(
+        (p) =>
+          p.modality === "dispensa" &&
+          typeof p.estimated_value === "number" &&
+          p.estimated_value > LIMITES_LEI_14133.dispensaComprasServicos,
+      ).length;
+      const pcaAprovadasList = pcaRes.filter(
+        (d) =>
+          d.review_status === "approved" ||
+          d.review_status === "converted" ||
+          Boolean(d.process_id),
+      );
+      const pcaConvertidas = pcaAprovadasList.filter(
+        (d) => d.review_status === "converted" || Boolean(d.process_id),
+      ).length;
+      const pcaPercentual =
+        pcaAprovadasList.length > 0
+          ? Math.round((pcaConvertidas / pcaAprovadasList.length) * 100)
+          : 0;
+      setGovernanca({
+        processosAtivos: processosAtivosList.length,
+        processosConcluidos,
+        valorEmTramitacao,
+        dispensasAcimaTeto,
+        pcaAprovadas: pcaAprovadasList.length,
+        pcaConvertidas,
+        pcaPercentual,
+      });
 
       const supplierMap = new Map<string, string>();
       for (const s of suppliersData) {
@@ -627,6 +700,59 @@ function RelatoriosPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Governança Cruzada: PCA, Processos & Conformidade Lei 14.133 */}
+      {governanca && (
+        <Card className="border-border shadow-xs">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Layers className="w-4 h-4 text-primary" />
+              Governança do Ciclo de Contratações ({new Date().getFullYear()})
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Integração entre Planejamento (PCA), Processos Licitatórios e Enquadramento do Decreto nº 12.343/2024.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5 rounded-lg border bg-muted/20 p-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Execução do PCA ({new Date().getFullYear()})</span>
+                <span className="font-semibold text-foreground">{governanca.pcaPercentual}%</span>
+              </div>
+              <Progress value={governanca.pcaPercentual} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                {governanca.pcaConvertidas} de {governanca.pcaAprovadas} demanda(s) convertida(s) em processo
+              </p>
+            </div>
+            <div className="space-y-1 rounded-lg border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Processos na esteira</p>
+              <p className="text-lg font-bold tabular-nums">
+                {governanca.processosAtivos} ativo(s) · {governanca.processosConcluidos} concluído(s)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Volume em tramitação: {formatarMoeda(governanca.valorEmTramitacao)}
+              </p>
+            </div>
+            <div className="space-y-1 rounded-lg border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Conformidade de Dispensas (Art. 75)</p>
+              <div className="flex items-center gap-2">
+                {governanca.dispensasAcimaTeto > 0 ? (
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                    {governanca.dispensasAcimaTeto} acima de R$ 62.725,58
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                    Dentro do teto vigente
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Referência: Decreto Federal nº 12.343/2024
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gráfico de Distribuição por Fornecedor & Painel Sintético */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

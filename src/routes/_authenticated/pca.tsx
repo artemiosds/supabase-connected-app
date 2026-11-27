@@ -55,7 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import { useTenant } from "@/hooks/use-tenant";
 import { isCommercialModuleEnabled } from "@/lib/commercial-access";
-import { formatarData, formatarMoeda, MODALIDADES } from "@/lib/contratacao";
+import { ETAPAS, formatarData, formatarMoeda, MODALIDADES } from "@/lib/contratacao";
 import { bancoNaoConfigurado, carregarTodasAsPaginas, db } from "@/lib/db";
 import {
   avaliarCronogramaPca,
@@ -157,6 +157,9 @@ function PcaPage() {
 
   const [year, setYear] = useState(new Date().getFullYear());
   const [demandas, setDemandas] = useState<DemandaPCARow[]>([]);
+  const [processosVinculados, setProcessosVinculados] = useState<
+    Record<string, { number: string; stage: string; status: string }>
+  >({});
   const [capabilities, setCapabilities] = useState<DemandCapabilities | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -230,6 +233,30 @@ function PcaPage() {
 
       setDemandas(demandsRows);
       setCapabilities((capsRes.data?.[0] as DemandCapabilities) ?? null);
+
+      const processIds = Array.from(
+        new Set(
+          demandsRows
+            .map((d) => d.process_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      if (processIds.length > 0) {
+        const { data: procData } = await db
+          .from("procurement_processes")
+          .select("id,number,stage,status")
+          .eq("tenant_id", tenantId)
+          .in("id", processIds);
+        if (req === requisicaoRef.current && procData) {
+          const map: Record<string, { number: string; stage: string; status: string }> = {};
+          for (const p of procData) {
+            map[p.id] = { number: p.number, stage: p.stage, status: p.status };
+          }
+          setProcessosVinculados(map);
+        }
+      } else {
+        setProcessosVinculados({});
+      }
     } catch (error) {
       if (req !== requisicaoRef.current) return;
       const msg = error instanceof Error ? error.message : "Erro ao consultar o PCA.";
@@ -956,15 +983,30 @@ function PcaPage() {
                           )}
 
                         {demand.process_id && (
-                          <Button variant="link" size="sm" asChild className="px-0 h-auto">
-                            <Link
-                              to="/processos"
-                              search={{ processo: demand.process_id } as never}
-                              className="text-xs flex items-center gap-1"
-                            >
-                              Abrir processo vinculado <ArrowUpRight className="w-3.5 h-3.5" />
-                            </Link>
-                          </Button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(() => {
+                              const proc = processosVinculados[demand.process_id];
+                              if (!proc) return null;
+                              const etapaNome =
+                                proc.status === "concluido"
+                                  ? "Concluído"
+                                  : (ETAPAS.find((e) => e.id === proc.stage)?.nome ?? proc.stage);
+                              return (
+                                <Badge variant="secondary" className="text-[11px] font-normal">
+                                  Proc. {proc.number} · {etapaNome}
+                                </Badge>
+                              );
+                            })()}
+                            <Button variant="link" size="sm" asChild className="px-0 h-auto">
+                              <Link
+                                to="/processos"
+                                search={{ processo: demand.process_id } as never}
+                                className="text-xs flex items-center gap-1"
+                              >
+                                Abrir processo vinculado <ArrowUpRight className="w-3.5 h-3.5" />
+                              </Link>
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </CardContent>
