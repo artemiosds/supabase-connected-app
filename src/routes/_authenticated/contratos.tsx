@@ -16,6 +16,9 @@ import {
   Search,
   ScrollText,
   Download,
+  ShieldAlert,
+  ShieldCheck,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReportExportActions } from "@/components/reports/report-export-actions";
@@ -52,6 +55,10 @@ import {
   type AditivoHistoricoInput,
 } from "@/lib/contract-amendments";
 import { sugerirProximoNumeroAditivo } from "@/lib/contract-extension-helper";
+import {
+  avaliarConformidadeHabilitacaoFornecedores,
+  type FichaConformidadeFornecedor,
+} from "@/lib/document-expiry-cockpit-helper";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,6 +186,14 @@ function Contratos() {
   const [fornecedores, setFornecedores] = useState<SupplierOption[]>([]);
   const [processos, setProcessos] = useState<ProcessoOpcao[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
+  const [docsFornecedores, setDocsFornecedores] = useState<
+    Array<{
+      id: string;
+      supplier_id: string;
+      document_type: string | null;
+      expires_at: string | null;
+    }>
+  >([]);
   const [tenantCarregadoId, setTenantCarregadoId] = useState<string | null>(null);
   const requisicaoRef = useRef(0);
   const [historicosAbertos, setHistoricosAbertos] = useState<Record<string, boolean>>({});
@@ -190,7 +205,8 @@ function Contratos() {
   const [contratoEditando, setContratoEditando] = useState<Contrato | null>(null);
   const [aditivoDe, setAditivoDe] = useState<Contrato | null>(null);
   const [prorrogacaoDe, setProrrogacaoDe] = useState<Contrato | null>(null);
-  const [filtro, setFiltro] = useState<"todos" | "alerta" | NivelAlerta>("todos");
+  const [filtro, setFiltro] = useState<"todos" | "alerta" | "irregular" | NivelAlerta>("todos");
+  const [somenteMeus, setSomenteMeus] = useState(false);
   const [aba, setAba] = useState<"contratos" | "aditivos" | "renovacoes" | "fiscalizacao">(
     "contratos",
   );
@@ -219,6 +235,7 @@ function Contratos() {
     setFornecedores([]);
     setProcessos([]);
     setAditivos([]);
+    setDocsFornecedores([]);
     setHistoricosAbertos({});
     setErro(null);
     setPendente(false);
@@ -230,53 +247,69 @@ function Contratos() {
 
     setLoading(true);
     try {
-      const [contratosRows, fornecedoresRows, processosRows, aditivosRows] = await Promise.all([
-        carregarTodasAsPaginas<Contrato>((inicio, fim) =>
-          db
-            .from("contracts")
-            .select("*")
-            .eq("tenant_id", tenantId)
-            .order("end_date", { ascending: true })
-            .order("id")
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas((inicio, fim) =>
-          db
-            .from("suppliers")
-            .select("id,legal_name,trade_name,cnpj,city")
-            .eq("tenant_id", tenantId)
-            .order("legal_name")
-            .order("id")
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<ProcessoOpcao>((inicio, fim) =>
-          db
-            .from("procurement_processes")
-            .select("id,number,title")
-            .eq("tenant_id", tenantId)
-            .neq("status", "arquivado")
-            .order("created_at", { ascending: false })
-            .order("id", { ascending: false })
-            .range(inicio, fim),
-        ),
-        carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
-          db
-            .from("contract_amendments")
-            .select(
-              "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
-            )
-            .eq("tenant_id", tenantId)
-            .order("signed_at", { ascending: false })
-            .order("id", { ascending: false })
-            .range(inicio, fim),
-        ),
-      ]);
+      const [contratosRows, fornecedoresRows, processosRows, aditivosRows, docsRows] =
+        await Promise.all([
+          carregarTodasAsPaginas<Contrato>((inicio, fim) =>
+            db
+              .from("contracts")
+              .select("*")
+              .eq("tenant_id", tenantId)
+              .order("end_date", { ascending: true })
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas((inicio, fim) =>
+            db
+              .from("suppliers")
+              .select("id,legal_name,trade_name,cnpj,city")
+              .eq("tenant_id", tenantId)
+              .order("legal_name")
+              .order("id")
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<ProcessoOpcao>((inicio, fim) =>
+            db
+              .from("procurement_processes")
+              .select("id,number,title")
+              .eq("tenant_id", tenantId)
+              .neq("status", "arquivado")
+              .order("created_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<Aditivo>((inicio, fim) =>
+            db
+              .from("contract_amendments")
+              .select(
+                "id,contract_id,number,kind,new_end_date,value_change,notes,signed_at,created_at",
+              )
+              .eq("tenant_id", tenantId)
+              .order("signed_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(inicio, fim),
+          ),
+          carregarTodasAsPaginas<{
+            id: string;
+            supplier_id: string;
+            document_type: string | null;
+            expires_at: string | null;
+          }>((inicio, fim) =>
+            db
+              .from("supplier_documents")
+              .select("id,supplier_id,document_type,expires_at")
+              .eq("tenant_id", tenantId)
+              .eq("status", "active")
+              .order("id")
+              .range(inicio, fim),
+          ).catch(() => []),
+        ]);
 
       if (requisicaoAtual !== requisicaoRef.current) return;
       setLista(contratosRows);
       setFornecedores(fornecedoresRows);
       setProcessos(processosRows);
       setAditivos(aditivosRows);
+      setDocsFornecedores(docsRows);
       setTenantCarregadoId(tenantId);
     } catch (error) {
       if (requisicaoAtual !== requisicaoRef.current) return;
@@ -336,6 +369,22 @@ function Contratos() {
   const fornecedoresAtuais = dadosTenantAtual ? fornecedores : [];
   const processosAtuais = dadosTenantAtual ? processos : [];
   const aditivosAtuais = dadosTenantAtual ? aditivos : [];
+  const docsFornecedoresAtuais = useMemo(
+    () => (dadosTenantAtual ? docsFornecedores : []),
+    [dadosTenantAtual, docsFornecedores],
+  );
+  const fichaPorFornecedor = useMemo(() => {
+    const map = new Map<string, FichaConformidadeFornecedor>();
+    if (!fornecedoresAtuais.length) return map;
+    const fichas = avaliarConformidadeHabilitacaoFornecedores({
+      fornecedores: fornecedoresAtuais,
+      documentosFornecedor: docsFornecedoresAtuais,
+    });
+    for (const f of fichas) {
+      map.set(f.fornecedorId, f);
+    }
+    return map;
+  }, [fornecedoresAtuais, docsFornecedoresAtuais]);
   const prorrogacaoContratoId = prorrogacaoDe?.id;
   const aditivosDoContrato = useMemo(
     () =>
@@ -388,11 +437,25 @@ function Contratos() {
     ]
       .filter(Boolean)
       .join(" ");
-  const exibidos = comNivel.filter(
-    (c) =>
-      (filtro === "todos" || (filtro === "alerta" ? c.nivel !== "ok" : c.nivel === filtro)) &&
-      termosBusca(textoContrato(c), busca),
-  );
+  const exibidos = comNivel.filter((c) => {
+    const ficha = c.supplier_id ? fichaPorFornecedor.get(c.supplier_id) : undefined;
+    const passaFiltro =
+      filtro === "todos" ||
+      (filtro === "alerta"
+        ? c.nivel !== "ok"
+        : filtro === "irregular"
+          ? Boolean(ficha && !ficha.aptoParaEmpenhoPagamento)
+          : c.nivel === filtro);
+    const passaMeus =
+      !somenteMeus ||
+      (Boolean(session?.user.id) &&
+        (c.manager_user_id === session?.user.id || c.inspector_user_id === session?.user.id));
+    return passaFiltro && passaMeus && termosBusca(textoContrato(c), busca);
+  });
+  const totalIrregularesArt68 = comNivel.filter((c) => {
+    const ficha = c.supplier_id ? fichaPorFornecedor.get(c.supplier_id) : undefined;
+    return c.status === "vigente" && Boolean(ficha && !ficha.aptoParaEmpenhoPagamento);
+  }).length;
   const colunasRelatorio: CsvColumn<(typeof exibidos)[number]>[] = [
     { header: "Número", value: (contrato) => contrato.number },
     {
@@ -647,7 +710,7 @@ function Contratos() {
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant={filtro === "todos" ? "default" : "outline"}
@@ -662,6 +725,26 @@ function Contratos() {
             >
               Somente com alerta
             </Button>
+            {totalIrregularesArt68 > 0 && (
+              <Button
+                size="sm"
+                variant={filtro === "irregular" ? "default" : "outline"}
+                onClick={() => setFiltro(filtro === "irregular" ? "todos" : "irregular")}
+              >
+                <ShieldAlert className="mr-1.5 h-3.5 w-3.5" />
+                Certidão irregular ({totalIrregularesArt68})
+              </Button>
+            )}
+            {session?.user.id && (
+              <Button
+                size="sm"
+                variant={somenteMeus ? "secondary" : "outline"}
+                onClick={() => setSomenteMeus((v) => !v)}
+              >
+                <UserCheck className="mr-1.5 h-3.5 w-3.5" />
+                Sob minha gestão/fiscalização
+              </Button>
+            )}
           </div>
 
           {loadingAtual ? (
@@ -690,13 +773,49 @@ function Contratos() {
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">{c.object}</p>
                     </div>
-                    <Badge variant="outline" className={corAlerta[c.nivel]}>
-                      {c.status !== "vigente"
-                        ? c.status
-                        : c.dias < 0
-                          ? `Vencido há ${-c.dias} dia(s)`
-                          : `${c.dias} dia(s) restantes`}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(() => {
+                        const ficha = c.supplier_id
+                          ? fichaPorFornecedor.get(c.supplier_id)
+                          : undefined;
+                        if (!ficha) return null;
+                        return ficha.aptoParaEmpenhoPagamento ? (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          >
+                            <ShieldCheck className="mr-1 h-3 w-3" />
+                            Regular (Art. 68)
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            title={ficha.resumoPendencias.join(" · ")}
+                            className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                          >
+                            <ShieldAlert className="mr-1 h-3 w-3" />
+                            Art. 68: {ficha.totalRegulares}/{ficha.totalEssenciais}
+                          </Badge>
+                        );
+                      })()}
+                      {c.status === "vigente" &&
+                        !c.inspector_user_id &&
+                        !c.inspector_name?.trim() && (
+                          <Badge
+                            variant="outline"
+                            className="border-destructive/30 text-destructive"
+                          >
+                            Sem fiscal (Art. 117)
+                          </Badge>
+                        )}
+                      <Badge variant="outline" className={corAlerta[c.nivel]}>
+                        {c.status !== "vigente"
+                          ? c.status
+                          : c.dias < 0
+                            ? `Vencido há ${-c.dias} dia(s)`
+                            : `${c.dias} dia(s) restantes`}
+                      </Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
                     <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1041,6 +1160,11 @@ function Contratos() {
         contrato={aditivoDe}
         aditivosContrato={
           aditivoDe ? aditivosAtuais.filter((item) => item.contract_id === aditivoDe.id) : []
+        }
+        fichaFornecedor={
+          aditivoDe?.supplier_id
+            ? (fichaPorFornecedor.get(aditivoDe.supplier_id) ?? null)
+            : null
         }
         onFechar={() => setAditivoDe(null)}
         tenantId={selecionado.id}
@@ -1466,6 +1590,7 @@ function NovoContrato(props: {
 function NovoAditivo(props: {
   contrato: Contrato | null;
   aditivosContrato: Array<AditivoHistoricoInput & { number: string }>;
+  fichaFornecedor?: FichaConformidadeFornecedor | null | undefined;
   onFechar: () => void;
   tenantId: string;
   userId: string;
@@ -1595,6 +1720,19 @@ function NovoAditivo(props: {
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={salvar} className="grid gap-4">
+          {props.fichaFornecedor && !props.fichaFornecedor.aptoParaEmpenhoPagamento && (
+            <Alert className="border-amber-500/40 bg-amber-500/10">
+              <ShieldAlert className="h-4 w-4 text-amber-600" />
+              <AlertTitle>Regularidade fiscal pendente (Art. 92, XVI da Lei 14.133)</AlertTitle>
+              <AlertDescription className="text-xs">
+                Antes de formalizar o termo aditivo/prorrogação, regularize:{" "}
+                <strong>{props.fichaFornecedor.resumoPendencias.slice(0, 3).join(" · ")}</strong>.{" "}
+                <Link to="/documentos" className="font-semibold text-primary underline">
+                  Verificar em Documentos
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
           {props.contrato && (
             <div className="space-y-1.5 rounded-md border bg-muted/30 p-3 text-sm">
               <div className="flex flex-wrap justify-between gap-2">
