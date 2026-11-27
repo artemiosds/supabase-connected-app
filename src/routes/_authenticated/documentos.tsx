@@ -37,7 +37,10 @@ import {
   type OptionalIntegrationsStatus,
 } from "@/lib/optional-integrations-helper";
 import {
+  ETAPAS_FLUXO_CONTRATACAO,
   buildSamplePreviewContext,
+  classificarEtapaFluxoModelo,
+  contarModelosPorFluxo,
   defaultTemplateScopeConfig,
   extractTemplatePlaceholders,
   filterAndSortTemplatesForContext,
@@ -49,6 +52,7 @@ import {
   sanitizeProcessStages,
   TEMPLATE_AVAILABILITY_SCOPES,
   TEMPLATE_CATEGORY_OPTIONS,
+  type EtapaFluxoContratacaoId,
   type TemplateAvailabilityScope,
 } from "@/lib/document-templates";
 import { carregarTodasAsPaginas, db } from "@/lib/db";
@@ -361,6 +365,9 @@ function Documentos() {
   );
   const [statusModeloFiltro, setStatusModeloFiltro] = useState<"active" | "inactive" | "all">(
     "active",
+  );
+  const [fluxoModeloFiltro, setFluxoModeloFiltro] = useState<"todos" | EtapaFluxoContratacaoId>(
+    "todos",
   );
 
   const [modeloPrevia, setModeloPrevia] = useState<Modelo | null>(null);
@@ -1854,6 +1861,7 @@ function Documentos() {
     }
     return counts;
   }, [gerados]);
+  const contagemFluxoModelos = useMemo(() => contarModelosPorFluxo(modelos), [modelos]);
   const modelosFiltradosNaAba = useMemo(
     () =>
       filterAndSortTemplatesForContext(modelos, {
@@ -1862,8 +1870,17 @@ function Documentos() {
         scope: escopoModeloFiltro,
         status: statusModeloFiltro,
         includeOutOfScope: escopoModeloFiltro === "todos",
-      }),
-    [modelos, buscaModelo, categoriaModeloFiltro, escopoModeloFiltro, statusModeloFiltro],
+      }).filter(
+        (m) => fluxoModeloFiltro === "todos" || classificarEtapaFluxoModelo(m) === fluxoModeloFiltro,
+      ),
+    [
+      modelos,
+      buscaModelo,
+      categoriaModeloFiltro,
+      escopoModeloFiltro,
+      statusModeloFiltro,
+      fluxoModeloFiltro,
+    ],
   );
   const escopoGerador: TemplateAvailabilityScope = contratoGeracao
     ? "contratos"
@@ -2786,6 +2803,51 @@ function Documentos() {
             </TabsContent>
             {moduloModelosAtivo && (
               <TabsContent value="modelos" className="mt-4 space-y-4">
+                <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Central de Minutas pelo Fluxo da Contratação (Lei nº 14.133/2021)
+                    </p>
+                    {fluxoModeloFiltro !== "todos" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setFluxoModeloFiltro("todos")}
+                      >
+                        Ver todas as fases
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={fluxoModeloFiltro === "todos" ? "default" : "outline"}
+                      className="h-7 px-2.5 text-xs"
+                      onClick={() => setFluxoModeloFiltro("todos")}
+                    >
+                      Todas as etapas ({modelosAtivosCount})
+                    </Button>
+                    {ETAPAS_FLUXO_CONTRATACAO.map((etapa) => (
+                      <Button
+                        key={etapa.id}
+                        type="button"
+                        size="sm"
+                        variant={fluxoModeloFiltro === etapa.id ? "default" : "outline"}
+                        className="h-7 px-2.5 text-xs"
+                        title={etapa.descricao}
+                        onClick={() =>
+                          setFluxoModeloFiltro((curr) => (curr === etapa.id ? "todos" : etapa.id))
+                        }
+                      >
+                        {etapa.rotulo} ({contagemFluxoModelos[etapa.id]})
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

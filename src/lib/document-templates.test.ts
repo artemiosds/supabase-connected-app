@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSamplePreviewContext,
+  classificarEtapaFluxoModelo,
+  contarModelosPorFluxo,
   defaultTemplateScopeConfig,
   extractTemplatePlaceholders,
   filterAndSortTemplatesForContext,
@@ -136,5 +138,32 @@ describe("renderTemplateSamplePreview e extractTemplatePlaceholders", () => {
     expect(preview.content).toContain("Art. 107 da Lei nº 14.133/2021");
     expect(preview.missingKeys).toHaveLength(0);
     expect(preview.unknownKeys).toEqual(["clausula_local"]);
+  });
+
+  it("classifica e contabiliza modelos pelo fluxo da contratação (DFD → ETP → TR → Edital → Contrato)", () => {
+    expect(classificarEtapaFluxoModelo({ template_type: "dfd" })).toBe("dfd");
+    expect(classificarEtapaFluxoModelo({ template_type: "etp" })).toBe("etp");
+    expect(classificarEtapaFluxoModelo({ template_type: "tr" })).toBe("tr");
+    expect(classificarEtapaFluxoModelo({ template_type: "edital" })).toBe("edital");
+    expect(classificarEtapaFluxoModelo({ template_type: "term_addendum_renewal" })).toBe("contrato");
+    expect(
+      classificarEtapaFluxoModelo({ template_type: "custom", process_stages: ["estudos"] }),
+    ).toBe("etp");
+
+    const contagem = contarModelosPorFluxo([
+      { template_type: "dfd", is_active: true },
+      { template_type: "etp", is_active: true },
+      { template_type: "tr", is_active: true },
+      { template_type: "edital", is_active: true },
+      { template_type: "contrato", is_active: true },
+      { template_type: "dfd", is_active: false },
+    ]);
+    expect(contagem).toEqual({
+      dfd: 1,
+      etp: 1,
+      tr: 1,
+      edital: 1,
+      contrato: 1,
+    });
   });
 });

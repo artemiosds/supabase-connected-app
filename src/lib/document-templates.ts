@@ -323,3 +323,96 @@ export function renderTemplateSamplePreview(params: {
   };
   return renderDocumentTemplate(params.content, values);
 }
+
+// =============================================================================
+// Central de Modelos pelo Fluxo da Contratação (DFD → ETP → TR → Edital → Contrato)
+// =============================================================================
+
+export const ETAPAS_FLUXO_CONTRATACAO = [
+  {
+    id: "dfd",
+    ordem: 1,
+    rotulo: "1. DFD / Planejamento",
+    descricao: "Formalização da demanda e previsão no PCA",
+  },
+  {
+    id: "etp",
+    ordem: 2,
+    rotulo: "2. ETP & Riscos",
+    descricao: "Estudo Técnico Preliminar e análise de riscos",
+  },
+  {
+    id: "tr",
+    ordem: 3,
+    rotulo: "3. TR / Objeto",
+    descricao: "Termo de Referência e matriz contratual",
+  },
+  {
+    id: "edital",
+    ordem: 4,
+    rotulo: "4. Parecer & Edital",
+    descricao: "Controle jurídico e aviso/edital de licitação",
+  },
+  {
+    id: "contrato",
+    ordem: 5,
+    rotulo: "5. Contrato & Fiscalização",
+    descricao: "Minutas contratuais, aditivos e notificações",
+  },
+] as const;
+
+export type EtapaFluxoContratacaoId = (typeof ETAPAS_FLUXO_CONTRATACAO)[number]["id"];
+
+export function classificarEtapaFluxoModelo(template: {
+  template_type: string;
+  process_stages?: unknown;
+}): EtapaFluxoContratacaoId {
+  switch (template.template_type) {
+    case "dfd":
+    case "despacho":
+      return "dfd";
+    case "etp":
+    case "risk_analysis":
+      return "etp";
+    case "tr":
+    case "risk_matrix":
+      return "tr";
+    case "parecer_juridico":
+    case "edital":
+      return "edital";
+    case "contrato":
+    case "term_addendum_renewal":
+    case "notificacao":
+      return "contrato";
+    default: {
+      const stages = sanitizeProcessStages(
+        Array.isArray(template.process_stages)
+          ? (template.process_stages as readonly string[])
+          : null,
+      );
+      if (stages.includes("planejamento")) return "dfd";
+      if (stages.includes("estudos")) return "etp";
+      if (stages.includes("objeto")) return "tr";
+      if (stages.includes("parecer") || stages.includes("publicacao")) return "edital";
+      return "contrato";
+    }
+  }
+}
+
+export function contarModelosPorFluxo(
+  modelos: ReadonlyArray<{ template_type: string; process_stages?: unknown; is_active?: boolean }>,
+): Record<EtapaFluxoContratacaoId, number> {
+  const counts: Record<EtapaFluxoContratacaoId, number> = {
+    dfd: 0,
+    etp: 0,
+    tr: 0,
+    edital: 0,
+    contrato: 0,
+  };
+  for (const m of modelos) {
+    if (m.is_active === false) continue;
+    const etapa = classificarEtapaFluxoModelo(m);
+    counts[etapa] += 1;
+  }
+  return counts;
+}
