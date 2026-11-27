@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { db, bancoNaoConfigurado } from "@/lib/db";
+import { TenantManualBackupCard } from "@/components/settings/tenant-manual-backup-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useTenant } from "@/hooks/use-tenant";
 import { formatarCnpj, normalizarCnpj, validarCnpj } from "@/lib/cnpj";
@@ -1172,6 +1173,13 @@ function Configuracoes() {
                 </CardContent>
               </Card>
             )}
+
+            {selecionado && (
+              <TenantManualBackupCard
+                tenantId={selecionado.id}
+                tenantName={selecionado.nome}
+              />
+            )}
           </section>
 
           <section hidden={categoria !== "compras"} className="space-y-6">
@@ -1712,6 +1720,13 @@ function Configuracoes() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {selecionado && (
+              <TenantManualBackupCard
+                tenantId={selecionado.id}
+                tenantName={selecionado.nome}
+              />
             )}
           </section>
 

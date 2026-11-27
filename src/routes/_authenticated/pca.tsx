@@ -54,6 +54,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { PncpExportDialog } from "@/components/procurement/pncp-export-dialog";
 import { useTenant } from "@/hooks/use-tenant";
+import { useAuth } from "@/hooks/use-auth";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { OfflineDraftBanner } from "@/components/common/offline-draft-banner";
 import { isCommercialModuleEnabled } from "@/lib/commercial-access";
 import { ETAPAS, formatarData, formatarMoeda, MODALIDADES, paraCaixaAlta } from "@/lib/contratacao";
 import { UNIDADES_SAUDE_PADRAO } from "@/lib/procurement-items-parser";
@@ -147,7 +150,9 @@ function resolveStatus(d: DemandaPCARow): "submitted" | "approved" | "rejected" 
 
 function PcaPage() {
   const { selecionado } = useTenant();
+  const { session } = useAuth();
   const tenantId = selecionado?.id;
+  const userId = session?.user?.id ?? "";
 
   const moduloPca = selecionado
     ? isCommercialModuleEnabled(selecionado.enabled_modules, "pca")
@@ -176,6 +181,18 @@ function PcaPage() {
   const [formAberto, setFormAberto] = useState(false);
   const [editandoDemanda, setEditandoDemanda] = useState<DemandaPCARow | null>(null);
   const [formState, setFormState] = useState<DemandaFormState>(emptyDemandForm);
+  const pcaFormId = editandoDemanda ? `editar_pca_${editandoDemanda.id}` : "nova_demanda_pca";
+  const { isOnline, draftAvailable, lastSavedAt, restoreDraft, discardDraft, clearDraft } =
+    useFormDraft({
+      tenantId: formAberto && tenantId ? tenantId : "",
+      userId: formAberto && userId ? userId : "",
+      formId: pcaFormId,
+      currentData: formState as unknown as Record<string, unknown>,
+      onRestore: (recuperado) => {
+        setFormState(recuperado as unknown as DemandaFormState);
+        toast.info("Rascunho da demanda recuperado com sucesso.");
+      },
+    });
 
   // Modais de workflow
   const [convertendoDemanda, setConvertendoDemanda] = useState<DemandaPCARow | null>(null);
@@ -399,6 +416,7 @@ function PcaPage() {
       : await executarAcao("submit", crypto.randomUUID(), payload);
 
     if (ok) {
+      clearDraft();
       setFormAberto(false);
       setEditandoDemanda(null);
       setFormState(emptyDemandForm());
@@ -886,7 +904,7 @@ function PcaPage() {
                                       {String((item as Record<string, unknown>)["quantity"])}{" "}
                                       {String((item as Record<string, unknown>)["unit"])}
                                       {(item as Record<string, unknown>)["estimated_unit_price"] !=
-                                      null
+                                        null
                                         ? ` × ${formatarMoeda(Number((item as Record<string, unknown>)["estimated_unit_price"]))}`
                                         : ""}
                                     </span>
@@ -1133,6 +1151,14 @@ function PcaPage() {
               Dados mínimos do DFD/PCA conforme art. 8º do Decreto nº 10.947/2022.
             </DialogDescription>
           </DialogHeader>
+
+          <OfflineDraftBanner
+            isOnline={isOnline}
+            draftDate={draftAvailable?.savedAt ?? null}
+            lastSavedAt={lastSavedAt}
+            onRestore={restoreDraft}
+            onDiscard={discardDraft}
+          />
 
           <form onSubmit={handleSalvarDemanda} className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
