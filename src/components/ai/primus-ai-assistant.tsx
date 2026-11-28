@@ -205,8 +205,8 @@ export function PrimusAiAssistant() {
         }
         const safeFeatures = Array.isArray(data?.features)
           ? data.features.filter((key): key is AiFeatureKey =>
-              AI_FEATURES.some((item) => item.key === key),
-            )
+            AI_FEATURES.some((item) => item.key === key),
+          )
           : [];
         setCapabilities({ enabled: data?.enabled === true, features: safeFeatures });
         setFeature(safeFeatures[0] ?? "");
@@ -302,7 +302,7 @@ export function PrimusAiAssistant() {
     const recentHistory = messages.slice(-8);
     while (
       recentHistory.reduce((total, message) => total + message.content.length, text.length) >
-        24_000 &&
+      24_000 &&
       recentHistory.length
     ) {
       recentHistory.shift();
